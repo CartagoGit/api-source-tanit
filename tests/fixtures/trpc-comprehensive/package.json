@@ -1,0 +1,5 @@
+{
+  "name": "sample-trpc",
+  "version": "1.0.0",
+  "dependencies": { "@trpc/server": "^10.45.0", "zod": "^3.22.0" }
+}

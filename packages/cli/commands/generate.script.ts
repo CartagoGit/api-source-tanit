@@ -1,0 +1,746 @@
+/**
+ * Main script: generates the Postman v2.1.0 collection by automatically
+ * discovering endpoints from `routes/*.php` + controller signatures
+ * (FormRequest), and enriching with variants.
+ *
+ * The host configuration is loaded in a framework-agnostic way via
+ * `loadProject()` (`--config`, `POSTMAN_CONFIG`, or
+ * `examples/<project>/config.constant.ts`).
+ *
+ * Usage:
+ *   bun scripts/generate.script.ts
+ *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
+ *   bun run build
+ */
+import { mkdir } from "node:fs/promises";
+import {
+  writeFileAtomic,
+  writeJsonAtomic,
+} from "../../core/helpers/atomic-write.helper.js";
+import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/argv.helper.js";
+import { dirname, join } from "node:path";
+import { exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
+import { selectExporters } from "../../core/exporters/registry.js";
+import { generateWithAllFrameworks } from "../../frameworks/index.js";
+import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
+
+import { enrichCatalogWithFormRequests, LARAVEL_FORM_REQUEST_ENRICHER, enrichValidationSources } from "../../frameworks/laravel/catalog-enricher.service.js";
+import { registerValidationEnricher } from "../../core/validation/validation-enricher.service.js";
+import {
+  normalizeForComparison,
+  stripApiPrefix,
+} from "../../core/helpers/uri.helper.js";
+import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
+import { postmanMethodFor } from "../../core/domain/postman-method.helper.js";
+import {
+  describeDiscoveredPaths,
+  outputCollectionPath,
+  outputEnvironmentPath,
+} from "../../core/discovery/output-paths.helper.js";
+import { selectOutputSink } from "../../core/services/output-sink.service.js";
+import type { IOutputSink } from "../../contracts/interfaces/core/output-sink.interface.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { main as runOpenPostman } from "./open-postman.script.js";
+import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
+import type { DiscoveredRoute } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
+import {
+  GENERATE_REPORT_VERSION,
+  type IGenerateReport,
+} from "../../contracts/interfaces/core/generate-report.interface.js";
+
+import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { ExportFormatId } from "../../contracts/interfaces/core/exporter.interface.js";
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
+import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
+import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
+import {
+  buildArtifacts,
+  MultipleServicesWithoutCombineError,
+} from "../../core/discovery/generation.pipeline.js";
+
+/** Narrows an exporter artifact to the Postman collection shape. */
+function isPostmanCollection(value: unknown): value is PostmanCollection {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "info" in value &&
+    "item" in value
+  );
+}
+
+/**
+ * Discovers endpoints and builds the collection using the shared
+ * pipeline (`services/generation.pipeline.ts`).
+ *
+ * This script only adds what is its own: flag parsing, console
+ * traces, variant enrichment, and writing artifacts. The order of the
+ * pipeline steps lives in the service, so the CLI, the tests, and the
+ * gate execute exactly the same thing.
+ */
+async function runPipeline(
+  basename: string | null,
+  forceFramework: string | null,
+  context: IProjectContext,
+  frameworkSearchRoot: string | null,
+  combineServices: boolean,
+  sink: IOutputSink,
+  basenameOverride: string | null,
+  argv: ReadonlyArray<string>,
+): Promise<IGenerationResult> {
+  // c00010 S1: `sink` is injected so the early traces (before the JSON
+  // mode redirect kicks in) still honour the JSON-mode channel policy.
+  const humanLog = (message: string) => sink.write(message);
+  humanLog("→ Resolved paths:");
+  humanLog(
+    describeDiscoveredPaths(
+      context,
+      basename ?? undefined,
+      argv,
+      basenameOverride ?? undefined,
+    ),
+  );
+
+  // WARNING: do NOT use `process.cwd()` or `"."`. The CLI spawns this
+  // script with `cwd` = package root, so a relative path points at
+  // api-source-tanit itself and the scan comes back empty.
+  // `projectRoot()` resolves the `--project-root` flag and
+  // `POSTMAN_PROJECT_ROOT`. With injected context (ui, tests, tools)
+  // the singleton is not even consulted: r00008 S2 — the process argv
+  // is not the one from the request.
+  const root = context.projectRoot;
+  const result = await generateWithAllFrameworks(root, {
+    ...(basename ? { collectionName: basename } : {}),
+    ...(forceFramework ? { forceFramework } : {}),
+    ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
+    ...(combineServices ? { combineServices: true } : {}),
+  });
+
+  humanLog(
+    result.match
+      ? `→ Orchestrator: framework=${result.match.framework}`
+      : "→ Orchestrator: no match → legacy zero-config flow.",
+  );
+  humanLog(
+    `  · ${result.metrics.routes} routes in code, ${result.metrics.specs} specs ` +
+      `(with rules: ${result.metrics.withValidation}, without: ${result.metrics.withoutValidation}).`,
+  );
+  humanLog(
+    `→ Framework-agnostic inference: ${result.metrics.bodiesInferred} bodies + ` +
+      `${result.metrics.queriesInferred} query params filled in.`,
+  );
+  return result;
+}
+
+/**
+ * Warns when a collection with the SAME name but a DIFFERENT
+ * `_postman_id` already exists at the output path.
+ *
+ * It means two different projects will compete for the same slot in
+ * Postman: when the second is imported, the user ends up with two
+ * homonymous collections and cannot tell which is which. The fix is
+ * to set `collectionId` in one of the two configs.
+ */
+async function warnOnIdentityClash(
+  outputPath: string,
+  collection: { info: { name: string; _postman_id?: string } },
+): Promise<void> {
+  const { existsSync } = await import("node:fs");
+  const { readFile } = await import("node:fs/promises");
+  if (!existsSync(outputPath)) return;
+  try {
+    const previous = JSON.parse(await readFile(outputPath, "utf8")) as {
+      info?: { name?: string; _postman_id?: string };
+    };
+    const sameName = previous.info?.name === collection.info.name;
+    const differentId =
+      Boolean(previous.info?._postman_id) &&
+      previous.info?._postman_id !== collection.info._postman_id;
+    if (sameName && differentId) {
+      console.warn(
+        `\n⚠ A collection named "${collection.info.name}" already exists with a different id.\n` +
+          "  Importing both into Postman leaves two collections with the same name.\n" +
+          "  Set `collectionId` in one project's config to tell them apart.",
+      );
+    }
+  } catch {
+    // A previous unreadable JSON is not a reason to abort generation.
+  }
+}
+
+/**
+ * Generates, writes, and returns the report. Without printing the JSON.
+ *
+ * `main` is the wrapper that prints it when `--json` is requested;
+ * whoever wants the data calls here and skips the intermediary.
+ */
+export async function runGenerate(
+  argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
+): Promise<IGenerateOutcome> {
+  const args = argv;
+  const resolvedContext = context ?? resolveProjectContext({ argv: args });
+  const startedAt = Date.now();
+  const jsonMode = args.includes("--json");
+
+  // c00010 S1: human output goes through an injectable sink (stdout in
+  // normal mode, stderr in `--json` mode). No more monkey-patching of
+  // `console.log` — the rule "no `process.stdout` from engines"
+  // (universal §6) is preserved and tests no longer need to restore
+  // any global in their teardown.
+  const sink: IOutputSink = selectOutputSink({ jsonMode });
+  const humanLog = (message: string) => sink.write(message);
+  const humanErr = (message: string) => sink.writeError(message);
+  const environmentPaths: string[] = [];
+  /** Files in formats other than Postman. */
+  const extraPaths: string[] = [];
+  let collectionPath: string | null = null;
+
+  // x00066: every CLI flag goes through one of three batch helpers
+  // (`readFlags`, `readBooleanFlags`, `readFlagList`). Both
+  // `--flag value` and `--flag=value` work; the audit's P2 #9 (mixed
+  // parsing) is gone.
+  const flags = readFlags(args, {
+    output: "--output",
+    basename: "--basename",
+    framework: "--framework",
+    frameworkSearchRoot: "--framework-search-root",
+    format: "--format",
+    formats: "--formats",
+    envs: "--envs",
+  });
+  const bools = readBooleanFlags(args, {
+    openAfter: "--open",
+    inspectMode: "--inspect",
+    combineServicesFlag: "--combine-services",
+  });
+  const outputFlag = flags.output ?? null;
+  const basenameFlag = flags.basename ?? null;
+  const frameworkFlag = flags.framework ?? null;
+  const frameworkSearchRoot = flags.frameworkSearchRoot ?? null;
+  const combineServicesFlag = bools.combineServicesFlag;
+  const openAfter = bools.openAfter;
+  const inspectMode = bools.inspectMode;
+  // `--format a,b,c` (legacy) and `--formats a,b,c` (universal). The
+  // plural spelling is accepted by the r00019 pipeline; the singular
+  // one remains valid so existing commands do not change.
+  //
+  // Formats are validated BEFORE scanning: a misspelled format name
+  // discovered at the end, after walking the project and having not
+  // written the file that was asked for, says nothing about what
+  // happened.
+  if (flags.formats !== undefined && flags.format !== undefined) {
+    humanErr(
+      "\n✗ --format and --formats are mutually exclusive: pass only one.",
+    );
+    return { code: 1, report: null };
+  }
+  const parsedFormats = parseFormats(flags.formats ?? flags.format ?? null);
+  if (!parsedFormats.ok) {
+    humanErr(
+      `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
+        `  Válidos: ${parsedFormats.valid.join(", ")}`,
+    );
+    return { code: 1, report: null };
+  }
+  const requestedFormats = parsedFormats.formats as ExportFormatId[];
+  // The legacy CLI always wrote the Postman collection and treated the
+  // format flag as the list of EXTRA formats. Preserve that observable
+  // behaviour while selecting the exporters through the universal
+  // registry.
+  const selectedFormats: ExportFormatId[] = requestedFormats.includes(
+    DEFAULT_EXPORT_FORMAT,
+  )
+    ? requestedFormats
+    : [DEFAULT_EXPORT_FORMAT, ...requestedFormats];
+  const exporters = selectExporters(selectedFormats);
+  const envsFlag = flags.envs ? readFlagList(args, "--envs") : null;
+
+  const pipeline = await runPipeline(
+    basenameFlag,
+    frameworkFlag,
+    resolvedContext,
+    frameworkSearchRoot,
+    combineServicesFlag,
+    sink,
+    basenameFlag,
+    args,
+  );
+  const discoveredSpecs = pipeline.specs;
+
+  // Warnings go BEFORE writing anything: if someone aborts the run on
+  // seeing half an API is missing, better they find out here.
+  for (const warning of pipeline.warnings) {
+    humanLog(`\n⚠ ${warning}`);
+  }
+  if (pipeline.frameworks.length > 1) {
+    humanLog(`  · Frameworks escaneados: ${pipeline.frameworks.join(", ")}`);
+  }
+  const config = pipeline.config;
+  const origin = pipeline.match?.framework ?? "legacy";
+
+  // --inspect mode: only print the discovery, do not write any files.
+  // Designed so that `summary` (and similar tools) can query the
+  // project state without producing artifacts.
+  if (inspectMode) {
+    humanLog("\n→ --inspect mode (no files written)");
+    humanLog(`  · Framework:      ${origin}`);
+    humanLog(`  · Project name:   ${config.name}`);
+    humanLog(`  · Routes:         ${pipeline.metrics.routes}`);
+    humanLog(`  · Specs:          ${pipeline.metrics.specs}`);
+    humanLog(`  · With rules:     ${pipeline.metrics.withValidation}`);
+    humanLog(`  · Without rules:  ${pipeline.metrics.withoutValidation}`);
+    if (pipeline.match?.frameworkSearchRoot) {
+      humanLog(
+        `  · Search root:    ${pipeline.match.frameworkSearchRoot}` +
+          (frameworkSearchRoot ? " (--framework-search-root)" : " (auto-detected)"),
+      );
+    } else if (frameworkSearchRoot) {
+      // Audit 2026-09-04 (monorepo expansion): with an override, if
+      // the workspace does not contain the framework (typical case:
+      // user typo, subdir that does not exist), the match has no
+      // frameworkSearchRoot and the row is skipped. But the user DID
+      // pass the flag and deserves to see it in `--inspect`. It is
+      // printed whenever the flag is present.
+      humanLog(
+        `  · Search root:    ${frameworkSearchRoot} (--framework-search-root, no framework matched)`,
+      );
+    }
+    humanLog(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
+    humanLog(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
+    humanLog(`  · Base URL:       ${config.baseUrl}`);
+    return { code: 0, report: null };
+  }
+
+  // method+uri → FormRequest index for the enricher.
+  const frIndex = new Map<string, string>();
+  for (const spec of discoveredSpecs) {
+    if (!spec.formRequest) continue;
+    const key = `${spec.method} ${normalizeForComparison(spec.uri.replace(/^\//, ""))}`;
+    frIndex.set(key, spec.formRequest);
+  }
+
+  const collection = pipeline.collection;
+  const authFlow = pipeline.authFlow;
+  if (authFlow?.login) {
+    humanLog(
+      `→ Auth: login at "${authFlow.login.name}" stores the token automatically` +
+        (authFlow.refresh ? ", refresh wired" : "") +
+        (authFlow.logout ? ", logout clears the token" : "") +
+        ".",
+    );
+  } else {
+    humanLog("→ Auth: no login endpoint found (collection has no session flow).");
+  }
+
+  humanLog("→ Enriching with validation-rule variants…");
+  // S5 (a00012): side-effect registration of the Laravel enricher. The
+  // registry is process-global; registering it here guarantees that
+  // any tool/test importing `runValidationEnrichers` after `generate`
+  // starts sees the provider. Phase 2 will move the registration to
+  // the bootstrap, but as long as `core` does not know about Laravel,
+  // this lives in the script that knows both sides.
+  registerValidationEnricher(LARAVEL_FORM_REQUEST_ENRICHER);
+  // S5: dispatches the specs by provider through the registry. Those
+  // without `validationSource` or whose provider is not registered
+  // come back identical (Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER` is
+  // idempotent). The actual variant generation stays in
+  // `enrichCatalogWithFormRequests`, called just below.
+  enrichValidationSources(discoveredSpecs);
+  const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
+  humanLog(`  · Body variants:   ${stats.bodyVariants}`);
+  humanLog(`  · Query variants:  ${stats.queryVariants}`);
+  humanLog(`  · Rules resolved:  ${stats.resolved}`);
+  humanLog(`  · Rules missing:   ${stats.unresolved}`);
+  if (stats.rulesWithUnknown.length > 0) {
+    humanLog(
+      `  · Dynamic rules skipped: ${stats.rulesWithUnknown.length}`,
+    );
+  }
+
+  // Cobertura bidireccional
+  type CheckRoute = DiscoveredRoute & { name?: string };
+  const sourceRoutes = new Map<string, CheckRoute>();
+  const sourceRouteCounts = new Map<string, number>();
+  for (const r of discoveredSpecs) {
+    // The final specs are the source of truth for this check: one physical
+    // route can expand into several logical operations (GraphQL and broker
+    // transports), while `pipeline.routes` only contains the physical route.
+    const uri = pipeline.origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
+    // x00056 S1 follow-up: the source `method` is in Tanit's vocabulary
+    // (`ALL` for "any method") while the collection builder emits
+    // Postman's vocabulary (`ANY`). Translating here means the two
+    // sides of the bidirectional check agree on what an endpoint
+    // means. Without this, a Hono `app.all('/x')` aborts the CLI with
+    // `ALL /x in routes but NOT in collection` even though the
+    // collection has the request under the same key.
+    const method = postmanMethodFor(r.method);
+    const baseKey = `${method} ${normalizeForComparison(uri)}`;
+    const count = (sourceRouteCounts.get(baseKey) ?? 0) + 1;
+    sourceRouteCounts.set(baseKey, count);
+    const name = r.name;
+    const key = `${baseKey} ${count > 1 && name ? name : ""}`;
+    sourceRoutes.set(key, { method, uri, ...(name ? { name } : {}) });
+  }
+  const declared = walkCollection(collection)
+    .filter((route) => !route.name.startsWith("Variant:"))
+    .map((route) => ({
+      ...route,
+      name: route.name.replace(/ \(base\)$/, ""),
+    }));
+  const collectionRoutes = new Map<
+    string,
+    { method: string; uri: string; name: string }
+  >();
+  const collectionRouteCounts = new Map<string, number>();
+  for (const r of declared) {
+    const baseKey = `${r.method} ${normalizeForComparison(r.uri)}`;
+    const count = (collectionRouteCounts.get(baseKey) ?? 0) + 1;
+    collectionRouteCounts.set(baseKey, count);
+    const key = `${baseKey} ${count > 1 ? r.name : ""}`;
+    collectionRoutes.set(key, r);
+  }
+  humanLog(
+    `  · ${declared.length} final requests (${collectionRoutes.size} unique method+uri).`,
+  );
+
+  const missingInSource: Array<{ method: string; uri: string; name: string }> =
+    [];
+  for (const [key, info] of collectionRoutes) {
+    if (!sourceRoutes.has(key)) missingInSource.push(info);
+  }
+  const missingInCollection: CheckRoute[] = [];
+  for (const [key, info] of sourceRoutes) {
+    if (info.uri === "auth-test") continue;
+    if (!collectionRoutes.has(key)) missingInCollection.push(info);
+  }
+  if (missingInSource.length) {
+    humanErr(
+      `\n✘ ${missingInSource.length} in the collection but NOT in the routes:`,
+    );
+    for (const m of missingInSource.slice(0, 20)) {
+      humanErr(`    ${m.method.padEnd(6)} /${m.uri} (${m.name})`);
+    }
+  }
+  if (missingInCollection.length) {
+    humanErr(
+      `\n✘ ${missingInCollection.length} in the routes but NOT in the collection:`,
+    );
+    for (const m of missingInCollection.slice(0, 20)) {
+      humanErr(`    ${m.method.padEnd(6)} /${m.uri}`);
+    }
+  }
+  if (missingInSource.length || missingInCollection.length) {
+    humanErr("\n→ Generation aborted.");
+    return { code: 1, report: null };
+  }
+
+  // f00012 + f00014 wiring: response inference now lives inside
+  // `buildForService()` in the pipeline (see generation.pipeline.ts),
+  // not here. Before, this script ran the inference loop AFTER
+  // `buildCollection()` had already serialised the Postman
+  // collection, which meant the inferred `response[]` block never
+  // made it into the JSON the user saw. The pipeline runs the
+  // dispatcher **before** `buildCollection()` and mutates
+  // `spec.responses` in place, so every exporter (Postman, OpenAPI,
+  // Bruno, HAR, ...) sees the same enriched catalog.
+  //
+  // The CLI's only remaining responsibility is the **composition
+  // root**: import the inferrer barrel so the dispatcher's registry
+  // is populated before the pipeline runs. Empty registry = no
+  // inferrer registered for the matched framework (e.g. an Express
+  // project), which is a valid state — the pipeline's
+  // `inferResponsesIntoSpecs()` returns `registryEmpty: true` and
+  // the collection is built without response entries.
+  ensureResponseInferrersRegistered();
+  if (pipeline.metrics.responsesInferred > 0) {
+    humanLog(
+      `  · Responses inferred for ${pipeline.metrics.responsesInferred} endpoint(s).`,
+    );
+  }
+
+  // --output / --basename respect environment variables + flags.
+  // c00010 S1: `basenameFlag` se pasa directamente al helper en lugar de
+  // monkey-patchear `process.env.POSTMAN_OUTPUT_BASENAME`. El helper
+  // resuelve la precedencia (override > env > projectName > projectBasename).
+  const OUTPUT_PATH = outputFlag
+    ? outputFlag
+    : await outputCollectionPath(
+        resolvedContext,
+        config.name,
+        args,
+        basenameFlag ?? undefined,
+      );
+  await warnOnIdentityClash(OUTPUT_PATH, collection);
+  // x00060 — generate runs as a single transaction: validate BEFORE any
+  // write so a regression / scanner crash cannot destroy yesterday's
+  // collection. The previous order wrote first and then refused if
+  // requests === 0, which left an empty file on disk and overwrote a
+  // valid previous collection with an empty one.
+  const { requests, folders } = countItems(collection);
+  const allowEmpty = args.includes("--allow-empty");
+  if (requests === 0 && !allowEmpty) {
+    humanErr(
+      "\n✗ No endpoints were found, so nothing was written.\n" +
+        "  · Check that `--project-root` points at your API's root.\n" +
+        "  · See docs/FRAMEWORKS.md for what each scanner looks for.\n" +
+        "  · If the project genuinely has no routes yet, use `--allow-empty`.",
+    );
+    return { code: 1, report: null };
+  }
+
+  // Every selected exporter consumes the SAME snapshot. The pipeline
+  // builds all results before the writer touches the filesystem, so a
+  // broken exporter is reported as a diagnostic instead of leaving a
+  // half-written export behind. The write itself is atomic per file,
+  // not transactional across the whole set: a failure while writing the
+  // third file leaves the first two on disk.
+  const snapshot: IProjectSnapshot = {
+    sessionId: "cli",
+    projectRoot: resolvedContext.projectRoot,
+    capturedAt: new Date(),
+    results: [pipeline],
+    diagnostics: [],
+    frameworks: pipeline.frameworks,
+  };
+  const artifactResults = await buildArtifacts(snapshot, exporters);
+  const exportErrors = artifactResults.flatMap((result) =>
+    result.diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
+  );
+  if (exportErrors.length > 0) {
+    humanErr("\n✗ No artifacts were written because an exporter failed:");
+    for (const diagnostic of exportErrors) {
+      humanErr(`  · ${diagnostic.message}`);
+    }
+    return { code: 1, report: null };
+  }
+
+  const postmanResult = artifactResults.find(
+    (result) => result.format === DEFAULT_EXPORT_FORMAT,
+  );
+  if (postmanResult === undefined) {
+    humanErr(
+      "\n✗ The Postman exporter did not run, so no collection was written.",
+    );
+    return { code: 1, report: null };
+  }
+  const postmanArtifact = postmanResult.artifact;
+  if (!isPostmanCollection(postmanArtifact)) {
+    // Falling back to the legacy collection here would write a file
+    // that nobody asked for and hide the failure: the exporter said it
+    // could not build a collection, so nothing is written.
+    humanErr(
+      "\n✗ The Postman exporter did not produce a collection, so nothing was written:",
+    );
+    for (const diagnostic of postmanResult.diagnostics) {
+      humanErr(`  · ${diagnostic.message}`);
+    }
+    return { code: 1, report: null };
+  }
+  const exportedCollection: PostmanCollection = postmanArtifact;
+  const json = JSON.stringify(exportedCollection, null, 2);
+  await writeFileAtomic(OUTPUT_PATH, json + "\n");
+  collectionPath = OUTPUT_PATH;
+
+  // Extra formats are serialized from the SAME endpoint catalog as the
+  // Postman collection: two formats from the same project cannot
+  // disagree because each scanned on its own.
+  const extraFormats = selectedFormats.filter(
+    (format) => format !== DEFAULT_EXPORT_FORMAT,
+  );
+  let extraFileCount = 0;
+  if (extraFormats.length > 0) {
+    const dir = resolvedContext.outputDir;
+    for (const result of artifactResults) {
+      if (result.format === DEFAULT_EXPORT_FORMAT) continue;
+      for (const artifact of result.files) {
+        const target = join(dir, artifact.path);
+        await mkdir(dirname(target), { recursive: true });
+        await writeFileAtomic(target, artifact.content);
+        extraPaths.push(target);
+        extraFileCount += 1;
+      }
+    }
+    humanLog(`  · ${extraFileCount} file(s) in ${extraFormats.join(", ")}`);
+    // A format that does not represent everything says so: the file
+    // comes out the same, but incomplete.
+    const exportInput = {
+      specs: discoveredSpecs,
+      config,
+      auth: {
+        type: pipeline.authScheme.type,
+        keyName: pipeline.authScheme.keyName,
+        keyIn: pipeline.authScheme.keyIn,
+      },
+    };
+    for (const warning of exportWarnings(extraFormats, exportInput)) {
+      console.warn(`\n⚠ ${warning}`);
+    }
+  }
+
+  const sizeKb = (json.length / 1024).toFixed(1);
+  humanLog(`\n✔ Collection written to ${OUTPUT_PATH}`);
+  humanLog(
+    `  · ${requests} requests in ${folders} folders (${sizeKb} KB).`,
+  );
+
+  // --- Genera environments si --envs o config.environments ------------
+  const configEnvs = config.environments
+    ? [...config.environments]
+    : [];
+  if (envsFlag) {
+    const auto = defaultEnvironments(config.baseUrl);
+    const merged = [...configEnvs];
+    for (const name of envsFlag) {
+      const found = auto.find((e) => e.name.toLowerCase() === name.toLowerCase());
+      if (found) merged.push(found);
+      else
+        merged.push({
+          name,
+          overrides: { baseUrl: config.baseUrl },
+        });
+    }
+    config.environments = merged;
+  }
+  const envsToWrite = config.environments ?? [];
+  for (const e of envsToWrite) {
+    const envs = buildEnvironments(
+      [...discoveredSpecs],
+      config.variables,
+      [e],
+      collection.info._postman_id ?? "",
+    );
+    const env = envs[0];
+    if (!env) continue;
+    const envPath = await outputEnvironmentPath(resolvedContext, env.name, config.name);
+    await writeJsonAtomic(envPath, env);
+    environmentPaths.push(envPath);
+    humanLog(
+      `  · Environment "${env.name}" → ${envPath} (${env.values.length} vars)`,
+    );
+  }
+
+  if (openAfter) {
+    // Previously this did `spawnSync("bun", ["run", "<dir>/open-postman.script.ts", …])`
+    // with `(import.meta as { dir?: string }).dir ?? process.cwd()`.
+    // Three flaws at once: the cast silenced a field that does not
+    // exist in `import.meta`, the fallback landed on `process.cwd()`
+    // (banned by `lint:tools`/`lint:lint-tool-no-process.script.ts`),
+    // and the built path did not resolve to the file after the
+    // `packages/` reorg. Calling the sibling module's `main` in
+    // process is the correct version: same exit code, no spawn, no
+    // globals.
+    humanLog("\n→ --open: launching open-postman…");
+    const exit = await runOpenPostman();
+    if (exit !== 0) {
+      humanErr("✘ open-postman.script.ts falló.");
+      return { code: exit, report: null };
+    }
+  }
+
+  const report: IGenerateReport = {
+      version: GENERATE_REPORT_VERSION,
+      ok: true,
+      framework: pipeline.match?.framework ?? null,
+      frameworks: pipeline.frameworks,
+      warnings: pipeline.warnings,
+      projectRoot: pipeline.context.projectRoot,
+      projectName: config.name,
+      collectionPath,
+      collectionId: collection.info._postman_id ?? null,
+      environmentPaths,
+      extraPaths,
+      requests,
+      folders,
+      auth: pipeline.authFlow?.login
+        ? {
+            // The login is a `PostmanItem`: method and URL live on its
+            // `request`, not on the item itself.
+            loginEndpoint: `${pipeline.authFlow.login.request?.method ?? "POST"} ${
+              pipeline.authFlow.login.request?.url?.raw ?? pipeline.authFlow.login.name
+            }`,
+            tokenVariable: AUTH_TOKEN_VARIABLE,
+          }
+        : null,
+    durationMs: Date.now() - startedAt,
+  };
+  if (jsonMode) sink.writeJson(JSON.stringify(report, null, 2));
+  return { code: 0, report };
+}
+
+/** The wrapper used by the CLI: only the exit code. */
+export async function main(
+  argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
+): Promise<number> {
+  return (await runGenerate(argv, context)).code;
+}
+
+/**
+ * Translates a filesystem error into something actionable.
+ *
+ * Without this, a directory without write permission would print
+ * `EACCES: permission denied, mkdir ...` with Bun's trace on top: the
+ * information was there, but buried and without saying what to do.
+ */
+function explainWriteError(error: unknown): string {
+  const code = (error as { code?: string })?.code;
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (code === "EACCES" || code === "EPERM") {
+    return (
+      `No permission to write the output.\n  ${message}\n` +
+      "  Use `--output-dir <path>` to write elsewhere, or check the permissions."
+    );
+  }
+  if (code === "ENOSPC") return `No queda espacio en disco.\n  ${message}`;
+  if (code === "EROFS") {
+    return (
+      `El sistema de ficheros es de solo lectura.\n  ${message}\n` +
+      "  Use `--output-dir <path>` to write elsewhere."
+    );
+  }
+  return message;
+}
+
+if (import.meta.main) {
+  // c00010 S1: the CLI entry point uses a dedicated error sink (stderr
+  // only). Even in `--json` mode the catch block runs after `main()`
+  // returns, so the report cannot be polluted.
+  const cliErrSink = new (class implements IOutputSink {
+    write(message: string): void {
+      process.stderr.write(`${message}\n`);
+    }
+    writeError(message: string): void {
+      process.stderr.write(`${message}\n`);
+    }
+    writeJson(payload: string): void {
+      process.stderr.write(`${payload}\n`);
+    }
+  })();
+  const humanErr = (message: string) => cliErrSink.writeError(message);
+  try {
+    process.exit(await main());
+  } catch (error) {
+    // x00024: the pipeline now throws this error when there is >1
+    // service and the caller did not request --combine-services. It
+    // is translated to exit 64 (EX_USAGE) with an actionable message:
+    // CI scripts detect the case without parsing text, and the person
+    // reading it on screen sees which services were detected and how
+    // to resolve it.
+    if (error instanceof MultipleServicesWithoutCombineError) {
+      humanErr(`\n✗ ${error.message}`);
+      if (error.serviceIds.length > 0) {
+        humanErr(`\n  Detected services:`);
+        for (const id of error.serviceIds) humanErr(`    - ${id}`);
+      }
+      humanErr(`\n  Re-run with --combine-services to merge them into one collection,`);
+      humanErr(`  or omit --combine-services to emit one collection per service.`);
+      process.exit(64); // EX_USAGE
+    }
+    humanErr(`\n✗ ${explainWriteError(error)}`);
+    process.exit(1);
+  }
+}

@@ -1,0 +1,5527 @@
+<!--
+  GENERADO por `bun run docs:api`. No se edita a mano.
+  `bun run lint:api` comprueba que sigue al día.
+-->
+
+# Referencia de la API importable
+
+Lo que el `exports` del `package.json` deja importar desde fuera del
+paquete. Todo lo demás es interno y puede cambiar sin aviso.
+
+```ts
+import { generateWithAllFrameworks } from "export-to-postman/frameworks";
+import { buildCollection } from "export-to-postman/core/domain/collection-builder.service";
+```
+
+Si lo que buscas es la herramienta de línea de comandos y no la
+librería, `expostman --help` lista los comandos y las banderas.
+
+> 417 símbolos en 165 módulos.
+
+### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
+
+Universal adapter: `ParsedRoute` (neutral) → `EndpointSpec` (Postman).
+
+#### `toPostmanUri`
+
+```ts
+export function toPostmanUri(laravelUri: string): string
+```
+
+with the prefix applied from the scanner; here we only normalize the
+
+#### `deriveName`
+
+```ts
+export function deriveName(route: ParsedRoute): string
+```
+
+Derives a readable name from the HTTP method + URI.
+
+It is exported so it can be tested on its own: it is a pure function
+of the route, and the alternative would force assembling an entire
+scanner to check what a name looks like.
+
+#### `buildSpecsFromScanner`
+
+```ts
+export async function buildSpecsFromScanner( scanner: IRouteScanner, match: IProjectMatch, validation: IValidationSpecProvider | null, ): Promise<AdapterResult>
+```
+
+Builds `EndpointSpec[]` from an `IRouteScanner` and, if given, its
+`IValidationSpecProvider`. Returns an `AdapterResult` with the same
+shape as the legacy `discoverEndpoints`.
+
+#### `_peekSpec`
+
+```ts
+export async function _peekSpec(projectRoot: string): Promise<string | null>
+```
+
+### `packages/core/application-api/browse.handler.ts`
+
+`browse.handler.ts` — listing the folders of the machine.
+
+#### `createBrowseHandler`
+
+```ts
+export function createBrowseHandler(): IHandler<BrowseInput, BrowseOutput>
+```
+
+### `packages/core/application-api/browse.service.ts`
+
+Browsing folders.
+
+#### `defaultBrowseRoot`
+
+```ts
+export function defaultBrowseRoot(): string
+```
+
+Where to start when nothing is given.
+
+The home folder, not the system root: that is where what someone
+wants to scan lives, and starting at `/` forces them to navigate
+five levels down every time.
+
+#### `browseDirectory`
+
+```ts
+export async function browseDirectory(path?: string): Promise<IBrowseListing>
+```
+
+Lists the subdirectories of a folder.
+
+An empty or non-existent `path` falls back to the home folder
+instead of failing: whoever opens the explorer for the first time
+has not picked anything yet, and an error there would be an error
+for not having done anything.
+
+#### `breadcrumbs`
+
+```ts
+export function breadcrumbs(path: string): ReadonlyArray<IBrowseEntry>
+```
+
+### `packages/core/application-api/cancel.handler.ts`
+
+`cancel.handler.ts` — cancel a scan or a watch subscription.
+
+#### `createCancelHandler`
+
+```ts
+export function createCancelHandler(): IHandler<CancelInput, CancelOutput>
+```
+
+### `packages/core/application-api/check.handler.ts`
+
+`check.handler.ts` — has the collection drifted from the code?
+
+#### `createCheckHandler`
+
+```ts
+export function createCheckHandler(): IHandler<CheckInput, CheckOutput>
+```
+
+### `packages/core/application-api/close.handler.ts`
+
+`close.handler.ts` — release a session (or all sessions).
+
+#### `createCloseHandler`
+
+```ts
+export function createCloseHandler(): IHandler<CloseInput, CloseOutput>
+```
+
+### `packages/core/application-api/dispatcher.ts`
+
+`dispatcher.ts` — the request router for the Application API (f00016 S3).
+
+#### `dispatch`
+
+```ts
+export async function dispatch<TOut = unknown>( registry: HandlerRegistry, name: string, rawInput: unknown, ctx: IRequestContext, ): Promise<ApiResult<TOut>>
+```
+
+Routes a request through the registered handler.
+
+On any non-recoverable failure (unknown handler, invalid input,
+handler threw) the dispatcher returns the typed error envelope
+— it never throws. The bridge author wraps this in the wire
+shape; the CLI prints it; the Web UI surfaces it.
+
+### `packages/core/application-api/dry-run.handler.ts`
+
+`dry-run.handler.ts` — what would be written, without writing it.
+
+#### `createDryRunHandler`
+
+```ts
+export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput>
+```
+
+### `packages/core/application-api/error.ts`
+
+`error.ts` — typed errors for the Application API (f00016 S3).
+
+#### `apiError`
+
+```ts
+export function apiError( code: ApiErrorCode, message: string, details?: Readonly<Record<string, unknown>>, ): IApiError
+```
+
+#### `isApiError`
+
+```ts
+export function isApiError(value: unknown): value is IApiError
+```
+
+#### `fromZodError`
+
+```ts
+export function fromZodError(err: ZodError): IApiError
+```
+
+Converts a Zod parse failure into the `INVALID_INPUT` envelope.
+
+The `details` carry the flattened field map — `{ "<path>": "<msg>" }` —
+so a UI can highlight the offending input directly without a
+second round-trip.
+
+#### `ok`
+
+```ts
+export function ok<T>(value: T):
+```
+
+#### `fail`
+
+```ts
+export function fail(err: IApiError): ApiResult<never>
+```
+
+#### `toApiError`
+
+```ts
+export function toApiError(err: unknown): IApiError
+```
+
+Standard `unknown` catcher: turns thrown errors into typed
+envelopes. `ApiError` already-shaped values pass through with
+their envelope; everything else becomes `EXECUTION_FAILED`.
+
+### `packages/core/application-api/export-artifacts.helper.ts`
+
+Turning a snapshot into files on disk.
+
+#### `planExport`
+
+```ts
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<IExportPlan>
+```
+
+Builds the artifacts of one format and says where they would go.
+
+Nothing is written. The paths are absolute, so the caller can show
+them and the user can see where the tool is about to write.
+
+#### `writeExport`
+
+```ts
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+```
+
+Builds the artifacts once, says what each file would change, and
+**writes** them.
+
+The write is atomic: a file that is half-written is worse than no
+file, because the user cannot tell which half is the truth.
+
+#### `writeExportWithPlan`
+
+```ts
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+```
+
+Writes the artifacts and tells what was written, **and** what would
+have been written.
+
+The build happens **once**: a preview that built the artifacts
+again could promise a file the write would not produce, and a
+`sync` that builds them twice spends twice the time on the most
+expensive step of the pipeline.
+
+### `packages/core/application-api/export.handler.ts`
+
+`export.handler.ts` — write the artifacts, for real.
+
+#### `createExportHandler`
+
+```ts
+export function createExportHandler(): IHandler<ExportInput, ExportOutput>
+```
+
+### `packages/core/application-api/get-endpoint.handler.ts`
+
+`get-endpoint.handler.ts` — fetch a single endpoint from a snapshot.
+
+#### `createGetEndpointHandler`
+
+```ts
+export function createGetEndpointHandler(): IHandler<GetEndpointInput, GetEndpointOutput>
+```
+
+### `packages/core/application-api/get-schema.handler.ts`
+
+`get-schema.handler.ts` — request schema for a single endpoint.
+
+#### `createGetSchemaHandler`
+
+```ts
+export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutput>
+```
+
+### `packages/core/application-api/handlers.ts`
+
+`handlers.ts` — barrel for the Application API handlers.
+
+#### `buildRegistry`
+
+```ts
+export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unknown>>>
+```
+
+### `packages/core/application-api/history.handlers.ts`
+
+`history.handlers.ts` — read the snapshot deltas the session recorded since it opened.
+
+#### `recordHistoryEntry`
+
+```ts
+export function recordHistoryEntry( sessionId: string, entry: IHistoryEntry, limit = 100, ): void
+```
+
+#### `createHistoryHandlers`
+
+```ts
+export function createHistoryHandlers():
+```
+
+### `packages/core/application-api/list-endpoints.handler.ts`
+
+`list-endpoints.handler.ts` — list the endpoints of a snapshot.
+
+#### `createListEndpointsHandler`
+
+```ts
+export function createListEndpointsHandler(): IHandler<ListEndpointsInput, ListEndpointsOutput>
+```
+
+### `packages/core/application-api/list-projects.handler.ts`
+
+`list-projects.handler.ts` — every open session in this process.
+
+#### `createListProjectsHandler`
+
+```ts
+export function createListProjectsHandler(): IHandler<ListProjectsInput, ListProjectsOutput>
+```
+
+### `packages/core/application-api/list-services.handler.ts`
+
+`list-services.handler.ts` — every service the snapshot discovered.
+
+#### `createListServicesHandler`
+
+```ts
+export function createListServicesHandler(): IHandler<ListServicesInput, ListServicesOutput>
+```
+
+### `packages/core/application-api/open-project.handler.ts`
+
+`open-project.handler.ts` — opens a session for a project root.
+
+#### `createOpenProjectHandler`
+
+```ts
+export function createOpenProjectHandler(): IHandler<OpenProjectInput, OpenProjectOutput>
+```
+
+Factory that captures the dependencies. The default export
+returns the bare handler; tests can override the orchestrator by
+passing their own factory.
+
+### `packages/core/application-api/project-verbs.helper.ts`
+
+The pieces the project verbs share.
+
+#### `requireSession`
+
+```ts
+export function requireSession(projectRoot: string): IProjectSession
+```
+
+The open session of a project.
+
+@param projectRoot The project to look for.
+@returns The session.
+@throws When there is no session: the verb cannot work without one.
+
+#### `requireResults`
+
+```ts
+export function requireResults(snapshot: IProjectSnapshot): IProjectSnapshot
+```
+
+The snapshot of a project, with something in it.
+
+@param snapshot The snapshot.
+@returns The same snapshot.
+@throws When the snapshot is empty: there is nothing to work with.
+
+#### `collectionPathOf`
+
+```ts
+export function collectionPathOf( snapshot: IProjectSnapshot, explicit?: string, ): string
+```
+
+The collection the project would write, and where it is.
+
+@param snapshot The open snapshot.
+@param explicit A path the caller named, if any.
+@returns The path of the collection.
+
+#### `readProjectCollection`
+
+```ts
+export async function readProjectCollection(path: string): Promise<PostmanCollection>
+```
+
+Reads a collection, or says why it could not be read.
+
+@param path The collection to read.
+@returns The collection.
+@throws When the file is missing or is not JSON.
+
+### `packages/core/application-api/push.handler.ts`
+
+`push.handler.ts` — upload the collection to Postman.
+
+#### `createPushHandler`
+
+```ts
+export function createPushHandler(): IHandler<PushInput, PushOutput>
+```
+
+### `packages/core/application-api/settings.handlers.ts`
+
+`settings.handlers.ts` — get / patch per-session options.
+
+#### `createSettingsHandler`
+
+```ts
+export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput>
+```
+
+### `packages/core/application-api/snapshot-summary.helper.ts`
+
+The summary of a snapshot.
+
+#### `summarizeSnapshot`
+
+```ts
+export function summarizeSnapshot(snapshot: IProjectSnapshot): ISnapshotSummary
+```
+
+Summarizes a snapshot.
+
+@param snapshot The snapshot to summarize.
+@returns What the app draws: the frameworks, the counts, and what
+  the scan noticed.
+
+### `packages/core/application-api/snapshot.handlers.ts`
+
+`snapshot.handlers.ts` — current snapshot accessor.
+
+#### `createSnapshotHandlers`
+
+```ts
+export function createSnapshotHandlers():
+```
+
+### `packages/core/application-api/stats.handler.ts`
+
+`stats.handler.ts` — how many requests, and where.
+
+#### `createStatsHandler`
+
+```ts
+export function createStatsHandler(): IHandler<StatsInput, StatsOutput>
+```
+
+### `packages/core/application-api/sync.handler.ts`
+
+`sync.handler.ts` — generate and write, in one verb.
+
+#### `createSyncHandler`
+
+```ts
+export function createSyncHandler(): IHandler<SyncInput, SyncOutput>
+```
+
+### `packages/core/application-api/validate.handler.ts`
+
+`validate.handler.ts` — is this a well-formed Postman collection?
+
+#### `createValidateHandler`
+
+```ts
+export function createValidateHandler(): IHandler<ValidateInput, ValidateOutput>
+```
+
+### `packages/core/application-api/watch.handlers.ts`
+
+`watch.handlers.ts` — subscribe to live snapshot deltas.
+
+#### `registerSubscription`
+
+```ts
+export function registerSubscription( projectRoot: string, onlyPaths: ReadonlyArray<string> | null, ): WatchSubscription
+```
+
+#### `clearSubscriptions`
+
+```ts
+export function clearSubscriptions(): void
+```
+
+#### `dropSubscriptionById`
+
+```ts
+export function dropSubscriptionById(id: string): boolean
+```
+
+#### `listSubscriptions`
+
+```ts
+export function listSubscriptions(): ReadonlyArray<WatchSubscription>
+```
+
+#### `createWatchHandlers`
+
+```ts
+export function createWatchHandlers():
+```
+
+### `packages/core/discovery/accumulate-routes-by-service.helper.ts`
+
+Accumulates `routesByService` from the per-scanner slice the pipeline has produced. x00025.
+
+#### `accumulateRoutesByService`
+
+```ts
+export function accumulateRoutesByService( perScanner: ReadonlyArray<
+```
+
+Accumulates and deduplicates routes by `serviceId`.
+
+Order is stable: for each scanner entry, we concatenate `existing`
+(what previous scanners with the same `serviceId` already
+contributed) followed by `scannerRoutes` (what this scanner
+emitted). The first occurrence of each `(method, uri, sourceFile)`
+tuple wins.
+
+The `perScanner` parameter takes only the two fields the helper
+needs (`serviceId`, `scannerRoutes`) so it does not couple to
+`IPerScanner` (which also carries `framework`, `scannerScore`,
+`scannerSpecs`). The shape is declared inline because the gate
+`lint:contracts` requires types to live in `contracts/` — making
+the helper importable for typing alone would defeat that.
+
+@param perScanner What the pipeline collected per scanner.
+@returns          Map `serviceId` -> deduplicated union of routes.
+
+### `packages/core/discovery/auth-scheme.helper.ts`
+
+Per-service auth and baseUrl wiring — a00013 S4.
+
+#### `pickAuth`
+
+```ts
+export function pickAuth( service: IServiceGraphNode, fallback: IEndpointAuth | undefined, ): IEndpointAuth | undefined
+```
+
+Resolves service auth: the descriptor's override when present (as placed by
+the graph), or the inherited project fallback.
+
+The return value preserves the discriminant: if `service.auth` is
+`{ kind: "scheme", scheme: "bearer" }`, return it exactly; do not convert it
+to `{ kind: "none" }` or `{ kind: "scheme", scheme: "apiKey" }`. The
+function does not know—and does not need to know—how to handle each variant.
+Its contract is "the first argument wins when defined; otherwise, the
+second".
+
+Both arguments are `IEndpointAuth | undefined`. When both are `undefined`,
+return `undefined`. This means there is no auth signal for the service and
+lets the pipeline decide whether the per-spec detector should run or the
+caller already supplied another mechanism.
+
+@param service The service descriptor. `service.auth` may be `undefined`
+  (inherits from the project); `null` is invalid (`baseUrl` is `string | null`,
+  but `auth` is strictly `IEndpointAuth | undefined`).
+@param fallback The auth inherited from the project, typically the result of
+  `toIEndpointAuth(detectedFromSpecs)`. It may be `undefined` when the project
+  has no auth signal either.
+
+#### `toIEndpointAuth`
+
+```ts
+export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth
+```
+
+Exhaustive `IDetectedAuthScheme` → `IEndpointAuth` conversion, semantically
+inverse to `authSchemeFromEndpointAuth` in `generation.pipeline.ts`.
+
+Exported separately so S4 tests can cover all four discriminant cases
+(`none`, `bearer`, `apiKey`, `oauth2`) without threading a fake
+IDetectedAuthScheme through the pipeline.
+
+The switch is exhaustive by type: if a variant is added to `AuthSchemeType`
+without being mapped here, TypeScript marks the switch as non-exhaustive
+(TS7030 with `noImplicitReturns`). `authSchemeFromEndpointAuth` uses the
+same pattern in the opposite direction.
+
+#### `buildServiceConfig`
+
+```ts
+export function buildServiceConfig( config: ProjectConfig, service: IServiceGraphNode, ): ProjectConfig
+```
+
+Applies per-service overrides to `ProjectConfig` **without mutating the
+original**. Returns a shallow copy with:
+  - `baseUrl`: the service's value when declared and non-null; otherwise,
+    the project's value. This is what `inferCollectionVariables` and
+    `buildCollection` consume in `buildForService`.
+  - `variables`: an array copy whose `baseUrl` entry is replaced with the
+    effective value so the collection variable (`{{baseUrl}}`) reflects the
+    per-service override.
+
+Pure: does not touch `config`. Each iteration of the multi-service loop in
+`buildFor` is independent—the next iteration receives the original
+`discovery.config` with no baseUrl contaminated by the previous service
+(S4 acceptance #3: `buildForService` does not mutate `config.baseUrl`
+between iterations).
+
+@see `IProjectContext` for the root context. If more per-service overrides are
+added in the future (global auth, extra headers, URI prefixes, etc.), this
+helper is the natural place to extend them.
+
+### `packages/core/discovery/discovery.orchestrator.ts`
+
+`DiscoveryOrchestrator` — the single entry point for framework-agnostic discovery.
+
+#### `DiscoveryOrchestrator`
+
+```ts
+export class DiscoveryOrchestrator implements IDiscoveryOrchestrator
+```
+
+Decides which framework the project uses and which collaborators scan it.
+
+Scores every detector in the registry and orders them by confidence. It
+does not keep only the first: a repo with legacy Express routes and new
+Next.js routes matches both, and choosing one silently returned one third
+of the endpoints.
+
+### `packages/core/discovery/effective-project-root.helper.ts`
+
+Effective project root — a00014 S1.
+
+#### `effectiveProjectRoot`
+
+```ts
+export function effectiveProjectRoot(match: IProjectMatch): string
+```
+
+Effective project root, honoring `frameworkSearchRoot`.
+
+- Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+  with flat projects and tests that do not populate the field).
+- With `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, provided the result remains within `projectRoot`.
+
+Throws a clear `Error` if `frameworkSearchRoot` points outside `projectRoot`
+  (for example, because it contains `..` or is absolute).
+
+#### `effectiveSearchRoot`
+
+```ts
+export function effectiveSearchRoot(match: IProjectMatch): string
+```
+
+Alias for `effectiveProjectRoot` with the name Hono, NestJS, and Next.js
+already used in their inline helpers. A scanner migrating from a local helper
+to the central one can keep calling its preferred function without another
+change.
+
+The behavior is identical to `effectiveProjectRoot`: the same resolution,
+guard, and error. Only the name changes to preserve existing call sites.
+
+#### `rawProjectRoot`
+
+```ts
+export function rawProjectRoot(match: IProjectMatch): string
+```
+
+The actual project root, unchanged.
+
+Returns `match.projectRoot` as provided. This lets a scanner that needs the
+user's root—the `projectRoot:` of the `IProjectMatch` returned to the
+orchestrator, or a `join` with a `route.sourceFile` already relative to
+`projectRoot`—go through a helper instead of reading `match.projectRoot`
+directly. The `lint:effective-project-root` gate can then control all
+references to `match.projectRoot` through one allowlist.
+
+### `packages/core/discovery/endpoint-merger.service.ts`
+
+`EndpointMerger`: the endpoint reconciler for hybrid projects.
+
+#### `EndpointMerger`
+
+```ts
+export class EndpointMerger implements IEndpointMerger
+```
+
+Default `IEndpointMerger` implementation. Stateless: state lives in
+`merge()` (the candidates), not in the instance. Reusable across concurrent
+calls.
+
+#### `mergeEndpoints`
+
+```ts
+export function mergeEndpoints( candidates: ReadonlyArray<IEndpointMergeCandidate>, options: IMergeEndpointsOptions =
+```
+
+Punto de entrada de pipeline: recibe la lista plana de candidatos
+y devuelve los endpoints fusionados + provenance + warnings.
+
+Los candidatos ya vienen ordenados por `scannerScore` descendente
+(es lo que hace `discoverSpecs`); el merger los re-ordena dentro
+de cada grupo por `frameworkConfidence` y desempata por el orden
+de llegada, que coincide con el del orquestador.
+
+#### `candidatesFromSpecs`
+
+```ts
+export function candidatesFromSpecs( scannerScore: ReadonlyMap<string, Confidence>, ): ( specs: ReadonlyArray<
+```
+
+Wrapper for consuming candidates from `EndpointSpec[]` (the adapter's
+output). It preserves each candidate's `framework` from spec metadata: the
+pipeline marks the spec with `formRequest` or the controller name, but the
+most reliable source is an explicit `framework` (as `discoverSpecs` does
+when iterating over the `usable` items).
+This adapter shape is consumed by the merger pipeline.
+
+#### `endpointSpecFromMerged`
+
+```ts
+export function endpointSpecFromMerged(m: IMergedEndpoint):
+```
+
+Inverse of `candidatesFromSpecs`: converts an `IMergedEndpoint` back to
+`EndpointSpec` so the pipeline continues using the shape consumed by the
+other services.
+
+Copies the fields selected by the merger: identity (method, uri, name) and
+the winning pieces (body, fields, description, auth).
+The auth branch is mapped without changing its semantic type.
+
+Audit 2026-09-04 P1 #6 + second review #16 #17: the per-operation auth
+scheme override must survive the merger. `spec.auth` maps to the candidate's
+`authScheme` in generation.pipeline.ts, and the merger carries the winner
+back here. The reverse conversion covers **all** branches of the
+`IEndpointAuth` union:
+
+  - `type: "none"` → `auth: { kind: "none" }` (public override).
+  - `type: "bearer"` → `auth: { kind: "scheme", scheme: "bearer" }`.
+  - `type: "apikey"` → `auth: { kind: "scheme", scheme: "apiKey" }`.
+  - `type: "oauth2"` → `auth: { kind: "scheme", scheme: "oauth2" }`.
+
+Previously only the `none` branch was translated. A per-op
+`bearer`/`apiKey`/`oauth2` override was discarded, and `detectAuthScheme`
+recalculated auth at collection level—losing the override.
+
+### `packages/core/discovery/filter-specs-for-service.helper.ts`
+
+Filters the global `discovery.specs` down to the specs that belong to a single `IServiceDescriptor`. x00028.
+
+#### `filterSpecsForService`
+
+```ts
+export function filterSpecsForService( discoverySpecs: ReadonlyArray<EndpointSpec>, service: IServiceGraphNode, ): EndpointSpec[]
+```
+
+Returns the subset of `discovery.specs` whose `(method, uri)`
+matches a route in `service.endpoints`. When the service has no
+endpoints, returns `discovery.specs` unchanged (legacy / single
+service path).
+
+The returned type is `EndpointSpec[]` (not `ReadonlyArray`)
+because downstream helpers — `applyAgnosticInference`,
+`inferCollectionVariables`, `detectAuthScheme`,
+`hasLoginEndpoint` — mutate the specs in place (e.g.
+`applyAgnosticInference` writes `body` and `description`). The
+legacy code path `[...discovery.specs]` was already a fresh
+mutable copy for that reason; we preserve that contract.
+
+@param discoverySpecs The global catalog produced by `discoverSpecs()`.
+@param service        The descriptor for one service in the graph.
+@returns              Specs that belong to this service.
+
+### `packages/core/discovery/generation.pipeline.ts`
+
+Generation pipeline: `projectRoot` -> `PostmanCollection`.
+
+#### `MultipleServicesWithoutCombineError`
+
+```ts
+export class MultipleServicesWithoutCombineError extends Error
+```
+
+Thrown by `generateCollection()` when the project has several
+services but the caller did NOT request `--combine-services` (nor
+`IGenerationOptions.combineServices === true`).
+
+## Why it exists
+
+Until x00024, the singular contract documented "a single collection"
+but the multi-service branch did `return result[0]` and silently
+discarded the rest. That turned `await generateCollection(monorepoRoot)`
+into a call that loses services without warning -- exactly the kind
+of bug a caller never catches in CI. The plural API
+`generateCollections()` was already returning the full array.
+
+## When it is thrown
+
+`generateCollection()` calls `buildFor` and observes three shapes:
+
+  - **Single-service** (a single match, single-workspace monorepo,
+    or flat project): `result` is a single `IGenerationResult`. No
+    throw.
+  - **Multi-service + `combineServices: true`**: the caller asked to
+    fuse; `buildFor` already returns a single combined
+    `IGenerationResult`. No throw.
+  - **Multi-service + `combineServices: false/undefined`**: this is
+    the case where this exception is thrown.
+
+The legacy contract (single-service) keeps working exactly as
+before -- this only adds a new case.
+
+## Shape of the error
+
+It carries the data the CLI needs to print a useful message without
+having to parse the text of `super()`:
+
+  - `serviceCount`: the number of services detected.
+  - `serviceIds`: the derived ids (from `match.frameworkSearchRoot`
+    via `deriveServiceId`); empty if none had a resolvable id.
+
+The message includes the suggestion ("use --combine-services or
+generateCollections()") so that a user who sees the error in raw
+form knows what to do.
+
+It lives in this same `.pipeline.ts` (not in `packages/core/errors/`)
+because `lint:naming` for `packages/core/` only allows the suffixes
+`.service`, `.pipeline`, `.orchestrator`, `.adapter`, and `.helper`.
+An error class fits none, so it stays where it is thrown -- the same
+pattern as `PostmanApiError` in `domain/postman-api.service.ts`.
+
+#### `generateCollection`
+
+```ts
+export async function generateCollection( projectRoot: string, options: IGenerationOptions, ): Promise<IGenerationResult>
+```
+
+Discovers the endpoints of a project and builds its collection.
+
+`projectRoot` is the source of truth, and it travels **as an
+argument** all the way down: the context is resolved once here and
+the loader and the scanners.
+
+Before, this was wrapped in `withProjectRoot()`, which set global
+environment variables, executed, and restored them. It worked, but at
+the cost of a queue: two concurrent calls clobbered each other's
+state, so they had to be serialized. Two analyses at a time took as
+long as their sum.
+
+No more. `tests/e2e/concurrent-projects.test.ts` generates two
+projects of different frameworks with `Promise.all` and verifies that
+they do not collide: not in endpoints, not in name, not in the
+context root.
+
+#### `generateCollections`
+
+```ts
+export async function generateCollections( projectRoot: string, options: IGenerationOptions, ): Promise<ReadonlyArray<IGenerationResult>>
+```
+
+Multi-service variant of `generateCollection`. Returns ALL the
+collections, one per service, in discovery order.
+
+- Without `--combine-services` and with N>1 services: an array of
+  N collections (each with `collectionName` derived from the
+  serviceId).
+- With `--combine-services` or N===1: an array of length 1 (the
+  legacy collection).
+
+The CLI writes one file per entry; the MCP plugin and the web UI
+expose the array as-is.
+
+### `packages/core/discovery/group-by-service.helper.ts`
+
+`groupByService` — a00013 S1.
+
+#### `deriveServiceId`
+
+```ts
+export function deriveServiceId(match: IProjectMatch): string
+```
+
+Derives a stable id from a match. Two matches with the same
+`frameworkSearchRoot` produce the same id.
+
+- When `frameworkSearchRoot` exists, use it as the id base, exactly as
+  introduced by a00010.
+- Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
+  between single-framework services in different roots.
+
+#### `collectFlatHybridRoutes`
+
+```ts
+export function collectFlatHybridRoutes( routesByMatch: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>, current: IProjectMatch, matches: ReadonlyArray<IProjectMatch>, ): ReadonlyArray<ParsedRoute>
+```
+
+x00039: collect routes for a flat-hybrid match.
+
+In flat-hybrid mode, several matches share the same `projectRoot` and
+have no `frameworkSearchRoot`. The upstream pipeline keys
+`routesByMatch` by `deriveServiceId(match)` (i.e. one entry per
+`(framework, projectRoot)`), but the descriptor groups those matches
+under a single `serviceId = normalizeServiceId(projectRoot)`. Without
+this helper, `.get(serviceId)` always misses and the descriptor ends
+up with zero endpoints — the bug that x00039 closed.
+
+We look up every entry whose derived id maps to a match that
+shares the current match's `projectRoot`, dedupe by
+`(method, uri, sourceFile)` (the same identity
+`accumulateRoutesByService` uses), and return the union.
+
+Lives at module scope (not inside `groupByService`) so it is testable
+in isolation: the helper has no I/O, no `process.*`, and no
+`groupByService`-internal state — only the maps and the
+`IProjectMatch` array, both inputs to the function.
+
+#### `groupByService`
+
+```ts
+export function groupByService(input: IGroupByServiceInput): IServiceGraph
+```
+
+Builds an `IServiceGraph` from discovery matches and routes.
+
+Throws `Error` if:
+- A `routesByMatch` entry is missing for a match.
+- `matches` is empty and `detectedMonorepo === false` (a non-monorepo
+  project **must** have at least one match; otherwise the caller did not
+  understand the contracts). The caller can bypass this check by passing
+  `detectedMonorepo === true` with an empty array—the "declared monorepo
+  with no enumerated workspaces" case.
+
+### `packages/core/discovery/host-config-parser.service.ts`
+
+`host-config-parser.ts` — AST-only parser for `config.constant.ts` and `endpoints.constant.ts` (x00058).
+
+#### `parseHostConfigFile`
+
+```ts
+export async function parseHostConfigFile<T>( absPath: string, kind: HostConfigKind, ): Promise<HostConfigParseResult<T>>
+```
+
+Reads `absPath` and parses the host constant. Pure I/O + AST —
+no execution.
+
+- `kind: "project-config"` returns the exported object under one of
+  `config` / `projectConfig` / `default`.
+- `kind: "manual-endpoints"` returns the array exported under one of
+  `ALL_ENDPOINTS` / `endpoints` / `default`.
+
+#### `parseHostConfigSource`
+
+```ts
+export function parseHostConfigSource<T>( source: string, file: string, kind: HostConfigKind, ): HostConfigParseResult<T>
+```
+
+Pure-AST parse (no I/O). Exposed so tests can hand the parser a
+literal source string without touching the filesystem.
+
+### `packages/core/discovery/import-resolver.ts`
+
+Import-path resolver — the adapter over `ModuleResolver` (proposal `r00020` S1).
+
+#### `resolveImportPath`
+
+```ts
+export function resolveImportPath( fromFile: string, specifier: string, projectRoot: string, ): ReadonlyArray<IImportCandidate>
+```
+
+Resolve an import specifier against a source file.
+
+@param fromFile    Absolute path of the file that contains the
+                   `import … from "…"` statement.
+@param specifier   The raw specifier (between the quotes).
+@param projectRoot Absolute path of the project root. It decides
+                   which `tsconfig`, which workspace layout and
+                   which `node_modules` chain apply.
+@returns           The ordered candidates. The first one that
+                   exists on disk is the file the import means.
+
+### `packages/core/discovery/monorepo-detector.helper.ts`
+
+Monorepo workspace detection — f00011 S3.
+
+#### `detectMonorepo`
+
+```ts
+export async function detectMonorepo( projectRoot: string, ): Promise<IMonorepoDetection>
+```
+
+Entry point: returns the detection result for a project root.
+
+`projectRoot` must be absolute (scanners and the pipeline have already
+converted it). If a relative path is supplied, return "not a monorepo" with
+`null` everywhere—the orchestrator should not have to guess which root is
+meant.
+
+### `packages/core/discovery/output-paths.helper.ts`
+
+Output path resolution from an explicit `IProjectContext`.
+
+#### `resolveOutputDir`
+
+```ts
+export function resolveOutputDir( context: IProjectContext | undefined, argv: ReadonlyArray<string> = process.argv, ): string
+```
+
+Directory where artifacts are written, using the same precedence as the
+former `outputDir(context?)`.
+
+Accepting `argv` and `env` as parameters instead of reading `process.argv`
+and `process.env` makes it possible to test precedence without mutating
+the process. Default values remain global so existing call sites do not
+change.
+
+`context` is intentionally optional: when a command runs without a project
+context (the `validate-json` `catch` branch, which runs with only the
+generated JSON), the helper falls back to `argv` / `env` resolution.
+Keeping this entry point preserves historical behavior without introducing
+a singleton: the helper remains pure with respect to its arguments and only
+reads globals when no context is supplied.
+
+#### `collectionBasename`
+
+```ts
+export function collectionBasename( context: IProjectContext | undefined, projectName?: string, basenameOverride?: string, ): string
+```
+
+The file name of the collection, extension included.
+
+Priority: `override` argument (passed by CLI when `--basename` is
+present) → `TANIT_OUTPUT_BASENAME` / `POSTMAN_OUTPUT_BASENAME` env var
+→ `projectName` → `context.projectBasename` → `"postman"`.
+
+The `override` parameter replaces the historical
+`process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag` monkey-patch in
+`generate.script.ts` (c00010 S1). Callers that need finer-grained
+control inject the value here instead of mutating `process.env`.
+
+It is exported because the Application API's export writes the
+collection **too**, and it has to write it under the same name the
+CLI writes: two faces that produce two files for the same thing
+are two files that drift apart.
+
+#### `outputCollectionPath`
+
+```ts
+export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, basenameOverride?: string, ): Promise<string>
+```
+
+Ruta absoluta al JSON principal. Crea el directorio si no existe.
+
+Acepta `argv` igual que `resolveOutputDir` para que tests y procesos de
+vida larga puedan inyectar el contexto sin mutar el proceso. Por defecto
+es `process.argv`. El parámetro `basenameOverride` (c00010 S1) sustituye
+la variable de entorno `POSTMAN_OUTPUT_BASENAME` — los callers que antes
+monkey-patcheaban `process.env` pasan el valor directamente aquí.
+
+#### `collectionPathFor`
+
+```ts
+export function collectionPathFor( context: IProjectContext | undefined, projectName?: string, basenameOverride?: string, ): string
+```
+
+The same path, **without creating anything**.
+
+`outputCollectionPath` makes the folder so the write cannot fail
+half-way. The readers — `check`, `validate`, `stats` — do not
+write, and a read that creates a folder as a side effect is a
+surprise: asking whether a collection is in sync would leave a
+`tanit/` behind in a project that never generated one.
+
+@param context The project context.
+@param projectName The project's name, for the file's name.
+@returns The absolute path of the collection.
+
+#### `outputEnvironmentPath`
+
+```ts
+export async function outputEnvironmentPath( context: IProjectContext | undefined, envName: string, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): Promise<string>
+```
+
+Absolute path to the Postman environment for a given environment.
+
+The environment name is slugified as before: NFD → remove diacritics →
+kebab-case → trim hyphens. Callers that need the original behavior should
+pass an already-normalized `projectName`.
+
+#### `describeDiscoveredPaths`
+
+```ts
+export function describeDiscoveredPaths( context: IProjectContext, projectName?: string, argv: ReadonlyArray<string> = process.argv, basenameOverride?: string, ): string
+```
+
+The trace the CLI prints before scanning, as text.
+
+Without a project name it displays `<nombre-del-proyecto>` instead of
+inventing one: the trace is meant to rule out scanning the wrong folder,
+and lying there is worse than saying nothing.
+
+The `routes` and `requests` directories shown belong to the scanned
+project and are derived with `projectDirs(context)`. This is a heuristic
+inherited from the Laravel path; modern scanners resolve their own paths,
+but the CLI trace still displays them because seeing whether they exist is
+useful.
+
+### `packages/core/discovery/project-context.service.ts`
+
+Explicit project context resolution.
+
+#### `resolveProjectContext`
+
+```ts
+export function resolveProjectContext( options: IResolveContextOptions =
+```
+
+Builds a project context.
+
+Root priority: explicit parameter → `--project-root` in argv →
+`POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+with a guessed root produces empty collections without explaining why (this
+was exactly the CLI bug with `--project-root`).
+
+#### `projectDirs`
+
+```ts
+export function projectDirs(context: IProjectContext): IProjectDirs
+```
+
+#### `fromProjectRoot`
+
+```ts
+export function fromProjectRoot(context: IProjectContext, relPath: string): string
+```
+
+#### `toProjectRelative`
+
+```ts
+export function toProjectRelative(context: IProjectContext, absPath: string): string
+```
+
+Path relative to the project, in POSIX format.
+
+Previously this used `normalized.startsWith(context.projectRoot)`, but
+`startsWith` does not understand segment boundaries: `/home/u/api-secret`
+falsely matches `/home/u/api` (x00022, audit 2026-09-04). It now uses the
+same canonical formula as
+`packages/core/helpers/path-containment.helper.ts`: `relative()` plus the
+`..${sep}` / absolute prefix guard.
+
+If `absPath` is exactly the project root, return the empty string to
+preserve the idempotence of `fromProjectRoot ∘ toProjectRelative`.
+
+#### `hasProjectDir`
+
+```ts
+export function hasProjectDir(context: IProjectContext, relPath: string): boolean
+```
+
+### `packages/core/discovery/project-loader.service.ts`
+
+Loads the host project's configuration in a framework-agnostic way.
+
+#### `detectProjectName`
+
+```ts
+export async function detectProjectName( context: IProjectContext, ): Promise<string>
+```
+
+Returns the host project name.
+
+Manifest reading lives in `project-name.service`: this function only
+resolves the root. Previously it looked only at `composer.json`, so Laravel
+was named after its package while the other eleven frameworks were named
+after their directories.
+
+#### `detectFilePrefixes`
+
+```ts
+export async function detectFilePrefixes( context: IProjectContext, ): Promise<Record<string, string[]>>
+```
+
+Reads `RouteServiceProvider.php` to extract the
+`file → prefixes` map from the `mapXxxRoutes()` methods.
+
+Laravel example:
+  protected function mapExternalApiRoutes(): void {
+    Route::prefix('api/externo')
+      ->group(base_path('routes/externo.php'));
+  }
+
+→ `{ "routes/externo.php": ["api", "externo"] }`
+
+#### `buildZeroConfig`
+
+```ts
+export async function buildZeroConfig( context: IProjectContext, ): Promise<ProjectConfig>
+```
+
+Generates a minimal viable ProjectConfig without a host file, allowing the
+package to work out of the box in any project.
+
+The default `baseUrl` is the origin (`DEFAULT_BASE_URL`). The `/api` suffix
+is **not** added automatically; it appears only when one of the sources
+documented in `BASE_PATH_SOURCES` supplies it. This closes the bug that
+produced `http://localhost/api/users` in Express, Flask, Gin, and FastAPI
+projects without a global prefix (a00012 H-P2e, S4).
+
+#### `resolveConfigPath`
+
+```ts
+export async function resolveConfigPath( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<string>
+```
+
+Resolves the host configuration module path.
+
+Order:
+  1. `--config <path>` (CLI)
+  2. `POSTMAN_CONFIG` (env)
+  3. `${projectRoot}/resources/postman/examples/...` or `${projectRoot}/examples/...`
+  4. If nothing matches, return the "__zero__" sentinel so loadProject uses
+     buildZeroConfig().
+
+#### `loadProject`
+
+```ts
+export async function loadProject( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<LoadedProject>
+```
+
+The context is mandatory so the loader is safe in long-lived processes and
+does not reread the cached root from the `paths.service` singleton retired
+in r00010 S2 (2026-09-03).
+
+#### `_internal`
+
+```ts
+export const _internal =
+```
+
+Internal pieces exposed **only** for their tests.
+
+The underscore is the signal: they are not part of the module contract and
+may change without notice.
+
+### `packages/core/discovery/project-name.service.ts`
+
+Project name, read from its ecosystem manifest.
+
+#### `detectProjectNameIn`
+
+```ts
+export async function detectProjectNameIn(projectRoot: string): Promise<string>
+```
+
+Project name in `projectRoot`.
+
+Never throws: if no readable manifest exists, fall back to the directory
+name, which always exists.
+
+### `packages/core/discovery/scan-root.helper.ts`
+
+Effective scan root for a scanner — a00012 S1.b.
+
+#### `effectiveScanRoot`
+
+```ts
+export function effectiveScanRoot(match: IProjectMatch): string
+```
+
+The root where a scanner should search for its sources.
+
+- Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+  with flat projects and tests that do not populate the field).
+- With `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, provided the result remains within `projectRoot`.
+
+Throws a clear `Error` if `frameworkSearchRoot` points outside
+`projectRoot` (for example, because it contains `..` or is absolute).
+
+#### `safeScanRoot`
+
+```ts
+export function safeScanRoot(match: IProjectMatch): string
+```
+
+Alias for `effectiveScanRoot` with a name that emphasizes that the
+helper **can throw** when the search path escapes the project root.
+Useful when the caller wants to make the containment check explicit
+(for example, in multi-step pipelines where the `try`/`catch` should be
+clear).
+
+The behavior is identical to `effectiveScanRoot`: the same resolution,
+guard, and error. Only the name changes so code using it can express its
+intent.
+
+### `packages/core/discovery/summary.service.ts`
+
+`summary` — what the tool sees in a project, without writing anything.
+
+#### `summarizeProject`
+
+```ts
+export async function summarizeProject( projectRoot: string, orchestrator: DiscoveryOrchestrator, legacyFallback?: ILegacyDiscovery, ): Promise<IProjectSummary>
+```
+
+Inspects `projectRoot` and returns a summary without writing files.
+
+Throws if the directory does not exist. If it does not recognize the
+project, returns a summary with zero endpoints and the corresponding
+warning—an honest response rather than an error.
+
+The framework catalog and fallback are injected, as in the pipeline: this
+is a core service and cannot know the concrete scanners. For the complete
+catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
+
+### `packages/core/discovery/symbol-graph.ts`
+
+`SymbolGraph` — Tanit's cross-file symbol resolver (audit 2026-09-06 §12, proposal `r00014` S1).
+
+#### `empty`
+
+```ts
+export function empty(options?: ISymbolGraphOptions): ISymbolGraph
+```
+
+Empty graph (the default every scanner starts with before it starts
+visiting).
+
+The options are the ones of the graph: by default the legacy
+global-name lookup is **off**.
+
+#### `SymbolGraph`
+
+```ts
+export const SymbolGraph =
+```
+
+Namespace alias so callers can write
+  `SymbolGraph.empty()`
+instead of importing two names. Mirrors the ergonomic
+shape of every other helper in `core/discovery/`.
+
+#### `SymbolGraphBuilder`
+
+```ts
+export class SymbolGraphBuilder
+```
+
+#### `removeLegacyGlobalNameLookup`
+
+```ts
+export function removeLegacyGlobalNameLookup(graph: ISymbolGraph): ISymbolGraph
+```
+
+Rebuild a graph without the legacy global-name lookup.
+
+The lookup is **removed by default**; this function is the
+explicit way to switch it off on a graph that was built with
+`experimental.allowGlobalSymbolLookup: true`.
+
+@param graph The graph to rebuild.
+@returns      A graph with the same nodes and imports, whose
+              `resolveByImportPath` no longer searches the whole
+              project by name.
+
+### `packages/core/discovery/symbol-id.ts`
+
+`SymbolId` helper (audit 2026-09-06 §12, proposal `r00014` S1).
+
+#### `makeSymbolId`
+
+```ts
+export function makeSymbolId( sourceFile: string, declarationStart: number, localName: string, ): SymbolId
+```
+
+Build a `SymbolId`. Not much code on purpose — centralising
+the construction lets the resolver assert invariants (non-empty
+`sourceFile`, non-negative offset, non-empty `localName`)
+from a single place instead of every scanner duplicating the
+checks.
+
+#### `symbolIdToString`
+
+```ts
+export function symbolIdToString(id: SymbolId): string
+```
+
+#### `parseSymbolId`
+
+```ts
+export function parseSymbolId(serialized: string): SymbolId | null
+```
+
+Parse a string produced by `symbolIdToString`. Inverse
+operation; returns `null` when the input isn't shaped like
+a serialised `SymbolId`.
+
+### `packages/core/discovery/to-service-graph.helper.ts`
+
+toServiceGraph - a00013 S2.
+
+#### `toServiceGraph`
+
+```ts
+export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph
+```
+
+Builds the IServiceGraph from the current discovery state.
+
+The helper does not infer anything absent from the input. If the caller has
+not yet populated routesByService/authByService/etc., return a graph with each
+service's identity and empty arrays—the exact shape S2 needs so S3/S4 can
+populate it without changing the contract.
+
+#### `decorateServices`
+
+```ts
+export function decorateServices( graph: IServiceGraph, overrides:
+```
+
+Variant of toServiceGraph that applies the caller's overrides to each
+descriptor after calculation. Useful when the caller wants to produce a
+decorated IServiceGraph without reimplementing auth/baseUrl/variable
+propagation.
+
+It lives here for now because only S2 and its tests use it; if S3 or S4 need
+it more broadly, promote it to an independent helper.
+
+### `packages/core/discovery/workspace-glob.helper.ts`
+
+Workspace glob resolver — a00012 S1.a.
+
+#### `resolveWorkspaceGlobs`
+
+```ts
+export async function resolveWorkspaceGlobs( projectRoot: string, globs: ReadonlyArray<string>, ): Promise<ReadonlyArray<string>>
+```
+
+Materializes a list of workspace globs into real directories.
+
+@param projectRoot Absolute project root (callers have already converted
+  it to an absolute path outside this helper).
+@param globs Relative POSIX globs, optionally prefixed with `!` to mark
+  exclusions.
+@returns Existing directories under `projectRoot` in POSIX-relative form,
+  sorted lexicographically and deduplicated. An invalid root path returns
+  `[]`.
+
+### `packages/core/domain/auth-flow.service.ts`
+
+Authentication flow for the collection.
+
+#### `hasLoginEndpoint`
+
+```ts
+export function hasLoginEndpoint( specs: ReadonlyArray<
+```
+
+If the project exposes a session endpoint, based on the specs.
+
+`detectAuthFlow` answers the same question but for the **already-built
+collection**, and some callers need to know before building it: the
+authentication scheme determines which headers each request carries, so it
+cannot be resolved afterward.
+
+It intentionally shares patterns with `detectAuthFlow`. If two lists of
+login routes drift, the collection could say there is bearer while the flow
+wires no token, or the other way around.
+
+#### `detectAuthFlow`
+
+```ts
+export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null
+```
+
+Locates the login, refresh, and logout endpoints in the collection.
+Returns `null` if the project has none.
+
+#### `applyAuthFlow`
+
+```ts
+export function applyAuthFlow( collection: PostmanCollection, options: IApplyAuthFlowOptions =
+```
+
+Wires the authentication flow onto an already-built collection:
+
+  - Login and refresh save the token when they respond with 2xx.
+  - The login body references `{{authUsername}}` / `{{authPassword}}`.
+  - Logout clears the token.
+  - The flow is documented in the login description.
+
+Returns the applied flow, or `null` if the collection has no auth.
+
+#### `authEnvironmentVariables`
+
+```ts
+export function authEnvironmentVariables(): Array<
+```
+
+Variables the environment needs for the auth flow.
+They are added only if the collection has login.
+
+#### `warnMissingCredentials`
+
+```ts
+export function warnMissingCredentials( warning: Omit<IMissingCredentialsWarning, "kind">, ): void
+```
+
+Emits a structured warning when the login body does not expose recognizable
+credentials. The function is exported for tests and so a caller can
+redirect it if another sink is needed.
+
+The warning type lives in
+`packages/contracts/interfaces/cli/auth-warning.interface.ts`; defining it
+here would pull this service in just to type it, which is exactly what
+`lint:contracts` prohibits.
+
+#### `detectLaravelTokenPath`
+
+```ts
+export async function detectLaravelTokenPath(root: string): Promise<string | undefined>
+```
+
+Heuristically detects the token dot-path in a Laravel project's
+AuthController. It inspects the files
+`app/Http/Controllers/*Auth*Controller.php` and searches for response
+patterns. If it finds nothing, it returns undefined.
+
+### `packages/core/domain/auth-scheme.service.ts`
+
+What authentication scheme the API uses, inferred from its endpoints.
+
+#### `detectAuthScheme`
+
+```ts
+export function detectAuthScheme( specs: ReadonlyArray<EndpointSpec>, hasLoginFlow: boolean, ): IDetectedAuthScheme
+```
+
+Infers the API's authentication scheme.
+
+`hasLoginFlow` is passed by the pipeline: it is whether the project exposes
+a session endpoint that the auth flow has recognized and wired in.
+
+#### `toPostmanAuth`
+
+```ts
+export function toPostmanAuth(scheme: IDetectedAuthScheme): IPostmanAuth | null
+```
+
+Translates the detected scheme to the Postman `auth` block.
+
+Returns `null` for `none`: a collection **without** an `auth` block is
+different from one with an empty block. With a block, Postman sends an
+`Authorization` header with an unresolved value on every request, and the
+API returns 401 for a reason unrelated to what was being tested.
+
+#### `authVariablesFor`
+
+```ts
+export function authVariablesFor( scheme: IDetectedAuthScheme, ): Array<
+```
+
+Environment variables that need to be filled in for this scheme.
+
+They are empty and marked as secrets: the person using the collection
+supplies the value, and it must not end up in a versioned file.
+
+### `packages/core/domain/collection-builder.service.ts`
+
+Builds a Postman v2.1.0 collection from an `EndpointSpec` catalog, grouping the endpoints into folders automatically.
+
+#### `buildCollection`
+
+```ts
+export function buildCollection( specs: EndpointSpec[], config: ProjectConfig, /** * API authentication scheme. * * If not passed, it is inferred from the endpoints themselves. The * parameter exists so the pipeline -- which is the only one who
+```
+
+Builds the Postman collection from the endpoint catalog and the
+project configuration.
+
+@param specs Endpoint catalog of the project.
+@param config Project configuration (name, variables, zones...).
+
+### `packages/core/domain/collection-stats.service.ts`
+
+How many requests a collection carries, and where they live.
+
+#### `computeCollectionStats`
+
+```ts
+export function computeCollectionStats( collection: PostmanCollection, config: ProjectConfig, collectionPath: string, ): IStatsResult
+```
+
+Counts the requests of a collection, per method and per zone.
+
+@param collection The collection to measure.
+@param config The project's configuration: its zones and their order.
+@param collectionPath Where the collection came from, for the report.
+@returns The totals, the per-method counts and the per-zone breakdown.
+
+### `packages/core/domain/collection-validator.service.ts`
+
+The invariants of a well-formed Postman v2.1.0 collection.
+
+#### `validatePostmanCollection`
+
+```ts
+export function validatePostmanCollection( collection: PostmanCollection, collectionPath: string, ): IValidationResult
+```
+
+Checks a collection against the invariants.
+
+@param collection The collection to check.
+@param collectionPath Where it came from, for the report.
+@returns The errors, the warnings, and the counts.
+
+### `packages/core/domain/drift-check.service.ts`
+
+Drift between the routes in the code and the collection on disk.
+
+#### `compareRoutesWithCollection`
+
+```ts
+export function compareRoutesWithCollection( sourceRoutes: ReadonlyArray<IDriftedEndpoint>, collection: PostmanCollection, collectionPath: string, ): ICheckReport
+```
+
+Compares the routes in the code with the requests in a collection.
+
+@param sourceRoutes The routes the scanner found in the code.
+@param collection The collection to compare against.
+@param collectionPath Where the collection came from, for the report.
+@returns The drift, in both directions.
+
+### `packages/core/domain/endpoint-merge.service.ts`
+
+Merge of discovered endpoints with the host's manual overrides.
+
+#### `mergeWithManual`
+
+```ts
+export function mergeWithManual( auto: EndpointSpec[], manual: EndpointSpec[], ): EndpointSpec[]
+```
+
+Merges auto-discovered specs with an optional manual catalog.
+The manual spec wins on normalized method+URI (name, body, folder, description).
+
+Exported because manual overrides are not a Laravel-specific concern:
+any project can declare an `endpoints.constant.ts` to correct or extend
+what the scanner infers.
+
+### `packages/core/domain/environment-builder.service.ts`
+
+Generates agnostic Postman v2.1.0 environments.
+
+#### `buildEnvironment`
+
+```ts
+export function buildEnvironment( name: string, variables: PostmanVariable[], overrides: Record<string, string> =
+```
+
+Builds ONE environment.
+
+@param name         Environment name (e.g. "Dev" or "My App · dev").
+@param variables    Merged variables (config + base + path).
+@param overrides    Map that OVERWRITES final values (e.g. baseUrl).
+@param color        Tag color in Postman.
+@param collectionId ID of the collection it belongs to; included in the
+                    environment ID seed so two projects with a "Local"
+                    environment do not collide.
+
+#### `buildEnvironments`
+
+```ts
+export function buildEnvironments( specs: EndpointSpec[], configVariables: PostmanVariable[], envs: EnvironmentDef[], collectionId = "", ): PostmanEnvironment[]
+```
+
+Builds multiple environments by applying each set of `overrides` to the
+base set of variables.
+
+#### `defaultEnvironments`
+
+```ts
+export function defaultEnvironments( baseUrl: string, ): EnvironmentDef[]
+```
+
+### `packages/core/domain/param-inferrer.service.ts`
+
+Agnostic inference of path params, query params, and body for endpoints WITHOUT an associated FormRequest.
+
+#### `extractPathParams`
+
+```ts
+export function extractPathParams(uri: string): string[]
+```
+
+#### `exampleForPathParam`
+
+```ts
+export function exampleForPathParam(name: string): string
+```
+
+#### `exampleForQueryField`
+
+```ts
+export function exampleForQueryField(name: string): string
+```
+
+A plausible example value for a query parameter, based on its name.
+
+`page` gives a number and `search` gives text. It is pure heuristics: it
+makes the request runnable without editing it; it does not aim to be exact.
+
+#### `inferBodyForSpec`
+
+```ts
+export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null
+```
+
+Attempts to produce a useful body for an endpoint without a FormRequest using
+REST-agnostic heuristics:
+
+  - POST action without path params (e.g. `/usuarios/despersonar`): `{}`.
+  - POST action with a path param (e.g. `/productos/{{id}}/reindexa`):
+    adds a `force: true` field if the final segment suggests "reindex",
+    "cancel", "force", etc.
+  - PUT/PATCH always includes at least one agnostic boolean/flag field.
+
+Returns `null` if it cannot find a safe heuristic.
+
+#### `inferQueryForSpec`
+
+```ts
+export function inferQueryForSpec(spec: EndpointSpec): Array<
+```
+
+Generates default query params for a GET endpoint without a FormRequest.
+
+- If the URI has path params that suggest a single resource (show), adds
+  only `with=all` to force relationships.
+- If it looks like a list/index (URI without `{`, last segment is a
+  common plural or not a verb), adds pagination + search.
+
+Conservative: if it matches nothing, returns `[]`.
+
+#### `inferCollectionVariables`
+
+```ts
+export function inferCollectionVariables( specs: EndpointSpec[], configVariables: Array<
+```
+
+Builds a set of `{{...}}` variables from an `EndpointSpec` catalog.
+It is used as a fallback when `ProjectConfig` does not provide a variable
+list.
+
+Agnostic rules:
+  - `baseUrl`, `token` are always included.
+  - Any `{{something}}` appearing in URIs is included if it was NOT
+    already present in `configVariables`.
+  - The default value is inferred with `exampleForPathParam()`.
+
+#### `applyAgnosticInference`
+
+```ts
+export function applyAgnosticInference( specs: EndpointSpec[], options:
+```
+
+Enriches specs WITHOUT a FormRequest with inferred body and query in an
+agnostic way. It does NOT touch specs that already have FR or manually
+supplied body/query.
+
+#### `_internals`
+
+```ts
+export const _internals =
+```
+
+Internal pieces exposed **only** for their tests.
+
+The underscore is the signal: they are not part of the module contract.
+
+### `packages/core/domain/postman-api.service.ts`
+
+Client for the public Postman API.
+
+#### `PostmanApiError`
+
+```ts
+export class PostmanApiError extends Error
+```
+
+#### `pushCollection`
+
+```ts
+export async function pushCollection( collection: PostmanCollection, options: IPostmanApiOptions, ): Promise<IPushResult>
+```
+
+Uploads the collection: updates it if one with the same `_postman_id`
+already exists; otherwise, creates it.
+
+#### `pushEnvironment`
+
+```ts
+export async function pushEnvironment( environment: IPostmanEnvironmentPayload, options: IPostmanApiOptions, ): Promise<IPushResult>
+```
+
+#### `verifyApiKey`
+
+```ts
+export async function verifyApiKey( options: IPostmanApiOptions, ): Promise<
+```
+
+### `packages/core/domain/postman-method.helper.ts`
+
+Maps a Tanit `EndpointSpec.method` (or any `string`) to the literal the Postman v2.1.0 schema accepts in `request.method`.
+
+#### `postmanMethodFor`
+
+```ts
+export function postmanMethodFor(method: string): string
+```
+
+Maps a Tanit `EndpointSpec.method` (or any `string`) to the literal
+the Postman v2.1.0 schema accepts in `request.method`.
+
+`ALL` (the Hono `.all()` sentinel — see `aad6376` and the audit
+2026-09-06 second pass §6) maps to `ANY`, the only Postman verb
+that captures "any HTTP method". Older Postman versions ignore
+`ANY` and fall back to a GET; that is acceptable — it is the
+same fallback the previous `app.all('/x', h) → GET` mapping
+produced, but with the original semantics preserved instead of
+lost.
+
+Exported (and given a stable name) so the CLI's bidirectional
+coverage check can use the same translation: without it, a source
+route with `method: "ALL"` and a collection request with
+`method: "ANY"` look like two different endpoints to the validator
+and it aborts the generation. Single helper, single source of
+truth.
+
+Accepts `string` (not `EndpointSpec["method"]`) so callers that
+only have the raw `ParsedRoute.method` can use it without
+casting.
+
+### `packages/core/domain/project-health.service.ts`
+
+Health of a project's documentation: percentages by category.
+
+#### `computeProjectHealth`
+
+```ts
+export function computeProjectHealth( specs: ReadonlyArray<EndpointSpec>, ): IProjectHealth
+```
+
+Computes the project's health from the final specs.
+
+With zero endpoints, all percentages are `0`: there is nothing to
+document, and a `NaN` or a 100 without routes would be the two possible
+lies. With routes, each percentage is the quotient of endpoints that
+include the piece, rounded to an integer so the CLI and MCP tool display
+it as-is.
+
+The body counts if the spec carries one—from resolved rules or from
+agnostic inference, which has already run before this point. Examples
+count when the body has a value or params have a value; these are the two
+ways the collection teaches the user **one** valid value.
+
+### `packages/core/domain/push-artifacts.service.ts`
+
+Uploading a project's collection to Postman.
+
+#### `describePushFailure`
+
+```ts
+export function describePushFailure(error: unknown): IPushFailure
+```
+
+Translates an API failure into something a caller can act on.
+
+`PostmanApiError.detail` is the body Postman returned: third-party
+text that can carry the request that caused it, and with it the
+`X-Api-Key` header. The detail stays in the trace the human sees.
+A secret that leaks through an error message cannot be taken back.
+
+#### `pushProjectArtifacts`
+
+```ts
+export async function pushProjectArtifacts( request: IPushArtifactsRequest, ): Promise<IPushArtifactsResult>
+```
+
+Uploads the collection and, optionally, its environments.
+
+@param request The collection, the specs, the configuration, the key
+  and the workspace — plus, when the caller already signed in, who
+  that was.
+@returns What reached Postman, and what did not.
+
+### `packages/core/domain/request-doc.service.ts`
+
+Description of a request: what the endpoint accepts, in a table.
+
+#### `buildRequestDescription`
+
+```ts
+export function buildRequestDescription( base: string | undefined, fields: ReadonlyArray<IEndpointField> | undefined, confidence: IEndpointConfidence | undefined, ): string
+```
+
+Builds the Markdown description that Postman renders in the
+request's documentation panel.
+
+`base` is what the request already contained (the handler name, or the
+`summary` of an OpenAPI spec). It is kept at the top: it is something
+someone intentionally wrote, and replacing it with a generated table
+would trade information for presentation.
+
+### `packages/core/domain/test-script.service.ts`
+
+Assertions carried by each request in the collection.
+
+#### `buildTestScript`
+
+```ts
+export function buildTestScript(spec: EndpointSpec): PostmanEvent
+```
+
+#### `appendTestScript`
+
+```ts
+export function appendTestScript( existing: ReadonlyArray<PostmanEvent> | undefined, spec: EndpointSpec, ): PostmanEvent[]
+```
+
+Adds assertions to an item without overwriting anything it already had.
+
+The login endpoint already has a script that saves the token, and the logout
+endpoint has one that deletes it. Replacing the entire array would remove
+them and the collection would stop authenticating itself—which is the reason
+the auth flow exists.
+
+### `packages/core/domain/watcher.service.ts`
+
+Watches the project and reports when something changes.
+
+#### `shouldIgnore`
+
+```ts
+export function shouldIgnore( relativePath: string, extraIgnored: ReadonlySet<string> = new Set(), ): boolean
+```
+
+Whether a relative path should be ignored.
+
+Pure and exported intentionally: this is the piece that prevents the
+infinite loop, and a piece like that must be testable without mounting a
+filesystem.
+
+#### `createDebouncer`
+
+```ts
+export function createDebouncer( ms: number, fn: (batch: readonly string[]) => void, ):
+```
+
+Batches consecutive calls into one, `ms` after the last one.
+
+It also returns a `cancel` function so it can close without leaving a
+timer running: otherwise the process does not terminate on Ctrl+C because
+the event loop still has pending work.
+
+#### `watchProject`
+
+```ts
+export function watchProject(options: IWatchOptions): IWatchHandle
+```
+
+Watches `root` and calls `onChange` with the changed paths.
+
+It uses recursive `fs.watch` without polling. If the operating system does
+not support it —`recursive` is not available on all BSDs— it throws a message
+explaining that instead of watching only the first level and missing
+everything.
+
+There are never two `onChange` calls at once: if a change arrives while
+regeneration is running, it is queued and runs afterward. Two simultaneous
+generations would write the same file at the same time.
+
+### `packages/core/exporters/bruno.exporter.ts`
+
+Bruno exporter.
+
+#### `BrunoExporter`
+
+```ts
+export class BrunoExporter implements IExportTarget
+```
+
+### `packages/core/exporters/export-registry.service.ts`
+
+The catalog of output formats.
+
+#### `registeredFormats`
+
+```ts
+export function registeredFormats(): string[]
+```
+
+The formats this registry actually produces.
+
+It is not the catalog — the catalog is `EXPORT_FORMATS`, in
+contracts — but **what the registry delivers**. A test compares the
+two: a parallel list is not dangerous, an uncompared parallel list
+is.
+
+#### `describeFormats`
+
+```ts
+export function describeFormats(): Array<
+```
+
+#### `exporterFor`
+
+```ts
+export function exporterFor(format: string): IExportTarget | null
+```
+
+#### `parseFormats`
+
+```ts
+export function parseFormats(raw: string | null | undefined): IParsedFormats
+```
+
+Interprets `--format a,b,c`.
+
+It fails **before** scanning if any format does not exist, and lists
+the valid ones. Discovering a misspelled name at the end — after
+walking the project and without having written the requested file
+— says nothing about what happened. It is the same decision as in
+`--framework`.
+
+#### `exportTo`
+
+```ts
+export function exportTo( formats: ReadonlyArray<string>, input: IExportInput, ): IExportArtifact[]
+```
+
+Serializes the project to all requested formats.
+
+`postman` is skipped: the pipeline writes it on its own.
+
+#### `exportWarnings`
+
+```ts
+export function exportWarnings( formats: ReadonlyArray<string>, input: IExportInput, ): string[]
+```
+
+What the requested formats **cannot** represent.
+
+Returned separately from the artifacts because it does not prevent
+generating them: the file comes out the same, just incomplete, and
+whoever requested it must know.
+
+### `packages/core/exporters/har.exporter.ts`
+
+Exporters to HAR 1.2 and to cURL.
+
+#### `HarExporter`
+
+```ts
+export class HarExporter implements IExportTarget
+```
+
+#### `CurlExporter`
+
+```ts
+export class CurlExporter implements IExportTarget
+```
+
+### `packages/core/exporters/insomnia.exporter.ts`
+
+Insomnia v4 exporter.
+
+#### `InsomniaExporter`
+
+```ts
+export class InsomniaExporter implements IExportTarget
+```
+
+### `packages/core/exporters/openapi.exporter.ts`
+
+Exporter to OpenAPI 3.1.0.
+
+#### `buildOpenApiDocument`
+
+```ts
+export function buildOpenApiDocument(input: IExportInput): Record<string, unknown>
+```
+
+The OpenAPI document as an object, before serializing it.
+
+It is exported so its **structure** can be checked with precise
+assertions instead of scanning for substrings in a YAML. That the
+YAML itself is correct is another problem, and `yaml.helper.spec.ts`
+covers it.
+
+#### `OpenApiExporter`
+
+```ts
+export class OpenApiExporter implements IExportTarget
+```
+
+### `packages/core/exporters/postman-inferred-response.exporter.ts`
+
+`postman-inferred-response.ts` — Postman response[] rendering (f00014).
+
+#### `renderInferredPostmanResponses`
+
+```ts
+export function renderInferredPostmanResponses( spec: EndpointSpec, ): ReadonlyArray<IPostmanInferredResponse> | undefined
+```
+
+Materializes a spec's inferred responses as a Postman `response[]`.
+
+Returns `undefined` when `spec.responses` is empty or absent so the
+caller can keep the historical shape (no `response[]` block). When
+the inferrer produced entries, the result has one entry per
+`(status, reason)` pair, deduplicated by the dispatcher.
+
+#### `__labelForStatusForTest`
+
+```ts
+export function __labelForStatusForTest(status: number): string
+```
+
+#### `__bodyForEntryForTest`
+
+```ts
+export function __bodyForEntryForTest(entry: IResponseInference): string
+```
+
+#### `__confidenceShapeForTest`
+
+```ts
+export function __confidenceShapeForTest(c: IResponseInferenceConfidence): string
+```
+
+### `packages/core/helpers/all-method.helper.ts`
+
+Expands `EndpointSpec.method === "ALL"` (the Hono `.all()` sentinel emitted by commit `aad6376`, audited again on 2026-09-06 §13) into the seven standard HTTP verbs that every exporter except Postman can represent directly.
+
+#### `isAllMethodSpec`
+
+```ts
+export function isAllMethodSpec(spec: EndpointSpec): boolean
+```
+
+Returns true iff the spec's method is the `ALL` sentinel.
+
+Pulled out as a named predicate so each exporter can decide whether
+to expand (`true`) or to translate (`false`, Postman). Keeping the
+`===` check here means adding a future sentinel is a single-file
+change.
+
+#### `expandAllMethods`
+
+```ts
+export function expandAllMethods( specs: ReadonlyArray<EndpointSpec>, ): IExpandedSpec[]
+```
+
+Expands every `method: "ALL"` spec into seven specs with the seven
+standard verbs. Non-`ALL` specs pass through unchanged.
+
+The expansion is shallow: `spec.fields`, `spec.body`, `spec.query`,
+`spec.headers`, `spec.description`, `spec.schemaGraph` and friends
+are carried over verbatim. `spec.method` is the only field that
+changes; `spec.name` and `spec.uri` are preserved so that the
+seven operations belong to the same endpoint and can be grouped
+together by downstream tooling.
+
+### `packages/core/helpers/argv.helper.ts`
+
+Read a flag from the command line, once.
+
+#### `readFlag`
+
+```ts
+export function readFlag( argv: ReadonlyArray<string>, name: string, ): string | undefined
+```
+
+The value of `--flag value`, or `undefined` if not present.
+
+Also accepts `--flag=value`, which is how half the people write it
+and how almost every script generates it. Before, only the
+space-separated form worked and the other one was silently ignored:
+the flag looked like it wasn't there.
+
+#### `hasFlag`
+
+```ts
+export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean
+```
+
+#### `readFlags`
+
+```ts
+export function readFlags<T extends Record<string, string>>( argv: ReadonlyArray<string>, names: T, ):
+```
+
+Reads a list of `name → result` mappings in one pass over `argv`.
+
+For each entry:
+  - if `name` is `string`: returns the value (`undefined` if absent)
+    under the same key in the result object.
+  - if `name` is `string[]`: same shape, batch-friendly.
+
+Names with `=` (e.g. `--json`) are read with `hasFlag` semantics.
+
+The helper replaces the manual `args.indexOf(name)` blocks in the
+CLI commands (audit 2026-09-06 §9, x00066 S1).
+
+#### `readBooleanFlags`
+
+```ts
+export function readBooleanFlags<T extends Record<string, string>>( argv: ReadonlyArray<string>, names: T, ):
+```
+
+#### `readFlagList`
+
+```ts
+export function readFlagList( argv: ReadonlyArray<string>, name: string, ): string[]
+```
+
+Parse a `--flag a,b,c` style comma-separated list. Returns an empty
+array when the flag is absent.
+
+### `packages/core/helpers/atomic-write.helper.ts`
+
+Write a whole file, or don't write it at all.
+
+#### `writeFileAtomic`
+
+```ts
+export async function writeFileAtomic( destino: string, contenido: string, ): Promise<void>
+```
+
+Writes `contenido` to `destino` atomically.
+
+Creates the directory if needed. If anything fails, `destino` stays
+exactly as it was and no temp file is left behind.
+
+#### `writeJsonAtomic`
+
+```ts
+export async function writeJsonAtomic( destino: string, valor: unknown, espacios = 2, ): Promise<void>
+```
+
+Same, for JSON.
+
+Serializes **before** touching the disk: if the object has a cycle
+or a `BigInt`, `JSON.stringify` throws and no file has been opened.
+Serializing while writing is how you end up with a half-written file
+without the process even crashing.
+
+#### `appendFileAtomic`
+
+```ts
+export async function appendFileAtomic( destino: string, contenido: string, ): Promise<void>
+```
+
+Atomic append of `contenido` to the end of `destino`.
+
+It differs from `writeFileAtomic` in what it protects:
+
+  - `writeFileAtomic` writes the **whole** file: a `rename` within
+    the same filesystem is atomic, but the file is truncated before
+    the rename. That's what you want for a Postman collection, where
+    the reader needs the complete version or nothing.
+
+  - `appendFileAtomic` appends `contenido` to the end: it uses
+    `appendFile`, which opens the destination with `O_APPEND`. On
+    POSIX that's atomic per `write(2)`: two processes writing at
+    once don't step on each other —their bytes end up at the end in
+    some order, but none is lost half-written—. That's what you want
+    for a JSONL log: each line is one entry, and reading the last N
+    lines must be safe even if another write is in progress.
+
+If the file doesn't exist, it creates it (recursive mkdir on the
+directory, same as `writeFileAtomic`). If the write fails, it
+doesn't leave partial content visible: `appendFile` doesn't truncate
+before writing, so a failure halfway through a line shows up as a
+prefix without a newline, and that's handled by the reader as a
+corrupted line.
+
+### `packages/core/helpers/collection-file.helper.ts`
+
+Read the collection from disk, or explain why it cannot be.
+
+#### `readCollection`
+
+```ts
+export async function readCollection(path: string): Promise<CollectionRead>
+```
+
+Reads and parses the collection.
+
+Distinguishes the three failures that matter, because each has a
+different output: that it does not exist (need to generate), that it
+cannot be read (permissions), and that it is not valid JSON (it was
+written halfway, which is what `atomic-write.helper` exists to
+prevent).
+
+#### `explainReadFailure`
+
+```ts
+export function explainReadFailure( failure: Extract<CollectionRead,
+```
+
+Prints the failure in the same format as the rest of the CLI and
+returns 1, so a command can do `return explain(result)` without
+repeating the `console.error` block in each one.
+
+### `packages/core/helpers/collection-identity.helper.ts`
+
+Stable identity of Postman artifacts.
+
+#### `stableUuid`
+
+```ts
+export function stableUuid(seed: string): string
+```
+
+Deterministic UUID v5 from a seed.
+
+@param seed Text that identifies the artifact (project name,
+            environment name…). Normalized so that differences in
+            casing or whitespace don't produce different IDs.
+
+#### `collectionIdFor`
+
+```ts
+export function collectionIdFor(identity: ICollectionIdentity): string
+```
+
+ID of a project's collection.
+
+If the host declares `collectionId`, it's honored as-is: it's the
+way to keep the collection in Postman even if the project is renamed
+or moved between folders.
+
+#### `environmentIdFor`
+
+```ts
+export function environmentIdFor(collectionId: string, environmentName: string): string
+```
+
+### `packages/core/helpers/collection-invariants.helper.ts`
+
+Invariants a collection must satisfy for Postman to import it and be usable.
+
+#### `checkCollectionInvariants`
+
+```ts
+export function checkCollectionInvariants( collection: PostmanCollection, ): ICollectionIssue[]
+```
+
+Checks all invariants and returns the violations. Empty list = the
+collection is correct.
+
+#### `collectionErrors`
+
+```ts
+export function collectionErrors(collection: PostmanCollection): ICollectionIssue[]
+```
+
+### `packages/core/helpers/concurrency.helper.ts`
+
+Bounded-promise-pool helpers — `runWithConcurrency()`.
+
+#### `runWithConcurrency`
+
+```ts
+export async function runWithConcurrency<T>( tasks: ReadonlyArray<() => Promise<T>>, limit: number = DISCOVERY_CONCURRENCY, ): Promise<T[]>
+```
+
+Run `tasks` in parallel with at most `limit` in flight, returning
+the results in input order. Each `task` is a factory returning a
+Promise — the factory is called immediately so the helper can
+populate the window before awaiting.
+
+### `packages/core/helpers/env-or-alias.helper.ts`
+
+Centralized environment-variable resolver (x00067).
+
+#### `envOrAlias`
+
+```ts
+export function envOrAlias( canonical: string, deprecated: string, ): string | undefined
+```
+
+Resolves `canonical` (preferred) with `deprecated` (alias) as
+fallback. Returns the trimmed value or `undefined`.
+
+#### `__resetEnvAliasWarningsForTest`
+
+```ts
+export function __resetEnvAliasWarningsForTest(): void
+```
+
+### `packages/core/helpers/fs-walk.helper.ts`
+
+Recursive directory walk for the scanners.
+
+#### `collectFiles`
+
+```ts
+export async function collectFiles( root: string, matches: (fileName: string) => boolean, options: ICollectFilesOptions =
+```
+
+Absolute paths of all files under `root` (recursive) whose name
+passes the filter.
+
+Never throws. An unreadable directory or a link cycle are skipped and
+the rest of the tree is still walked — which is what this function
+promised and didn't deliver.
+
+#### `collectFilesFrom`
+
+```ts
+export async function collectFilesFrom( roots: ReadonlyArray<string>, matches: (fileName: string) => boolean, options: ICollectFilesOptions =
+```
+
+Same as `collectFiles` over multiple roots, without duplicates and
+skipping those that don't exist.
+
+#### `isSourceJsTsFile`
+
+```ts
+export function isSourceJsTsFile(name: string): boolean
+```
+
+### `packages/core/helpers/module-path.helper.ts`
+
+Directory of the current module, in a portable way.
+
+#### `moduleDir`
+
+```ts
+export function moduleDir(importMetaUrl: string): string
+```
+
+#### `repoRoot`
+
+```ts
+export function repoRoot(importMetaUrl: string): string
+```
+
+Repo/package root: walks up from the module until it finds a
+`package.json`.
+
+Before, each script counted its own `".."` to the root. That works
+until the file moves to a different folder, and then `PACKAGE_ROOT`
+points elsewhere **without failing**: the script simply does not find
+anything and says "no proposals found". It happened with four gates
+at once when reorganizing into `packages/`.
+
+Counting levels is coupling a file to its depth in the tree.
+Looking for the marker is not.
+
+#### `findRepoRoot`
+
+```ts
+export function findRepoRoot(importMetaUrl: string): string | null
+```
+
+Like `repoRoot()`, but returns `null` instead of throwing.
+
+Production code needs this: inside the compiled binary the modules
+live in a virtual file system (`/$bunfs/root/`) where there is no
+`package.json`, so there is no root to find. Throwing there crashes
+the whole binary at startup — it happened when this helper was
+introduced, and the binary-without-runtime test was what caught it.
+
+Rule: gates and tests use `repoRoot()`, which throws because a
+failure there is a repo failure. Code that ends up inside the binary
+uses this one and has a plan B.
+
+### `packages/core/helpers/parse-json.helper.ts`
+
+Parse third-party JSON without `any` leaking into the rest of the program.
+
+#### `parseJson`
+
+```ts
+export function parseJson(raw: string): JsonRead
+```
+
+Parse, distinguishing "couldn't parse" from "parsed to `null`".
+
+The two cases got confused: `JSON.parse("null")` returns `null`, and a
+`catch` that also leaves `null` makes a corrupt file and one that
+legitimately contains `null` end up identical. Only one of them
+deserves a warning.
+
+#### `isRecord`
+
+```ts
+export function isRecord(value: unknown): value is Record<string, unknown>
+```
+
+#### `readObject`
+
+```ts
+export function readObject( value: unknown, key: string, ): Record<string, unknown> | undefined
+```
+
+#### `readString`
+
+```ts
+export function readString(value: unknown, key: string): string | undefined
+```
+
+#### `readArray`
+
+```ts
+export function readArray(value: unknown, key: string): unknown[] | undefined
+```
+
+#### `declaredDependencies`
+
+```ts
+export function declaredDependencies(pkg: unknown): Record<string, string>
+```
+
+The dependencies declared in a `package.json`, merged.
+
+`dependencies` and `devDependencies` together, because the question
+the scanners ask is "does this project use X?" and a framework in
+`devDependencies` is still the project's framework. Some scanners
+looked at them and others didn't, so the same project was detected or
+not depending on which one was asking.
+
+### `packages/core/helpers/path-containment.helper.ts`
+
+Does this path escape where it's supposed to write?
+
+#### `ensureInside`
+
+```ts
+export async function ensureInside( root: string, target: string, ): Promise<ContainmentResult>
+```
+
+Is `target` inside `root`?
+
+The root itself counts as inside. Returns the already-resolved path
+so the caller uses that and not the original: checking one and
+writing in another is how these checks get bypassed.
+
+#### `ensureInsideAny`
+
+```ts
+export async function ensureInsideAny( roots: ReadonlyArray<string>, target: string, ): Promise<ContainmentResult>
+```
+
+Is `target` inside **any** of the roots?
+
+Several, not just one, because a single one does not describe the
+legitimate use. An agent may ask "generate for project X and leave
+the output in my working folder", and those are two distinct and
+both reasonable locations. With a single root that was rejected, and
+a guard that blocks normal use eventually gets removed.
+
+What does stay out is the rest of the disk: the output goes with the
+project, inside the workspace, or in a temp dir — not to anyone's
+`$HOME` because a `../` slipped into an argument.
+
+### `packages/core/helpers/postman.helper.ts`
+
+Reusable helpers for walking and analyzing Postman collections.
+
+#### `pathToSegments`
+
+```ts
+export function pathToSegments(rawUrl: string): string[]
+```
+
+#### `uriFromRaw`
+
+```ts
+export function uriFromRaw(rawUrl: string): string
+```
+
+#### `walkCollection`
+
+```ts
+export function walkCollection( collection: PostmanCollection, ): CollectionRequest[]
+```
+
+Walk the collection and return all flat requests.
+If `folder` is passed, it's used as the prefix of the folder path.
+
+#### `countItems`
+
+```ts
+export function countItems(collection: PostmanCollection):
+```
+
+### `packages/core/helpers/read-files.helper.ts`
+
+Read many files without reading them one at a time.
+
+#### `readAllFiles`
+
+```ts
+export async function readAllFiles( paths: ReadonlyArray<string>, limit: number = READ_CONCURRENCY, ): Promise<IReadFile[]>
+```
+
+Same, but into an array.
+
+For those who need the whole list anyway (a `Map` of module → content,
+for example). If it is only going to be walked once, use the generator:
+it spends bounded memory instead of all of it.
+
+### `packages/core/helpers/regex.helper.ts`
+
+Shared regexes used without stepping on each other.
+
+#### `ownRegex`
+
+```ts
+export function ownRegex(shared: RegExp): RegExp
+```
+
+An own copy of a shared regex.
+
+It starts with `lastIndex` at zero and nobody else touches it, so it
+can be used with `exec` without coordinating with the rest of the
+process.
+
+### `packages/core/helpers/resolve-root.helper.ts`
+
+Where the project root comes from, in one place.
+
+#### `resolveRoot`
+
+```ts
+export function resolveRoot(options: IResolveRootOptions =
+```
+
+The project root: `--project-root`, then `POSTMAN_PROJECT_ROOT`, and
+as a last resort the current directory.
+
+The order is the one two of the three commands already had, so it
+changes nobody's behavior — it just makes it consistent across all
+of them and adds where it came from.
+
+#### `guessedRootNotice`
+
+```ts
+export function guessedRootNotice(resolved: IResolvedRoot): string
+```
+
+The notice that the root has been guessed, or an empty string.
+
+Returned instead of printed so the caller decides where it goes —
+`console.log`, a JSON report, the GUI — and so it can be tested
+without capturing output.
+
+### `packages/core/helpers/route-anchor.helper.ts`
+
+Route anchoring — finding the declaration of a route inside a file.
+
+#### `findRouteAnchors`
+
+```ts
+export function findRouteAnchors( text: string, pattern: RegExp, ): ReadonlyArray<IRouteAnchor>
+```
+
+Collects the route declarations of a file.
+
+`pattern` must expose **two** capture groups: the method and the
+path. It is re-created with the `g` flag so the caller never has to
+think about `lastIndex` state — a module-level regex with the `g`
+flag is the classic source of "the second call finds nothing".
+
+#### `pickRouteAnchor`
+
+```ts
+export function pickRouteAnchor( anchors: ReadonlyArray<IRouteAnchor>, route: IResponseRoute, ): IRouteAnchor | null
+```
+
+Picks the declaration that corresponds to `route`.
+
+The search is ordered by how strong the evidence is:
+
+1. The path is **exactly** the raw URI (what the code declares).
+2. The path is exactly the full URI (no prefixes involved).
+3. The full URI **ends with** the declared path — the prefix case,
+   `/api/users` vs `/users`.
+4. The last segment of the URI is the declared path.
+
+Among the candidates that survive, the one **closest to the route's
+line** wins: when a file declares the same path twice (two routers,
+a re-mount), the declaration near the route's line is the one the
+scanner saw.
+
+Returns `null` when the file declares nothing that could be this
+route — the inferrer then has nothing to read, and says so.
+
+#### `sliceUntilNextAnchor`
+
+```ts
+export function sliceUntilNextAnchor( text: string, anchor: IRouteAnchor, anchors: ReadonlyArray<IRouteAnchor>, maxChars = 2000, ): string
+```
+
+The text that belongs to a declaration: from the end of the
+declaration up to the **next** declaration, bounded.
+
+This is the window every inferrer actually wants. It holds the
+options object, the handler, and nothing else — stopping at the
+next route is what keeps one route from reading the next route's
+response call.
+
+#### `routeRegionOf`
+
+```ts
+export function routeRegionOf( text: string, pattern: RegExp, route: IResponseRoute, ): string | null
+```
+
+The region of the file that belongs to `route`, or `null` when the
+file declares no such route.
+
+The three steps every inferrer needs — find the declarations,
+recognise which one is *this* route, hand back its region — in one
+call. An inferrer that needs the region twice (once to answer
+`detect()`, once to answer `infer()`) reads the same bytes twice;
+one that needs it once does not care.
+
+### `packages/core/helpers/route-identity.helper.ts`
+
+What makes two endpoints the same endpoint.
+
+#### `endpointKey`
+
+```ts
+export function endpointKey(identity: IEndpointIdentity): string
+```
+
+The key of an operation. Same operation, same key.
+
+The URI is always normalized, so `/api/users` and `api/users` are not
+counted as two. The name and body only enter when present: adding
+them empty would make a route with a name and the same one without
+it stop matching, which is the opposite of what we want.
+
+#### `describeEndpoint`
+
+```ts
+export function describeEndpoint(identity: IEndpointIdentity): string
+```
+
+How an operation is called when it has to be shown to someone.
+
+`POST /graphql` repeated three times says nothing: the name is needed
+to know which one is missing. This is what turns a list of three
+identical lines into a useful list.
+
+#### `needsNameToDisambiguate`
+
+```ts
+export function needsNameToDisambiguate( routes: ReadonlyArray<IEndpointIdentity>, ): boolean
+```
+
+Does this protocol distinguish operations by name?
+
+It is not a list of frameworks: it is a property of the routes that
+arrive. If several share method and URI, the name is the only thing
+left — and it does not matter whether it is GraphQL, tRPC, or a
+hand-written JSON-RPC. Asking this way avoids a list that has to be
+maintained every time a new framework is supported.
+
+### `packages/core/helpers/schema-flatten.helper.ts`
+
+SchemaGraph → flat field list (audit 2026-09-06 §9, proposal `r00016`).
+
+#### `fieldsFromGraph`
+
+```ts
+export function fieldsFromGraph( graph: ISchemaGraph, root: SchemaNodeId = graph.root, ): ReadonlyArray<IEndpointField>
+```
+
+Flatten a `SchemaGraph` into a list of `IEndpointField`.
+
+The first entry corresponds to the root node; the order is
+stable across runs (Babel-friendly: children, alternatives,
+and constraints are read in declaration order). The same input
+always produces the same output, which keeps diffs between two
+runs stable.
+
+`root` is the node the request hangs from. When the spec
+already declares its own root via `spec.schemaGraph.root`,
+`flattenBody` calls this helper with that root.
+
+#### `bodyFieldsFromGraph`
+
+```ts
+export function bodyFieldsFromGraph( spec:
+```
+
+Convenience: derive the body's flat fields from the spec.
+
+Equivalent to `fieldsFromGraph(spec.schemaGraph, spec.schemaGraph.root)`
+with an empty guard for the legacy path (no graph attached —
+returns `undefined`, the existing `fields` field is the source
+of truth).
+
+#### `graphAndFieldsAreConsistent`
+
+```ts
+export function graphAndFieldsAreConsistent( spec:
+```
+
+Consistency check (audit 2026-09-06 §9, proposal `r00016` S2).
+
+Today `EndpointSpec` carries both a flat `fields` array
+(used by Postman, HAR, Bruno, curl) and an optional
+`schemaGraph` (used by OpenAPI). They must agree:
+otherwise a Postman collection shows `name: "body.age"`
+with `type: "string"` while OpenAPI says `type: "integer"`,
+i.e. two sources of truth drift apart silently.
+
+The check:
+  - If both are present, every field the graph flattens
+    must equal (name, type) of an entry in `spec.fields`.
+    Otherwise the scanner is lying — the test pin in
+    `r00016 S2` catches it before the data reaches the
+    exporter.
+  - If only one is present (today's case for scanners
+    that haven't migrated yet), the check passes — the
+    missing side is allowed during the migration window
+    the proposal calls out.
+  - If neither is present, the check passes — there's
+    nothing to drift apart.
+
+Returns `true` when the spec is internally consistent;
+`false` otherwise. Designed to be called from a vitest
+`expect(spec).toSatisfy(graphAndFieldsAreConsistent)` so
+the scanner's spec payload can be checked at the test
+boundary.
+
+### `packages/core/helpers/source-scan.helper.ts`
+
+Source-code scanning primitives shared by the scanners.
+
+#### `stripJsComments`
+
+```ts
+export function stripJsComments(src: string): string
+```
+
+Strips block and line comments from a JS/TS source.
+
+The `//` is dropped only if it is not preceded by `:`, to avoid
+breaking URLs (`https://…`) that appear in string literals.
+
+#### `findClosingParen`
+
+```ts
+export function findClosingParen(text: string, openIndex: number): number
+```
+
+Finds the `)` that closes the `(` located at `openIndex`, respecting
+nesting. Returns `-1` if the parenthesis is never closed.
+
+#### `findAllBalanced`
+
+```ts
+export function findAllBalanced(text: string, pattern: RegExp): IBalancedCall[]
+```
+
+All occurrences of `pattern` in `text`, each with the balanced
+position of its call.
+
+`pattern` must describe the prefix of a call (e.g.
+`/z\.object\s*\(/`); the `(` is searched from the start of the match.
+The regex is always re-created with the `g` flag, so it does not
+matter how the caller declared it.
+
+#### `findNearestBalanced`
+
+```ts
+export function findNearestBalanced( text: string, pattern: RegExp, nearLine: number, ): IBalancedCall | null
+```
+
+Of all calls that match `pattern`, the closest (by line count) to
+`nearLine`. Used to associate a schema with the handler that uses it
+when a single file declares several.
+
+#### `countLinesBefore`
+
+```ts
+export function countLinesBefore(text: string, index: number): number
+```
+
+#### `splitTopLevel`
+
+```ts
+export function splitTopLevel(body: string): string[]
+```
+
+Splits the inside of an object literal by top-level commas.
+
+Ignores commas inside strings (`'`, `"`, backtick, with escapes) and
+inside nested `()`, `{}` or `[]`. The depth starts at 1 because the
+received text includes the outer braces of the object.
+
+#### `unwrapObjectLiteralItem`
+
+```ts
+export function unwrapObjectLiteralItem(item: string): string
+```
+
+Removes the outer braces and trailing whitespace from an item
+returned by `splitTopLevel` (the first drags the `{`, the last the `}`).
+
+#### `maskStringLiterals`
+
+```ts
+export function maskStringLiterals(src: string): string
+```
+
+Replaces the **contents** of strings with spaces, keeping the quotes
+and the total length.
+
+Used to answer a question the scanners ask all the time without
+knowing it: *is this call actually in the code, or is it inside a
+string?* A file with
+
+    const help = 'use router.get("/x") to register';
+
+produced a `GET /x` endpoint that does not exist. The text of a
+string is not code, but for a regex it reads the same.
+
+Length is preserved on purpose: this way the offsets on the mask are
+valid on the original source, and we can search on the mask and read
+from the original. Without that we'd need to maintain a position
+map, which is the kind of thing that desyncs.
+
+Covers single quotes, double quotes, and templates. Inside a
+template, what goes in `${…}` **is** code and is preserved: that is
+where the interpolations live that other lints need to see.
+
+#### `findOutsideStrings`
+
+```ts
+export function findOutsideStrings( src: string, pattern: RegExp, ): Array<
+```
+
+The occurrences of `pattern` that are **outside** any string.
+
+The trick has two halves and both are needed:
+
+  1. We **search** on the mask, where the contents of the strings
+     are spaces. So a call written inside a text —
+     `'use router.get("/x")'`— does not appear.
+  2. We **read** from the original source, at the same position. The
+     mask preserves length exactly for this: the path of a real
+     route IS a string, so on the mask it comes out blank and
+     reading it from there would give empty paths.
+
+Skipping the second half is easy and the failure is silent: the
+captured groups come out full of spaces and the paths are discarded
+one by one without anything saying so.
+
+### `packages/core/helpers/uri.helper.ts`
+
+Helpers to normalize URIs before comparing.
+
+#### `stripBaseUrlVariable`
+
+```ts
+export function stripBaseUrlVariable(raw: string): string
+```
+
+#### `normalizeForComparison`
+
+```ts
+export function normalizeForComparison(uri: string): string
+```
+
+Reduce a URI to the shape used for comparing routes across frameworks.
+
+Every parameterized token — Laravel `{id}`, Express `:id`, Django
+`<int:id>`, Postman `{{id}}` — collapses to the same `:p` marker, and
+redundant slashes go, so a route discovered in source and the request
+generated from it compare equal regardless of who spelled it.
+
+#### `stripApiPrefix`
+
+```ts
+export function stripApiPrefix(uri: string): string
+```
+
+#### `joinRoutePath`
+
+```ts
+export function joinRoutePath(...segments: string[]): string
+```
+
+Joins the segments of a path (class/group prefix + method path) into
+a normalized URI.
+
+The trailing slash is preserved **only if the last non-empty segment
+declared it**. That distinction matters:
+
+  - Django: `path("<int:id>/", …)` brings it on purpose. With
+    `APPEND_SLASH = True` (the default), calling without it returns
+    a 301 and a POST loses its body on the redirect.
+  - NestJS, Spring Boot, ASP.NET and Flask: `@Controller("orders")` +
+    `@Get()` concatenated `"orders" + "/" + ""` and produced `orders/`.
+    There the slash is an artifact, not a decision.
+
+#### `topGroupFor`
+
+```ts
+export function topGroupFor( uri: string, uriGroupOverrides: Record<string, string> =
+```
+
+Returns the logical top-level group of a URI (first meaningful
+segment). For example:
+
+  "api/customers"             → "customers"
+  "api/customers/{customer}"  → "customers"
+  "api/erp/products"          → "erp"
+  "api/orders/history"        → "orders"
+  "alive" / "login"           → "login" / "alive"
+
+If the URI starts with `api/`, it is skipped. Special cases are
+configured via `uriGroupOverrides` (e.g. `{ "tol/tecdoc": "tol/tecdoc" }`).
+
+@param uri URI to analyze.
+@param uriGroupOverrides Map of prefix → group key (from `ProjectConfig`).
+
+#### `prettyGroupName`
+
+```ts
+export function prettyGroupName(topGroup: string): string
+```
+
+The human-readable name of a folder from its key.
+
+`erp-products` becomes `Erp Products`. Only affects what is read in
+Postman: the key is still the one that groups.
+
+### `packages/core/helpers/yaml.helper.ts`
+
+YAML serializer for flat data.
+
+#### `toYaml`
+
+```ts
+export function toYaml(value: YamlValue): string
+```
+
+### `packages/core/helpers/zone.helper.ts`
+
+Logical-zone helpers.
+
+#### `zoneForUri`
+
+```ts
+export function zoneForUri(uri: string, config: ProjectConfig): string
+```
+
+Computes the logical zone from the endpoint URI and the project
+configuration.
+
+#### `zonesToDisplay`
+
+```ts
+export function zonesToDisplay( present: Iterable<string>, config: Pick<ProjectConfig, "zoneOrder" | "defaultZone">, ): string[]
+```
+
+The order in which zones that **have content** are shown.
+
+`zoneOrder` is the preference of whoever configures the project, not
+the list of zones that exist. And in zero-config — the normal case,
+the 21 examples — it comes **empty**, with all endpoints falling into
+`defaultZone`.
+
+`list` and `stats` used to walk `zoneOrder` directly to print, so in
+zero-config they printed **nothing**: `list` said "9 endpoints in the
+collection, grouped by zone:" and then left the screen blank. It was
+not a GraphQL failure or a specific framework's — it happened in all
+twenty-one, and the entire command served no purpose.
+
+Here we return the zones actually present: first those that
+`zoneOrder` names, in their order, then the rest sorted
+alphabetically so two runs produce the same. Empty zones are omitted,
+which is what the previous code did right.
+
+### `packages/core/index/ast-cache.service.ts`
+
+AST cache — single source of truth for parsed source files (f00016 S2).
+
+#### `parseAst`
+
+```ts
+export function parseAst(args:
+```
+
+#### `loadAst`
+
+```ts
+export async function loadAst(args:
+```
+
+Reads a file from disk and parses it into the cache, replacing any
+previous entry. Returns the new record or `null` when the file is
+gone. The cache is mutated by side-effect so the caller does not
+need to reassign.
+
+#### `cachedAst`
+
+```ts
+export function cachedAst( cache: ReadonlyMap<string, ICachedAst>, file: IIndexedFile, ): ICachedAst | undefined
+```
+
+Cache lookup that respects the hash: if the file on disk has
+changed since the cache was filled, the entry is dropped and the
+cache reports a miss. Callers that want the new value call
+`loadAst` afterwards.
+
+#### `loadAsts`
+
+```ts
+export async function loadAsts(args:
+```
+
+Eagerly fills the cache for every file the index knows about.
+Uses a bounded concurrency (`READ_CONCURRENCY`) so the bench
+reproduces the same shape as `readAllFiles`.
+
+#### `invalidateAstsFor`
+
+```ts
+export function invalidateAstsFor( cache: Map<string, ICachedAst>, relPaths: ReadonlyArray<string>, ): void
+```
+
+Drops every cached AST that depends on `relPath`. The inverse
+graph the invalidator carries is the source of truth — this
+helper exists so callers do not have to spell out the closure.
+
+#### `isAstCapable`
+
+```ts
+export function isAstCapable(language: IndexedLanguage): language is AstCapableLanguage
+```
+
+### `packages/core/index/file-cache.service.ts`
+
+File cache — single source of truth for "what files exist under projectRoot" (f00016 S2).
+
+#### `detectLanguage`
+
+```ts
+export function detectLanguage(filename: string): IndexedLanguage
+```
+
+Identifies a file's language from its extension. Returns
+`unknown` when nothing matches — the index never throws on a
+weird file, it just tags it `unknown` and the consumer decides
+what to do.
+
+#### `readIndexedFile`
+
+```ts
+export async function readIndexedFile( absPath: string, projectRoot: string, workspaces: ReadonlyArray<IWorkspace>, ): Promise<IIndexedFile | null>
+```
+
+Lazily read + hash a single file. Returns `null` when the file
+cannot be read (permissions, broken symlink, disappeared between
+listing and reading) — those failures are recorded silently in the
+listing so the cache stays truthful.
+
+#### `indexFiles`
+
+```ts
+export async function indexFiles(args:
+```
+
+Walks `projectRoot` and returns the index for every file under it.
+Files inside `skipVendorDirs` directories are excluded (same rule
+as `collectFiles`). Returns a fresh map; the caller decides whether
+to merge it into an existing index.
+
+#### `refreshIndexedFile`
+
+```ts
+export async function refreshIndexedFile( cache: Map<string, IIndexedFile>, absPath: string, projectRoot: string, workspaces: ReadonlyArray<IWorkspace>, ): Promise<IIndexedFile | null>
+```
+
+Re-hashes a single file in place, returning the new record (or
+`null` if the file disappeared). The map is mutated by side-effect
+so the AST / manifest caches can see the new hash without a
+second walk.
+
+#### `sha256Of`
+
+```ts
+export function sha256Of(text: string): string
+```
+
+Computes the SHA-256 of a string. Used by callers that already
+have the content (e.g. the AST cache after parsing) and want to
+match it against the file cache without going through the disk
+again.
+
+#### `toPosix`
+
+```ts
+export function toPosix(p: string): string
+```
+
+#### `joinPosix`
+
+```ts
+export function joinPosix(...parts: ReadonlyArray<string>): string
+```
+
+#### `absPathOf`
+
+```ts
+export function absPathOf(root: string, relPath: string): string
+```
+
+#### `keyOf`
+
+```ts
+export function keyOf(relPath: string): string
+```
+
+#### `snapshotFiles`
+
+```ts
+export function snapshotFiles( cache: Map<string, IIndexedFile>, ): ReadonlyArray<IIndexedFile>
+```
+
+#### `filesByLanguage`
+
+```ts
+export function filesByLanguage( cache: ReadonlyMap<string, IIndexedFile>, ): ReadonlyMap<IndexedLanguage, number>
+```
+
+Counts how many files the cache holds by language. Used in
+diagnostics; the bench reuses it to assert that the second pass
+produced the same shape as the first.
+
+### `packages/core/index/incremental-invalidator.service.ts`
+
+Incremental invalidator — "change one file, re-process only that file and its importers" (f00016 S2).
+
+#### `IncrementalInvalidator`
+
+```ts
+export class IncrementalInvalidator
+```
+
+Holds the inverse dependency graph and answers "what else must I
+re-process when this file changes?".
+
+### `packages/core/index/manifest-reader.service.ts`
+
+Manifest reader — parses + caches the per-framework manifest files the index knows about (f00016 S2).
+
+#### `isManifestFile`
+
+```ts
+export function isManifestFile(relPath: string): boolean
+```
+
+#### `readManifest`
+
+```ts
+export async function readManifest(args:
+```
+
+Reads + parses a single manifest. Returns `null` when the file is
+missing or unreadable, **or** when the file is not one of the
+recognised manifest basenames — the caller passes a list of
+candidate relPaths and the reader skips the rest.
+
+#### `readManifests`
+
+```ts
+export async function readManifests(args:
+```
+
+Builds the initial manifest cache from a list of candidate
+relPaths. Files that aren't manifests are silently dropped — that
+is what the `isManifestFile` guard in `readManifest` guarantees.
+
+#### `declaredDependenciesFromManifest`
+
+```ts
+export function declaredDependenciesFromManifest( manifest: IManifest, ): Record<string, string>
+```
+
+Reads the manifest dependencies (the union of `dependencies`,
+`devDependencies`, `peerDependencies`). Lives here because the
+cache that already knows the parsed structure is the cheapest
+source — the alternative was three different scanners parsing
+`package.json` three different ways.
+
+### `packages/core/index/project-index.service.ts`
+
+`ProjectIndex` — the public facade of the index layer (f00016 S2).
+
+#### `ProjectIndex`
+
+```ts
+export class ProjectIndex implements IProjectIndex
+```
+
+#### `ProjectIndexFactory`
+
+```ts
+export const ProjectIndexFactory =
+```
+
+### `packages/core/index/workspace-resolver.service.ts`
+
+Workspace resolver — detects monorepo workspaces (f00016 S2).
+
+#### `detectWorkspaces`
+
+```ts
+export function detectWorkspaces(args:
+```
+
+Resolves the list of workspaces under `projectRoot`.
+
+Pure on purpose — the function does not read files itself, the
+caller passes the parsed contents. That keeps the resolver easy
+to test (no fixtures, no tmpdirs) and decoupled from the index's
+filesystem access.
+
+#### `workspaceFor`
+
+```ts
+export function workspaceFor( workspaces: ReadonlyArray<IWorkspace>, projectRoot: string, absPath: string, ): IWorkspace | undefined
+```
+
+Returns the workspace that owns a file (`absPath`), or `undefined`
+if the path is outside every known workspace. The root workspace
+matches anything inside `projectRoot` whose relPath starts with one
+of the known workspace prefixes.
+
+#### `buildWorkspaceLookup`
+
+```ts
+export function buildWorkspaceLookup( workspaces: ReadonlyArray<IWorkspace>, ): WorkspaceLookup
+```
+
+### `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`
+
+#### `extractExpressRoutesFromIR`
+
+```ts
+export function extractExpressRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, ): IExtractRoutesResult
+```
+
+Walk the already-built LanguageIR's `IRouteCallExpression[]` and
+emit the Express subset: HTTP-verb calls (`app.get/post/...`) and
+`app.use(prefix, router)` mount signals. Express uses the same
+receiver heuristic (`app` / `server` / `fastify` / `koa`) as a
+convention-without-scope-guard — the caller's import surface
+decides. Originally introduced in x00048; Fastify/Hono followed.
+
+### `packages/core/language-frontends/typescript/extract-routes-fastify.helper.ts`
+
+Fastify route extractor (audit 2026-09-06 §12, proposal `r00013` S1).
+
+#### `extractFastifyRoutesFromIR`
+
+```ts
+export function extractFastifyRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, _file: string, ): IExtractRoutesResult
+```
+
+Extrae las rutas Fastify del IR de un fichero ya parseado.
+
+Cubre la forma corta (`fastify.get('/path', h)`, incluida la
+expansión de `method: ['GET', 'POST']` en `fastify.route({...})` a
+una ruta por verbo) y los mounts de plugins
+(`fastify.register(sub, { prefix })`). El receiver se valida contra
+bindings de `fastify`/`Fastify` para no confundir llamadas ajenas.
+
+@param calls - Route calls del LanguageIR (propagadas y resueltas).
+@param bindings - Import bindings del mismo fichero.
+@param file - Ruta del fichero fuente, para anclar cada ruta.
+@returns Rutas extraídas (una por verbo) y mounts con prefijo.
+
+### `packages/core/language-frontends/typescript/extract-routes-hono.helper.ts`
+
+Hono route extractor (audit 2026-09-06 §12, proposal `r00013` S2).
+
+#### `extractHonoRoutesFromIR`
+
+```ts
+export function extractHonoRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, _file: string, ): IExtractRoutesResult
+```
+
+Extrae las rutas Hono del IR de un fichero ya parseado.
+
+Reconoce `app.get/post/...('/path', h)`, `app.all('/path', h)`
+(emite `method: "ALL"`) y los mounts `app.route('/prefix', sub)`,
+resolviendo el receiver solo contra routers Hono importados
+(`hono`, `@hono/*`), no contra cualquier identificador. Un solo
+pase sobre `calls` — el AST ya lo produjo el frontend; aquí solo se
+interpreta.
+
+@param calls - Route calls del LanguageIR (propagadas y resueltas).
+@param bindings - Import bindings del mismo fichero (filtra receivers).
+@param file - Ruta del fichero fuente, para anclar cada ruta.
+@returns Rutas extraídas y mounts con prefijo, en orden de aparición.
+
+### `packages/core/language-frontends/typescript/index.ts`
+
+TypeScript frontend barrel.
+
+#### `extractRoutes`
+
+```ts
+export function extractRoutes( source: string, filename: string, framework: SupportedRouteFramework, options?:
+```
+
+Parse a TS/JS source string and emit the framework-aware route
+catalog + mount signals. The `program` option lets callers that
+already hold a Babel AST skip a second parse — the scanners
+cache their own AST and pass it here, so we never re-walk the
+tree just to extract routes. When `program` is omitted the
+helper parses internally.
+
+### `packages/core/language-frontends/typescript/typescript-frontend.helper.ts`
+
+`typescriptFrontend` — the TypeScript implementation of the language-agnostic frontend contract.
+
+#### `typescriptFrontend`
+
+```ts
+export const typescriptFrontend: ILanguageFrontend =
+```
+
+Reads a TypeScript source file and answers the four questions of
+the agnostic contract.
+
+The parse is the one the TypeScript frontend already performs; the
+document it returns is the agnostic projection of that parse. A
+consumer that needs the TypeScript-shaped view keeps using
+`parse()`; a consumer that only speaks the agnostic vocabulary
+uses this one.
+
+### `packages/core/language-frontends/typescript/typescript.parser.ts`
+
+`parse(source, filename): TSFile` — the TypeScript frontend.
+
+#### `parse`
+
+```ts
+export function parse(source: string, filename: string): TSFile
+```
+
+Parses `source` (TS/JS code) and returns the normalized AST.
+
+`filename` is attached to the AST so adapters can report errors and
+scanners can show it to the user. It is not used internally — Babel
+accepts it but we do not care here.
+
+If Babel cannot parse the file, throws `SyntaxError`. Callers that
+want to degrade silently use `parseModule` with an
+`IParseDiagnostic` array (a00011 C-7 / B-rev-13).
+
+The order within each `TSFile` collection is top-down with respect
+to the file: at the end of the parse each collection is sorted by
+`(line, column)` ascending, so the contract does not depend on the
+internal order of the walker (a00011 C-7 / B-rev-11).
+
+Audit 2026-09-04 P2 #7: the `jsx` plugin is activated when
+`filename` ends in `.tsx`/`.jsx`. Without this, Babel rejected JSX
+syntax (`<Foo />`) with a syntax error and the scanner lost
+Next.js / React components.
+
+#### `parseWithProgram`
+
+```ts
+export function parseWithProgram( source: string, filename: string, ):
+```
+
+Variante de `parse` que devuelve ADEMÁS el `Program` crudo de
+Babel (x00048 S3 / a00016 S6.d).
+
+El caso de uso: un scanner que necesita tanto el `TSFile` del
+frontend (assignments, decorators, classes…) como las primitivas
+del LanguageIR (`IRouteCallExpression[]`, `IConstantBinding[]`,
+`IImportBinding[]`, `IReexport[]`). Sin este helper, eso son 2+
+parses Babel del mismo fichero; con él, el scanner pasa
+`program` a `buildLanguageIRFromProgram` y el coste es 1 parse.
+
+`program` se tipa como `unknown` a propósito: el frontend no
+expone los tipos de `@babel/types` en su superficie pública
+(serían ~2500 tipos de dependencia), y los consumidores del IR
+ya castean de forma permissiva a su propio `BabelNode`, igual
+que hace este módulo internamente.
+
+#### `parseModule`
+
+```ts
+export function parseModule( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): TSFile | null
+```
+
+Non-throwing variant of `parse`: if Babel rejects the file, returns
+`null` and records the reason in `diagnostics` (if the array came
+in) instead of swallowing the error silently.
+
+The scanner keeps working — a file with invalid syntax does not
+abort the scan — but the failure stays visible to whoever wants to
+report it (today: `IScanResult.diagnostics`).
+
+#### `parseModuleWithProgram`
+
+```ts
+export function parseModuleWithProgram( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ):
+```
+
+Variante safe de `parseWithProgram` (x00048 S3): devuelve `null` y
+registra el diagnóstico si Babel rechaza el archivo, en vez de
+lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
+Express: un solo parse por archivo alimenta el `TSFile` del
+frontend Y las primitivas del LanguageIR.
+
+### `packages/core/language-ir/build-language-ir.helper.ts`
+
+`buildLanguageIR(source, filename)` — x00048 S3 (a00016 S6.d).
+
+#### `buildLanguageIR`
+
+```ts
+export function buildLanguageIR( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): ILanguageIR
+```
+
+Parsea `source` una vez y corre los cuatro collectors AST-level
+sobre el mismo `Program`.
+
+La configuración de Babel (plugins `typescript` + `decorators`,
+`jsx` condicional, `errorRecovery`, `sourceType: module`) es la
+MISMA que usa `collectMethodCallsFromSource` — el único de los
+cuatro que históricamente añadía `jsx` por extensión. Los otros
+three aceptan el mismo superset sin problema: plugins extra no
+cambian el AST de un fichero que no los usa.
+
+#### `buildLanguageIRFromProgram`
+
+```ts
+export function buildLanguageIRFromProgram( program: unknown, filename: string, ): ILanguageIR
+```
+
+Variante AST-level (x00048 S3): toma un `Program` de Babel ya
+parseado — el que devuelve `parseModuleWithProgram` del frontend —
+y corre los cuatro collectors sin volver a parsear.
+
+Este es el camino del single-parse REAL en los scanners: el
+frontend parsea una vez (`parseModuleWithProgram`), consume su
+cuerpo para el `TSFile` (assignments, decorators, classes…) y
+entrega el mismo `Program` a este helper, que alimenta los
+walkers del LanguageIR. Un archivo = un parse, punto.
+
+### `packages/core/language-ir/collect-constants.helper.ts`
+
+`collectConstantsFromSource` — a00016 S6 (constant bindings reales).
+
+#### `collectConstantsFromSource`
+
+```ts
+export function collectConstantsFromSource( source: string, filename: string, ): IConstantBinding[]
+```
+
+Parses `source` and returns every top-level `const X = <literal>`
+binding in the file. Returns `[]` on parse failure — the parser
+failure is already reported by `collectMethodCallsFromSource`
+upstream; this helper does not duplicate the diagnostic channel.
+
+#### `collectConstantsFromProgram`
+
+```ts
+export function collectConstantsFromProgram( program: unknown, filename: string, ): IConstantBinding[]
+```
+
+Versión AST-level del collector (x00048 S3). Toma un `Program`
+de Babel ya parseado y devuelve las mismas `IConstantBinding[]`
+que `collectConstantsFromSource`. La regla de emisión vive sólo
+en `walkBindings`; el parse lo pone quien llama (normalmente
+`buildLanguageIR`, que parsea una vez por archivo).
+
+### `packages/core/language-ir/collect-method-calls.helper.ts`
+
+`collectMethodCalls` — a `CallExpression` from the TS AST viewed from the multi-style frameworks adapter.
+
+#### `collectMethodCallsFromSource`
+
+```ts
+export function collectMethodCallsFromSource( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): IRouteCallExpression[]
+```
+
+Parsea un archivo TS/JS y devuelve sus `IRouteCallExpression`.
+
+Si Babel no puede parsear el archivo, registra el motivo en
+`diagnostics` (si vino) y devuelve `[]`. Mismo contrato que
+`collectTaggedTemplatesFromSource` y `parseModule`: degradar sin
+ruido en vez de abortar el scan.
+
+#### `collectMethodCallsFromProgram`
+
+```ts
+export function collectMethodCallsFromProgram( program: unknown, filename: string, ): IRouteCallExpression[]
+```
+
+Versión AST-level del collector (x00048 S3). Toma un `Program`
+de Babel ya parseado — el que produce `buildLanguageIR` con su
+parse único — y devuelve las mismas `IRouteCallExpression[]` que
+`collectMethodCallsFromSource`.
+
+La regla de emisión vive sólo en `walkBody`; esta función es el
+mismo walker alimentado desde fuera. Los scanners que ya tienen
+el AST en la mano (vía `buildLanguageIR`) no pagan el re-parse.
+
+#### `collectMethodCalls`
+
+```ts
+export async function collectMethodCalls( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IRouteCallExpression[]>
+```
+
+Walks the TS/JS source under `projectRoot` and returns all the
+`IRouteCallExpression`s it finds.
+
+Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+as `tagged-template.ts`, `express.scanner.ts`, and
+`graphql.scanner.ts` — so it honours the same excludes
+(`node_modules`, `dist`, etc.).
+
+`diagnostics` (optional) receives the files the parser could not
+digest. If not passed, failures are swallowed silently.
+
+### `packages/core/language-ir/constant-propagation.helper.ts`
+
+`propagateConstants` — intraprocedural constant propagation.
+
+#### `propagateConstants`
+
+```ts
+export function propagateConstants( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IConstantBinding>, ): IRouteCallExpression[]
+```
+
+Resolves computed properties against a map of literal constants.
+
+For each `IRouteCallExpression`:
+
+  - If the `callee` has the shape `receiver[X]` (with X an
+    identifier) and an `IConstantBinding` exists with
+    `name: "X"` and a literal value (`string | number | boolean`),
+    `resolvedMethod = String(value)` is filled in.
+  - Otherwise, the call passes through as-is (the scanner discards it).
+
+Returns a NEW array — does not mutate the input.
+
+### `packages/core/language-ir/scanner-bridge.helper.ts`
+
+`scanner-bridge` — adapts the LanguageIR (S2+S3+S4) to the `TSMethodCall` shape consumed by the 6 TS-flavored scanners.
+
+#### `offsetToPosition`
+
+```ts
+export function offsetToPosition(source: string, offset: number):
+```
+
+Converts a 0-based byte offset in `source` to `(line, column)`
+1-based (line) / 0-based (column) — the same shape as
+`TSMethodCall.line` / `column`.
+
+If the offset falls outside the range, returns
+`{ line: 1, column: 0 }` (the TS frontend's default position).
+
+Exported because the agnostic frontend needs it too: the
+LanguageIR carries the position of a call as a character range, and
+the agnostic `ILocation` asks for a line and a column.
+
+#### `toTSMethodCalls`
+
+```ts
+export function toTSMethodCalls( calls: ReadonlyArray<IRouteCallExpression>, source: string, ): TSMethodCall[]
+```
+
+Converts `IRouteCallExpression[]` into the `TSMethodCall[]` shape
+that the TS-flavored scanners consume.
+
+The output order matches the input (top-down per file), preserved
+by S2. Scanners that sort by line can use the resulting `line`
+directly.
+
+### `packages/core/language-ir/symbol-resolver.helper.ts`
+
+`symbol-resolver` — aliases, reexports, and resolution of `const r = app`.
+
+#### `collectAliasesFromBody`
+
+```ts
+export function collectAliasesFromBody( body: ReadonlyArray<BabelNode>, sourceFile: string, out: IImportBinding[], ): void
+```
+
+Walks the AST and emits one `IImportBinding` per `ImportDeclaration`.
+
+Covers:
+  - `import x from "m"` — `name = "x"`.
+  - `import * as ns from "m"` — `name = "ns"`.
+  - `import { a, b as c } from "m"` — emits 2 bindings: `a` and `c`.
+  - `import "m"` (side-effect) — emits nothing.
+
+`range.file` is filled with `sourceFile` — the caller that wants
+grouping by file can do that later.
+
+#### `collectReexportsFromBody`
+
+```ts
+export function collectReexportsFromBody( body: ReadonlyArray<BabelNode>, sourceFile: string, out: IReexport[], ): void
+```
+
+Emits one `IReexport` per node that represents a reexport.
+
+Covers:
+  - `export { a, b as c } from "./x"` — emits 1 binding per specifier.
+  - `export * from "./x"` — emits 1 binding with `name = "*"`.
+
+Does NOT cover `export { a }` (local declaration) or
+`export const a = ...` (local declaration) — those are definitions,
+not reexports. If a scanner needs to detect them, it will look
+elsewhere.
+
+#### `collectAliases`
+
+```ts
+export async function collectAliases( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IImportBinding[]>
+```
+
+Recorre los TS/JS fuente de `projectRoot` y devuelve todos los
+`IImportBinding`.
+
+#### `collectReexports`
+
+```ts
+export async function collectReexports( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IReexport[]>
+```
+
+Recorre los TS/JS fuente de `projectRoot` y devuelve todos los
+`IReexport`.
+
+#### `resolveCallee`
+
+```ts
+export function resolveCallee( calls: ReadonlyArray<IRouteCallExpression>, aliases: ReadonlyArray<IImportBinding>, reexports: ReadonlyArray<IReexport>, constAliasesByFile: Readonly<Record<string, Readonly<Record<string, string>>>> =
+```
+
+Resolves the `callee` of the calls to its canonical form.
+
+For each `IRouteCallExpression`:
+
+  1. If the receiver is an identifier (`r.get`, `app.get`, etc.)
+     and `r` appears as `const r = X` in the same file, rewrites
+     the callee to `X.get` (keeping the same `method` and `args`).
+  2. If the receiver is an identifier and `r` appears as
+     `import { R as r }`, rewrites to `R.get`.
+  3. Calls that are already canonical (`app.get`, `this.router.get`)
+     are returned as-is.
+
+Returns a NEW array — does not mutate the input. Scanners that want
+to keep the original can compare references.
+
+Documented limitation (a00016 non-goals): does not resolve
+`import { Router } from "./router"` by following the `./router`
+module to get the real binding. That is cross-file and out of scope.
+
+#### `collectConstAliasesByFile`
+
+```ts
+export async function collectConstAliasesByFile( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<Record<string, Readonly<Record<string, string>>>>
+```
+
+Builds `constAliasesByFile` by walking `projectRoot`. Useful for
+callers that invoke `resolveCallee(calls, aliases, reexports)`.
+
+It is NOT invoked automatically from `resolveCallee` because the
+latter is pure over its arguments: the caller decides whether to
+re-read disk. Scanners that already have the sources in memory can
+skip this helper.
+
+### `packages/core/language-ir/tagged-template.helper.ts`
+
+`collectTaggedTemplates` — a `TaggedTemplateExpression` from the TS AST, viewed from the frameworks adapter.
+
+#### `collectTaggedTemplatesFromSource`
+
+```ts
+export function collectTaggedTemplatesFromSource( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): ITaggedTemplate[]
+```
+
+Parses a TS/JS file and returns its `TaggedTemplateExpression`s.
+
+If Babel cannot parse the file, logs the reason in `diagnostics`
+(if the array was passed) and returns `[]` — the caller decides
+what to do. This is the same contract as `parseModule` in the
+frontend (a00011 C-7 / B-rev-13): a file with weird syntax does not
+abort the scan, but the failure stays visible for whoever wants to
+report it.
+
+#### `collectTaggedTemplates`
+
+```ts
+export async function collectTaggedTemplates( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<ITaggedTemplate[]>
+```
+
+Walks the TS/JS source under `projectRoot` and returns all the
+`TaggedTemplateExpression`s it finds.
+
+Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+that `express.scanner.ts` and `graphql.scanner.ts` already use to
+locate TS/JS files — so it honours the same excludes
+(`node_modules`, `dist`, etc.) without reinventing the wheel.
+
+`diagnostics` (optional) receives the files the parser could not
+digest. If not passed, failures are swallowed silently — the
+"degradable" form used by tests that only want to verify the
+tree shape.
+
+### `packages/core/merge/combine-services.service.ts`
+
+#### `combineServices`
+
+```ts
+export function combineServices( services: ReadonlyArray<IServiceDescriptor>, ): ICombinedDescriptor
+```
+
+Merges several services into one descriptor whose operations each carry
+their own server and auth.
+
+Both uniqueness checks THROW rather than de-duplicating. A duplicate
+`serviceId` or variable key means two services disagree about a name
+that has to be unique for the merge to mean anything, and silently
+keeping one of them would produce a collection that looks complete
+while quietly dropping half of somebody's endpoints. Refusing names
+the collision while the caller can still fix it.
+
+`endpoints` mirrors `operations` for the older consumers that have not
+moved to the r00019 vocabulary yet; both refer to the same array.
+
+### `packages/core/merge/per-operation-resolver.service.ts`
+
+#### `perOperationResolver`
+
+```ts
+export const perOperationResolver =
+```
+
+Resolves the server and auth an operation actually runs against.
+
+The r00019 model moved these from collection-level defaults to
+per-operation refs, because a merged collection draws operations from
+several services and a single shared `baseUrl`/auth silently sends half
+of them to the wrong host. Every operation therefore names its own
+service, and this is where that name becomes a concrete `serverRef` and
+`authRef`.
+
+An unknown `serviceId` THROWS rather than falling back to a default:
+inventing a server for an operation whose own service is missing is how
+a request ends up authenticated against the wrong API.
+
+#### `resolvePerOperationContext`
+
+```ts
+export function resolvePerOperationContext( operation: Pick<IOperation, "serviceId">, services: ReadonlyArray<IServiceDescriptor>, ): IResolvedOperationContext
+```
+
+Function form of `perOperationResolver.resolve`, for callers that want
+the behaviour without taking a dependency on the object — the object
+exists so a host can swap the resolution strategy, and most callers
+never need to.
+
+### `packages/core/merge/service-descriptor.adapter.ts`
+
+#### `toServiceDescriptor`
+
+```ts
+export function toServiceDescriptor( node: IServiceGraphNode, endpoints: ReadonlyArray<IOperation>, ): IServiceDescriptor
+```
+
+### `packages/core/module-resolution/package-exports.helper.ts`
+
+`package.json#exports` resolution (proposal `r00020` S1).
+
+#### `splitBareSpecifier`
+
+```ts
+export function splitBareSpecifier(specifier: string):
+```
+
+Split a bare specifier into package name and subpath.
+
+`lodash` → `{ packageName: "lodash", subpath: "." }`
+`lodash/fp` → `{ packageName: "lodash", subpath: "./fp" }`
+`@nestjs/core` → `{ packageName: "@nestjs/core", subpath: "." }`
+`@nestjs/core/testing` → `{ packageName: "@nestjs/core", subpath: "./testing" }`
+
+#### `resolvePackageExports`
+
+```ts
+export function resolvePackageExports( exportsField: unknown, subpath: string, conditions: ReadonlyArray<string>, ): string | null
+```
+
+Resolve a subpath against the `exports` field of a package.
+
+A `null` target under a condition that is active **blocks** the
+resolution, exactly as Node does: the package is saying "this
+path is not available under these conditions", and the next
+condition is not consulted.
+
+@param exportsField The raw `exports` value of the `package.json`.
+@param subpath      `"."` for the package root, `"./feature"` for a
+                    subpath.
+@param conditions   The active conditions.
+@returns            The raw target, or `null` when the subpath is
+                    not exported.
+
+#### `readPackageEntryPoints`
+
+```ts
+export function readPackageEntryPoints( manifest: unknown, ):
+```
+
+The entry points a package declares besides `exports`.
+
+`main` is the CommonJS entry, `module` the ESM one, `types` (or
+`typings`) the declaration file. A `.d.ts` is what a TypeScript
+consumer actually binds to, so it is looked up separately.
+
+### `packages/core/module-resolution/package-imports.helper.ts`
+
+`package.json#imports` resolution (proposal `r00020` S1).
+
+#### `resolvePackageImports`
+
+```ts
+export function resolvePackageImports( importsField: unknown, specifier: string, conditions: ReadonlyArray<string>, ): string | null
+```
+
+Resolve a `#`-prefixed specifier against the `imports` field.
+
+@param importsField The raw `imports` value of the `package.json`.
+@param specifier    The specifier, `#` included.
+@param conditions   The active conditions.
+@returns            The raw target, or `null` when the specifier is
+                    not mapped.
+
+### `packages/core/module-resolution/platform-paths.helper.ts`
+
+Platform path helpers (proposal `r00020` S1).
+
+#### `detectPathStyle`
+
+```ts
+export function detectPathStyle(path: string): PathStyle
+```
+
+Which dialect a path is written in.
+
+The UNC check comes first: `\\server\share` starts with two
+separators and would otherwise look like a plain POSIX absolute
+path.
+
+#### `isAbsolutePath`
+
+```ts
+export function isAbsolutePath(path: string): boolean
+```
+
+Whether the path is absolute in any dialect.
+
+`C:foo` (drive without a separator) is **not** absolute: on Windows
+it is relative to the current directory of the drive.
+
+#### `splitDrive`
+
+```ts
+export function splitDrive(path: string): IDriveSplit
+```
+
+Split the root off a path.
+
+The drive keeps its native spelling (`C:`, `\\\\server\\share`) and
+never carries a trailing separator.
+
+#### `toPosixPath`
+
+```ts
+export function toPosixPath(path: string): string
+```
+
+Rewrite a path in POSIX spelling (always `/`).
+
+The UNC root keeps its double slash, so `\\\\server\\share\\x`
+becomes `//server/share/x`.
+
+#### `toNativePath`
+
+```ts
+export function toNativePath(path: string, style: PathStyle): string
+```
+
+Rewrite a path in the given dialect.
+
+`posix` keeps the `/` separators; `win32` and `unc` use `\`.
+
+#### `normalizePath`
+
+```ts
+export function normalizePath(path: string): string
+```
+
+Collapse `.` and `..` segments, keeping the root intact.
+
+`..` never escapes the root: `/a/../..` is `/`, and
+`C:\a\..\..` is `C:\`.
+
+#### `joinPath`
+
+```ts
+export function joinPath(base: string, rel: string): string
+```
+
+Join a relative path onto a base path.
+
+An absolute `rel` wins outright — that is how a specifier like
+`C:\app\x.ts` behaves when it is joined against a POSIX base.
+
+#### `dirnamePath`
+
+```ts
+export function dirnamePath(path: string): string
+```
+
+#### `basenamePath`
+
+```ts
+export function basenamePath(path: string): string
+```
+
+#### `extnamePath`
+
+```ts
+export function extnamePath(path: string): string
+```
+
+The extension of the path, including the dot — `""` when there is
+none.
+
+A dotfile (`.eslintrc`) has no extension: the dot is the name.
+
+#### `stripExtension`
+
+```ts
+export function stripExtension(path: string): string
+```
+
+#### `applyDriveRoot`
+
+```ts
+export function applyDriveRoot( path: string, driveRoots: Readonly<Record<string, string>>, fallbackRoot?: string, ): string
+```
+
+Replace the drive of a path with a local directory.
+
+`C:\app\src\main.ts` with `{"C:": "/home/dev/app"}` becomes
+`/home/dev/app/src/main.ts`.
+
+A drive that is not mapped falls back to `fallbackRoot` — the
+project root, for the resolver. A scanner that meets an absolute
+path written in another dialect is looking at a path **inside** the
+project it is scanning, and the project root is the only root it
+can probe. A caller that knows the real drive root says so, and
+the mapping wins.
+
+@param path        The path to remap.
+@param driveRoots  The explicit mappings, by drive or by share.
+@param fallbackRoot The root used when the drive is not mapped.
+
+### `packages/core/module-resolution/resolver-error.helper.ts`
+
+Structured resolution failures (proposal `r00020` S1).
+
+#### `createResolverError`
+
+```ts
+export function createResolverError( code: ModuleResolutionErrorCode, specifier: string, searchPaths: ReadonlyArray<string>, message: string, fromFile?: string, ): IResolverError
+```
+
+Build a resolution failure.
+
+@param code       Machine-readable reason.
+@param specifier  The specifier that failed, verbatim.
+@param searchPaths Every path that was probed.
+@param message    Human-readable explanation, in English.
+@param fromFile   The importing file, when there was one.
+
+#### `notFoundError`
+
+```ts
+export function notFoundError( specifier: string, searchPaths: ReadonlyArray<string>, fromFile?: string, ): IResolverError
+```
+
+The failure of a specifier that matched nothing.
+
+The message names the specifier and the number of probed paths:
+"searched 4 paths" is what a reader needs to trust that the
+resolver did its job.
+
+#### `invalidSpecifierError`
+
+```ts
+export function invalidSpecifierError( specifier: string, fromFile?: string, ): IResolverError
+```
+
+The failure of a specifier that cannot be interpreted.
+
+An empty specifier, or one made only of separators, is not a
+module: there is nothing to look for.
+
+#### `isResolverError`
+
+```ts
+export function isResolverError(value: unknown): value is IResolverError
+```
+
+Whether a value is a structured resolution failure.
+
+The guard exists because the outcome is a union: a caller that
+only wants the failures needs a way to tell them apart without
+casting.
+
+### `packages/core/module-resolution/resolver.service.ts`
+
+`ModuleResolver` — the real module resolver (proposal `r00020` S1).
+
+#### `ModuleResolver`
+
+```ts
+export class ModuleResolver implements IModuleResolver
+```
+
+Resolves module specifiers the way Node and TypeScript do.
+
+The class is cheap to build once and then reused: it reads the
+manifests of the project when it is constructed, and caches every
+resolution it has already computed.
+
+### `packages/core/module-resolution/tsconfig-paths.helper.ts`
+
+`tsconfig` path aliases (proposal `r00020` S1).
+
+#### `stripJsonComments`
+
+```ts
+export function stripJsonComments(raw: string): string
+```
+
+Strip the comments and the trailing commas a tsconfig may carry.
+
+The strings are preserved: a `"https://example.com"` inside a value
+is not a comment.
+
+#### `stripTrailingCommas`
+
+```ts
+export function stripTrailingCommas(raw: string): string
+```
+
+#### `parseTsconfigPaths`
+
+```ts
+export function parseTsconfigPaths( raw: string, tsconfigDir: string, ): ITsconfigPaths
+```
+
+Parse a tsconfig into the two knobs the resolver needs.
+
+A tsconfig that cannot be parsed yields an empty result — a broken
+tsconfig must not take the whole scan down.
+
+@param raw        The text of the tsconfig.
+@param tsconfigDir Absolute directory of the tsconfig; `baseUrl`
+                   is relative to it.
+
+#### `matchPathPattern`
+
+```ts
+export function matchPathPattern( pattern: string, specifier: string, ): string | null
+```
+
+Match a specifier against a `paths` pattern.
+
+Returns the text the `*` captured — `""` for a pattern without a
+wildcard — or `null` when the pattern does not apply.
+
+A pattern may hold at most one `*`, exactly like TypeScript's.
+
+#### `matchTsconfigPaths`
+
+```ts
+export function matchTsconfigPaths( paths: Readonly<Record<string, ReadonlyArray<string>>>, specifier: string, ):
+```
+
+The `paths` entry that wins for a specifier.
+
+TypeScript picks the pattern with the longest prefix; when two
+share it, the longest suffix wins. The result is deterministic, and
+it is the same rule the compiler applies — a resolver that picked a
+different alias would resolve to a different file than `tsc` does.
+
+#### `expandPathTargets`
+
+```ts
+export function expandPathTargets( targets: ReadonlyArray<string>, capture: string, baseDir: string, ): string[]
+```
+
+Expand the targets of a matched `paths` entry.
+
+The `*` of the pattern is replaced by the captured text, and a
+target that starts with `/` is absolute while the rest are
+relative to the `baseUrl` (or to the tsconfig directory when there
+is no `baseUrl`).
+
+### `packages/core/module-resolution/workspace-resolver.service.ts`
+
+Workspace packages (proposal `r00020` S1).
+
+#### `detectWorkspacePackages`
+
+```ts
+export function detectWorkspacePackages( projectRoot: string, fs:
+```
+
+The workspace packages of a project.
+
+The root project itself is **not** included: it is not a workspace
+member, it is the project. A package that imports itself by name
+is a mistake, not a resolution.
+
+@param projectRoot Absolute path of the project root.
+@param fs          The filesystem facts to read with.
+
+### `packages/core/response-inference/express.helper.ts`
+
+Express response inferrer (proposal `r00020` S3).
+
+#### `ExpressResponseInferrer`
+
+```ts
+export class ExpressResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of an Express route.
+
+Express declares nothing: the only signal is what the handler
+sends — `res.json(body)`, `res.send(body)`,
+`res.status(code).json(body)`. The shape of the response is
+therefore whatever the handler puts in the call, and the entry says
+so.
+
+### `packages/core/response-inference/fastify.helper.ts`
+
+Fastify response inferrer (proposal `r00020` S3).
+
+#### `FastifyResponseInferrer`
+
+```ts
+export class FastifyResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Fastify route.
+
+Fastify is the only one of the six that **declares** its response
+schema, in the route's options: `schema.response` maps a status to
+a JSON Schema. That is an explicit declaration, so the entries it
+produces carry `confidence: "high"`.
+
+### `packages/core/response-inference/gin.helper.ts`
+
+Gin response inferrer (proposal `r00020` S3).
+
+#### `GinResponseInferrer`
+
+```ts
+export class GinResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Gin route.
+
+Gin declares nothing: the signal is the `c.JSON(status, payload)`
+call the handler makes. `c.String`, `c.Data` and `c.File` are not
+JSON and are ignored on purpose — inferring a JSON schema for a
+plain string would be inventing one.
+
+### `packages/core/response-inference/ktor-respond.helper.ts`
+
+Ktor response inferrer (proposal `r00020` S3).
+
+#### `KtorRespondResponseInferrer`
+
+```ts
+export class KtorRespondResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Ktor route.
+
+The signal is the `call.respond(status, payload)` call the handler
+makes. A handler may call it **more than once** — a `404` and then
+a `200` — and each call is a real response of the endpoint, which
+is why the spec carries a collection.
+
+### `packages/core/response-inference/laravel-resources.helper.ts`
+
+Laravel Resources response inferrer (proposal `r00020` S3).
+
+#### `LaravelResourcesResponseInferrer`
+
+```ts
+export class LaravelResourcesResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Laravel route that answers with a
+`JsonResource`.
+
+The slice it serves is the Resources one: a Laravel controller that
+returns a plain model says nothing about the shape of its response
+that the code does not already say.
+
+### `packages/core/response-inference/rails-render.helper.ts`
+
+Rails response inferrer (proposal `r00020` S3).
+
+#### `RailsRenderResponseInferrer`
+
+```ts
+export class RailsRenderResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Rails route that renders JSON.
+
+The slice it serves is the `render json:` one: an action that
+renders HTML says nothing about a JSON response.
+
+### `packages/core/responses/coverage-reporter.ts`
+
+Response-inference coverage reporter (proposal `r00020` S3).
+
+#### `buildCoverageReport`
+
+```ts
+export function buildCoverageReport( counters: ReadonlyArray<IResponseFrameworkCoverage>, ): IResponseCoverageReport
+```
+
+Turns the counters the dispatcher collected into the report.
+
+The rows come out sorted by framework slug, so two runs of the same
+project print the same lines in the same order.
+
+#### `logCoverageReport`
+
+```ts
+export function logCoverageReport(report: IResponseCoverageReport): void
+```
+
+Prints the report as a diagnostic.
+
+It never throws and never blocks: the caller decides what to do
+with the return value, and this function only says what it found.
+
+#### `reportResponseCoverage`
+
+```ts
+export function reportResponseCoverage( counters: ReadonlyArray<IResponseFrameworkCoverage>, ): IResponseCoverageReport
+```
+
+Measures and says — the call the pipeline makes at the end.
+
+It returns the report so a caller that wants to do something else
+with it (a test, an MCP tool) can.
+
+### `packages/core/responses/infer-responses.ts`
+
+Response inference dispatcher (audit 2026-09-06 §10, proposal `f00012` S1).
+
+#### `listRegisteredInferrers`
+
+```ts
+export function listRegisteredInferrers(): ReadonlyArray<IResponseInferrer>
+```
+
+#### `registerResponseInferrer`
+
+```ts
+export function registerResponseInferrer( inferrer: ILegacyResponseInferrer, ): void
+```
+
+Register a **legacy** inferrer — the shape the four original
+inferrers implement.
+
+The inferrer is adapted to the agnostic contract on the way in
+(`adaptLegacyResponseInferrer`), so from the registry's point of
+view there is only one kind of inferrer. Registering the same
+framework twice replaces the previous one: stacking two inferrers
+for Spring would make the result depend on import order.
+
+#### `__setInferrersForTest`
+
+```ts
+export function __setInferrersForTest( list: ReadonlyArray<ILegacyResponseInferrer>, ): void
+```
+
+Replace the entire registry — test-only escape hatch.
+
+Tests run `__setInferrersForTest([])` to start from a clean
+state and call `registerResponseInferrer` to compose the
+scenarios they want. Production code never uses this.
+
+#### `inferResponses`
+
+```ts
+export function inferResponses( spec: EndpointSpecLike, source: IFrameworkSourceFileLike, options: InferResponsesOptions =
+```
+
+Run every registered inferrer against `spec`/`source`,
+concatenate and dedupe the entries, sort stably. The result
+is the array that will land in `EndpointSpec.responses`.
+
+Fail-soft: a thrown inferrer logs a warning (via
+`console.warn`) and is otherwise invisible. We never bubble
+errors out of here; that would block generation on a single
+malformed handler.
+
+Framework selection (x00061): the dispatcher picks the inferrer
+whose `framework` matches `options.frameworkHint ?? source.framework`.
+The hint lets the caller override the discriminator when the
+source is from a hybrid project where `source.framework` may not
+be the right signal (e.g. the source file is a generic
+controller that the per-spec route originated from a different
+framework).
+
+#### `inferResponsesIntoSpecs`
+
+```ts
+export async function inferResponsesIntoSpecs( specs: ReadonlyArray<EndpointSpecLike>, projectRoot: string, routes: ReadonlyArray<IRouteForInference>, options:
+```
+
+Pipeline entry point: read every spec's source file, dispatch
+the right framework inferrer, and write the entries onto
+`spec.responses`. Mutating in place is intentional — every
+downstream exporter (Postman, OpenAPI, Bruno, HAR) reads from
+the same spec catalog and must see the same enriched data, so
+producing a new array would only duplicate state.
+
+The function exists because the **only** place that should
+mutate `EndpointSpec.responses` is the pipeline, not the
+script. Before it landed, the CLI ran the inference loop after
+`buildCollection()` had already serialised the Postman
+collection, which meant the inferred `response[]` block never
+made it into the JSON the user saw. See the `f00014` follow-up
+for the full bug history.
+
+### `packages/core/responses/registry.ts`
+
+Response-inference registry (proposal `r00020` S3).
+
+#### `registerResponseInferrer`
+
+```ts
+export function registerResponseInferrer( id: ResponseInferrerId, inferrer: IResponseInferrer, ): void
+```
+
+Registers an inferrer under its id.
+
+Replaces any entry with the same id **or** the same framework: one
+framework, one inferrer. The framework of the inferrer must match
+the one the catalog declares for that id — a mismatch means the
+catalog and the implementation drifted, and it fails loudly here
+instead of silently never being selected.
+
+#### `listResponseInferrerEntries`
+
+```ts
+export function listResponseInferrerEntries(): ReadonlyArray<IResponseInferrerEntry>
+```
+
+The entries currently registered, in registration order.
+
+Frozen copy: a caller cannot mutate the registry by holding on to
+the array.
+
+#### `listResponseInferrers`
+
+```ts
+export function listResponseInferrers(): ReadonlyArray<IResponseInferrer>
+```
+
+The inferrers currently registered, in registration order.
+
+#### `selectInferrer`
+
+```ts
+export function selectInferrer(framework: string): IResponseInferrer | null
+```
+
+The inferrer that serves `framework`, or `null` when none does.
+
+This is the entry point of the whole feature: the dispatcher asks
+it, and the answer is either an inferrer or "nobody knows how this
+framework answers" — which is a normal state, not an error.
+
+#### `selectInferrerEntry`
+
+```ts
+export function selectInferrerEntry( framework: string, ): IResponseInferrerEntry | null
+```
+
+The entry that serves `framework`, or `null`.
+
+Same lookup as `selectInferrer`, but it also answers *which*
+inferrer it is — what the coverage reporter needs to attribute a
+percentage to an id.
+
+#### `inferrerIdForFramework`
+
+```ts
+export function inferrerIdForFramework(framework: string): ResponseInferrerId | null
+```
+
+The id of the inferrer that serves `framework`, or `null`.
+
+#### `__setResponseInferrersForTest`
+
+```ts
+export function __setResponseInferrersForTest( list: ReadonlyArray<IResponseInferrerEntry>, ): void
+```
+
+Replaces the whole registry — test-only escape hatch.
+
+Tests that need a specific inferrer (or none at all) seed the
+registry here instead of reaching into the module's internals. The
+list may contain two inferrers for the same framework on purpose:
+that is how the dispatcher is tested against a registry that was
+assembled by hand.
+
+#### `__resetResponseInferrersForTest`
+
+```ts
+export function __resetResponseInferrersForTest(): void
+```
+
+Restores the registry to the state production has — the six core
+inferrers and nothing else. Test-only counterpart of
+`__setResponseInferrersForTest`.
+
+They are registered again, through the same door, so the reset
+cannot hand back a registry the production code would refuse.
+
+#### `adaptLegacyResponseInferrer`
+
+```ts
+export function adaptLegacyResponseInferrer( legacy: ILegacyResponseInferrer, ): IResponseInferrer
+```
+
+Wraps a legacy inferrer in the agnostic contract.
+
+The four inferrers that predate this slice implement
+`ILegacyResponseInferrer`: they take an endpoint projection plus a
+source file and return a list of entries. The agnostic contract
+takes a route plus a context and returns a spec or `null`.
+
+The adapter is the whole translation:
+
+- the route **is** the endpoint projection (both carry method, uri,
+  source file and line);
+- the context's source **is** the source file;
+- a list becomes a spec, and an empty list becomes `null` — which is
+  what the new contract means by "no signal".
+
+The **detect** of the adapter answers the framework question only,
+and that is not a shortcut: the legacy shape is file-level. It
+receives an endpoint projection and a file, never a route, so it
+cannot know whether *this* route uses the construct it reads — the
+annotations of the whole file are what it sees. The construct
+question is therefore answered by `infer()`, which returns nothing
+when the file carries no signal.
+
+Nothing about the legacy behaviour changes: the same code runs, over
+the same input, with the same result.
+
+### `packages/core/schema/build-schema-graph.helper.ts`
+
+Build a `SchemaGraph` from `IValidationSpec[]`.
+
+#### `createObjectNode`
+
+```ts
+export function createObjectNode( id: SchemaNodeId, children: ReadonlyArray<ISchemaEdge>, options: ICompositeOptions =
+```
+
+Builds an `object` node with the given children.
+
+`children` is copied: mutating the caller's array afterwards does
+not affect the node. The id is provided by the caller (typically the
+builder) to avoid collisions in graphs under construction.
+
+#### `createArrayNode`
+
+```ts
+export function createArrayNode( id: SchemaNodeId, itemId: SchemaNodeId, options: ICompositeOptions =
+```
+
+Builds an `array` node whose only child is `itemId`.
+
+The item lives in an `ISchemaEdge` with `name: "items"` and
+`required: true` — an array without an item is not an array, and an
+optional item in an array does not exist in JSON Schema (`items`
+always applies to every element).
+
+#### `SchemaGraphBuilder`
+
+```ts
+export class SchemaGraphBuilder
+```
+
+`SchemaGraph` builder.
+
+Keeps a local id counter and a node map. Each `add*` returns the id
+of the created node, so the caller can chain references without
+inventing ids. The builder is **single-use**: after `build()`, it
+accepts no more `add*`.
+
+#### `buildSchemaGraph`
+
+```ts
+export function buildSchemaGraph( specs: ReadonlyArray<IValidationSpec>, options: IBuildOptions =
+```
+
+Builds a minimum `SchemaGraph` from `IValidationSpec[]`.
+
+The root node is an `object` with one child per spec. Each spec is
+translated with `SchemaGraphBuilder.addFromSpec`. The resulting graph
+serves exporters that know how to read it and, with `flatten-helper`,
+those that do not.
+
+### `packages/core/schema/flatten.helper.ts`
+
+Flatten a `SchemaGraph` into the flat `IEndpointField[]` list.
+
+#### `flatten`
+
+```ts
+export function flatten( graph: ISchemaGraph, location: TFieldLocation = "body", ): IEndpointField[]
+```
+
+Flattens the graph starting from its root.
+
+Shortcut for `flattenFrom(graph, graph.root, "body")`.
+
+#### `flattenFrom`
+
+```ts
+export function flattenFrom( graph: ISchemaGraph, rootId: SchemaNodeId, location: TFieldLocation, ): IEndpointField[]
+```
+
+Flattens a subgraph starting at a specific node.
+
+`rootId` must be in `graph.nodes`. If it is not, returns `[]`: the
+graph does not contain the root, so there is nothing to flatten.
+
+`location` is the location assigned to the emitted fields. The same
+graph can be flattened once with `body` and once with `query` if the
+caller cares (not the case today, but the function accepts it without
+cost).
+
+### `packages/core/schema/reference.helper.ts`
+
+Reference nodes and `$ref` resolution in the `SchemaGraph`.
+
+#### `createReferenceNode`
+
+```ts
+export function createReferenceNode( ref: SchemaNodeId, id: SchemaNodeId, options: IReferenceOptions =
+```
+
+Builds a `reference` node.
+
+The id referenced by the node (`ref`) must exist in the target graph.
+Checking it at build time would be O(n) per node and would become
+brittle on graphs under construction: the builder usually adds the
+target **after** the `reference`, so early verification would fail.
+The invariant is validated at closure (`resolveReference` or in
+`flatten-helper`), not on every `add`.
+
+#### `resolveReference`
+
+```ts
+export function resolveReference( graph: ISchemaGraph, ref: SchemaNodeId, ): ISchemaNode | undefined
+```
+
+Resolves a local `$ref`.
+
+If the graph contains the target, returns the node. Otherwise returns
+`undefined`: the caller decides whether to treat it as an error
+(strict validation) or to emit the literal `$ref` (lax exporter).
+
+#### `deriveLocalRefName`
+
+```ts
+export function deriveLocalRefName( node: ISchemaNode, fallback: (node: ISchemaNode) => string = (n) => n.id, ): string
+```
+
+Derives a stable name to use as a nominal `$ref`.
+
+If the node has a `name`, it is used as-is: it is the logical name
+the scanner set and the one expected in the target document.
+Otherwise, it falls back to the id: less pretty, but it guarantees
+two calls with the same input produce the same name.
+
+Exporters that prefer not to invent names for anonymous nodes should
+check `node.name !== undefined` before calling here.
+
+### `packages/core/schema/scalar.helper.ts`
+
+Scalar node constructors for the `SchemaGraph`.
+
+#### `createScalarNode`
+
+```ts
+export function createScalarNode( scalarType: ScalarType, id: SchemaNodeId, options: IScalarOptions =
+```
+
+Builds a `scalar` node.
+
+The id is provided by the caller: usually it comes from the
+`SchemaGraphBuilder`, which keeps the single registry of nodes.
+Passing ids from outside the builder would cause silent collisions.
+
+#### `createEnumNode`
+
+```ts
+export function createEnumNode( values: ReadonlyArray<string>, id: SchemaNodeId, options: IScalarOptions =
+```
+
+Builds an `enum` node.
+
+`values` is not validated here: the caller knows what they are
+declaring, and an empty list is a real case (an `enum` declared in
+code that the scanner did not populate). What is frozen is the
+reference: an `enum` should not mutate after being built.
+
+#### `createLiteralNode`
+
+```ts
+export function createLiteralNode( literal: unknown, id: SchemaNodeId, ): ISchemaNode
+```
+
+Builds a `literal` node.
+
+`literal` is `unknown` because it accepts any JSON primitive value:
+a `42`, a `"foo"`, a `true`, a `null`. What the exporter does with it
+depends on the target format: JSON Schema renders it as
+`{ const: <value> }`.
+
+#### `constraintsFromValidationSpec`
+
+```ts
+export function constraintsFromValidationSpec( spec: IValidationSpec, ): ISchemaConstraints | undefined
+```
+
+Translates the constraints of an `IValidationSpec` to `ISchemaConstraints`.
+
+Constraints live **outside the node**: a `scalar` node carries its
+type (`string`, `integer`…) and this object carries the adornments
+(`format`, `minimum`, `pattern`…). Separating them makes clear that
+they are orthogonal, and that `flatten-helper` can treat constraints
+as metadata without walking the graph.
+
+Returns `undefined` if there are no constraints: `ISchemaNode`
+distinguishes between "has no constraints" and "has empty
+constraints", and we respect that distinction here.
+
+### `packages/core/schema/serialize.helper.ts`
+
+Serialization of the `SchemaGraph` for process boundaries.
+
+#### `createSchemaGraph`
+
+```ts
+export function createSchemaGraph( nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>, root: SchemaNodeId, ): ISchemaGraph
+```
+
+Builds an `ISchemaGraph` from a `Map` and a root id.
+
+Returns an object with `toDTO()` bound to the map. This is the only
+valid way to satisfy the interface from external code: literals of
+the form `{ nodes: map, root }` no longer compile because the
+interface requires `toDTO`.
+
+If you need a graph from a DTO, use `fromDTO(dto)` (which in turn
+delegates here).
+
+#### `toDTO`
+
+```ts
+export function toDTO(graph: ISchemaGraph): ISchemaGraphDTO
+```
+
+Converts an `ISchemaGraph` to its JSON-serializable DTO.
+
+Implements the interface's `toDTO()` method and is also exported as
+a free function. Both paths produce the same result:
+`graph.toDTO() === toDTO(graph)` for any graph.
+
+The `nodes` array comes out in the underlying `Map`'s iteration
+order (insertion order). That guarantees two calls on the same
+graph produce the same DTO, and `fromDTO(toDTO(graph))` recovers
+the same graph by content equality.
+
+#### `fromDTO`
+
+```ts
+export function fromDTO(dto: ISchemaGraphDTO): ISchemaGraph
+```
+
+Rebuilds an `ISchemaGraph` from a DTO.
+
+Creates a new `Map` from the DTO entries and wraps it with
+`createSchemaGraph` (which adds `toDTO`). Useful on the opposite
+boundary: if the graph comes as JSON from MCP, cache, or a persisted
+snapshot, this function returns it in the in-memory form exporters
+work with.
+
+#### `sortByLocation`
+
+```ts
+export function sortByLocation(graph: ISchemaGraph): ISchemaGraph
+```
+
+Returns a copy of the graph with nodes in stable order.
+
+Today: the copy keeps the iteration order of the original `Map`
+(insertion order), so the result is stable for the same input
+graph.
+
+Tomorrow: when `ISchemaNode` carries `location?: { line, column }`,
+this function sorts by `(line, column, id)` — the same order in
+which they appear in the source file. The AST frontend
+(`a00010 S7`) produces that top-down order; this helper preserves
+it when crossing the JSON boundary.
+
+### `packages/core/schema/union.helper.ts`
+
+Union and intersection nodes for the `SchemaGraph`.
+
+#### `createUnionNode`
+
+```ts
+export function createUnionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
+```
+
+Builds a `union` node (`oneOf`).
+
+`alternatives` may have a single element: `oneOf` with a single
+candidate is legal and flattens to that candidate. We do not flatten
+it here: if the caller wants it flat, they build it flat. The helper
+only respects the shape it receives.
+
+#### `createIntersectionNode`
+
+```ts
+export function createIntersectionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
+```
+
+Builds an `intersection` node (`allOf`).
+
+Empty: an `allOf` without candidates equals `true` in JSON Schema,
+which is a pathological case. The caller decides whether to pass an
+empty list (the helper respects it without error) or reject it before
+calling.
+
+### `packages/core/services/output-sink.service.ts`
+
+Concrete output sinks used by the CLI commands.
+
+#### `ConsoleOutputSink`
+
+```ts
+export class ConsoleOutputSink implements IOutputSink
+```
+
+#### `JsonModeConsoleSink`
+
+```ts
+export class JsonModeConsoleSink implements IOutputSink
+```
+
+Sink for `--json` mode: human traces go to stderr (stdout is reserved
+for the JSON report), errors go to stderr, JSON report goes to stdout.
+
+#### `selectOutputSink`
+
+```ts
+export function selectOutputSink(options:
+```
+
+Pick a sink based on whether `--json` is present.
+
+Callers (the CLI scripts) call this once with the parsed flags and
+pass the sink down. There is no global state — two CLI invocations in
+the same process can pick different sinks without interference.
+
+### `packages/core/session/history-recorder.service.ts`
+
+#### `diffSnapshots`
+
+```ts
+export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
+```
+
+#### `HistoryRecorderService`
+
+```ts
+export class HistoryRecorderService
+```
+
+### `packages/core/session/project-session.service.ts`
+
+ProjectSession — single scan per project, immutable snapshot, watch stub.
+
+#### `openSession`
+
+```ts
+export async function openSession( projectRoot: string, options: IProjectSessionOptions, ): Promise<IProjectSession>
+```
+
+Opens (or returns) a session for `projectRoot`.
+
+The first call triggers a full scan. Subsequent calls for the same
+root return the existing session without scanning again.
+
+#### `getSession`
+
+```ts
+export function getSession(projectRoot: string): IProjectSession | null
+```
+
+Returns the open session for `projectRoot`, or `null` if none exists.
+
+Useful for CLI commands that want to reuse an existing session without
+starting a new scan.
+
+#### `closeAllSessions`
+
+```ts
+export function closeAllSessions(): void
+```
+
+Closes all active sessions and resets the registry.
+
+Intended for use in tests.
+
+### `packages/core/session/project-snapshot.ts`
+
+Immutable snapshot produced by a ProjectSession scan.
+
+#### `makeSnapshot`
+
+```ts
+export function makeSnapshot(opts:
+```
+
+### `packages/core/session/session-error.ts`
+
+Typed errors emitted by the session layer.
+
+#### `SessionClosedError`
+
+```ts
+export class SessionClosedError extends Error
+```
+
+#### `SessionAlreadyOpenError`
+
+```ts
+export class SessionAlreadyOpenError extends Error
+```
+
+#### `SessionAbortedError`
+
+```ts
+export class SessionAbortedError extends Error
+```
+
+### `packages/core/session/session-id.ts`
+
+Generates stable, unique session identifiers.
+
+#### `newSessionId`
+
+```ts
+export function newSessionId(projectRoot: string): string
+```
+
+Returns a new session id for the given `projectRoot`.
+
+The id is stable enough to log but is NOT a cryptographic token.
+
+### `packages/core/session/snapshot-hash.service.ts`
+
+#### `canonicalSnapshotJson`
+
+```ts
+export function canonicalSnapshotJson(snapshot: ICanonicalSnapshot): string
+```
+
+#### `snapshotSha256`
+
+```ts
+export function snapshotSha256(snapshot: ICanonicalSnapshot): string
+```
+
+#### `snapshotHashFromJson`
+
+```ts
+export function snapshotHashFromJson(json: string): string
+```
+
+### `packages/core/state/canonical-snapshot.serializer.ts`
+
+#### `canonicalSnapshotJson`
+
+```ts
+export function canonicalSnapshotJson(snapshot: IProjectSnapshot): string
+```
+
+#### `canonicalSnapshotDigest`
+
+```ts
+export function canonicalSnapshotDigest(snapshot: IProjectSnapshot): string
+```
+
+#### `serializeCanonicalSnapshot`
+
+```ts
+export function serializeCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonicalSnapshot
+```
+
+#### `parseCanonicalSnapshot`
+
+```ts
+export function parseCanonicalSnapshot(json: string): IProjectSnapshot
+```
+
+### `packages/core/state/shadow-state-writer.service.ts`
+
+#### `ShadowStateWriterService`
+
+```ts
+export class ShadowStateWriterService
+```
+
+### `packages/core/state/snapshot-activation.service.ts`
+
+#### `SnapshotActivationConflictError`
+
+```ts
+export class SnapshotActivationConflictError extends Error
+```
+
+#### `SnapshotActivationService`
+
+```ts
+export class SnapshotActivationService
+```
+
+### `packages/core/state/snapshot-transaction.service.ts`
+
+#### `SnapshotTransactionService`
+
+```ts
+export class SnapshotTransactionService
+```
+
+### `packages/core/state/sqlite/migrations.ts`
+
+#### `StateDatabaseMigrationError`
+
+```ts
+export class StateDatabaseMigrationError extends Error
+```
+
+#### `migrateStateDatabase`
+
+```ts
+export function migrateStateDatabase(database: IStateMigrationDatabase): number
+```
+
+### `packages/core/state/sqlite/sqlite-connection.adapter.ts`
+
+#### `openStateDatabase`
+
+```ts
+export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection<Database>
+```
+
+### `packages/core/state/sqlite/sqlite-project.repository.ts`
+
+#### `SqliteProjectRepository`
+
+```ts
+export class SqliteProjectRepository
+```
+
+### `packages/core/state/sqlite/sqlite-snapshot.repository.ts`
+
+#### `SqliteSnapshotRepository`
+
+```ts
+export class SqliteSnapshotRepository
+```
+
+### `packages/core/state/sqlite/state-db-path.service.ts`
+
+#### `resolveStateDatabasePath`
+
+```ts
+export function resolveStateDatabasePath(environment: Record<string, string | undefined> = process.env): string
+```
+
+### `packages/core/state/stable-id.service.ts`
+
+#### `StableIdService`
+
+```ts
+export class StableIdService implements IStableIdFactory
+```
+
+### `packages/core/state/state-parity.service.ts`
+
+#### `StateParityService`
+
+```ts
+export class StateParityService
+```
+
+### `packages/core/transport/bridge-error.ts`
+
+`bridge-error.ts` — typed errors shared by every transport bridge.
+
+#### `BridgeError`
+
+```ts
+export class BridgeError extends Error
+```
+
+A carrier-level failure the bridge raises when it cannot reach
+the dispatcher.
+
+`public` — the JSON-RPC code the wire surface uses (typically
+`INVALID_PARAMS` or `INTERNAL_ERROR`).
+`app` — the `IApiError` envelope to embed into `data`.
+
+The constructor is the only sanctioned path. Bridges catch this
+type and emit a JSON-RPC error response without ever re-throwing
+to the client.
+
+#### `bridgeError`
+
+```ts
+export function bridgeError( publicCode: number, appError: IApiError, ): BridgeError
+```
+
+#### `bridgeFailure`
+
+```ts
+export function bridgeFailure( publicCode: number, code: ApiErrorCode, message: string, details?: Readonly<Record<string, unknown>>, ): BridgeError
+```
+
+#### `httpStatusFromApi`
+
+```ts
+export function httpStatusFromApi(app: IApiError): number
+```
+
+Picks the HTTP status the `http-bridge.server.ts` returns for an
+`IApiError`. The bridge always emits the JSON-RPC error envelope
+in the body too — the status is for HTTP-aware callers.
+
+  - `INVALID_INPUT`        → 400 (caller sent malformed data).
+  - `UNKNOWN_HANDLER`      → 404 (the path is unknown).
+  - `SESSION_NOT_FOUND`    → 404 (the session is unknown).
+  - `SERVICE_NOT_FOUND`    → 404.
+  - `OPERATION_NOT_FOUND`  → 404.
+  - `CANCELED`             → 499 (client closed request; nginx-style).
+  - `EXPORT_FAILED`        → 422 (semantically unprocessable).
+  - `EXECUTION_FAILED`     → 500.
+
+#### `httpStatusFromBridge`
+
+```ts
+export function httpStatusFromBridge(err: BridgeError): number
+```
+
+### `packages/core/transport/http-bridge.server.ts`
+
+#### `startHttpBridge`
+
+```ts
+export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge
+```
+
+Starts the HTTP bridge.
+
+Returns the URL + port + token so the caller can print them and
+(optionally) embed the token into the served HTML — exactly the
+way `startUiServer` does today.
+
+### `packages/core/transport/json-rpc-protocol.ts`
+
+`json-rpc-protocol.ts` — the wire shape shared by every bridge.
+
+#### `jsonRpcSuccess`
+
+```ts
+export function jsonRpcSuccess( id: JsonRpcId, result: unknown, ): IJsonRpcSuccessResponse
+```
+
+#### `jsonRpcError`
+
+```ts
+export function jsonRpcError( id: JsonRpcId | null, code: number, message: string, data?: Readonly<Record<string, unknown>>, ): IJsonRpcErrorResponse
+```
+
+Builds a typed error response.
+
+`data` carries the application's `IApiError` envelope so the
+caller can recover `code` + `details` without re-parsing
+`message`. `code` is the JSON-RPC standard code; the
+application-specific code lives at `data.code`.
+
+Accepts a `number` (not narrowed to `StandardJsonRpcErrorCode`)
+so bridges that propagate carrier-specific HTTP statuses (403,
+499, ...) can still emit a JSON-RPC envelope without casting.
+
+#### `jsonRpcCancel`
+
+```ts
+export function jsonRpcCancel(requestId: JsonRpcId): IJsonRpcNotification
+```
+
+#### `isJsonRpcFrame`
+
+```ts
+export function isJsonRpcFrame(value: unknown): value is IJsonRpcFrame
+```
+
+Type guard for the wire shape.
+
+We accept both requests (`id` present, `method` present) and
+notifications (`method` present, `id` absent), as well as
+responses (`id` + `result` OR `id` + `error`). Anything that does
+not match one of those shapes is rejected; the bridge surfaces a
+`PARSE_ERROR` to the caller.
+
+#### `wrapApiResult`
+
+```ts
+export function wrapApiResult( id: JsonRpcId, result: ApiResult<unknown>, ): IJsonRpcResponse
+```
+
+Wraps an `ApiResult` (the Application API's discriminated union)
+into the JSON-RPC response shape for a given `id`.
+
+On success: a `{ result: value }` response — the value is the
+`ApiResult` itself so the bridge author does not have to unwrap.
+On failure: a JSON-RPC error whose `data.code` mirrors the
+application code (`INVALID_INPUT`, `SESSION_NOT_FOUND`, ...).
+
+#### `wrapApiError`
+
+```ts
+export function wrapApiError( id: JsonRpcId | null, error: IApiError, ): IJsonRpcErrorResponse
+```
+
+Wraps an `IApiError` directly (used when the bridge fails before
+reaching the dispatcher — wrong path, malformed input, ...).
+
+### `packages/core/transport/operation-id.service.ts`
+
+#### `operationIdFor`
+
+```ts
+export function operationIdFor( transport: Transport, context: IOperationIdContext =
+```
+
+### `packages/core/transport/static-asset.server.ts`
+
+#### `isInsideRoot`
+
+```ts
+export function isInsideRoot(directory: string, pathname: string): boolean
+```
+
+Whether `pathname` stays inside `directory`.
+
+A path that climbs out of the served folder is not "a file that
+happens to be missing": it is an attempt. The two deserve different
+answers — a missing file may be a route of a single-page app, and
+the server answers those with its page — while an attempt gets a
+flat **404**, never the page and never the file it was aiming at.
+
+#### `readAsset`
+
+```ts
+export async function readAsset( directory: string, pathname: string, ): Promise<IAsset | null>
+```
+
+Reads one file from `directory`.
+
+Returns `null` when the file does not exist, so the caller can fall
+back to its own routing — a single-page app asks for paths that are
+not files.
+
+A path that tries to escape the directory is refused. The server
+binds to loopback, but the browser is the one asking, and a path
+that climbs out of the served folder would turn the interface into
+an arbitrary file reader.
+
+#### `plantToken`
+
+```ts
+export function plantToken(html: string, token: string, target: TokenTarget = "html"): string
+```
+
+Plants the token in the HTML.
+
+The `<html>` element is the target for the Angular app: its
+`document.documentElement.dataset` is the first thing that exists
+and the last thing to go, so the token is there before the app boots
+and while it runs.
+
+### `packages/core/transport/stdio-bridge.server.ts`
+
+#### `serveStdio`
+
+```ts
+export function serveStdio(opts: IStdioBridgeOptions):
+```
+
+Runs the bridge until the input is exhausted.
+
+Resolves once the input iterator ends (EOF on stdin) or the
+caller calls the returned `close()`. Returns a `close()` function
+the CLI / tests call to drain pending responses and release the
+controller map.
+
+### `packages/core/transport/transport-narrow.guard.ts`
+
+#### `isHttpTransport`
+
+```ts
+export function isHttpTransport(transport: unknown): transport is IHttpTransport
+```
+
+#### `isGraphQlTransport`
+
+```ts
+export function isGraphQlTransport(transport: unknown): transport is IGraphQlTransport
+```
+
+#### `isGrpcTransport`
+
+```ts
+export function isGrpcTransport(transport: unknown): transport is IGrpcTransport
+```
+
+#### `isWebSocketTransport`
+
+```ts
+export function isWebSocketTransport(transport: unknown): transport is IWebSocketTransport
+```
+
+#### `isSseTransport`
+
+```ts
+export function isSseTransport(transport: unknown): transport is ISseTransport
+```
+
+#### `isMessageBrokerTransport`
+
+```ts
+export function isMessageBrokerTransport(transport: unknown): transport is IMessageBrokerTransport
+```
+
+### `packages/core/validation/validation-enricher.service.ts`
+
+Registry of framework-agnostic validation enrichers.
+
+#### `registerValidationEnricher`
+
+```ts
+export function registerValidationEnricher(e: IValidationEnricher): void
+```
+
+Registers (or replaces) an enricher for its provider.
+
+Idempotent: registering the same provider twice leaves the second
+one active. The contract says "one enricher per provider", so
+double registrations are a programming error — but the registry
+does not complain because a test that registers a stub and then the
+real one (or vice versa) is still useful as long as they behave the
+same.
+
+#### `getValidationEnricher`
+
+```ts
+export function getValidationEnricher( p: ValidationProvider, ): IValidationEnricher | undefined
+```
+
+#### `runValidationEnrichers`
+
+```ts
+export function runValidationEnrichers(spec: EndpointSpec): EndpointSpec
+```
+
+Runs the enricher registered for the spec's `provider`.
+
+  - No `validationSource` → nothing to enrich; returns the spec unchanged.
+  - With `validationSource` but no registered enricher → not an
+    error: it means that framework has not migrated yet. The spec
+    comes back unchanged.
+  - With a registered enricher → returns `enricher.enrich(spec)`.
+
+The function is pure and synchronous. Phase 1 only needs this;
+moving I/O into the enrichers is follow-up for the next phase (each
+provider already loads its rules when building the spec, in the
+adapter).
+
+#### `_resetValidationEnrichersForTests`
+
+```ts
+export function _resetValidationEnrichersForTests(): void
+```
+
+### `packages/frameworks/index.ts`
+
+Capa de frameworks — todo lo que sabe de un framework concreto.
+
+#### `generateWithAllFrameworks`
+
+```ts
+export function generateWithAllFrameworks( projectRoot: string, options: IGenerateOptions =
+```
+
+Genera la colección con **todos** los frameworks soportados.
+
+Es el atajo para el 99% de los casos: el CLI, el plugin y el gate no
+quieren elegir catálogo, quieren el completo. Quien sí necesite un
+subconjunto (un test que solo debe ver un framework, un consumidor
+que embebe la librería) llama a `generateCollection()` directamente y
+le pasa el suyo.
+
+Multi-service contract (audit 2026-09-06 second pass §3.3):
+  - one service                       → `IGenerationResult` of that service
+  - N services + `combineServices:false` → throws
+    `MultipleServicesWithoutCombineError` (x00024). Callers that
+    want the array use `generateCollectionsWithAllFrameworks`.
+  - N services + `combineServices:true`  → one combined `IGenerationResult`.
+
+#### `generateCollectionsWithAllFrameworks`
+
+```ts
+export async function generateCollectionsWithAllFrameworks( projectRoot: string, options: IGenerateOptions =
+```
+
+Plural facade: ALWAYS returns a `ReadonlyArray<IGenerationResult>`,
+one entry per detected service. The single-service path returns a
+one-element array.
+
+Use this facade in CLI commands that must not silently drop the
+other services when `combineServices` is false (audit 2026-09-06
+§3.3 / §18 priority 7). The singular facade
+`generateWithAllFrameworks` is kept for callers that only handle
+the combined case.
+
+Implementation note (x00059): this used to call the singular
+`generateCollection()`, which throws
+`MultipleServicesWithoutCombineError` (x00024) on a multi-service
+project without `--combine-services`. The contract is "ALWAYS an
+array"; the singular call broke the contract silently. Switched to
+the plural primitive so the facade actually returns the array.
+
+#### `summarizeWithAllFrameworks`
+
+```ts
+export function summarizeWithAllFrameworks( projectRoot: string, ): Promise<IProjectSummary>
+```
+
+Inspecciona un proyecto con todos los frameworks soportados.
+
+El equivalente de `generateWithAllFrameworks()` para el camino de
+solo lectura: `summary`, el modo `--inspect` y el tool del plugin.
+

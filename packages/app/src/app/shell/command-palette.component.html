@@ -1,0 +1,26 @@
+@if (open()) {
+  <div class="scrim" (click)="close.emit()"></div>
+  <section #palette class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)">
+    <input
+      #search
+      autofocus
+      role="combobox"
+      aria-expanded="true"
+      aria-autocomplete="list"
+      aria-controls="palette-listbox"
+      [attr.aria-activedescendant]="selectedIndex() >= 0 ? optionId(selectedIndex()) : null"
+      [value]="query()"
+      (input)="updateQuery(search.value)"
+      [placeholder]="i18n.translate('palette.placeholder')"
+      (keydown)="onKeydown($event)"
+    />
+    <div id="palette-listbox" role="listbox">
+      @for (command of filteredCommands(); track command.id; let index = $index) {
+        <button type="button" role="option" [id]="optionId(index)" [attr.aria-selected]="index === selectedIndex()" [class.selected]="index === selectedIndex()" (click)="choose(command)">
+          <span>{{ i18n.translate(command.labelKey) }}</span><kbd>{{ command.shortcut }}</kbd>
+        </button>
+      } @empty { <p>{{ i18n.translate("palette.empty") }}</p> }
+    </div>
+    <button class="close" type="button" (click)="close.emit()">{{ i18n.translate("palette.close") }}</button>
+  </section>
+}
