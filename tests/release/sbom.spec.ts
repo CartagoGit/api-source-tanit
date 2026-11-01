@@ -69,6 +69,7 @@ import {
   SBOM_SPEC_VERSION,
 } from "../../packages/contracts/constants/release/sbom.constant.js";
 import { UPDATE_PUBLIC_KEY_PATH } from "../../packages/contracts/constants/release/updater.constant.js";
+import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
 
 /** El script que mide el staging y escribe el manifest. */
 const PREPARE = join(REPO_ROOT, "scripts", "release", "prepare-artifacts.mjs");
@@ -81,8 +82,16 @@ const PUBLISH_GATE = join(REPO_ROOT, "scripts", "release", "publish-gate.mjs");
 /** El script que construye el manifest firmado del updater. */
 const BUILD_UPDATE = join(REPO_ROOT, "scripts", "release", "build-update-manifest.mjs");
 
-/** La versión que dice la configuración de Tauri. */
-const VERSION = "1.0.0";
+/**
+ * La versión que dice la configuración de Tauri.
+ *
+ * Viene de la constante y no de un literal: el nombre del SBOM, el de
+ * la provenance y el de la attestation llevan la versión dentro, y
+ * escribirla a mano aquí es garantizar que este test se rompa en
+ * cuanto el producto suba de número —que es justo lo que pasó al
+ * pasar a `0.1.0-alpha.1`.
+ */
+const VERSION = CLI_VERSION;
 /** El identificador de la clave de attestation, el que dice el contrato. */
 const KEY_ID = SBOM_DEFAULT_KEY_ID;
 /** El commit del fixture: no es un commit de verdad, es una etiqueta. */
@@ -1560,10 +1569,10 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
 
   test.skipIf(!HAS_OPENSSL)("el gate no adjunta dos ficheros con el mismo nombre", async () => {
     const copy = await copyReleaseStage("stage-with-duplicates");
-    const deb = join(copy, "linux", "x64", "deb", "Tanit_1.0.0_x64.deb");
+    const deb = join(copy, "linux", "x64", "deb", `Tanit_${VERSION}_x64.deb`);
     const twin = join(copy, "windows", "x64", "deb");
     await mkdir(twin, { recursive: true });
-    await writeFile(join(twin, "Tanit_1.0.0_x64.deb"), "otro\n", "utf8");
+    await writeFile(join(twin, `Tanit_${VERSION}_x64.deb`), "otro\n", "utf8");
     expect(deb).toBeDefined();
     gateRefuses(
       ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
@@ -1582,7 +1591,7 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
 
   test.skipIf(!HAS_OPENSSL)("el gate no adjunta un artefacto que no está en el staging", async () => {
     const copy = await copyReleaseStage("stage-without-artifact");
-    await rm(join(copy, "linux", "x64", "deb", "Tanit_1.0.0_x64.deb"), { force: true });
+    await rm(join(copy, "linux", "x64", "deb", `Tanit_${VERSION}_x64.deb`), { force: true });
     gateRefuses(
       ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
       ["the manifest describes it, but it is not in the staging"],
@@ -2573,7 +2582,7 @@ describe("cada control del verificador del SBOM está atado a una prueba", () =>
     });
     rejects(
       [...without(baseArgs(), "--manifest"), "--manifest", manifest],
-      ["the SBOM describes the version 1.0.0 and the release manifest the version 9.9.9"],
+      [`the SBOM describes the version ${VERSION} and the release manifest the version 9.9.9`],
     );
   });
 
@@ -2582,7 +2591,7 @@ describe("cada control del verificador del SBOM está atado a una prueba", () =>
       draft.artifacts.push({
         path: "linux/x64/deb/ghost.deb",
         sha256: "0".repeat(64),
-        version: "1.0.0",
+        version: VERSION,
         os: "linux",
         arch: "x64",
         bundle: "deb",
@@ -2638,7 +2647,7 @@ describe("cada control del verificador del SBOM está atado a una prueba", () =>
     });
     rejects(
       [...without(baseArgs(), "--update-manifest"), "--update-manifest", broken],
-      ["the update manifest offers the version 9.9.9 and the release manifest the version 1.0.0"],
+      [`the update manifest offers the version 9.9.9 and the release manifest the version ${VERSION}`],
     );
   });
 

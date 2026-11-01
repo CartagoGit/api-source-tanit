@@ -64,6 +64,35 @@ Dependabot sobre un ejemplo no llega nunca antes.
 la alerta; la cierra el arreglo en `main`. Por eso promover `develop`
 a `main` es también una operación de seguridad.
 
+## Las releases
+
+`develop` es donde se trabaja. `main` es donde **sale una versión**:
+cada PR de `develop` a `main` corta una versión. Por eso el tag se
+pone sobre `main`, y por eso los workflows de release sólo se
+disparan desde ahí.
+
+| Workflow | Cuándo | Qué hace |
+|---|---|---|
+| `release-cut` | Al empujar un tag `v*.*.*` | Crea la release de GitHub. Comprueba que el tag diga lo mismo que la versión del repo, saca las notas del CHANGELOG y marca la release como prerelease si el canal lo dice. |
+| `release-binaries` | Al publicar la release | Compila el ejecutable autocontenido por plataforma y lo adjunta. |
+| `release-desktop` | Al publicar la release | Compila los instaladores nativos por plataforma. Con `release.sign=false` —lo de hoy— los construye pero no publica nada. |
+
+**El canal lo decide el prefijo de la versión**, no el workflow.
+`lint:release-channel` es la fuente: `release-cut` **pregunta** con
+`--print-channel` en vez de decidir por su cuenta. Si el workflow
+decidiera él, un día se desincronizaría del gate y una release
+estable acabaría marcando un alfa.
+
+**Las notas salen del CHANGELOG.** La sección de la versión **es** las
+notas de la release; `scripts/release/release-notes.mjs` la extraa y
+`release-cut` **para** si no la encuentra. Una release sin notas es
+una release que dice "no hay nada".
+
+**No hay publicación en npm.** La distribución es la release de GitHub:
+el ejecutable autocontenido, que no necesita Bun ni Node en la máquina
+destino. Publicar en npm es irreversible, y no había ninguna decisión
+detrás de hacerlo.
+
 ## Ejecución real
 
 Para consultar GitHub de verdad hacen falta estas variables de entorno:

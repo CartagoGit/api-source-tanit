@@ -1,12 +1,12 @@
 # Instalación y uso
 
-> **Estado de publicación.** El paquete **todavía no está en npm**, así
-> que `bun add -g api-source-tanit` aún no funciona. Hasta que se
-> publique, se instala **desde el repositorio** — ver
-> [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
-> documento describe los comandos definitivos; el único cambio tras
-> publicar será poder usar el nombre del paquete en lugar de la URL de
-> git.
+> **Cómo se distribuye.** Tanit no se publica en npm. Se distribuye en
+> la **release de GitHub**, como ejecutable autocontenido por
+> plataforma: se descarga y funciona, sin Bun ni Node en la máquina
+> destino. Ver [Instalar desde la release](#instalar-desde-la-release).
+>
+> Mientras tanto, se puede instalar **desde el repositorio** — ver
+> [Instalar desde el repositorio](#instalar-desde-el-repositorio).
 >
 > Que el paquete funciona instalado está verificado de forma automática:
 > `bun run validate:package` lo empaqueta con `npm pack`, lo instala en
@@ -14,12 +14,14 @@
 
 Tres formas de usarlo, según cómo trabajes.
 
-- [Instalar hoy](#instalar-hoy-desde-el-repositorio) — mientras no esté publicado.
+- [Desde la release](#instalar-desde-la-release) — el ejecutable autocontenido.
+- [Desde el repositorio](#instalar-desde-el-repositorio) — mientras no haya release.
 - [Global](#1-global) — lo instalas una vez y lo usas en cualquier proyecto.
 - [Por proyecto](#2-por-proyecto) — queda fijado en el repo y lo usa todo el equipo.
 - [Sin instalar](#3-sin-instalar-bunx) — una ejecución suelta.
 
-Requisito común: **[Bun](https://bun.sh) 1.0 o superior**.
+Requisito común: **[Bun](https://bun.sh) 1.0 o superior**, salvo que
+uses el ejecutable autocontenido, que no lo necesita.
 
 ## Host MCP local durante el desarrollo
 
@@ -34,7 +36,30 @@ en npm. Cuando se publique, podrá sustituirse por la forma `bunx
 
 ---
 
-## Instalar hoy (desde el repositorio)
+## Instalar desde la release
+
+Cada release de GitHub lleva el ejecutable autocontenido por
+plataforma. No necesita Bun ni Node instalados.
+
+| Plataforma | Fichero |
+|---|---|
+| macOS (x64 / arm64) | `apisrc-darwin-x64` / `apisrc-darwin-arm64` |
+| Linux (x64) | `apisrc-linux-x64` |
+| Windows (x64) | `apisrc-windows-x64.exe` |
+
+```bash
+# macOS
+curl -fsSL -o apisrc \
+  https://github.com/CartagoGit/api-source-tanit/releases/latest/download/apisrc-darwin-arm64
+chmod +x apisrc
+./apisrc --version
+```
+
+En Windows, `apisrc-windows-x64.exe` se descarga y se ejecuta igual.
+
+---
+
+## Instalar desde el repositorio
 
 ```bash
 # Global
@@ -49,10 +74,10 @@ También sirve clonar y empaquetar:
 ```bash
 git clone https://github.com/CartagoGit/api-source-tanit
 cd api-source-tanit && bun install
-npm pack                       # produce api-source-tanit-1.0.0.tgz
+npm pack                       # produce api-source-tanit-0.1.0-alpha.1.tgz
 
 cd ~/proyectos/mi-api
-bun add -d /ruta/a/api-source-tanit-1.0.0.tgz
+bun add -d /ruta/a/api-source-tanit-0.1.0-alpha.1.tgz
 ```
 
 En ambos casos queda disponible el binario `apisrc`.
@@ -69,7 +94,7 @@ bun --version
 La opción cómoda si tocas varios proyectos.
 
 ```bash
-bun add -g api-source-tanit
+bun add -g github:CartagoGit/api-source-tanit
 ```
 
 Desde la raíz de tu API:
@@ -103,7 +128,7 @@ mano.
 ### Proyectos con `package.json` (Node, NestJS, Next.js, Express…)
 
 ```bash
-bun add -d api-source-tanit
+bun add -d github:CartagoGit/api-source-tanit
 ```
 
 ```jsonc
@@ -124,11 +149,11 @@ bun run postman
 
 ### Proyectos sin `package.json` (PHP, Python, Go, Java, .NET)
 
-No hace falta meter un `package.json` en tu repo. Se invoca con `bunx` y
-`--project-root`:
+No hace falta meter un `package.json` en tu repo. Se invoca con el
+ejecutable autocontenido y `--project-root`:
 
 ```bash
-bunx api-source-tanit generate --project-root .
+apisrc generate --project-root .
 ```
 
 Y se deja escrito donde ya tengas tus tareas:
@@ -137,20 +162,20 @@ Y se deja escrito donde ya tengas tus tareas:
 # Makefile
 .PHONY: postman
 postman:
-	bunx api-source-tanit generate --project-root .
+	apisrc generate --project-root .
 ```
 
 ```yaml
 # composer.json (Laravel/Symfony) — sección scripts
 "scripts": {
-    "postman": "bunx api-source-tanit generate --project-root ."
+    "postman": "apisrc generate --project-root ."
 }
 ```
 
 ```toml
 # pyproject.toml con taskipy
 [tool.taskipy.tasks]
-postman = "bunx api-source-tanit generate --project-root ."
+postman = "apisrc generate --project-root ."
 ```
 
 > **`--project-root` no es opcional aquí.** Sin él, el CLI escanea el

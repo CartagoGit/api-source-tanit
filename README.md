@@ -46,7 +46,7 @@ framework aunque no esté en la lista.
 ## Empezar
 
 ```bash
-# 1. Instalar (aún no publicado en npm — se instala desde el repo)
+# 1. Instalar (se distribuye en las releases de GitHub, no en npm)
 bun add -g github:CartagoGit/api-source-tanit
 
 # 2. Generar, desde la raíz de tu proyecto

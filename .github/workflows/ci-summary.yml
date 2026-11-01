@@ -2,8 +2,8 @@
 #
 # INERT TODAY, and deliberately named so it cannot become a trap. A
 # `workflow_run` trigger only fires from the DEFAULT branch, and this
-# file exists on `develop` only — `main` carries just release-binaries,
-# release-desktop and validate. So it has never executed.
+# file lives on `develop` — it reaches `main` only when a version is
+# promoted. Until then it has never executed.
 #
 # Its job used to be called `ci-summary`, the same name as the job
 # INSIDE `validate.yml`. That job is the required status check on
