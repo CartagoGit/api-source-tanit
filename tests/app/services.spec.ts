@@ -62,7 +62,7 @@ describe("ServicesClient", () => {
     TestBed.configureTestingModule({
       providers: [
         ServicesClient,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const client = TestBed.inject(ServicesClient);
@@ -81,7 +81,7 @@ describe("ServicesClient", () => {
     TestBed.configureTestingModule({
       providers: [
         ServicesClient,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const client = TestBed.inject(ServicesClient);
@@ -95,23 +95,24 @@ describe("ServicesClient", () => {
     expect(services[0]?.operationCount).toBe(2);
   });
 
-  it("says that the detail is not exposed yet", async () => {
-    const requestPending = vi.fn(async () => ({ service: { serviceId: "api" } }));
+  it("asks the backend for the detail of one service", async () => {
+    const request = vi.fn(async () => ({
+      service: { serviceId: "api", framework: "express", endpointCount: 12, transports: ["http"] },
+    }));
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [
-        ServicesClient,
-        { provide: HostBridgeClient, useValue: { request: vi.fn(), requestPending } },
-      ],
+      providers: [ServicesClient, { provide: HostBridgeClient, useValue: { request } }],
     });
     const client = TestBed.inject(ServicesClient);
 
-    await client.detail("/workspace", "api");
+    const detail = await client.detail("/workspace", "api");
 
-    expect(requestPending).toHaveBeenCalledWith("service-detail", {
+    expect(request).toHaveBeenCalledWith("service-detail", {
       projectRoot: "/workspace",
       serviceId: "api",
     });
+    expect(detail.endpointCount).toBe(12);
+    expect(detail.framework).toBe("express");
   });
 });
 
@@ -128,7 +129,7 @@ describe("HistoryClient", () => {
     TestBed.configureTestingModule({
       providers: [
         HistoryClient,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const client = TestBed.inject(HistoryClient);
@@ -144,14 +145,31 @@ describe("HistoryClient", () => {
     expect(entries[1]?.changedPaths).toEqual(["src/a.ts"]);
   });
 
-  it("asks for the persisted history as pending", async () => {
-    const requestPending = vi.fn(async (_operation: string) => ({}));
+  it("asks the backend for the persisted revisions", async () => {
+    const request = vi.fn(async (operation: string) => {
+      if (operation === "history-list") {
+        return { entries: [{ id: "a", timestamp: "2026-10-31T10:00:00.000Z", formats: ["postman"], count: 3, output: "/w/api.json", sha256: "ff", source: "export" }], total: 1 };
+      }
+      return {};
+    });
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [
-        HistoryClient,
-        { provide: HostBridgeClient, useValue: { request: vi.fn(), requestPending } },
-      ],
+      providers: [HistoryClient, { provide: HostBridgeClient, useValue: { request } }],
+    });
+    const client = TestBed.inject(HistoryClient);
+
+    const revisions = await client.revisions("/workspace");
+
+    expect(request).toHaveBeenCalledWith("history-list", { projectRoot: "/workspace", limit: undefined });
+    expect(revisions.entries).toHaveLength(1);
+    expect(revisions.entries[0]?.sha256).toBe("ff");
+  });
+
+  it("asks the backend to compare, re-export and restore", async () => {
+    const request = vi.fn(async (_operation: string, _input: unknown) => ({}));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [HistoryClient, { provide: HostBridgeClient, useValue: { request } }],
     });
     const client = TestBed.inject(HistoryClient);
 
@@ -160,7 +178,7 @@ describe("HistoryClient", () => {
     await client.reExport("/workspace", "a");
     await client.restore("/workspace", "a");
 
-    expect(requestPending.mock.calls.map((call) => call[0])).toEqual([
+    expect(request.mock.calls.map((call) => call[0])).toEqual([
       "history-diff",
       "history-compare-config",
       "history-re-export",

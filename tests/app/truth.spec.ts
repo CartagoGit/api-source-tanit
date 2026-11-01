@@ -31,7 +31,6 @@ import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridg
 function bridgeOf(answers: Record<string, (input: unknown) => unknown>): {
   bridge: {
     request: (operation: string, input: unknown) => Promise<unknown>;
-    requestPending: (operation: string, input: unknown) => Promise<unknown>;
     subscribe: (listener: (event: unknown) => void) => () => void;
   };
   calls: Array<{ operation: string; input: unknown }>;
@@ -43,10 +42,6 @@ function bridgeOf(answers: Record<string, (input: unknown) => unknown>): {
       const answer = answers[operation];
       if (answer === undefined) throw new Error(`unexpected operation: ${operation}`);
       return answer(input);
-    }),
-    requestPending: vi.fn(async (operation: string, input: unknown) => {
-      calls.push({ operation, input });
-      throw new Error(`UNKNOWN_HANDLER: ${operation}`);
     }),
     subscribe: vi.fn(() => () => undefined),
   };
@@ -154,7 +149,6 @@ describe("the endpoint list does not invent", () => {
           indexedTotal: 99,
         };
       }),
-      requestPending: vi.fn(async () => ({})),
       subscribe: vi.fn(() => () => undefined),
     };
     withBridge(bridge);

@@ -20,7 +20,6 @@ describe("CLI and GUI parity", () => {
     // built the way Angular builds it.
     const bridge = {
       request: vi.fn(async () => ({})),
-      requestPending: vi.fn(async () => ({})),
       subscribe: vi.fn(() => () => undefined),
     };
     TestBed.resetTestingModule();
