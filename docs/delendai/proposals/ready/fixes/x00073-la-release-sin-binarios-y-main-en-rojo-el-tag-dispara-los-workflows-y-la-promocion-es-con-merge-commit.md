@@ -78,6 +78,7 @@ la versión, que es donde la divergencia costó una release.
 - review-state: in_review
 - review-implementer: minimax-m3.1-flash-preview
 - review-log: resubmitted by finch — carried for minimax-m3.1-flash-preview: every commit it brings was made in minimax-m3.1-flash-preview's unit before finch's was entered
+- review-log: resubmitted by finch — carried for minimax-m3.1-flash-preview: every commit it brings was made in minimax-m3.1-flash-preview's unit before finch's was entered
 
 ### S2-el-gate-vigila-la-rama-de-release — S2 — El gate de protección comprueba también la rama de release
 - **Status**: pending
