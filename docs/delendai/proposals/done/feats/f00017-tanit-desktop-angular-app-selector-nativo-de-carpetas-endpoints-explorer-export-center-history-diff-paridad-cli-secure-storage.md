@@ -2,15 +2,20 @@
 id: f00017
 title: "Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage"
 kind: feat
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
 dependencies:
   - a00019#phase-3-project-session-index
-last-transition-id: 487b64bd-3ea3-4d5a-adc9-910e2fe837e0
-last-correlation-id: 487b64bd-3ea3-4d5a-adc9-910e2fe837e0
-last-transition-from: in-progress
+shippedIn:
+  - 167fd5e
+  - c6e4be3
+shipped-in: ["167fd5e", "c6e4be3"]
+last-transition-id: 8b7dee66-54e4-4208-9589-430fcf5c63b0
+last-correlation-id: 8b7dee66-54e4-4208-9589-430fcf5c63b0
+last-transition-from: review
+last-transition-at: 2026-11-01T04:31:39.050Z
 ---
 
 # f00017 — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage
