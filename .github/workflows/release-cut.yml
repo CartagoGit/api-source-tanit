@@ -70,7 +70,13 @@ jobs:
       - name: El canal lo dice el gate
         id: channel
         run: |
-          channel="$(bun run lint:release-channel --print-channel)"
+          # Invocación directa y no `bun run`: `bun run` escribe su
+          # propio banner, y que hoy vaya a stderr y no a stdout es un
+          # detalle del que este workflow no debería depender. Si el
+          # banner acaparara stdout, el canal sería una frase en vez
+          # de una palabra, y la release se marcaría como prerelease
+          # sin querer.
+          channel="$(bun scripts/gates/lint-release-channel.script.ts --print-channel)"
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "✓ el canal es $channel"
 
@@ -78,7 +84,7 @@ jobs:
         id: notes
         run: |
           version="${GITHUB_REF_NAME#v}"
-          bun run scripts/release/release-notes.mjs --version "$version" > notes.md
+          bun scripts/release/release-notes.mjs --version "$version" > notes.md
           echo "✓ notas encontradas para $version"
 
       - name: Crear la release
