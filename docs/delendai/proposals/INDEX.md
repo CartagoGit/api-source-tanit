@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00072` | `fix` | [`ready/fixes/x00072-zod-v4-en-los-ejemplos-y-en-la-fixture-de-trpc.md`](ready/fixes/x00072-zod-v4-en-los-ejemplos-y-en-la-fixture-de-trpc.md) |
 
 ## Bloqueadas
 
@@ -81,6 +82,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
 - `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
 - `f00016` — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic — `6be589b, a647b8e, 4d959bc, 07cfa5f, 5e32cb9`
+- `f00017` — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage — `167fd5e, c6e4be3`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
