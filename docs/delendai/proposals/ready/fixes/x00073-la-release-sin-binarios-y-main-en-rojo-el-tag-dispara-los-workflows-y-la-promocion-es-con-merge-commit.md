@@ -67,7 +67,7 @@ la versión, que es donde la divergencia costó una release.
 - global_gate: e2e
 
 ### S1-autoapprove-merge-commit-y-auto-merge-por-rest — S1 — El bot integra con merge commit y activa el auto-merge por REST
-- **Status**: pending
+- **Status**: review
 - **Files**: `.github/workflows/auto-approve.yml`, `tests/cli/auto-approve.spec.ts`, `docs/CI.md`
 - **Gate**: type
 - acceptance:
@@ -75,6 +75,8 @@ la versión, que es donde la divergencia costó una release.
   - "El auto-merge se pide por el endpoint REST `PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge` y no por `github.rest.pulls.enableAutoMerge`, que no existe en la versión de Octokit de `github-script@v7`."
   - "El test comprueba las dos cosas: que el método nunca sea squash y que la llamada sea por REST."
   - "`docs/CI.md` explica por qué merge y no squash, y por qué el endpoint REST."
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash-preview
 
 ### S2-el-gate-vigila-la-rama-de-release — S2 — El gate de protección comprueba también la rama de release
 - **Status**: pending
