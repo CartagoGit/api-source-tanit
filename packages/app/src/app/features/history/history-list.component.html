@@ -1,0 +1,53 @@
+<section class="history">
+  <header><h2>{{ i18n.translate("history.title") }}</h2><span>{{ history.entries().length }}</span></header>
+  @if (history.error(); as message) { <p role="alert">{{ message }}</p> }
+  @if (history.loading() && !history.entries().length) {
+    <p role="status">{{ i18n.translate("history.loading") }}</p>
+  } @else {
+    @for (entry of history.entries(); track entry.capturedAt + entry.kind) {
+      <article>
+        <strong>{{ entry.kind === "snapshot-ready" ? i18n.translate("history.snapshotReady") : i18n.translate("history.snapshotStale") }}</strong>
+        <span>{{ entry.capturedAt }}</span>
+        @if (entry.changedPaths?.length) {
+          <small>{{ entry.changedPaths.length }} {{ i18n.translate("history.changed") }}</small>
+        }
+      </article>
+    } @empty { <p>{{ i18n.translate("history.empty") }}</p> }
+  }
+
+  <section class="revisions">
+    <h3>{{ i18n.translate("history.revisions") }}</h3>
+    @if (!history.revisions().length) {
+      <p>{{ i18n.translate("history.noRevisions") }}</p>
+    } @else {
+      <ul>
+        @for (revision of history.revisions(); track revision.id) {
+          <li>
+            <span>{{ label(revision) }}</span>
+            <small>{{ revision.formats.join(", ") }}</small>
+            <code>{{ revision.sha256.slice(0, 12) }}</code>
+          </li>
+        }
+      </ul>
+      <div class="compare">
+        <label>{{ i18n.translate("history.left") }}
+          <select [value]="left()" (change)="left.set(selected($event))">
+            @for (revision of history.revisions(); track revision.id) {
+              <option [value]="revision.id">{{ label(revision) }}</option>
+            }
+          </select>
+        </label>
+        <label>{{ i18n.translate("history.right") }}
+          <select [value]="right()" (change)="right.set(selected($event))">
+            @for (revision of history.revisions(); track revision.id) {
+              <option [value]="revision.id">{{ label(revision) }}</option>
+            }
+          </select>
+        </label>
+        @if (canCompare()) {
+          <tanit-history-diff [leftId]="left()" [rightId]="right()" />
+        }
+      </div>
+    }
+  </section>
+</section>

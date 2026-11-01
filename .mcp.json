@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "delendai": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "../delendai/tools/scripts/host/host-server.script.ts",
+        "--workspace=.",
+        "--config=./delendai.config.json"
+      ]
+    }
+  }
+}

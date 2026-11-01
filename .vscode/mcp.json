@@ -1,0 +1,15 @@
+// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.
+// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.
+{
+  "servers": {
+    "delendai": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "../delendai/tools/scripts/host/host-server.script.ts",
+        "--workspace=${workspaceFolder}",
+        "--config=${workspaceFolder}/delendai.config.json"
+      ]
+    }
+  }
+}
