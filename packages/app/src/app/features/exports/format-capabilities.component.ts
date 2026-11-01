@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from "@angular/core";
 
 import { ExportCapabilities, ExportFormat } from "../../core/api/exports.client";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The formats the user can pick.
@@ -20,6 +21,7 @@ import { ExportCapabilities, ExportFormat } from "../../core/api/exports.client"
   styleUrls: ["./format-capabilities.component.scss"],
 })
 export class FormatCapabilitiesComponent {
+  readonly i18n = inject(I18nService);
   @Input() capabilities: readonly ExportCapabilities[] = [];
   @Input() selected: readonly ExportFormat[] = [];
   @Output() readonly changed = new EventEmitter<ExportFormat>();

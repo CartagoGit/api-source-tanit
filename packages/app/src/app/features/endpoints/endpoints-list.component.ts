@@ -10,6 +10,7 @@ import { ProjectStore } from "../../core/state/project.store";
 import { VirtualScrollerComponent } from "../../shared/virtual-scroll/virtual-scroller.component";
 import { EndpointDetailComponent } from "./endpoint-detail.component";
 import { FiltersComponent } from "./filters.component";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The endpoint explorer.
@@ -36,6 +37,7 @@ import { FiltersComponent } from "./filters.component";
   styleUrls: ["./endpoints-list.component.scss"],
 })
 export class EndpointsListComponent {
+  readonly i18n = inject(I18nService);
   readonly store = inject(EndpointsStore);
   private readonly project = inject(ProjectStore);
   @ViewChild("endpointTemplate", { static: true }) readonly endpointTemplate!: TemplateRef<unknown>;

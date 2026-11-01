@@ -75,6 +75,30 @@ export class AppComponent {
   readonly activeSection = signal("overview");
   readonly theme = signal<"light" | "dark">(this.readTheme());
 
+  /**
+   * The label of each section, by section id.
+   *
+   * It used to be built in runtime — `nav.${this.activeSection()}` —
+   * which is a key nobody can check: if a section had no key, the
+   * screen said `nav.undefined` and nobody would know why. A key
+   * written here can be compared against the catalog by the gate.
+   */
+  readonly sectionLabels: Readonly<Record<string, string>> = {
+    overview: "nav.overview",
+    endpoints: "nav.endpoints",
+    services: "nav.services",
+    exports: "nav.exports",
+    stats: "nav.stats",
+    check: "nav.check",
+    validate: "nav.validate",
+    sync: "nav.sync",
+    push: "nav.push",
+    live: "nav.live",
+    history: "nav.history",
+    diagnostics: "nav.diagnostics",
+    settings: "nav.settings",
+  };
+
   constructor() { this.applyTheme(this.theme()); }
 
   toggleTheme(): void { const next = this.theme() === "light" ? "dark" : "light"; this.theme.set(next); this.storage()?.setItem("tanit.theme", next); this.applyTheme(next); }
@@ -111,7 +135,9 @@ export class AppComponent {
     this.go("overview");
   }
 
-  sectionLabel(): string { return this.i18n.translate(`nav.${this.activeSection()}`); }
+  sectionLabel(): string {
+    return this.i18n.translate(this.sectionLabels[this.activeSection()] ?? "nav.overview");
+  }
 
   @HostListener("document:keydown", ["$event"])
   onShortcut(event: KeyboardEvent): void { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); this.paletteOpen.set(!this.paletteOpen()); } }

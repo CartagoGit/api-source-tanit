@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject } from "@angular/cor
 
 import { HistoryStore } from "../../core/state/history.store";
 import { ProjectStore } from "../../core/state/project.store";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * What happened to the open session.
@@ -22,6 +23,7 @@ import { ProjectStore } from "../../core/state/project.store";
   styleUrls: ["./history-list.component.scss"],
 })
 export class HistoryListComponent {
+  readonly i18n = inject(I18nService);
   readonly history = inject(HistoryStore);
   private readonly project = inject(ProjectStore);
 

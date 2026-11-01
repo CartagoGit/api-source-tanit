@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input } from "@angular/core";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 interface SchemaNode { readonly path: string; readonly label: string; readonly value: unknown; readonly level: number; readonly branch: boolean; }
 
@@ -10,6 +11,7 @@ interface SchemaNode { readonly path: string; readonly label: string; readonly v
   styleUrls: ["./schema-viewer.component.scss"],
 })
 export class SchemaViewerComponent {
+  readonly i18n = inject(I18nService);
   readonly schema = input<unknown>(null);
   readonly nodes = computed(() => this.flatten(this.schema(), "$"));
   format(schema: unknown): string { return JSON.stringify(schema, null, 2) ?? "null"; }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, input, signal } fro
 import { ServicesClient, type IServiceDetail } from "../../core/api/services.client";
 import { describePending } from "../../core/api/pending-operation.helper";
 import { ProjectStore } from "../../core/state/project.store";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The detail of one service.
@@ -23,6 +24,7 @@ import { ProjectStore } from "../../core/state/project.store";
   templateUrl: "./service-detail.component.html",
 })
 export class ServiceDetailComponent {
+  readonly i18n = inject(I18nService);
   /**
    * The service to show.
    *

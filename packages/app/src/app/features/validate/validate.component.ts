@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 import { ValidateClient } from "../../core/api/validate.client";
 import { ProjectStore } from "../../core/state/project.store";
 import type { IValidationResult } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The validation.
@@ -32,6 +33,7 @@ import type { IValidationResult } from "../../../../../contracts/interfaces/core
   styleUrls: ["./validate.component.scss"],
 })
 export class ValidateComponent {
+  readonly i18n = inject(I18nService);
   readonly running = signal(false);
   readonly message = signal<string | null>(null);
   readonly result = signal<IValidationResult | null>(null);
@@ -41,7 +43,7 @@ export class ValidateComponent {
   async run(): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.message.set("Open a project first.");
+      this.message.set(this.i18n.translate("common.openProjectFirst"));
       return;
     }
     this.running.set(true);

@@ -6,6 +6,7 @@ import { EndpointsStore } from "../../core/state/endpoints.store";
 import { ProjectStore } from "../../core/state/project.store";
 import { ServiceDetailComponent } from "./service-detail.component";
 import { BadgeComponent } from "../../shared/badge/badge.component";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The services of the open project.
@@ -28,6 +29,7 @@ import { BadgeComponent } from "../../shared/badge/badge.component";
   styleUrls: ["./services-list.component.scss"],
 })
 export class ServicesListComponent {
+  readonly i18n = inject(I18nService);
   readonly services = signal<ReadonlyArray<IServiceDetail>>([]);
   readonly error = signal<string | null>(null);
   readonly loading = signal(false);

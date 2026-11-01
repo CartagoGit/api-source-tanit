@@ -9,6 +9,7 @@ import { ProjectStore } from "../../core/state/project.store";
 import { ExportPreviewComponent } from "./export-preview.component";
 import { ExportSummaryComponent } from "./export-summary.component";
 import { FormatCapabilitiesComponent } from "./format-capabilities.component";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The Export Center.
@@ -27,6 +28,7 @@ import { FormatCapabilitiesComponent } from "./format-capabilities.component";
   styleUrls: ["./export-center.component.scss"],
 })
 export class ExportCenterComponent {
+  readonly i18n = inject(I18nService);
   readonly store = inject(ExportsStore);
   readonly dialog = inject(DialogService);
   readonly actions = inject(ExportSuccessActions);

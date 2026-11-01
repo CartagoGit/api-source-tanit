@@ -1,13 +1,13 @@
-<section><header><h2>Snapshot diff</h2><label>Output <input [value]="outputDirectory" (input)="outputDirectory = inputValue($event)" /></label><button type="button" (click)="loadConfiguration()">Load config</button><button type="button" (click)="compare()">Compare</button></header>
+<section><header><h2>{{ i18n.translate("diff.title") }}</h2><label>{{ i18n.translate("diff.output") }} <input [value]="outputDirectory" (input)="outputDirectory = inputValue($event)" /></label><button type="button" (click)="loadConfiguration()">{{ i18n.translate("diff.loadConfig") }}</button><button type="button" (click)="compare()">{{ i18n.translate("diff.compare") }}</button></header>
   @if (error; as message) { <p role="alert">{{ message }}</p> }
   @if (result; as diff) {
-    <p>{{ diff.added.length }} added · {{ diff.removed.length }} removed · {{ diff.changed.length }} changed</p>
-    <p>Schemas: {{ diff.schemaChanges.length }} · Auth: {{ diff.authChanges.length }}</p>
-    <p>Services: {{ diff.services.length }} · Operations: {{ diff.operations.length }}</p>
+    <p>{{ diff.added.length }} {{ i18n.translate("diff.added") }} · {{ diff.removed.length }} {{ i18n.translate("diff.removed") }} · {{ diff.changed.length }} {{ i18n.translate("diff.changed") }}</p>
+    <p>{{ i18n.translate("diff.schemas") }} {{ diff.schemaChanges.length }} · {{ i18n.translate("diff.auth") }} {{ diff.authChanges.length }}</p>
+    <p>{{ i18n.translate("diff.services") }} {{ diff.services.length }} · {{ i18n.translate("diff.operations") }} {{ diff.operations.length }}</p>
     @for (change of diff.serviceChanges; track change.key) { <div>{{ change.key }}: {{ change.before | json }} → {{ change.after | json }}</div> }
     @for (change of diff.operationChanges; track change.key) { <div>{{ change.key }}: {{ change.before | json }} → {{ change.after | json }}</div> }
     @for (change of diff.schemaChanges; track change.key) { <div>{{ change.key }} schema: {{ change.before | json }} → {{ change.after | json }}</div> }
     @for (change of diff.authChanges; track change.key) { <div>{{ change.key }} auth: {{ change.before | json }} → {{ change.after | json }}</div> }
-    @if (diff.configuration; as configuration) { <p>Config: {{ configuration.before | json }} → {{ configuration.after | json }}</p> }
+    @if (diff.configuration; as configuration) { <p>{{ i18n.translate("diff.config") }} {{ configuration.before | json }} → {{ configuration.after | json }}</p> }
   }
 </section>

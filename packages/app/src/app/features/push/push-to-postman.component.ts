@@ -3,6 +3,7 @@ import { PushClient } from "../../core/api/push.client";
 import { SecureStorageService } from "../../core/host/secure-storage.service";
 import { ProjectStore } from "../../core/state/project.store";
 import type { PushOutput } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The upload to Postman.
@@ -32,6 +33,7 @@ import type { PushOutput } from "../../../../../contracts/interfaces/core/applic
   styleUrls: ["./push-to-postman.component.scss"],
 })
 export class PushToPostmanComponent {
+  readonly i18n = inject(I18nService);
   readonly workspace = signal("");
   readonly dryRun = signal(true);
   readonly running = signal(false);
@@ -45,7 +47,7 @@ export class PushToPostmanComponent {
   async run(): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.message.set("Open a project first.");
+      this.message.set(this.i18n.translate("common.openProjectFirst"));
       return;
     }
     this.controller = new AbortController();
@@ -74,7 +76,7 @@ export class PushToPostmanComponent {
     } catch (error) {
       this.message.set(
         error instanceof DOMException && error.name === "AbortError"
-          ? "Push cancelled."
+          ? this.i18n.translate("push.cancelled")
           : error instanceof Error ? error.message : String(error),
       );
     } finally {

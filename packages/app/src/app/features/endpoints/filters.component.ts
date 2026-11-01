@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from "@angular/core";
 
 import {
   ENDPOINT_CONFIDENCES,
@@ -7,6 +7,7 @@ import {
   EndpointQuery,
 } from "../../core/api/endpoints.client";
 import { debounce } from "../../core/api/debounce.helper";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * How long the app waits before asking again.
@@ -48,6 +49,7 @@ const FILTER_DEBOUNCE_MS = 250;
   styleUrls: ["./filters.component.scss"],
 })
 export class FiltersComponent {
+  readonly i18n = inject(I18nService);
   readonly value = input<EndpointQuery>({});
   readonly changed = output<EndpointQuery>();
   readonly transports = ENDPOINT_TRANSPORTS;

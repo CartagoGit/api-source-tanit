@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 import { SyncClient } from "../../core/api/sync.client";
 import { ProjectStore } from "../../core/state/project.store";
 import type { SyncOutput } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The sync.
@@ -30,6 +31,7 @@ import type { SyncOutput } from "../../../../../contracts/interfaces/core/applic
   templateUrl: "./sync.component.html",
 })
 export class SyncComponent {
+  readonly i18n = inject(I18nService);
   readonly running = signal(false);
   readonly message = signal<string | null>(null);
   readonly result = signal<SyncOutput | null>(null);
@@ -39,7 +41,7 @@ export class SyncComponent {
   async run(dryRun: boolean): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.message.set("Open a project first.");
+      this.message.set(this.i18n.translate("common.openProjectFirst"));
       return;
     }
     this.running.set(true);

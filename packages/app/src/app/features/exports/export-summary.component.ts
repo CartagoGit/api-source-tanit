@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from "@angular/core";
 
 import { ExportResult } from "../../core/api/exports.client";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * What was written.
@@ -18,6 +19,7 @@ import { ExportResult } from "../../core/api/exports.client";
   styleUrls: ["./export-summary.component.scss"],
 })
 export class ExportSummaryComponent {
+  readonly i18n = inject(I18nService);
   @Input() result: ExportResult | null = null;
   @Output() readonly openFolder = new EventEmitter<string>();
   @Output() readonly openPostman = new EventEmitter<void>();

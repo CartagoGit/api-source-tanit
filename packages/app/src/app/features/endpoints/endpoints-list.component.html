@@ -1,13 +1,13 @@
 <section class="explorer">
   <header class="heading">
     <div>
-      <span class="eyebrow">Endpoints Explorer</span>
-      <h1>Operations</h1>
-      <p>{{ store.total() }} visible · {{ store.indexedTotal() }} indexed</p>
+      <span class="eyebrow">{{ i18n.translate("endpoints.eyebrow") }}</span>
+      <h1>{{ i18n.translate("endpoints.title") }}</h1>
+      <p>{{ store.total() }} {{ i18n.translate("endpoints.visible") }} · {{ store.indexedTotal() }} {{ i18n.translate("endpoints.indexed") }}</p>
     </div>
     <div class="actions">
-      <button type="button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? "Loading…" : "Refresh" }}</button>
-      <button type="button" (click)="clearSelection()" [disabled]="store.selectedId() === null">Reset selection</button>
+      <button type="button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? i18n.translate("endpoints.loadingShort") : i18n.translate("endpoints.refresh") }}</button>
+      <button type="button" (click)="clearSelection()" [disabled]="store.selectedId() === null">{{ i18n.translate("endpoints.reset") }}</button>
     </div>
   </header>
   @if (store.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
@@ -15,17 +15,17 @@
   <div class="workspace">
     <div class="list-pane">
       @if (store.loading() && !store.filtered().length) {
-        <p class="state" role="status">Loading the endpoints…</p>
+        <p class="state" role="status">{{ i18n.translate("endpoints.loading") }}</p>
       } @else if (!store.filtered().length) {
-        <p class="state" role="status">No endpoint matches this filter. The project has {{ store.indexedTotal() }} indexed.</p>
+        <p class="state" role="status">{{ i18n.translate("endpoints.empty") }} {{ store.indexedTotal() }} {{ i18n.translate("endpoints.emptyTail") }}</p>
       } @else {
-        <tanit-virtual-scroller [items]="store.filtered()" [itemHeight]="72" [height]="560" label="Endpoints" [itemTemplate]="endpointTemplate" [trackBy]="trackBy" />
+        <tanit-virtual-scroller [items]="store.filtered()" [itemHeight]="72" [height]="560" [label]="i18n.translate('endpoints.list')" [itemTemplate]="endpointTemplate" [trackBy]="trackBy" />
       }
       <ng-template #endpointTemplate let-item let-index="index">
         <button class="endpoint-row" type="button" role="listitem" [class.selected]="item.id === store.selectedId()" [attr.aria-current]="item.id === store.selectedId() ? 'true' : null" (click)="select(item)" [attr.aria-label]="item.method + ' ' + item.path">
           <span class="index">{{ index + 1 }}</span>
           <span class="verb">{{ item.method }}</span>
-          <span class="path"><strong>{{ item.path }}</strong><small>{{ item.service ?? "no service" }} · {{ item.transport ?? "no transport" }} · {{ item.description || item.operationId }}</small></span>
+          <span class="path"><strong>{{ item.path }}</strong><small>{{ item.service ?? i18n.translate("endpoints.noService") }} · {{ item.transport ?? i18n.translate("endpoints.noTransport") }} · {{ item.description || item.operationId }}</small></span>
           <span class="confidence">{{ item.confidence ?? "" }}</span>
         </button>
       </ng-template>

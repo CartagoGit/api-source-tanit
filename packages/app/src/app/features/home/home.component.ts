@@ -5,6 +5,7 @@ import { RecentProjectsStore } from "../../core/state/recent-projects.store";
 import { DragDropService } from "../../core/host/drag-drop.service";
 import { FolderPickerComponent } from "./folder-picker.component";
 import { RecentProjectsComponent } from "./recent-projects.component";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 @Component({
   selector: "tanit-home",
@@ -15,6 +16,7 @@ import { RecentProjectsComponent } from "./recent-projects.component";
   styleUrls: ["./home.component.scss"],
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  readonly i18n = inject(I18nService);
   private readonly project = inject(ProjectStore);
   private readonly recents = inject(RecentProjectsStore);
   private readonly dragDrop = inject(DragDropService);

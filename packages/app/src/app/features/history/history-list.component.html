@@ -1,18 +1,18 @@
 <section class="history">
-  <header><h2>Session history</h2><span>{{ history.entries().length }}</span></header>
+  <header><h2>{{ i18n.translate("history.title") }}</h2><span>{{ history.entries().length }}</span></header>
   @if (history.error(); as message) { <p role="alert">{{ message }}</p> }
   @if (history.loading() && !history.entries().length) {
-    <p role="status">Reading the session's history…</p>
+    <p role="status">{{ i18n.translate("history.loading") }}</p>
   } @else {
     @for (entry of history.entries(); track entry.capturedAt + entry.kind) {
       <article>
-        <strong>{{ entry.kind === "snapshot-ready" ? "Snapshot ready" : "Snapshot stale" }}</strong>
+        <strong>{{ entry.kind === "snapshot-ready" ? i18n.translate("history.snapshotReady") : i18n.translate("history.snapshotStale") }}</strong>
         <span>{{ entry.capturedAt }}</span>
         @if (entry.changedPaths?.length) {
-          <small>{{ entry.changedPaths.length }} file(s) changed</small>
+          <small>{{ entry.changedPaths.length }} {{ i18n.translate("history.changed") }}</small>
         }
       </article>
-    } @empty { <p>Nothing has happened in this session yet.</p> }
+    } @empty { <p>{{ i18n.translate("history.empty") }}</p> }
   }
-  <p class="note">The persisted history — past generations with their hashes, comparable and restorable — is not exposed by the API yet.</p>
+  <p class="note">{{ i18n.translate("history.note") }}</p>
 </section>
