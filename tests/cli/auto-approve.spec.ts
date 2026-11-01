@@ -80,11 +80,29 @@ describe("la auto-aprobación", () => {
     expect(raw).not.toContain("actions/checkout");
   });
 
-  test("el método de merge depende de la rama", async () => {
+  test("el merge es siempre un merge commit, nunca un squash", async () => {
     const raw = await workflow();
-    // `main` exige historia lineal (squash); `develop` no, y su
-    // historia son merge commits.
-    expect(raw).toContain('base === "main" ? "squash" : "merge"');
+    // La política declarada en `delendai.config.json` es
+    // `mergeMethod: "merge"`, y las dos ramas lo cumplen.
+    expect(raw).toContain('const method = "merge"');
+    // Un squash aplana la historia: los commits que `lint:proposals`
+    // audita dejan de ser ancestros de HEAD y `main` se queda en rojo.
+    expect(raw).not.toContain('"squash"');
+  });
+
+  test("activa el auto-merge por el endpoint REST, no por un método de Octokit", async () => {
+    const raw = await workflow();
+    // Se busca la **llamada**, no la mención: el workflow explica en un
+    // comentario por qué no usa ese método, y ese comentario lo nombra.
+    // Una búsqueda de la cadena suelta daría un positivo falso; la
+    // regex exige los paréntesis de la invocación.
+    //
+    // `github.rest.pulls.enableAutoMerge` no existe en la versión de
+    // Octokit de `github-script@v7`: la llamada moría con
+    // "enableAutoMerge is not a function", y el PR se quedaba
+    // aprobado pero sin auto-merge, esperando a un humano.
+    expect(raw).not.toMatch(/github\.rest\.pulls\.enableAutoMerge\s*\(/);
+    expect(raw).toContain("PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge");
   });
 
   test("usa pull-requests: write y nada más", async () => {
