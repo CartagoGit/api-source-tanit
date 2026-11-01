@@ -1,0 +1,14 @@
+{
+  "name": "@acme/orders",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/main.ts",
+  "exports": {
+    ".": {
+      "import": "./src/main.ts",
+      "require": "./src/main.ts",
+      "default": "./src/main.ts"
+    },
+    "./main": "./src/main.ts"
+  }
+}
