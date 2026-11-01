@@ -18,6 +18,7 @@ import type { HistoryDiffOutput } from "../../../../../contracts/interfaces/core
   imports: [JsonPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./history-diff.component.html",
+  styleUrls: ["./history-diff.component.scss"],
 })
 export class HistoryDiffComponent {
   readonly i18n = inject(I18nService);

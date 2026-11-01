@@ -17,6 +17,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./live-toggle.component.html",
+  styleUrls: ["./live-toggle.component.scss"],
 })
 export class LiveToggleComponent {
   readonly i18n = inject(I18nService);

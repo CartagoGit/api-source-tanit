@@ -19,6 +19,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./service-detail.component.html",
+  styleUrls: ["./service-detail.component.scss"],
 })
 export class ServiceDetailComponent {
   readonly i18n = inject(I18nService);
