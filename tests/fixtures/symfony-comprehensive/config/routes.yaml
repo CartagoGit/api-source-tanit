@@ -1,0 +1,20 @@
+# Top-level routes.
+health:
+  path: /health
+  controller: App\Controller\HealthController::check
+  methods: [GET]
+
+api_login:
+  path: /api/auth/login
+  controller: App\Controller\AuthController::login
+  methods: [POST]
+
+api_refresh:
+  path: /api/auth/refresh
+  controller: App\Controller\AuthController::refresh
+  methods: [POST]
+
+api_logout:
+  path: /api/auth/logout
+  controller: App\Controller\AuthController::logout
+  methods: [POST]

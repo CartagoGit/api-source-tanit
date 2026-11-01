@@ -1,0 +1,853 @@
+name: release-desktop
+
+# Los instaladores nativos de la interfaz gráfica, con firma.
+#
+# Va aparte de `release-binaries.yml` a propósito: aquel produce
+# ejecutables de línea de comandos desde un solo corredor, y esto
+# necesita **uno por sistema**. Cada instalador exige el SDK de su
+# plataforma —y su firma—, así que no hay forma de sacar los cuatro
+# desde Linux por mucho contenedor que se le ponga.
+#
+# ## La política de firma
+#
+# `delendai.config.json#plugins.tanit.options.release.sign` decide:
+#
+#   · `false` (por defecto) → los instaladores se construyen, **no se
+#     firman**, y el workflow sube los artefactos como artefactos de CI.
+#     No se publica nada. Es el modo de desarrollo, y no necesita un
+#     certificado de Apple ni de Microsoft.
+#   · `true` → los instaladores se firman, se notarizan, se verifican
+#     con la herramienta nativa de su plataforma, y **la publicación
+#     falla cerrada** si falta una credencial, si un target no está
+#     firmado o si un verificador no acepta el artefacto.
+#
+# ## La secuencia
+#
+#   build ─┬─ macOS x64   → codesign + notarytool + staple + Gatekeeper
+#          ├─ macOS arm64 → ídem
+#          ├─ Windows x64 → Authenticode SHA-256 + timestamp RFC 3161
+#          └─ Linux x64   → SHA256SUMS + firmas detached GPG
+#                     │
+#                     ▼
+#              merge + verify  → un manifest, un verificador, y de paso
+#                                  se comprueba que no queda nada sin
+#                                  describir
+#                     │
+#                     ▼
+#                  publish      → sólo si todo lo anterior pasó
+on:
+  push:
+    # El tag y no el evento `release`: `release-cut` crea la release
+    # con `GITHUB_TOKEN`, y **los eventos que dispara el propio
+    # `GITHUB_TOKEN` no crean ejecuciones nuevas**. Con el workflow
+    # escuchando a `release`, los instaladores no se construían nunca
+    # en el momento de la release.
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Sign the installers (needs the provider secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  STAGE: packages/desktop/target/release/staging
+  MANIFEST_NAME: release-manifest.json
+  # Dónde se escribe el manifest de actualización. **Fuera** del
+  # staging: el gate de publicación comprueba que todo lo que se
+  # adjunta esté descrito por el manifest de la release, y el manifest
+  # de actualización no es un artefacto de la release: es el canal.
+  UPDATE_DIR: packages/desktop/target/release/update
+  # El identificador de la clave pública versionada con la que se
+  # firma el manifest de actualización. Es el mismo que declara
+  # `packages/contracts/constants/release/updater.constant.ts` y el
+  # que embebe el cliente.
+  UPDATE_KEY_ID: tanit-updater-v1
+
+jobs:
+  # ---------------------------------------------------------------------
+  # 1. Construir, firmar y verificar. Un corredor por plataforma.
+  # ---------------------------------------------------------------------
+  build:
+    name: build ${{ matrix.platform }}-${{ matrix.arch }}
+    strategy:
+      # `fail-fast: false` para que un fallo de macOS no deje sin
+      # instalador a Windows y a Linux. Son cuatro productos, no uno.
+      fail-fast: false
+      matrix:
+        include:
+          # macos-13 es el último corredor x64; macos-14 es arm64. Cada
+          # uno construye su propia arquitectura: no hay cross-build.
+          # En macOS, Tauri construye **sólo** el `.app`: el `.dmg`
+          # lo hace `scripts/release/package-dmg.sh`, y lo hace
+          # **después** de grapar el bundle. El `.dmg` de Tauri lleva
+          # dentro un `.app` sin firmar, y Apple rechaza esa imagen.
+          - os: macos-13
+            platform: macos
+            arch: x64
+            tauri_bundles: app
+            bundles: app,dmg
+          - os: macos-14
+            platform: macos
+            arch: arm64
+            tauri_bundles: app
+            bundles: app,dmg
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            tauri_bundles: msi,nsis
+            bundles: msi,nsis
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            tauri_bundles: deb,appimage
+            bundles: deb,appimage
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    # El canal lo dice el gate, no el evento: el prefijo de la
+    # versión decide si lo que sale es una release estable o una
+    # prerelease. `release-cut` usa la misma fuente, así que los dos
+    # workflows no pueden discrepar.
+    outputs:
+      channel: ${{ steps.channel.outputs.channel }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      # El canal lo dice el gate, no el evento: el prefijo de la
+      # versión decide si lo que sale es una release estable o una
+      # prerelease. `release-cut` usa la misma fuente, así que los dos
+      # workflows no pueden discrepar.
+      #
+      # Va **después** del checkout porque el gate es un script del
+      # repositorio: sin el código en el disco no hay nada que
+      # preguntar.
+      - name: El canal lo dice el gate
+        id: channel
+        run: |
+          channel="$(bun scripts/gates/lint-release-channel.script.ts --print-channel)"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "✓ el canal es $channel"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Lo que pide Tauri en Linux. En macOS y Windows viene con el SDK.
+      - name: Dependencias de Linux
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      - run: bun install --frozen-lockfile
+
+      # ¿Se firma? La config del repo manda; el dispatch puede pedirlo
+      # explícitamente para probar el camino de firma sin publicar.
+      - name: Decidir si se firma
+        id: policy
+        shell: bash
+        run: |
+          SIGN="$(jq -r '.plugins.tanit.options.release.sign // false' delendai.config.json)"
+          if [ "${{ inputs.sign }}" = "true" ]; then SIGN="true"; fi
+          echo "sign=${SIGN}" >> "$GITHUB_OUTPUT"
+          echo "Signing: ${SIGN}"
+
+      # La clave GPG de la release viaja como secreto y se escribe en
+      # un fichero. `sign-linux.sh` importa **ese** fichero, nunca el
+      # keyring por defecto del runner: en un runner hospedado ese
+      # keyring está vacío, el script moría y no se firmaba ningún
+      # `.deb` — sin que nada fallara de forma visible.
+      - name: Preparar la clave GPG de la release
+        id: gpgkey
+        if: matrix.platform == 'linux' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_GPG_KEYRING_SECRET: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_SIGN_GPG_KEYRING_SECRET}" ]; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is not set: Linux cannot be signed." >&2
+            exit 1
+          fi
+          keyring="${RUNNER_TEMP}/tanit-release-keyring.gpg"
+          if ! printf '%s' "${TANIT_SIGN_GPG_KEYRING_SECRET}" | base64 --decode > "${keyring}" 2>/dev/null; then
+            # El secreto también puede ser el keyring en claro (una
+            # clave blindada en ASCII): es lo que `gpg --import` acepta.
+            printf '%s' "${TANIT_SIGN_GPG_KEYRING_SECRET}" > "${keyring}"
+          fi
+          if [ ! -s "${keyring}" ]; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is empty." >&2
+            exit 1
+          fi
+          chmod 600 "${keyring}"
+
+          # La clave se **importa** aquí, en un keyring propio que se
+          # borra después: si el secreto no es un keyring importable,
+          # el job muere aquí, antes de construir nada. Quien firma
+          # (`sign-linux.sh`) la importa otra vez en su propio
+          # keyring: nunca depende del keyring por defecto del runner,
+          # que está vacío.
+          probe="$(mktemp -d)"
+          chmod 700 "${probe}"
+          if ! GNUPGHOME="${probe}" gpg --batch --yes --no-tty --import "${keyring}" >/dev/null 2>&1; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is not an importable GPG keyring." >&2
+            rm -rf "${probe}"
+            exit 1
+          fi
+          rm -rf "${probe}"
+
+          echo "keyring=${keyring}" >> "$GITHUB_OUTPUT"
+
+      # La política dice que se firma: se auditan las credenciales
+      # **antes** de construir nada. Si falta una, el job muere aquí, y
+      # no se llega a producir un artefacto sin firmar que alguien
+      # pueda subir por error.
+      - name: Auditar las credenciales de firma
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+          TANIT_SIGN_WINDOWS_THUMBPRINT: ${{ secrets.TANIT_SIGN_WINDOWS_THUMBPRINT }}
+          TANIT_SIGN_WINDOWS_TIMESTAMP_URL: ${{ secrets.TANIT_SIGN_WINDOWS_TIMESTAMP_URL }}
+          TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT }}
+          TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
+          TANIT_SIGN_GPG_KEYRING: ${{ steps.gpgkey.outputs.keyring }}
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --check-credentials --os "${{ matrix.platform }}"
+
+      - name: Empaquetar
+        run: bun run desktop:build
+        env:
+          # `EXPOSTMAN_BUNDLES` es la variable que lee
+          # `scripts/build/desktop-build.script.ts` para acotar los
+          # formatos. La matriz dice lo mismo, pero escribirlo aquí
+          # deja el recorte explícito en el workflow.
+          EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}
+
+      # El staging tiene una forma fija: <os>/<arch>/<bundle>/. El
+      # manifest dice qué debería haber; la ruta dice qué hay.
+      - name: Preparar el staging
+        shell: bash
+        env:
+          BUNDLES: ${{ matrix.bundles }}
+        run: |
+          set -euo pipefail
+          BUNDLE_DIR="packages/desktop/target/release/bundle"
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          mkdir -p "${PLATFORM_DIR}"
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # El `.app` es un **directorio**, y hay que firmarlo y
+            # notarizarlo **antes** de comprimirlo: un zip no se puede
+            # firmar ni grapar. Por eso vive en un directorio de
+            # trabajo, fuera del staging, y el `.zip` publicado lo
+            # produce `notarize-macos.sh` después de grapar el ticket.
+            rm -rf "${RUNNER_TEMP}/macos-app"
+            mkdir -p "${RUNNER_TEMP}/macos-app"
+            cp -R "${BUNDLE_DIR}/app"/*.app "${RUNNER_TEMP}/macos-app/"
+          else
+            for bundle in ${BUNDLES}; do
+              source_dir="${BUNDLE_DIR}/${bundle}"
+              if [ ! -d "${source_dir}" ]; then
+                echo "✗ The bundle directory does not exist: ${source_dir}" >&2
+                exit 1
+              fi
+              mkdir -p "${PLATFORM_DIR}/${bundle}"
+              find "${source_dir}" -maxdepth 1 -type f -exec cp {} "${PLATFORM_DIR}/${bundle}/" \;
+            done
+          fi
+          find "${PLATFORM_DIR}" -type f | sort
+
+      # --- la firma, una por plataforma --------------------------------
+      #
+      # En macOS el orden no es libre: el bundle se firma, se notariza
+      # y se grapa **antes** de existir el `.dmg`, porque la imagen se
+      # construye con el bundle ya grapado dentro.
+      - name: Firmar (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/sign-macos.sh "${RUNNER_TEMP}/macos-app"/*.app
+
+      - name: Notarizar (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/notarize-macos.sh "${RUNNER_TEMP}/macos-app"/*.app
+          # Lo que se publica es el bundle **comprimido y grapado**, y
+          # el recibo que ata la firma a esos bytes exactos.
+          #
+          # El nombre lleva la versión y la arquitectura porque la
+          # release adjunta los assets por su `basename`: los dos
+          # bundles de macOS se llaman igual si no, y el segundo pisa
+          # al primero.
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          mkdir -p "${PLATFORM_DIR}/app"
+          published="${PLATFORM_DIR}/app/Tanit_${VERSION}_${{ matrix.arch }}.app.zip"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip "${published}"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip.signature.json "${published}.signature.json"
+
+      # El `.dmg` se construye **después** de grapar: es el paso 4 del
+      # orden de Apple (firmar → notarizar → grapar → imagen).
+      - name: Empaquetar el .dmg (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          mkdir -p "${PLATFORM_DIR}/dmg"
+          rm -f "${PLATFORM_DIR}/dmg"/*.dmg
+          bash scripts/release/package-dmg.sh \
+            --app "${RUNNER_TEMP}/macos-app"/*.app \
+            --output "${PLATFORM_DIR}/dmg/Tanit_${VERSION}_${{ matrix.arch }}.dmg"
+
+      - name: Firmar el .dmg (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/sign-macos.sh "${PLATFORM_DIR}/dmg"/*.dmg
+
+      - name: Notarizar el .dmg (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/notarize-macos.sh "${PLATFORM_DIR}/dmg"/*.dmg
+
+      # Sin firma, el bundle se comprime igual —para que el staging
+      # tenga la misma forma— pero sin recibo: el verificador lo
+      # rechaza y la release no sale.
+      - name: Publicar el bundle de macOS sin firma
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          mkdir -p "${PLATFORM_DIR}/app"
+          # El nombre lleva la versión y la arquitectura: los assets se
+          # adjuntan por su `basename`, y dos bundles de macOS con el
+          # mismo nombre se pisan al subirlos.
+          ditto -c -k --keepParent "${RUNNER_TEMP}/macos-app"/*.app \
+            "${PLATFORM_DIR}/app/Tanit_${VERSION}_${{ matrix.arch }}.app.zip"
+
+      - name: Firmar (Windows)
+        if: matrix.platform == 'windows' && steps.policy.outputs.sign == 'true'
+        shell: pwsh
+        env:
+          TANIT_SIGN_WINDOWS_THUMBPRINT: ${{ secrets.TANIT_SIGN_WINDOWS_THUMBPRINT }}
+          TANIT_SIGN_WINDOWS_TIMESTAMP_URL: ${{ secrets.TANIT_SIGN_WINDOWS_TIMESTAMP_URL }}
+          TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT }}
+          TANIT_SIGN_WINDOWS_CERTIFICATE: ${{ secrets.TANIT_SIGN_WINDOWS_CERTIFICATE }}
+          TANIT_SIGN_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.TANIT_SIGN_WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $platformDir = "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          $artifacts = Get-ChildItem -Path $platformDir -Recurse -File -Include *.msi,*-setup.exe |
+            Select-Object -ExpandProperty FullName
+          if (-not $artifacts) { throw "No Windows artifacts to sign under $platformDir" }
+          & scripts/release/sign-windows.ps1 @artifacts
+
+      - name: Firmar (Linux)
+        if: matrix.platform == 'linux' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
+          TANIT_SIGN_GPG_KEYRING: ${{ steps.gpgkey.outputs.keyring }}
+          TANIT_SIGN_GPG_PASSPHRASE: ${{ secrets.TANIT_SIGN_GPG_PASSPHRASE }}
+        run: |
+          bash scripts/release/sign-linux.sh \
+            --stage "${STAGE}" --os linux --arch "${{ matrix.arch }}"
+
+      # --- el manifest y la verificación -------------------------------
+      - name: Medir los artefactos
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --stage "${STAGE}" \
+            --os "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}"
+
+      # La verificación nativa, en el corredor de la plataforma:
+      # Gatekeeper en macOS, Authenticode en Windows, GPG contra el
+      # keyring publicado en Linux. En `full` mode, si la herramienta no
+      # está, falla.
+      - name: Verificar las firmas
+        shell: bash
+        run: |
+          bash scripts/release/verify-signature.sh \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}" \
+            --stage "${STAGE}" \
+            --platform "${{ matrix.platform }}" \
+            --mode full \
+            --allow-unsigned="${{ steps.policy.outputs.sign != 'true' }}"
+
+      # --- la transparencia de la cadena de suministro --------------------
+      #
+      # El SBOM, el statement de provenance y la attestation firmada se
+      # construyen **después** de verificar las firmas: describen los
+      # artefactos ya firmados, y una attestation de artefactos sin
+      # firmar no acredita nada.
+      #
+      # La attestation es SLSA-compatible —statement in-toto con el
+      # predicado `https://slsa.dev/provenance/v1`, dentro de un envelope
+      # DSSE— que es el mismo formato que produce
+      # `actions/attest-build-provenance`. Se genera **localmente** y no
+      # con la action de GitHub por una razón concreta: la clave de
+      # attestation se puede verificar contra la clave pública, sin
+      # red y sin cuenta. Una attestation que sólo GitHub sabe
+      # verificar no se puede comprobar en el runner, y este pipeline
+      # exige comprobar lo que publica.
+      - name: Preparar la clave de attestation
+        id: attestationkey
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_ATTESTATION_KEY: ${{ secrets.TANIT_ATTESTATION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_ATTESTATION_KEY}" ]; then
+            echo "✗ The secret TANIT_ATTESTATION_KEY is not set: the release cannot be attested." >&2
+            echo "  A release without a verifiable attestation is not published." >&2
+            exit 1
+          fi
+          # La clave privada vive en un fichero temporal del runner y no
+          # sale de él: nunca está en el staging, ni en el repo, ni en el
+          # log. El fichero va con permisos cerrados porque es una clave.
+          printf '%s' "${TANIT_ATTESTATION_KEY}" > "${RUNNER_TEMP}/attestation-key.pem"
+          chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
+          openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
+
+          # La clave pública **versionada** es la que permite verificar la
+          # attestation que se publica: sin ella, quien la descarga no
+          # tiene con qué comprobarla. Si la clave del secreto no es la
+          # versionada, la attestation que saldría no la podría verificar
+          # nadie, así que el job para aquí.
+          published="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${published}" ]; then
+            echo "✗ The versioned public key ${published} is missing: the attestation would not be verifiable." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${published}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${published}." >&2
+            echo "  The attestation would be signed with a key that nobody can verify." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
+          echo "key=${RUNNER_TEMP}/attestation-key.pem" >> "$GITHUB_OUTPUT"
+          echo "public=${published}" >> "$GITHUB_OUTPUT"
+
+      # El SBOM y la attestation se construyen **solo** cuando se firma.
+      # En `plugins.tanit.options.release.sign=false` —el modo de
+      # desarrollo— no hay clave de attestation, y un paso que la exige
+      # mataría el job de un `workflow_dispatch` sin firma. La
+      # publicación sigue exigiendo los tres: el gate de publicación
+      # falla cerrado si no están.
+      - name: Construir el SBOM y la attestation
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          ATTESTATION_KEY_PATH: ${{ steps.attestationkey.outputs.key }}
+        run: |
+          set -euo pipefail
+          bun run scripts/release/build-sbom.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}" \
+            --key-env ATTESTATION_KEY_PATH \
+            --key-id "tanit-release-attestation-v1" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}"
+
+      # El manifest se vuelve a medir: ahora tiene que describir también
+      # el SBOM, la provenance y la attestation. Sin esto, el gate de
+      # publicación vería assets adjuntos que el manifest no describe.
+      - name: Volver a medir los artefactos
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --stage "${STAGE}" \
+            --os "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}"
+
+      - name: Subir los artefactos
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ env.STAGE }}
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------
+  # 2. Fusionar, volver a verificar y publicar.
+  # ---------------------------------------------------------------------
+  publish:
+    name: publish
+    needs: build
+    # Un prerelease construye los instaladores pero **no** los
+    # publica: mientras la versión no sea estable, la app de escritorio
+    # se distribuye desde la release del CLI, no como instalador
+    # firmado que la gente se instala en su máquina.
+    #
+    # Lo decide el **canal**, no el evento: antes se miraba
+    # `github.event.release.prerelease`, y el evento `release` ya no
+    # llega aquí — este workflow lo dispara el tag. El canal lo dice
+    # el gate, que es la misma fuente que usa `release-cut`.
+    if: needs.build.outputs.channel == 'stable'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      # La release la crea `release-cut`, que corre en paralelo con
+      # este workflow. Publicar sobre una release que aún no existe
+      # es un error de forma; se espera con un tope.
+      - name: Esperar a que la release exista
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "✓ la release $TAG existe"
+              exit 0
+            fi
+            echo "… la release $TAG todavía no existe (intento $attempt)"
+            sleep 20
+          done
+          echo "✗ la release $TAG no apareció en 20 minutos; ¿falló release-cut?" >&2
+          exit 1
+
+      # Se baja lo que firmó cada corredor. El layout del staging se
+      # conserva, así que los manifest siguen apuntando a rutas que
+      # existen.
+      - name: Recoger los artefactos
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-*
+          path: ${{ env.STAGE }}
+          merge-multiple: true
+
+      # Una release publicada **tiene** que estar firmada. Sin
+      # `plugins.tanit.options.release.sign=true` el job para aquí, con
+      # el motivo escrito.
+      - name: Exigir la firma
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGN="$(jq -r '.plugins.tanit.options.release.sign // false' delendai.config.json)"
+          if [ "${SIGN}" != "true" ]; then
+            echo "✗ Publishing a release requires delendai.config.json#plugins.tanit.options.release.sign=true." >&2
+            echo "  An unsigned release is not published. Set it, tag, and try again." >&2
+            exit 1
+          fi
+          echo "Signing is enabled: the release is published only if every artifact verifies."
+
+      - name: Fusionar los manifest
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --merge "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --production
+
+      # La comprobación nativa ya la hizo cada corredor, en su
+      # plataforma. Aquí se recalculan los digests y se comprueba que
+      # **todo** lo que hay en el staging está descrito y firmado: lo
+      # que sube el job de merge es lo que se publica, y no vale que
+      # sobre un artefacto sin firmar.
+      - name: Verificar el conjunto
+        shell: bash
+        run: |
+          bash scripts/release/verify-signature.sh \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --stage "${STAGE}" \
+            --mode portable
+      # El manifest del updater se firma con la clave del updater y el
+      # verificador del SBOM lo contrasta contra el SBOM y contra el
+      # manifest de la release. Los tres tienen que hablar del mismo
+      # hash: si el updater ofrece algo que el SBOM no describe, el
+      # cliente está instalando algo que nadie ha auditado.
+      - name: Construir el manifest del updater
+        shell: bash
+        env:
+          TANIT_UPDATER_KEY: ${{ secrets.TANIT_UPDATER_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_UPDATER_KEY}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not set: the release cannot offer a signed update." >&2
+            exit 1
+          fi
+          printf '%s' "${TANIT_UPDATER_KEY}" > "${RUNNER_TEMP}/updater-key.pem"
+          chmod 600 "${RUNNER_TEMP}/updater-key.pem"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          bun run scripts/release/build-update-manifest.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --out "${RUNNER_TEMP}/updater" \
+            --key "${RUNNER_TEMP}/updater-key.pem" \
+            --version "${VERSION}" \
+            --base-url "https://updates.tanit.dev/releases/${VERSION}" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}"
+      # La attestation se verifica **antes** de publicar. Si falta, si no
+      # verifica o si habla de otra build, el job muere aquí y la release
+      # se queda sin assets: una release sin attestation no es una
+      # release, es un binario en un sitio público.
+      #
+      # Los SBOM y las attestations seaben del staging por convención de
+      # nombre, así que la lista se recoge del disco en vez de escribirse
+      # a mano: un camino escrito a mano es un camino que se queda viejo
+      # en cuanto cambia la matriz.
+      - name: Verificar el SBOM y la attestation
+        shell: bash
+        env:
+          TANIT_ATTESTATION_KEY: ${{ secrets.TANIT_ATTESTATION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_ATTESTATION_KEY}" ]; then
+            echo "✗ The secret TANIT_ATTESTATION_KEY is not set: the attestation cannot be verified." >&2
+            exit 1
+          fi
+          printf '%s' "${TANIT_ATTESTATION_KEY}" > "${RUNNER_TEMP}/attestation-key.pem"
+          chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
+          openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
+
+          # Se verifica contra la clave pública **versionada**, no contra
+          # la que sale del secreto: la que se publica es la versionada, y
+          # lo que tiene que verificar es lo que se publica. Las dos
+          # tienen que ser la misma, y si no lo son la release para.
+          public_key="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${public_key}" ]; then
+            echo "✗ The versioned public key ${public_key} is missing: the attestation cannot be verified." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${public_key}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${public_key}." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
+          args=()
+          while IFS= read -r sbom; do
+            args+=(--sbom "${sbom}")
+          done < <(find "${STAGE}" -type f -name '*.cdx.json' | sort)
+          while IFS= read -r attestation; do
+            args+=(--attestation "${attestation}")
+          done < <(find "${STAGE}" -type f -name '*.intoto.jsonl' | sort)
+          # La provenance **publicada** va con los otros: es el statement
+          # en claro, y tiene que ser el mismo que el firmado. Sin esta
+          # comprobación, publicar los dos es publicar dos versiones de
+          # la verdad, y sólo una está firmada.
+          while IFS= read -r provenance; do
+            args+=(--provenance "${provenance}")
+          done < <(find "${STAGE}" -type f -name '*.provenance.json' | sort)
+
+          if [ "${#args[@]}" -eq 0 ]; then
+            echo "✗ The staging holds no SBOM: the release cannot be published without one." >&2
+            exit 1
+          fi
+
+          bun run scripts/release/verify-sbom.mjs \
+            "${args[@]}" \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --update-manifest "${RUNNER_TEMP}/updater/latest.json" \
+            --require-update-manifest \
+            --require-provenance \
+            --public-key "${public_key}" \
+            --key-id "tanit-release-attestation-v1" \
+            --source "release-desktop" \
+            --commit "${GITHUB_SHA}"
+
+      # ────────────────────────────────────────────────────────────
+      # El manifest de actualización, firmado.
+      #
+      # Sin esto, el cliente no tiene de dónde leer: los instaladores
+      # se publicaban, pero no existía ningún `latest.json` que
+      # dijera cuál era la versión, de dónde se bajaba cada
+      # instalador y cuál era su hash. Sin manifest no hay
+      # actualización: el canal no se puede usar.
+      #
+      # La clave **privada** sale del secreto del CI y se materializa
+      # en un fichero temporal con permisos `600`. Si el secreto no
+      # está, el job **falla cerrado**: una release sin manifest
+      # firmado es una release que no se puede actualizar, y eso se
+      # dice en el log del pipeline en vez de descubrirse en la app.
+      - name: Preparar la clave del updater
+        id: updaterkey
+        shell: bash
+        env:
+          TANIT_UPDATER_KEY: ${{ secrets.TANIT_UPDATER_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_UPDATER_KEY}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not set: the update manifest cannot be signed." >&2
+            echo "  The release is not published without a signed update manifest." >&2
+            exit 1
+          fi
+          key="${RUNNER_TEMP}/tanit-updater-key.pem"
+          # El secreto puede venir en base64 o en claro: lo que vale
+          # es lo que `openssl` sepa leer.
+          if ! printf '%s' "${TANIT_UPDATER_KEY}" | base64 --decode > "${key}" 2>/dev/null; then
+            printf '%s' "${TANIT_UPDATER_KEY}" > "${key}"
+          fi
+          if [ ! -s "${key}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is empty." >&2
+            exit 1
+          fi
+          if ! grep -q "PRIVATE KEY" "${key}"; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not a PEM private key." >&2
+            rm -f "${key}"
+            exit 1
+          fi
+          chmod 600 "${key}"
+          echo "key=${key}" >> "$GITHUB_OUTPUT"
+
+      - name: Construir y firmar el manifest de actualización
+        id: updatemanifest
+        shell: bash
+        env:
+          KEY: ${{ steps.updaterkey.outputs.key }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          out="${UPDATE_DIR}"
+          bun run scripts/release/build-update-manifest.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --out "${out}" \
+            --key "${KEY}" \
+            --key-id "${UPDATE_KEY_ID}" \
+            --version "${version}" \
+            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}"
+          # La clave se borra aquí: a partir de este punto sólo hace
+          # falta el manifest, que ya está firmado.
+          rm -f "${KEY}"
+          echo "out=${out}" >> "$GITHUB_OUTPUT"
+
+      # El verificador **independiente**: con `jq` y `openssl`, sin el
+      # cliente. Si el secreto no es la contraparte de la clave pública
+      # del repo, o si un instalador no cuadra con lo que dice el
+      # manifest, esto falla y **no** se publica nada.
+      - name: Verificar el manifest de actualización
+        shell: bash
+        env:
+          OUT: ${{ steps.updatemanifest.outputs.out }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/verify-update.sh \
+            --manifest "${OUT}/latest.json" \
+            --signature "${OUT}/latest.json.sig" \
+            --public-key packages/desktop/keys/tanit-updater-public-key-v1.pem \
+            --key-id "${UPDATE_KEY_ID}" \
+            --platform linux/x64/deb \
+            --stage "${STAGE}"
+
+      # Lo que se adjunta lo decide **el gate**, no una lista de globs
+      # escrita aquí: los dos tienen que decir lo mismo, y cuando los
+      # dos tienen su propia lista la release se publica con el
+      # manifest equivocado (el glob recursivo de `release-manifest.json`
+      # encuentra cinco ficheros y la acción que los sube nombra cada
+      # uno por su `basename`, así que sólo queda el último).
+      #
+      # El gate también es lo que comprueba que están los targets de la
+      # matriz y que ninguno va sin firmar: un glob que encuentra un
+      # `.dmg` sigue encontrando un `.dmg` aunque falte el del otro
+      # brazo.
+      #
+      # El manifest de actualización y su firma se adjuntan **por su
+      # ruta exacta**: el gate lista lo que se publica y el manifest va
+      # con ellos, para que el endpoint tenga las tres cosas —el
+      # manifest, su firma y los instaladores— en el mismo sitio.
+      #
+      # El gate también comprueba que están el SBOM, la provenance y la
+      # attestation: sin ellos la release no se puede auditar.
+
+      - name: Calcular y comprobar los assets a publicar
+        id: assets
+        shell: bash
+        env:
+          UPDATE_OUT: ${{ steps.updatemanifest.outputs.out }}
+        run: |
+          set -euo pipefail
+          {
+            echo "files<<EOF"
+            bun run scripts/release/publish-gate.mjs \
+              --stage "${STAGE}" \
+              --manifest "${STAGE}/${MANIFEST_NAME}" \
+              --list
+            echo "${UPDATE_OUT}/latest.json"
+            echo "${UPDATE_OUT}/latest.json.sig"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Adjuntar a la release
+        uses: softprops/action-gh-release@v3
+        with:
+          # El tag, explícito: este workflow lo dispara el tag, y la
+          # release —que ya existe, porque arriba se esperó a que
+          # apareciera— es la de ese tag.
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.assets.outputs.files }}
+          fail_on_unmatched_files: true
