@@ -74,8 +74,19 @@ disparan desde ahí.
 | Workflow | Cuándo | Qué hace |
 |---|---|---|
 | `release-cut` | Al empujar un tag `v*.*.*` | Crea la release de GitHub. Comprueba que el tag diga lo mismo que la versión del repo, saca las notas del CHANGELOG y marca la release como prerelease si el canal lo dice. |
-| `release-binaries` | Al publicar la release | Compila el ejecutable autocontenido por plataforma y lo adjunta. |
-| `release-desktop` | Al publicar la release | Compila los instaladores nativos por plataforma. Con `release.sign=false` —lo de hoy— los construye pero no publica nada. |
+| `release-binaries` | Al empujar el mismo tag | Compila el ejecutable autocontenido por plataforma y lo adjunta. |
+| `release-desktop` | Al empujar el mismo tag | Compila los instaladores nativos por plataforma. Con `release.sign=false` —lo de hoy— los construye pero no publica nada. |
+
+**Los tres escuchan el tag, no el evento `release`.** No es un
+detalle: `release-cut` crea la release con `GITHUB_TOKEN`, y **los
+eventos que dispara el propio `GITHUB_TOKEN` no crean ejecuciones
+nuevas**. Con los workflows escuchando a `release: [published,
+prereleased]`, la release se creaba bien —con sus notas y su marca de
+prerelease— y **nadie adjuntaba los binarios**: la release salía
+vacía, sin que ningún check fallara ni una línea del log lo dijera.
+El tag sí lo empuja una persona, y eso GitHub lo dispara siempre.
+
+`tests/release/release-workflows.spec.ts` vigila la regla.
 
 **El canal lo decide el prefijo de la versión**, no el workflow.
 `lint:release-channel` es la fuente: `release-cut` **pregunta** con
@@ -87,6 +98,11 @@ estable acabaría marcando un alfa.
 notas de la release; `scripts/release/release-notes.mjs` la extraa y
 `release-cut` **para** si no la encuentra. Una release sin notas es
 una release que dice "no hay nada".
+
+**Los tres arrancan a la vez.** La release la crea `release-cut`, así
+que los otros dos **esperan a que exista** antes de tocarla. Sin la
+espera, adjuntar es un error de forma ("release not found") y no de
+contenido.
 
 **No hay publicación en npm.** La distribución es la release de GitHub:
 el ejecutable autocontenido, que no necesita Bun ni Node en la máquina
