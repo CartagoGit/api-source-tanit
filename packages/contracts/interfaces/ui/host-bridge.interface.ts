@@ -26,20 +26,17 @@
  *
  * ## The operations that have no handler yet
  *
- * Some capabilities the CLI has are not behind a handler, so the app
- * cannot reach them. They are declared in `IPendingHostRequestMap`
- * and asked for through `requestPending()`, which says out loud that
- * the call does not work yet.
+ * There used to be a second vocabulary: the operations the app could
+ * ask for but the core did not have, declared in
+ * `IPendingHostRequestMap` and asked for through `requestPending()`.
+ * That vocabulary is gone — the last of its operations
+ * (`service-detail` and the four about the persisted history) became
+ * handlers, and the backlog emptied itself.
  *
- * That is not decoration. `scripts/gates/lint-cli-app-parity.script.ts`
- * reads the two: an operation asked for as pending that **already**
- * has a handler fails the build, so the backlog empties itself the
- * moment the handler lands.
- *
- * `check`, `validate`, `stats`, `push` and `sync` were on that list
- * and are not any more: their logic moved to the core and the
- * Application API exposes them, so the app asks for them like any
- * other operation.
+ * The gate that watched it is still there:
+ * `scripts/gates/lint-cli-app-parity.script.ts` fails when an
+ * operation the app asks for has no handler, so the list of things
+ * the app cannot do cannot grow without anybody noticing.
  */
 import type {
   BrowseInput,
@@ -60,6 +57,16 @@ import type {
   GetSchemaOutput,
   HistoryInput,
   HistoryOutput,
+  HistoryCompareConfigInput,
+  HistoryCompareConfigOutput,
+  HistoryDiffInput,
+  HistoryDiffOutput,
+  HistoryListInput,
+  HistoryListOutput,
+  HistoryReExportInput,
+  HistoryReExportOutput,
+  HistoryRestoreInput,
+  HistoryRestoreOutput,
   ListEndpointsInput,
   ListEndpointsOutput,
   ListProjectsInput,
@@ -70,6 +77,8 @@ import type {
   OpenProjectOutput,
   PushInput,
   PushOutput,
+  ServiceDetailInput,
+  ServiceDetailOutput,
   SettingsInput,
   SettingsOutput,
   SnapshotInput,
@@ -83,7 +92,6 @@ import type {
   WatchInput,
   WatchOutput,
 } from "../core/application-api.interface.js";
-import type { PendingAppOperation } from "../../constants/core/cli-app-parity.constant.js";
 
 export type HostTheme = "light" | "dark";
 
@@ -100,9 +108,21 @@ export interface IHostRequestMap {
   "get-endpoint": GetEndpointInput;
   "get-schema": GetSchemaInput;
   "list-services": ListServicesInput;
+  /** One service, with everything known about it. */
+  "service-detail": ServiceDetailInput;
   "dry-run": DryRunInput;
   "export": ExportInput;
   "history": HistoryInput;
+  /** The persisted history: the revisions the project has been through. */
+  "history-list": HistoryListInput;
+  /** What changed between two revisions. */
+  "history-diff": HistoryDiffInput;
+  /** How two revisions were configured. */
+  "history-compare-config": HistoryCompareConfigInput;
+  /** A revision, exported again. */
+  "history-re-export": HistoryReExportInput;
+  /** A revision, restored. */
+  "history-restore": HistoryRestoreInput;
   "watch": WatchInput;
   "cancel": CancelInput;
   "settings": SettingsInput;
@@ -135,9 +155,15 @@ export interface IHostResponseMap {
   "get-endpoint": GetEndpointOutput;
   "get-schema": GetSchemaOutput;
   "list-services": ListServicesOutput;
+  "service-detail": ServiceDetailOutput;
   "dry-run": DryRunOutput;
   "export": ExportOutput;
   "history": HistoryOutput;
+  "history-list": HistoryListOutput;
+  "history-diff": HistoryDiffOutput;
+  "history-compare-config": HistoryCompareConfigOutput;
+  "history-re-export": HistoryReExportOutput;
+  "history-restore": HistoryRestoreOutput;
   "watch": WatchOutput;
   "cancel": CancelOutput;
   "settings": SettingsOutput;
@@ -152,59 +178,16 @@ export interface IHostResponseMap {
 }
 
 /**
- * Operations the CLI has and the Application API does not expose yet.
- *
- * The inputs are what the app already sends — they are the shape the
- * handlers will have to accept when they land, so declaring them here
- * means the call sites do not change when the handler appears.
- *
- * The answers are `unknown` on purpose: no handler exists, so there is
- * nothing to promise about the shape that comes back. The clients cast
- * it, and the cast is the marker of what is still missing.
- */
-export interface IPendingHostRequestMap {
-  "service-detail": { readonly projectRoot: string; readonly serviceId: string };
-  "history-diff": {
-    readonly projectRoot: string;
-    readonly leftId: string;
-    readonly rightId: string;
-    readonly configuration?: Readonly<Record<string, unknown>>;
-  };
-  "history-compare-config": {
-    readonly projectRoot: string;
-    readonly leftId: string;
-    readonly rightId: string;
-  };
-  "history-re-export": {
-    readonly projectRoot: string;
-    readonly historyId: string;
-    readonly configuration?: Readonly<Record<string, unknown>>;
-  };
-  "history-restore": { readonly projectRoot: string; readonly historyId: string };
-}
-
-/**
  * The connector.
  *
- * `request` speaks the registry's vocabulary. `requestPending` speaks
- * the backlog's, and says out loud that the call does not work yet.
+ * `request` speaks the registry's vocabulary, and the compiler checks
+ * it: asking for an operation that does not exist is a type error.
  */
 export interface IHostBridge {
   request<K extends keyof IHostRequestMap>(
     operation: K,
     input: IHostRequestMap[K],
   ): Promise<IHostResponseMap[K]>;
-  /**
-   * Asks for an operation that has no handler yet.
-   *
-   * It answers `UNKNOWN_HANDLER` at runtime — which is the point: the
-   * failure is visible in the code, in the gate, and in the backlog,
-   * instead of hiding in a screen that quietly shows nothing.
-   */
-  requestPending<K extends PendingAppOperation>(
-    operation: K,
-    input: IPendingHostRequestMap[K],
-  ): Promise<unknown>;
   /** Notifies about what the backend pushes (watch events). */
   subscribe(listener: (event: unknown) => void): () => void;
 }

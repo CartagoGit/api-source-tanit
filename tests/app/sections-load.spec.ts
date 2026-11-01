@@ -49,7 +49,6 @@ interface ICall {
 function fakeBridge(): {
   bridge: {
     request: (operation: string, input: unknown) => Promise<unknown>;
-    requestPending: (operation: string, input: unknown) => Promise<unknown>;
     subscribe: (listener: (event: unknown) => void) => () => void;
   };
   calls: ICall[];
@@ -67,6 +66,18 @@ function fakeBridge(): {
           return { services: [] };
         case "history":
           return { entries: [], total: 0 };
+        case "history-list":
+          return { entries: [], total: 0 };
+        case "service-detail":
+          return {
+            service: {
+              serviceId: "api",
+              framework: "express",
+              endpointCount: 3,
+              transports: ["http"],
+              operationCount: 3,
+            },
+          };
         case "dry-run":
           return {
             endpointCount: 0,
@@ -85,14 +96,6 @@ function fakeBridge(): {
         default:
           throw new Error(`unexpected operation: ${operation}`);
       }
-    }),
-    /**
-     * The pending operations are recorded too, and then they fail —
-     * which is what the API does with them today.
-     */
-    requestPending: vi.fn(async (operation: string, input: unknown) => {
-      calls.push({ operation, input });
-      throw new Error(`UNKNOWN_HANDLER: ${operation}`);
     }),
     subscribe: vi.fn((listener: (event: unknown) => void) => {
       listeners.push(listener);
@@ -312,8 +315,8 @@ describe("the CLI-only sections", () => {
 });
 
 describe("the detail of one service", () => {
-  it("says that it is not available yet, instead of failing silently", async () => {
-    const { bridge } = fakeBridge();
+  it("asks the backend for it, and says what came back", async () => {
+    const { bridge, calls } = fakeBridge();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [{ provide: HostBridgeClient, useValue: bridge }],
@@ -324,7 +327,12 @@ describe("the detail of one service", () => {
 
     await component.load("api");
 
-    expect(component.error()).toContain("not available in the app yet");
+    expect(callsFor(calls, "service-detail")[0]?.input).toMatchObject({
+      projectRoot: "/workspace",
+      serviceId: "api",
+    });
+    expect(component.error()).toBeNull();
+    expect(component.service()?.endpointCount).toBe(3);
   });
 });
 

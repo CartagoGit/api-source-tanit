@@ -1,8 +1,38 @@
+/**
+ * What changed between two revisions of a project.
+ *
+ * ## What it compares
+ *
+ * Two **canonical** snapshots — the projection that says what the API
+ * surface was, without the thousand details that change every time
+ * and mean nothing. The comparison is by service and by operation:
+ *
+ *   · a service that appears or disappears is **added** or
+ *     **removed**;
+ *   · a service whose framework, transports or base URL changed is
+ *     **changed**, and the change says which of the three;
+ *   · an operation whose method or path changed is **changed**;
+ *   · an operation whose request or response changed is a **schema**
+ *     change;
+ *   · an operation whose authentication changed is an **auth** change.
+ *
+ * The last two are separate on purpose: a body that changed and a
+ * token that changed are different facts, and a diff that merged them
+ * would answer "something changed" to a question that had an answer.
+ *
+ * ## Why the comparison is pure
+ *
+ * Because it is the one thing about the history that must be right
+ * whatever else is wrong: it reads two snapshots and says what is
+ * different between them. It touches no disk, no session and no
+ * clock, so the same two snapshots always produce the same diff — and
+ * a diff that changed with the weather could not be trusted.
+ */
 import type { ICanonicalSnapshot } from "./snapshot-hash.service.js";
-import { canonicalSnapshotJson, snapshotSha256 } from "./snapshot-hash.service.js";
 export type { IHistoryChange, IHistoryDiff, IHistoryRecord } from "../../contracts/interfaces/core/history.interface.js";
-import type { IHistoryChange, IHistoryDiff, IHistoryRecord } from "../../contracts/interfaces/core/history.interface.js";
+import type { IHistoryChange, IHistoryDiff } from "../../contracts/interfaces/core/history.interface.js";
 
+/** A value, with its keys sorted, so two equal values look the same. */
 function fingerprint(value: unknown): string {
   return JSON.stringify(value, (_, entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
@@ -63,64 +93,4 @@ export function diffSnapshots(
     schemaChanges: schemaChangeDetails.sort((left, right) => left.key.localeCompare(right.key)),
     configuration: { before: leftConfiguration ?? {}, after: rightConfiguration ?? {} },
   };
-}
-
-/** Mantiene registros de snapshots y sus configuraciones por proyecto. */
-export class HistoryRecorderService {
-  private readonly records = new Map<string, IHistoryRecord[]>();
-
-  record(
-    projectRoot: string,
-    snapshot: ICanonicalSnapshot,
-    options: {
-      readonly formats?: ReadonlyArray<string>;
-      readonly output?: string;
-      readonly source?: IHistoryRecord["provenance"]["source"];
-      readonly parentId?: string;
-      readonly configuration?: Readonly<Record<string, unknown>>;
-    } = {},
-  ): IHistoryRecord {
-    const timestamp = snapshot.capturedAt;
-    const output = options.output ?? "";
-    const record: IHistoryRecord = {
-      id: `${timestamp}-${snapshotSha256(snapshot).slice(0, 12)}`,
-      timestamp,
-      formats: [...(options.formats ?? snapshot.formats)].sort(),
-      count: snapshot.services.reduce((total, service) => total + service.operations.length, 0),
-      output,
-      sha256: snapshotSha256(snapshot),
-      provenance: {
-        source: options.source ?? "scan",
-        projectRoot,
-        parentId: options.parentId,
-      },
-      configuration: { ...(options.configuration ?? {}) },
-      snapshot,
-    };
-    const records = this.records.get(projectRoot) ?? [];
-    records.push(record);
-    this.records.set(projectRoot, records);
-    return record;
-  }
-
-  list(projectRoot: string): ReadonlyArray<IHistoryRecord> {
-    return [...(this.records.get(projectRoot) ?? [])].sort((left, right) =>
-      right.timestamp.localeCompare(left.timestamp),
-    );
-  }
-
-  get(projectRoot: string, id: string): IHistoryRecord | undefined {
-    return this.records.get(projectRoot)?.find((record) => record.id === id);
-  }
-
-  compare(projectRoot: string, leftId: string, rightId: string): IHistoryDiff {
-    const left = this.get(projectRoot, leftId);
-    const right = this.get(projectRoot, rightId);
-    if (!left || !right) throw new Error("Both history records are required for comparison");
-    return diffSnapshots(left.snapshot, right.snapshot, left.configuration, right.configuration);
-  }
-
-  serialize(record: IHistoryRecord): string {
-    return canonicalSnapshotJson(record.snapshot);
-  }
 }

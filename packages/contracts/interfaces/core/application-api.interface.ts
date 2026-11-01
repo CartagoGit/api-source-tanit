@@ -9,13 +9,19 @@ import type {
   ExportInputSchema,
   GetEndpointInputSchema,
   GetSchemaInputSchema,
+  HistoryCompareConfigInputSchema,
+  HistoryDiffInputSchema,
   HistoryInputSchema,
+  HistoryListInputSchema,
+  HistoryReExportInputSchema,
+  HistoryRestoreInputSchema,
   ListEndpointsInputSchema,
   ListProjectsInputSchema,
   ListServicesInputSchema,
   OpenProjectInputSchema,
   ProjectEntrySchema,
   PushInputSchema,
+  ServiceDetailInputSchema,
   SettingsInputSchema,
   SnapshotInputSchema,
   SnapshotSummarySchema,
@@ -28,6 +34,8 @@ import type {
 import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { IBrowseListing } from "./browse.interface.js";
 import type { IExporterDiagnostic } from "./exporter.interface.js";
+import type { IHistoryDiff, IHistorySummary } from "./history.interface.js";
+import type { IServiceDetail } from "./services.interface.js";
 import type {
   IPushedArtifact,
   IPushFailure,
@@ -67,6 +75,12 @@ export type ListServicesInput = z.infer<typeof ListServicesInputSchema>;
 export type DryRunInput = z.infer<typeof DryRunInputSchema>;
 export type ExportInput = z.infer<typeof ExportInputSchema>;
 export type HistoryInput = z.infer<typeof HistoryInputSchema>;
+export type HistoryListInput = z.infer<typeof HistoryListInputSchema>;
+export type HistoryDiffInput = z.infer<typeof HistoryDiffInputSchema>;
+export type HistoryCompareConfigInput = z.infer<typeof HistoryCompareConfigInputSchema>;
+export type HistoryReExportInput = z.infer<typeof HistoryReExportInputSchema>;
+export type HistoryRestoreInput = z.infer<typeof HistoryRestoreInputSchema>;
+export type ServiceDetailInput = z.infer<typeof ServiceDetailInputSchema>;
 export type WatchInput = z.infer<typeof WatchInputSchema>;
 export type CancelInput = z.infer<typeof CancelInputSchema>;
 export type SettingsInput = z.infer<typeof SettingsInputSchema>;
@@ -127,11 +141,65 @@ export interface IExportPlan {
 export interface DryRunOutput { readonly endpointCount: number; readonly frameworks: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string>; readonly durationMs: number; readonly files: ReadonlyArray<IExportFilePreview>; readonly formats: ReadonlyArray<IExportFormatSummary>; readonly diagnostics: ReadonlyArray<IExporterDiagnostic>; }
 /** What a format can and cannot represent, in the core's own words. */
 export interface IExportFormatSummary { readonly id: string; readonly summary: string; }
-export interface ExportOutput { readonly outputPath: string; readonly bytes: number; readonly files: ReadonlyArray<string>; }
+export interface ExportOutput { readonly outputPath: string; readonly bytes: number; readonly files: ReadonlyArray<string>; /**
+   * The revision this export left in the project's history.
+   *
+   * It is there so the app can say "this is revision X" instead of
+   * guessing: the export and the history entry are the same moment.
+   */
+readonly historyId?: string; /**
+   * What went wrong while the export was being remembered.
+   *
+   * The files were written; the revision was not kept. Saying so is
+   * the honest thing: an export that reports a failure when it
+   * succeeded would send the person looking for a problem that is
+   * not there.
+   */
+readonly warning?: string; }
 export type IHistoryEntry =
   | { readonly kind: "snapshot-ready"; readonly capturedAt: string; readonly sessionId: string }
   | { readonly kind: "snapshot-stale"; readonly capturedAt: string; readonly changedPaths: ReadonlyArray<string> };
 export interface HistoryOutput { readonly entries: ReadonlyArray<IHistoryEntry>; readonly total: number; }
+/**
+ * The persisted history of a project.
+ *
+ * The revisions are the **metadata** of each record: when it was
+ * made, what it contained, how it was configured. The whole snapshot
+ * is not here — it is on disk, and the operations that need it (diff,
+ * re-export, restore) go and read it.
+ */
+export interface HistoryListOutput {
+  readonly entries: ReadonlyArray<IHistorySummary>;
+  readonly total: number;
+}
+/**
+ * What changed between two revisions.
+ *
+ * It is the diff **in the root**, without a wrapper: the app's screen
+ * reads `result.added` and `result.serviceChanges` directly, and a
+ * wrapper would have been a level of nesting for nothing.
+ */
+export type HistoryDiffOutput = IHistoryDiff;
+/** How two revisions were configured, side by side. */
+export interface HistoryCompareConfigOutput {
+  readonly before: Readonly<Record<string, unknown>>;
+  readonly after: Readonly<Record<string, unknown>>;
+}
+/** A revision, exported again. */
+export type HistoryReExportOutput = ExportOutput;
+/** A revision, restored. */
+export interface HistoryRestoreOutput {
+  /** `true` when the collection was written. */
+  readonly restored: boolean;
+  /** The revision that was restored. */
+  readonly historyId: string;
+  /** Where it was written. */
+  readonly outputPath: string;
+}
+/** One service, with everything known about it. */
+export interface ServiceDetailOutput {
+  readonly service: IServiceDetail;
+}
 export interface WatchSubscription { readonly subscriptionId: string; readonly projectRoot: string; readonly onlyPaths: ReadonlyArray<string> | null; }
 export interface WatchOutput { readonly subscription: WatchSubscription; }
 export interface CancelOutput { readonly cancelled: number; }

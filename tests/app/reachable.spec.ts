@@ -142,7 +142,7 @@ describe("the diagnostics section", () => {
       providers: [
         DiagnosticsComponent,
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const project = TestBed.inject(ProjectStore);
@@ -179,7 +179,7 @@ describe("the diagnostics section", () => {
       providers: [
         DiagnosticsComponent,
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
 

@@ -56,8 +56,32 @@ dentro.
 | Sección | Qué hace |
 |---|---|
 | **En vivo** | La suscripción a cambios de las fuentes. |
-| **Historial** | Los eventos de la sesión: la instantánea tomada y los ficheros que cambiaron debajo. |
+| **Historial** | Los eventos de la sesión —la instantánea tomada y los ficheros que cambiaron debajo— y las **revisiones** del proyecto: cada exportación deja una en disco, y dos de ellas se pueden comparar. |
 | **Diagnóstico** | Lo que el escaneo notó del proyecto: los avisos de la generación y los detectores que no pudieron leer un fichero. |
+
+### El historial que sobrevive a la sesión
+
+Cada exportación deja una **revisión** en disco
+(`~/.tanit/history/<proyecto>/`, un fichero por revisión), con su hash
+y con la configuración con la que se hizo. La carpeta se puede mover
+con `TANIT_HISTORY_DIR`.
+
+Eso permite tres cosas que antes no eran posibles:
+
+- **Comparar** dos revisiones: qué operaciones aparecieron, cuáles
+  desaparecieron, cuáles cambiaron y de qué manera se configuró cada
+  una.
+- **Exportar otra vez** una revisión anterior, tal y como estaba.
+- **Restaurar** una revisión: su colección vuelve al proyecto.
+
+La revisión sobrevive a la sesión que la creó, y también a la app: es
+un fichero, no un estado en memoria.
+
+El CLI **no** deja revisiones. Su `history` es el registro de
+ejecuciones (`~/.tanit/history.jsonl`): dice qué se ejecutó, cuándo y
+cómo acabó. Son dos cosas distintas, y el gate
+`bun run lint:cli-app-parity` vigila que el mapa de paridad siga
+diciendo la verdad.
 
 ### Preferencias
 

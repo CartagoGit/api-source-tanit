@@ -46,7 +46,7 @@ describe("ProjectStore", () => {
     TestBed.configureTestingModule({
       providers: [
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const project = TestBed.inject(ProjectStore);
@@ -69,7 +69,7 @@ describe("ProjectStore", () => {
     TestBed.configureTestingModule({
       providers: [
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const project = TestBed.inject(ProjectStore);
@@ -106,7 +106,7 @@ describe("ProjectStore", () => {
     TestBed.configureTestingModule({
       providers: [
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request } },
       ],
     });
     const project = TestBed.inject(ProjectStore);
@@ -126,7 +126,7 @@ describe("the shell", () => {
       providers: [
         AppComponent,
         ProjectStore,
-        { provide: HostBridgeClient, useValue: { request: vi.fn(), requestPending: vi.fn() } },
+        { provide: HostBridgeClient, useValue: { request: vi.fn() } },
       ],
     });
     const shell = TestBed.runInInjectionContext(() => new AppComponent());

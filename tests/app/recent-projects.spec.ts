@@ -53,7 +53,6 @@ describe("recent projects", () => {
           listing: { ok: true, path: "/home", parent: null, entries: [], truncated: false },
         };
       }),
-      requestPending: vi.fn(async () => ({})),
       subscribe: vi.fn(() => () => undefined),
     };
     TestBed.resetTestingModule();
@@ -72,7 +71,6 @@ describe("recent projects", () => {
   it("can be built by Angular, which it could not before", () => {
     const bridge = {
       request: vi.fn(async () => ({})),
-      requestPending: vi.fn(async () => ({})),
       subscribe: vi.fn(() => () => undefined),
     };
     TestBed.resetTestingModule();

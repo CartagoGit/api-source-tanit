@@ -67,19 +67,19 @@ export class ServicesClient {
   /**
    * The detail of one service.
    *
-   * The API lists the services, but it does not expose the detail of
-   * one — its base URL, its auth reference, its operations. The core
-   * has the data, so the call is declared **pending**: it fails
-   * visibly, and the gap is written down instead of turning into an
-   * `UNKNOWN_HANDLER` at runtime.
+   * It comes from **one** snapshot, in one read: the identity, the
+   * framework, how many endpoints it has, which transports its
+   * operations speak and how many operations the explorer shows.
+   *
+   * The client used to cross the list of services with the list of
+   * endpoints to fill the gaps. That was a lie waiting to happen:
+   * the two lists are asked for separately, so a project that changed
+   * between the two calls produced a detail that mixed two moments.
    */
-  detail(projectRoot: string, serviceId: string): Promise<IServiceDetail> {
-    return this.bridge
-      .requestPending("service-detail", { projectRoot, serviceId })
-      .then((result) => {
-        const service = (result as { service?: IServiceDetail }).service;
-        if (!service) throw new Error(`Service not found: ${serviceId}`);
-        return service;
-      });
+  async detail(projectRoot: string, serviceId: string): Promise<IServiceDetail> {
+    const answer = await this.bridge.request("service-detail", { projectRoot, serviceId });
+    const service = answer.service;
+    if (!service) throw new Error(`Service not found: ${serviceId}`);
+    return service;
   }
 }

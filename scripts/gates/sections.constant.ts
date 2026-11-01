@@ -93,6 +93,14 @@ export const SECTIONS: readonly ISection[] = [
     tests: [
       "tests/core/**/*.{spec,test}.ts",
       "tests/response-inference/**/*.{spec,test}.ts",
+      // La Application API es código del núcleo: sus handlers viven
+      // en `packages/core/application-api/` y sus tests, aquí.
+      //
+      // La carpeta estaba **fuera** de todas las secciones, así que
+      // el fichero que prueba los handlers —los veinte, uno por
+      // uno— no se ejecutaba nunca. Un test que no corre no prueba
+      // nada, y además pesaba como cobertura sin serlo.
+      "tests/application-api/**/*.{spec,test}.ts",
     ],
     tsconfig: "tsconfig.core.json",
     dependsOn: ["contracts"],

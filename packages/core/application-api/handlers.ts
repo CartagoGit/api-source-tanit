@@ -23,9 +23,11 @@ import { createListEndpointsHandler } from "./list-endpoints.handler.js";
 import { createGetEndpointHandler } from "./get-endpoint.handler.js";
 import { createGetSchemaHandler } from "./get-schema.handler.js";
 import { createListServicesHandler } from "./list-services.handler.js";
+import { createServiceDetailHandler } from "./service-detail.handler.js";
 import { createDryRunHandler } from "./dry-run.handler.js";
 import { createExportHandler } from "./export.handler.js";
 import { createHistoryHandlers } from "./history.handlers.js";
+import { createPersistedHistoryHandlers } from "./history-persisted.handlers.js";
 import { createWatchHandlers } from "./watch.handlers.js";
 import { createCancelHandler } from "./cancel.handler.js";
 import { createSettingsHandler } from "./settings.handlers.js";
@@ -61,6 +63,7 @@ function widenHandler<TInput, TOutput>(handler: IHandler<TInput, TOutput>): IHan
 export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unknown>>> {
   const snap = createSnapshotHandlers();
   const hist = createHistoryHandlers();
+  const persisted = createPersistedHistoryHandlers();
   const watch = createWatchHandlers();
   const map: Record<string, IHandler<unknown, unknown>> = {
     "open-project": widenHandler(createOpenProjectHandler()),
@@ -69,9 +72,17 @@ export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unkno
     "get-endpoint": widenHandler(createGetEndpointHandler()),
     "get-schema": widenHandler(createGetSchemaHandler()),
     "list-services": widenHandler(createListServicesHandler()),
+    "service-detail": widenHandler(createServiceDetailHandler()),
     "dry-run": widenHandler(createDryRunHandler()),
     "export": widenHandler(createExportHandler()),
     "history": widenHandler(hist.list),
+    // The persisted history: the revisions the project has been
+    // through, and what can be done with them.
+    "history-list": widenHandler(persisted.list),
+    "history-diff": widenHandler(persisted.diff),
+    "history-compare-config": widenHandler(persisted.compareConfig),
+    "history-re-export": widenHandler(persisted.reExport),
+    "history-restore": widenHandler(persisted.restore),
     "watch": widenHandler(watch.subscribe),
     "cancel": widenHandler(createCancelHandler()),
     "settings": widenHandler(createSettingsHandler()),

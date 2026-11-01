@@ -67,6 +67,50 @@ export const HistoryInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   limit: z.number().int().positive().max(1000).optional(),
 });
+/**
+ * The **persisted** history of a project.
+ *
+ * Not the same thing as `history`: that one is the session's own
+ * events (the snapshot was taken, the files changed under it). This
+ * one is the list of revisions — past generations, with their hashes,
+ * that can be compared, exported again or restored.
+ */
+export const HistoryListInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  limit: z.number().int().positive().max(1000).optional(),
+});
+export const HistoryDiffInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The older revision. */
+  leftId: z.string().min(1),
+  /** The newer revision. */
+  rightId: z.string().min(1),
+});
+export const HistoryCompareConfigInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  leftId: z.string().min(1),
+  rightId: z.string().min(1),
+});
+export const HistoryReExportInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The revision to export again. */
+  historyId: z.string().min(1),
+  /** The format to write. `postman` when nobody says. */
+  target: z.string().min(1).optional(),
+  /** Where the files go. */
+  outputDirectory: z.string().min(1).optional(),
+});
+export const HistoryRestoreInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The revision to restore. */
+  historyId: z.string().min(1),
+  /** The collection to write. The project's own when nobody says. */
+  collectionPath: z.string().min(1).optional(),
+});
+export const ServiceDetailInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  serviceId: z.string().min(1),
+});
 export const WatchInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   onlyPaths: z.array(z.string().min(1)).optional(),
@@ -225,7 +269,9 @@ export const ProjectEntrySchema = z.object({
 
 export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
-  "get-schema", "list-services", "dry-run", "export", "history",
+  "get-schema", "list-services", "service-detail", "dry-run", "export",
+  "history", "history-list", "history-diff", "history-compare-config",
+  "history-re-export", "history-restore",
   "watch", "cancel", "settings", "list-projects", "close", "browse",
   "check", "validate", "stats", "push", "sync",
 ] as const;

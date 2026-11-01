@@ -14,5 +14,40 @@
       </article>
     } @empty { <p>{{ i18n.translate("history.empty") }}</p> }
   }
-  <p class="note">{{ i18n.translate("history.note") }}</p>
+
+  <section class="revisions">
+    <h3>{{ i18n.translate("history.revisions") }}</h3>
+    @if (!history.revisions().length) {
+      <p>{{ i18n.translate("history.noRevisions") }}</p>
+    } @else {
+      <ul>
+        @for (revision of history.revisions(); track revision.id) {
+          <li>
+            <span>{{ label(revision) }}</span>
+            <small>{{ revision.formats.join(", ") }}</small>
+            <code>{{ revision.sha256.slice(0, 12) }}</code>
+          </li>
+        }
+      </ul>
+      <div class="compare">
+        <label>{{ i18n.translate("history.left") }}
+          <select [value]="left()" (change)="left.set(selected($event))">
+            @for (revision of history.revisions(); track revision.id) {
+              <option [value]="revision.id">{{ label(revision) }}</option>
+            }
+          </select>
+        </label>
+        <label>{{ i18n.translate("history.right") }}
+          <select [value]="right()" (change)="right.set(selected($event))">
+            @for (revision of history.revisions(); track revision.id) {
+              <option [value]="revision.id">{{ label(revision) }}</option>
+            }
+          </select>
+        </label>
+        @if (canCompare()) {
+          <tanit-history-diff [leftId]="left()" [rightId]="right()" />
+        }
+      </div>
+    }
+  </section>
 </section>
