@@ -1,0 +1,19 @@
+health:
+    path: /health
+    controller: App\Controller\HealthController::index
+    methods: [GET]
+
+api_users_list:
+    path: /api/users
+    controller: App\Controller\UserController::list
+    methods: [GET]
+
+api_users_create:
+    path: /api/users
+    controller: App\Controller\UserController::create
+    methods: [POST]
+
+api_users_show:
+    path: /api/users/{id}
+    controller: App\Controller\UserController::show
+    methods: [GET]

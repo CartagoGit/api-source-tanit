@@ -1,0 +1,9 @@
+{
+  "framework": "fastapi",
+  "routes": [
+    { "method": "GET",  "uri": "/api/users" },
+    { "method": "GET",  "uri": "/api/users/{user_id}" },
+    { "method": "GET",  "uri": "/health" },
+    { "method": "POST", "uri": "/api/users" }
+  ]
+}
