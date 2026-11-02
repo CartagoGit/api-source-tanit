@@ -107,6 +107,38 @@ así que YAML la leía como claves nuevas. El workflow se ejecutó en
 cada push de cada rama y nunca rehidrató nada. El gate que ya
 vigilaba el `ci-summary` no lo veía, porque el `ci-summary` era
 verde: el workflow roto no participaba en él.
+
+### Lo que el repo ejecuta tiene que estar declarado
+
+`bunx <herramienta>` usa el binario local si lo encuentra; si no, **lo
+baja del registro**. La segunda es la que rompe la reproducibilidad: el
+lockfile deja de decidir qué se ejecuta, y el gate empieza a depender
+del día.
+
+Pasó con `typescript`. El proyecto no lo declaraba —sólo aparecía como
+`peerDependency` de tres paquetes de Angular—, así que `bunx tsc` se
+bajó la **7.0.2**, y el typecheck falló con un `TS2321` en
+`vitest.config.ts` que no era de los tipos: el compilador era otro, no
+el del lockfile. En la CI, donde `bun install --frozen-lockfile` deja
+el enlace hoisted, se usaba la 5.9.3 y todo pasaba. El mismo repo, el
+mismo commit, dos veredictos.
+
+El gate [scripts/gates/lint-bun-ci.script.ts](../scripts/gates/lint-bun-ci.script.ts)
+exige de toda herramienta que el repo invoque por su nombre:
+
+- **que esté declarada** en `package.json` — si no, `bunx` la baja del
+  registro y el lockfile deja de decidir qué se ejecuta;
+- **que la versión sea la que fija el lockfile** — el `package.json` y
+  el `bun.lock` tienen que pedir lo mismo, o `bun install
+  --frozen-lockfile` falla;
+- y, para el compilador, **que la versión sea exacta**: con un rango
+  (`^5.9.3`), un `bun update` cambia el veredicto del typecheck sin
+  que cambie una línea del repo. Fijado, el veredicto es del código.
+
+Una herramienta que el gate no conoce se avisa: la decisión "esta
+herramienta la trae el paquete X" queda escrita en `BINARY_TO_PACKAGE`,
+y no adivinada.
+
 ## Ruleset
 
 El workflow manual `integration-delendai` puede crear o actualizar el ruleset
