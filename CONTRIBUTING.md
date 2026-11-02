@@ -257,11 +257,22 @@ gate nombrando la constante exacta.
 `.mcp.json` en la raíz es la **fuente de verdad**. `.vscode/mcp.json` se
 deriva de él con `bun run mcp:sync` y `lint:mcp` falla si han derivado.
 
+**No lo edites a mano**: se regenera desde `.mcp.json`, y el aviso no
+está dentro del fichero precisamente porque no puede estar.
+
 No es un capricho: Claude Code lee `{ "mcpServers": … }` con rutas
 relativas y VS Code lee `{ "servers": … }` con `${workspaceFolder}`. El
 contenido difiere, no solo el nombre del fichero, así que un enlace
 simbólico no vale. Manteniéndolos a mano, cambias uno y el otro se queda
 viejo hasta que un servidor no arranca y nadie sabe por qué.
+
+Y `.vscode/mcp.json` se genera como **JSON estricto, sin comentarios**.
+VS Code admitiría comentarios (JSONC), pero ese fichero no lo lee sólo
+VS Code: el runtime de DelendAI lo parsea al arrancar con `JSON.parse`,
+y un `//` delante hace que el servidor salga con código 1 y vuelva a
+intentarlo, en bucle. JSON estricto es un subconjunto de JSONC: un
+fichero sin comentarios lo lee todo el mundo. `lint:mcp` vigila que los
+dos ficheros parseen en estricto.
 
 ### Dónde escribe la herramienta
 

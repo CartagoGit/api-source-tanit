@@ -1,5 +1,3 @@
-// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.
-// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.
 {
   "servers": {
     "delendai": {
