@@ -12,6 +12,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `x00076` | `fix` | [`ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md`](ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md) |
 | `x00077` | `fix` | [`ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md`](ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md) |
 | `x00078` | `fix` | [`ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md`](ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md) |
+| `x00079` | `fix` | [`ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md`](ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md) |
 
 ## Bloqueadas
 
