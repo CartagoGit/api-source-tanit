@@ -105,14 +105,22 @@ describe("la auto-aprobación", () => {
     // aprobado pero sin auto-merge, esperando a un humano.
     expect(raw).not.toMatch(/github\.rest\.pulls\.enableAutoMerge\s*\(/);
     // Y la llamada tiene que ser **la del endpoint REST**, no cualquier
-    // cosa que mentione la ruta: un comentario la nombra, así que la
+    // cosa que mencione la ruta: un comentario la nombra, así que la
     // aserción exige el `github.request(` con la ruta y el método.
+    //
+    // Y la ruta es la del endpoint de **fusión** con
+    // `enable_auto_merge`: el `/auto-merge` aparte **no existe** en
+    // la API REST, y llamarlo devolvía un 404 que el `catch`
+    // convertía en un aviso. El PR se quedaba aprobado y sin
+    // auto-merge, esperando a un humano.
     expect(raw).toMatch(
-      /github\.request\(\s*["']PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/auto-merge["']/,
+      /github\.request\(\s*["']PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/merge["']/,
     );
-    // Y el cuerpo tiene que llevar el método: la ruta sola no dice con
-    // qué se va a mergear.
-    expect(await workflowWithoutComments()).toMatch(/merge_method:\s*method/);
+    // Y el cuerpo tiene que llevar el método y la bandera: la ruta
+    // sola no dice con qué se va a mergear, ni que lo haga solo.
+    const sinComentarios = await workflowWithoutComments();
+    expect(sinComentarios).toMatch(/merge_method:\s*method/);
+    expect(sinComentarios).toMatch(/enable_auto_merge:\s*true/);
   });
 
   test("usa pull-requests: write y nada más", async () => {
