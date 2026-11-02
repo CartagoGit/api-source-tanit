@@ -280,11 +280,21 @@ jobs:
       - name: Integration verifier
         run: bun run lint:integration-verifier --audit
 
-  # Verifica que la protección de `develop` exige los mismos checks que
-  # este workflow publica. Si GitHub devuelve una divergencia, el CI falla
+  # Verifica que la protección de las ramas de la política —la de
+  # integración y la de release— exige los mismos checks que este
+  # workflow publica. Si GitHub devuelve una divergencia, el CI falla
   # antes de que la rama pueda seguir considerándose protegida.
+  #
+  # Corre en **cualquier** push a una rama, y no sólo en `develop`: el
+  # gate sabe cuáles son las ramas de la política (`delendai.config.json`
+  # → `development.branches`) y las comprueba todas. Antes sólo corría
+  # en `develop`, así que la rama de release —donde se corta una
+  # versión— no la miraba nadie: por eso `main` pudo seguir con una
+  # protección que contradecía la política (historia lineal exigida
+  # con `mergeMethod: "merge"`), y una promoción con squash dejó la
+  # rama en rojo.
   branch-protection:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref_type == 'branch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -303,7 +313,7 @@ jobs:
       # `BRANCH_PROTECTION_TOKEN` is a fine-grained, READ-ONLY token
       # scoped to this repository. It is deliberately not an admin token:
       # a check that can rewrite the rules it verifies is not a check.
-      - name: Verify develop branch protection
+      - name: Verify branch protection
         env:
           GITHUB_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
