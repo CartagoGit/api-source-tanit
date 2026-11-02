@@ -112,4 +112,21 @@ describe("la rehidratación", () => {
     expect(raw).toContain("Borrar la rama y comprobar el invariante");
     expect(raw).toContain("git/refs/heads/$BRANCH");
   });
+
+  test("ningún paso cierra el pipe antes de tiempo", async () => {
+    // Sin comentarios: el workflow **explica** por qué no usa `head`
+    // ni `awk ... exit`, y esa explicación nombra las dos cosas.
+    // Buscarlas en el texto entero daría un positivo falso.
+    const raw = await workflowWithoutComments();
+    // `head` y `awk ... exit` cierran el pipe en cuanto tienen lo
+    // suyo: lo que lee recibe un SIGPIPE y, con `pipefail`, eso es un
+    // error del paso. El primero que lo hizo fue este workflow: el
+    // `awk` que buscaba el árbol cerraba el pipe, y el paso moría
+    // con 141 **sin llegar a comprobar nada**.
+    //
+    // Con menos de veinte líneas de salida no pasa —y por eso
+    // parece que funciona—, así que el fallo depende de los datos.
+    expect(raw).not.toMatch(/\|\s*head\s/);
+    expect(raw).not.toMatch(/awk[^\n]*\bexit\b/);
+  });
 });

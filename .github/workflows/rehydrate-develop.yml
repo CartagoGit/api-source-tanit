@@ -83,7 +83,10 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin \
             "+refs/heads/*:refs/remotes/origin/*"
-          git --no-pager branch -r | head -20
+          # `sed -n '1,20p'` y no `head -20`: `head` cierra el pipe y
+          # `git branch` recibe un SIGPIPE, que con `pipefail` es un
+          # error del paso.
+          git --no-pager branch -r | sed -n '1,20p'
 
       - name: ¿Ya contiene develop a main?
         id: check
@@ -96,7 +99,13 @@ jobs:
             echo "needed=true" >> "$GITHUB_OUTPUT"
             echo "→ ${INTEGRATION_BRANCH} no contiene a main: hay que rehidratar"
             echo "  commits de main que faltan en ${INTEGRATION_BRANCH}:"
-            git --no-pager log --oneline "origin/${INTEGRATION_BRANCH}..origin/main" | head -20
+            # `sed -n '1,20p'` y no `head -20`: `head` cierra el pipe
+            # en cuanto tiene veinte líneas, `git log` recibe un
+            # SIGPIPE y, con `pipefail`, eso es un error. Con menos de
+            # veinte líneas no pasa —y por eso parece funcionar—,
+            # pero con veinte o más el paso muere por un motivo que
+            # no tiene nada que ver con lo que el paso comprueba.
+            git --no-pager log --oneline "origin/${INTEGRATION_BRANCH}..origin/main" | sed -n '1,20p'
           fi
 
       # El contenido de `main` tiene que estar en la historia de
@@ -109,8 +118,13 @@ jobs:
         run: |
           set -euo pipefail
           MAIN_TREE="$(git rev-parse "origin/main^{tree}")"
+          # El `awk` **no** sale antes de tiempo: con `exit`, cierra el
+          # pipe, `git log` recibe un SIGPIPE y `pipefail` convierte
+          # eso en un error —el paso moría con 141 sin llegar a
+          # comprobar nada—. Se lee el flujo entero y se guarda la
+          # primera coincidencia.
           FOUND="$(git --no-pager log --format='%H %T' "origin/${INTEGRATION_BRANCH}" \
-            | awk -v tree="$MAIN_TREE" '$2 == tree { print $1; exit }')"
+            | awk -v tree="$MAIN_TREE" '$2 == tree && !seen { print $1; seen = 1 }')"
           if [ -z "$FOUND" ]; then
             echo "✗ el contenido de main no está en la historia de ${INTEGRATION_BRANCH}." >&2
             echo "  La rehidratación no sería sólo unir el linaje: sería traer" >&2
