@@ -1,0 +1,233 @@
+name: rehydrate-develop
+
+# Devuelve `main` a `develop` cada vez que `main` cambia.
+#
+# ## Por qué existe
+#
+# La promoción va de `develop` a `main`. Lo que no iba al revés era
+# `main` a `develop`, y sin esa mitad el grafo se rompía: `main` se
+# quedaba con commits que `develop` no tenía, y la promoción siguiente
+# chocaba —`requireLatestIntegration` exige que la rama que se promueve
+# contenga a la que se promueve hacia—. El PR de promoción quedaba
+# `dirty` y nadie sabía por qué.
+#
+# El invariante es `develop -> main -> develop`: la promoción lleva
+# `develop` a `main`, y esta workflow devuelve `main` a `develop`.
+#
+# ## Qué hace
+#
+# Al recibir un `push` a `main`:
+#
+#   1. Si `develop` ya contiene a `main`, no hay nada que rehidratar.
+#   2. Si no, comprueba que el contenido de `main` está en la historia
+#      de `develop`, prepara una rama desde `develop` y le fusiona
+#      `main` con un merge commit.
+#   3. Abre un PR contra `develop` y activa el auto-merge.
+#   4. Espera a que se integre, borra la rama y comprueba que el
+#      invariante se cumple.
+#
+# ## Por qué un PR y no un push
+#
+# Porque `develop` es una rama protegida y un push directo lo rechaza:
+# "Changes must be made through a pull request". Y porque el
+# auto-merge **no** necesita aprobación aquí: `develop` pide **cero**
+# aprobaciones, así que le basta con que `ci-summary` esté en verde.
+# (La promoción, que va contra `main`, sí exige aprobación, y esa la
+# da el bot de `auto-approve` porque el PR lo firma el dueño.)
+#
+# ## Por qué el árbol no cambia
+#
+# `main` no tiene nada que `develop` no tenga ya: su commit es un
+# squash de commits que `develop` conserva en su historia, y tras una
+# promoción con merge commit su árbol es el árbol que `develop` tenía
+# en ese momento. La fusión usa la estrategia `ours`, que toma el
+# árbol de `develop` y registra el linaje de `main` en el grafo.
+#
+# Antes de fusionar, el workflow **comprueba** que el árbol de `main`
+# existe en la historia de `develop`. Si no existe —alguien reescribió
+# `main` por la fuerza, o la promoción se hizo de otra manera— el
+# workflow **falla con el motivo**, en vez de tomar la parte de
+# `develop` en silencio y esconder un contenido que faltaba.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # La rama de integración: la que recibe la rehidratación.
+  INTEGRATION_BRANCH: develop
+  # El check que resume la validación entera.
+  SUMMARY_CHECK: ci-summary
+  # Cuánto se espera a que el auto-merge integre el PR.
+  MERGE_TIMEOUT_SECONDS: 2700
+  POLL_SECONDS: 20
+
+jobs:
+  rehydrate:
+    name: rehidratar develop con main
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Todo el historial: la fusión necesita el ancestro común y
+          # la comprobación de ancestros necesita los dos lados.
+          fetch-depth: 0
+
+      - name: Traer las dos ramas
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            "+refs/heads/*:refs/remotes/origin/*"
+          git --no-pager branch -r | head -20
+
+      - name: ¿Ya contiene develop a main?
+        id: check
+        run: |
+          set -euo pipefail
+          if git merge-base --is-ancestor "origin/main" "origin/${INTEGRATION_BRANCH}"; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "✓ ${INTEGRATION_BRANCH} ya contiene a main: no hay nada que rehidratar"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "→ ${INTEGRATION_BRANCH} no contiene a main: hay que rehidratar"
+            echo "  commits de main que faltan en ${INTEGRATION_BRANCH}:"
+            git --no-pager log --oneline "origin/${INTEGRATION_BRANCH}..origin/main" | head -20
+          fi
+
+      # El contenido de `main` tiene que estar en la historia de
+      # `develop`. Si no está, la rehidratación no es "unir el
+      # linaje": es traer contenido que faltaba, y eso es otra
+      # operación —que exige revisión humana—. El workflow para con
+      # el motivo en vez de decidir por su cuenta.
+      - name: Comprobar que el contenido de main ya está en develop
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          MAIN_TREE="$(git rev-parse "origin/main^{tree}")"
+          FOUND="$(git --no-pager log --format='%H %T' "origin/${INTEGRATION_BRANCH}" \
+            | awk -v tree="$MAIN_TREE" '$2 == tree { print $1; exit }')"
+          if [ -z "$FOUND" ]; then
+            echo "✗ el contenido de main no está en la historia de ${INTEGRATION_BRANCH}." >&2
+            echo "  La rehidratación no sería sólo unir el linaje: sería traer" >&2
+            echo "  contenido que faltaba, y eso necesita revisión humana." >&2
+            echo "  main:    $(git rev-parse origin/main)" >&2
+            echo "  árbol:   $MAIN_TREE" >&2
+            exit 1
+          fi
+          echo "✓ el contenido de main está en ${INTEGRATION_BRANCH} (commit $FOUND)"
+          echo "  la fusión no va a cambiar el árbol"
+
+      - name: Preparar la rama de rehidratación
+        id: prepare
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          # El espacio de nombres es propio: `wip/` y `pr/` son del
+          # runtime de delendai, y una rama de CI ahí se confundiría
+          # con una unidad de trabajo.
+          BRANCH="rehydrate/main-into-develop-${GITHUB_RUN_ID}"
+          git checkout -b "$BRANCH" "origin/${INTEGRATION_BRANCH}"
+          # `-s ours`: toma el árbol de `${INTEGRATION_BRANCH}` y
+          # registra `main` como segundo padre. El contenido ya está
+          # —eso se acaba de comprobar—, así que el árbol no cambia
+          # y lo que se recupera es el linaje.
+          git merge --no-ff -s ours "origin/main" \
+            -m "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git push origin "$BRANCH"
+          echo "✓ rama $BRANCH publicada"
+
+      - name: Abrir el PR y activar el auto-merge
+        id: pr
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+        run: |
+          set -euo pipefail
+          URL="$(gh pr create \
+            --base "${INTEGRATION_BRANCH}" \
+            --head "$BRANCH" \
+            --title "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
+            --body "Esta rama fusiona \`main\` en \`${INTEGRATION_BRANCH}\` con un merge commit.
+
+El árbol **no** cambia: el contenido de \`main\` ya está en \`${INTEGRATION_BRANCH}\`, y la
+fusión registra el linaje en el grafo. Lo que cambia es la historia, y con
+ella la forma del PR de promoción: \`${INTEGRATION_BRANCH}\` vuelve a contener a \`main\`,
+que es lo que \`requireLatestIntegration\` exige.
+
+La hizo el workflow de rehidratación, sin tocar el contenido." )"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "✓ PR abierto: $URL"
+
+          NUMBER="$(gh pr view "$URL" --json number -q .number)"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+          # El auto-merge por el endpoint REST: `pulls.enableAutoMerge`
+          # no existe en la versión de Octokit de `github-script`, y
+          # aquí no hay `github-script`: se llama a la API.
+          #
+          # `develop` pide cero aprobaciones, así que el auto-merge
+          # integra en cuanto `ci-summary` está en verde. Si la
+          # protección de la rama cambiara, esto falla —y falla con
+          # el motivo, que es lo que hace falta.
+          gh api --method PUT \
+            "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/auto-merge" \
+            -f merge_method=merge
+          echo "✓ auto-merge activado"
+
+      # Se espera a que el PR se integre. El workflow termina en verde
+      # cuando el ciclo está **cerrado**, no cuando el PR existe: un
+      # verde que sólo significa "abrí un PR" mentiría sobre lo que
+      # el workflow promete.
+      - name: Esperar a que la rehidratación se integre
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          deadline=$(( SECONDS + MERGE_TIMEOUT_SECONDS ))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            state="$(gh pr view "$NUMBER" --json state -q .state)"
+            if [ "$state" = "MERGED" ]; then
+              echo "✓ la rehidratación está integrada"
+              exit 0
+            fi
+            if [ "$state" = "CLOSED" ]; then
+              echo "✗ el PR de rehidratación se cerró sin integrarse." >&2
+              exit 1
+            fi
+            echo "… el PR sigue abierto (${state})"
+            sleep "$POLL_SECONDS"
+          done
+          echo "✗ el PR de rehidratación no se integró en el plazo." >&2
+          echo "  Sin esto, ${INTEGRATION_BRANCH} se queda sin el linaje de main" >&2
+          echo "  y la promoción siguiente choca." >&2
+          exit 1
+
+      - name: Borrar la rama y comprobar el invariante
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # La rama ya está integrada: no hace falta guardarla.
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$BRANCH" \
+            || echo "→ la rama ya no estaba"
+          echo "✓ rama $BRANCH borrada"
+
+          git fetch --no-tags origin \
+            "+refs/heads/*:refs/remotes/origin/*"
+          if git merge-base --is-ancestor "origin/main" "origin/${INTEGRATION_BRANCH}"; then
+            echo "✓ ${INTEGRATION_BRANCH} contiene a main: el ciclo está cerrado"
+          else
+            echo "✗ ${INTEGRATION_BRANCH} sigue sin contener a main." >&2
+            exit 1
+          fi
