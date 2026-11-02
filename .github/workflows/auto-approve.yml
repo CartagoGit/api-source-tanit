@@ -155,13 +155,20 @@ jobs:
             // lo que dejó a `main` en rojo.
             const method = "merge";
             try {
+              // El auto-merge se activa por el endpoint de
+              // **fusión** con `enable_auto_merge`, no por un
+              // `/auto-merge` aparte: ese endpoint **no existe** en
+              // la API REST, y llamarlo devolvía un 404 —que el
+              // `catch` convertía en un aviso, y el PR se quedaba
+              // esperando a que alguien lo mergeara a mano—.
               await github.request(
-                "PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge",
+                "PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge",
                 {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   pull_number: context.issue.number,
                   merge_method: method,
+                  enable_auto_merge: true,
                 },
               );
               core.info(`auto-merge activado (${method}) sobre ${base}`);
