@@ -119,4 +119,75 @@ describe("el gate de los workflows", () => {
     const result = await runGate(directory);
     expect(result.code).toBe(0);
   });
+
+  test("falla ante un heredoc cuyo terminador no está en la columna 0", async () => {
+    // El YAML de esto es **válido**: un parser no ve el problema.
+    // La primera línea del bloque está menos indentada que las demás,
+    // y YAML les deja a todas su sangría extra: el terminador acaba
+    // con dos espacios de más, bash no lo reconoce, el heredoc se
+    // come el resto del script y el paso muere.
+    //
+    // Es el bug que tumbó el workflow de rehidratación cuatro veces.
+    const directory = await mkdtemp(join(tmpdir(), "tanit-workflows-"));
+    await writeFile(
+      join(directory, "heredoc.yml"),
+      [
+        "name: heredoc",
+        "on:",
+        "  push:",
+        "    branches: [main]",
+        "jobs:",
+        "  hola:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - name: algo",
+        "        run: |",
+        "          echo hola",
+        "            cat > cuerpo.md <<'BODY'",
+        "            el cuerpo",
+        "            BODY",
+        "          echo listo",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await runGate(directory);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("BODY");
+    expect(result.stderr).toContain("columna 0");
+  });
+
+  test("no confunde un valor multilínea de GITHUB_OUTPUT con un heredoc", async () => {
+    // `echo "files<<EOF"` … `echo "EOF"` es un valor multilínea de
+    // `GITHUB_OUTPUT`, no un heredoc: su terminador es `echo "EOF"` y
+    // no tiene que estar en la columna 0. El gate no puede inventar
+    // un problema donde no lo hay.
+    const directory = await mkdtemp(join(tmpdir(), "tanit-workflows-"));
+    await writeFile(
+      join(directory, "output.yml"),
+      [
+        "name: output",
+        "on:",
+        "  push:",
+        "    branches: [main]",
+        "jobs:",
+        "  hola:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - name: algo",
+        "        run: |",
+        "          {",
+        "            echo \"files<<EOF\"",
+        "            echo \"un fichero\"",
+        "            echo \"EOF\"",
+        "          } >> \"$GITHUB_OUTPUT\"",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await runGate(directory);
+    expect(result.code).toBe(0);
+  });
 });
