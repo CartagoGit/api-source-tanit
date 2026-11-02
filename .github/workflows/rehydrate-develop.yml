@@ -169,28 +169,28 @@ jobs:
           BRANCH: ${{ steps.prepare.outputs.branch }}
         run: |
           set -euo pipefail
-            # El cuerpo del PR va en un fichero, no en un argumento con
-            # comillas: un argumento multilínea dentro de un bloque YAML
-            # tiene que seguir indentado, y si no, YAML lo lee como
-            # claves nuevas y el workflow entero deja de ser válido.
-            # Un workflow con el YAML roto no falla donde se ve: GitHub
-            # lo ejecuta con el **nombre del fichero** en vez del suyo,
-            # sin filtros de rama, y se muere en cada push.
-            cat > "$RUNNER_TEMP/body.md" <<'BODY'
-            Esta rama fusiona `main` en `develop` con un merge commit.
+          # El cuerpo del PR va en un fichero, no en un argumento con
+          # comillas: un argumento multilínea dentro de un bloque YAML
+          # tiene que seguir indentado, y si no, YAML lo lee como
+          # claves nuevas y el workflow entero deja de ser válido.
+          # Un workflow con el YAML roto no falla donde se ve: GitHub
+          # lo ejecuta con el **nombre del fichero** en vez del suyo,
+          # sin filtros de rama, y se muere en cada push.
+          cat > "$RUNNER_TEMP/body.md" <<'BODY'
+          Esta rama fusiona `main` en `develop` con un merge commit.
 
-            El árbol **no** cambia: el contenido de `main` ya está en `develop`, y la
-            fusión registra el linaje en el grafo. Lo que cambia es la historia, y con
-            ella la forma del PR de promoción: `develop` vuelve a contener a `main`,
-            que es lo que `requireLatestIntegration` exige.
+          El árbol **no** cambia: el contenido de `main` ya está en `develop`, y la
+          fusión registra el linaje en el grafo. Lo que cambia es la historia, y con
+          ella la forma del PR de promoción: `develop` vuelve a contener a `main`,
+          que es lo que `requireLatestIntegration` exige.
 
-            La hizo el workflow de rehidratación, sin tocar el contenido.
-            BODY
-            URL="$(gh pr create \
-              --base "${INTEGRATION_BRANCH}" \
-              --head "$BRANCH" \
-              --title "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
-              --body-file "$RUNNER_TEMP/body.md")"
+          La hizo el workflow de rehidratación, sin tocar el contenido.
+          BODY
+          URL="$(gh pr create \
+          --base "${INTEGRATION_BRANCH}" \
+          --head "$BRANCH" \
+          --title "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
+          --body-file "$RUNNER_TEMP/body.md")"
 
           NUMBER="$(gh pr view "$URL" --json number -q .number)"
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
@@ -204,8 +204,8 @@ jobs:
           # protección de la rama cambiara, esto falla —y falla con
           # el motivo, que es lo que hace falta.
           gh api --method PUT \
-            "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/auto-merge" \
-            -f merge_method=merge
+          "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/auto-merge" \
+          -f merge_method=merge
           echo "✓ auto-merge activado"
 
       # Se espera a que el PR se integre. El workflow termina en verde
