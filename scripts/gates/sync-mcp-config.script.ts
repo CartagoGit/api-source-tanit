@@ -52,15 +52,45 @@ function buildVsCodeConfig(source: { mcpServers: Record<string, IServer> }): str
       ...(server.args ? { args: server.args.map(toVsCodeArg) } : {}),
     };
   }
-  // El aviso va como comentario JSONC, no como campo del JSON: VS Code
-  // valida este fichero contra su esquema y una clave que no conoce
-  // sale marcada en el panel de problemas. `.vscode/mcp.json` sí admite
-  // comentarios.
-  return (
-    "// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.\n" +
-    "// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.\n" +
-    `${JSON.stringify({ servers }, null, 2)}\n`
-  );
+  // **JSON estricto, sin comentarios.** VS Code admite JSONC, pero este
+  // fichero no lo lee sólo VS Code: el runtime de DelendAI lo parsea
+  // al arrancar para migrar la configuración del host, y esa lectura es
+  // con `JSON.parse`. Con un `//` delante, el arranque falla con
+  // "Unrecognized token '/'", el servidor sale con código 1 y vuelve a
+  // intentarlo — un bucle que se repite en cada reinicio y que el
+  // usuario ve como "the delendai server stopped while handling this
+  // request" sin que se diga por qué.
+  //
+  // JSON estricto es un subconjunto de JSONC: un fichero sin
+  // comentarios lo lee todo el mundo, y uno con comentarios sólo lo
+  // leen los que los saben quitar. El aviso de "no lo edites a mano"
+  // vive en `CONTRIBUTING.md` y en el mensaje de este gate, que es
+  // donde alguien lo va a encontrar de verdad.
+  return `${JSON.stringify({ servers }, null, 2)}\n`;
+}
+
+/**
+ * Por qué el fichero no se puede leer como JSON.
+ *
+ * `null` cuando sí se puede. La razón se nombra entera porque el
+ * síntoma que ve el usuario —el servidor que no arranca— no dice
+ * nada del fichero: sin este motivo, quien lo edited busca en el
+ * sitio equivocado.
+ */
+export function strictJsonProblem(source: string): string | null {
+  const trimmed = source.trimStart();
+  if (trimmed.startsWith("//") || trimmed.startsWith("/*")) {
+    return (
+      "el fichero empieza por un comentario: no es JSON estricto y hay lectores " +
+      "que sólo saben leer JSON (el runtime de DelendAI lo parsea al arrancar)"
+    );
+  }
+  try {
+    JSON.parse(source);
+    return null;
+  } catch (error) {
+    return `no es JSON válido: ${error instanceof Error ? error.message : String(error)}`;
+  }
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
@@ -82,6 +112,26 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const current = await readFile(VSCODE_MCP_JSON, "utf8").catch(() => null);
 
   if (check) {
+    if (current === null) {
+      console.error(
+        "lint:mcp — .vscode/mcp.json no existe.\n" +
+          "  Los servidores MCP se declaran UNA vez, en .mcp.json.\n" +
+          "  Ejecuta `bun run mcp:sync` para generar el de VS Code.",
+      );
+      return 1;
+    }
+    // Primero lo legible: un fichero que no se puede leer es un
+    // problema más grave que uno que se ha quedado viejo, y el motivo
+    // del arranque que se repite en el log vive aquí.
+    const problem = strictJsonProblem(current);
+    if (problem !== null) {
+      console.error(
+        `lint:mcp — .vscode/mcp.json ${problem}.\n` +
+          "  Tiene que ser JSON estricto: hay lectores que sólo saben leer JSON.\n" +
+          "  Ejecuta `bun run mcp:sync` para regenerarlo.",
+      );
+      return 1;
+    }
     if (current === expected) {
       const names = Object.keys(source.mcpServers).join(", ");
       console.log(`lint:mcp — .vscode/mcp.json al día con .mcp.json (${names})`);
