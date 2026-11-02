@@ -61,15 +61,15 @@ describe("la rehidratación", () => {
     expect(raw).not.toMatch(/git push[^\n]*\bmain\b/);
     // Y lo que sí hace es empujar la rama de rehidratación, que lleva
     // su propio nombre.
-    expect(raw).toMatch(/git push origin "\$BRANCH"/);
+    expect(raw).toMatch(/git push --force origin "\$BRANCH"/);
   });
 
   test("la rehidratación va por pull request, no por push directo", async () => {
     const raw = await workflowWithoutComments();
     // `develop` es una rama protegida: un push directo lo rechaza con
     // "Changes must be made through a pull request".
-    expect(raw).toContain("gh pr create");
-    expect(raw).toContain("--base \"${INTEGRATION_BRANCH}\"");
+    expect(raw).toContain('gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls"');
+    expect(raw).toContain('-f base="$INTEGRATION_BRANCH"');
     // Y el auto-merge es lo que integra, no un push.
     expect(raw).toContain("/auto-merge");
     expect(raw).toContain("merge_method=merge");
@@ -128,5 +128,43 @@ describe("la rehidratación", () => {
     // parece que funciona—, así que el fallo depende de los datos.
     expect(raw).not.toMatch(/\|\s*head\s/);
     expect(raw).not.toMatch(/awk[^\n]*\bexit\b/);
+  });
+
+  test("la rama es la misma para todas las rehidrataciones", async () => {
+    const raw = await workflow();
+    // Con el id de la ejecución en el nombre, cada promoción dejaba
+    // una rama y un PR nuevos: se acumulaban, y ninguno se podía
+    // integrar.
+    expect(raw).toContain('BRANCH="rehydrate/main-into-develop"');
+    expect(raw).not.toContain("GITHUB_RUN_ID");
+  });
+
+  test("abre el PR por la API REST, que trae el número", async () => {
+    // Sin comentarios: el workflow **explica** por qué no usa
+    // `gh pr create`, y esa explicación lo nombra.
+    const raw = await workflowWithoutComments();
+    // `gh pr create` puede terminar con error **después** de haber
+    // creado el PR: la release quedaba creada y el workflow moría
+    // sin el número, y el PR se quedaba abierto para siempre.
+    expect(raw).toContain('gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls"');
+    expect(raw).not.toContain("gh pr create");
+  });
+
+  test("el check lo reporta el workflow, después de comprobar el contenido", async () => {
+    const raw = await workflow();
+    // El PR lo abre este workflow con `GITHUB_TOKEN`, y los eventos
+    // que dispara el `GITHUB_TOKEN` no crean ejecuciones: la CI del
+    // PR no corre y el check que `develop` exige no llega. El PR
+    // reportaría el check él mismo —pero sólo después de comprobar
+    // que el PR **no cambia el contenido** y que la base está verde.
+    expect(raw).toContain("checks: write");
+    expect(raw).toContain('gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs"');
+    expect(raw).toContain('name=ci-summary');
+    expect(raw).toContain("HEAD_TREE");
+    expect(raw).toContain("BASE_TREE");
+    // Y si el árbol **no** es el mismo, no se reporta nada: la
+    // validación tiene que correr de verdad.
+    expect(raw).toContain("el PR cambia el contenido");
+    expect(raw).toContain("la base no está en verde");
   });
 });
