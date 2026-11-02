@@ -8,6 +8,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `x00073` | `fix` | [`ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md`](ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md) |
+| `x00074` | `fix` | [`ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md`](ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md) |
 
 ## Bloqueadas
 
