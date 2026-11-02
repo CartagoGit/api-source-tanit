@@ -81,6 +81,11 @@ jobs:
       - name: Traer las dos ramas
         run: |
           set -euo pipefail
+          # El runner no tiene identidad de git, y un `git merge` que
+          # crea un commit la necesita: sin esto el merge muere con
+          # 128 y *"Please tell me who you are"*.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch --no-tags origin \
             "+refs/heads/*:refs/remotes/origin/*"
           # `sed -n '1,20p'` y no `head -20`: `head` cierra el pipe y
