@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: general
 date: 2026-11-01
+shipped-in:
+  - "ecd09e30042d1000efb501b9fd85ef7049c72531"
 ---
 
 # x00073 — La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit
@@ -67,7 +69,7 @@ la versión, que es donde la divergencia costó una release.
 - global_gate: e2e
 
 ### S1-autoapprove-merge-commit-y-auto-merge-por-rest — S1 — El bot integra con merge commit y activa el auto-merge por REST
-- **Status**: review
+- **Status**: done
 - **Files**: `.github/workflows/auto-approve.yml`, `tests/cli/auto-approve.spec.ts`, `docs/CI.md`
 - **Gate**: type
 - acceptance:
@@ -75,8 +77,10 @@ la versión, que es donde la divergencia costó una release.
   - "El auto-merge se pide por el endpoint REST `PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge` y no por `github.rest.pulls.enableAutoMerge`, que no existe en la versión de Octokit de `github-script@v7`."
   - "El test comprueba las dos cosas: que el método nunca sea squash y que la llamada sea por REST."
   - "`docs/CI.md` explica por qué merge y no squash, y por qué el endpoint REST."
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash-preview
+- review-reviewer: minimax-m3
+- review-log: approved by minimax-m3 — verified at ecd09e30042d, validate exit 0 and tests 8/8 claimed, no recorded run cited; acceptance 4/4: (1) .github/workflows/auto-approve.yml:156 — const method = "merge"; (ya no hay base === "main" ? ... : ...). La protección real de main: required_linear_history.e… (2) .github/workflows/auto-approve.yml:158-166 — await github.request("PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge", {..., merge_method: method}). El … (3) tests/cli/auto-approve.spec.ts:83-107. Mutación verificada por el revisor y repetida aquí: borrar la llamada github.request() entera, cambiarla por otro endpoi… (4) docs/CI.md:135-150: un bloque con los dos porqués (el squash aplana la historia y deja fuera del árbol los commits que lint:proposals audita; enableAutoMerge n… — Revisión independiente por delivery-verifier, dos rondas. Ronda 1 sobre d5e5a51: 0 bloqueantes, 2 importantes y 3 menores. Ronda 2: los tres puntos de test verificados por mutación. El bloqueante de la ronda 2 (el tip de la rama, con 16 propuestas movidas por el runtime) corregido en 77acac8: git diff --name-status -M origin/develop HEAD -- docs/delendai/proposals/done/ vacío y lint:proposals exit 0 (168 propuestas sin drift).
 
 ### S2-el-gate-vigila-la-rama-de-release — S2 — El gate de protección comprueba también la rama de release
 - **Status**: pending
