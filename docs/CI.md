@@ -31,6 +31,61 @@ El job `branch-protection` del workflow [validate.yml](../.github/workflows/vali
 
 El workflow se dispara en `main` y en `develop`, así que el gate llega a ejecutarse sobre la rama donde se corta una versión. Los dos hechos van juntos y los dos tienen su test: si la lista de ramas que el gate decide mirar dejara fuera la de release, el gate dejaría de mirarla; y si el `if` del job volviera a mirar sólo `develop`, el gate no llegaría a ejecutarse sobre `main`. En los dos casos la CI seguiría en verde mientras la rama de release queda sin vigilar.
 
+## El ciclo de las ramas: develop → main → develop
+
+Hay dos ramas con dos trabajos distintos. `develop` es donde se trabaja;
+`main` es donde se corta una versión. Y el trabajo va **en las dos
+direcciones**:
+
+```
+develop ──promoción──▶ main ──rehidratación──▶ develop
+```
+
+La **promoción** es un PR de `develop` a `main`, y es una decisión que se
+revisa: `main` pide una aprobación, y por eso el bot de auto-aprobación la
+da cuando el PR lo firma el dueño y la validación está verde.
+
+La **rehidratación** es lo que faltaba. Sin ella, `main` se queda con
+commits que `develop` no tiene, y la promoción siguiente choca:
+`requireLatestIntegration` —el `strict` de los checks requeridos— exige
+que la rama que se promueve **contenga** a la que se promueve hacia. El
+síntoma era un PR de promoción en `dirty` sin explicación, y un `main`
+en rojo porque el squash de la promoción anterior había dejado fuera del
+árbol los commits que `lint:proposals` audita.
+
+El workflow [rehydrate-develop.yml](../.github/workflows/rehydrate-develop.yml)
+cierra el ciclo solo: se dispara en cada `push` a `main`, y si `develop` no
+contiene a `main`, prepara una rama, le fusiona `main` con un merge commit,
+abre un PR contra `develop` y activa el auto-merge.
+
+Tres decisiones que no son obvias:
+
+- **Es un PR, no un push.** `develop` es una rama protegida: un push
+  directo lo rechaza con *"Changes must be made through a pull
+  request"*. Y el auto-merge no necesita aprobación aquí, porque
+  `develop` pide **cero** aprobaciones: le basta con que `ci-summary`
+  esté en verde.
+
+- **El árbol no cambia.** `main` no tiene nada que `develop` no tenga ya:
+  su commit es un squash de commits que `develop` conserva en su
+  historia, y tras una promoción con merge commit su árbol es el árbol
+  que `develop` tenía en ese momento. La fusión usa la estrategia
+  `ours`: toma el árbol de `develop` y registra `main` como segundo
+  padre. Lo que se recupera es el **linaje**, que es lo que se estaba
+  perdiendo. Antes de fusionar, el workflow **comprueba** que el árbol
+  de `main` existe en la historia de `develop`; si no existe —alguien
+  reescribió `main` por la fuerza—, el workflow para con el motivo en
+  vez de traer contenido que faltaba sin que nadie lo mire.
+
+- **El workflow termina en verde cuando el ciclo está cerrado**, no
+  cuando el PR existe. Espera a que el PR se integre, borra la rama de
+  un solo uso y vuelve a comprobar el invariante. Un verde que sólo
+  significara "abrí un PR" mentiría sobre lo que el workflow promete.
+
+`tests/cli/rehydrate-develop.spec.ts` vigila las tres cosas que pueden
+romperse en silencio: que deje de dispararse, que empuje a donde no
+debe, y que se dé por bueno sin haber rehidratado nada.
+
 ## Ruleset
 
 El workflow manual `integration-delendai` puede crear o actualizar el ruleset
