@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.0-alpha.2 (2026-11-02) — La release con binarios de verdad
+
+`alpha.1` se publicó sin un solo ejecutable adjunto. Esta versión
+corrige eso y las dos cosas que dejaron `main` en rojo el día que se
+promovió.
+
+- **Los binarios van adjuntos.** Los workflows de publicación
+  escuchaban el evento `release`, y los eventos que dispara el propio
+  `GITHUB_TOKEN` no crean ejecuciones nuevas: la release se creaba
+  bien y nadie adjuntaba nada — un fallo invisible. Ahora los
+  workflows se disparan **con el tag**, que es lo que de verdad
+  existe cuando se corta una versión, y la release lleva los cuatro
+  ejecutables de `apisrc` y los instaladores de escritorio.
+- **La promoción es con merge commit.** `alpha.1` llegó a `main` con
+  un squash, y un squash aplana la historia: los commits que
+  `lint:proposals` audita dejan de ser ancestros de `HEAD` y la rama
+  quedó en rojo con 166 referencias inalcanzables. La política ya
+  declaraba `mergeMethod: "merge"`; ahora la promoción lo respeta, y
+  el gate de protección comprueba **las dos** ramas —la de integración
+  y la de release— en vez de sólo `develop`.
+- **El bot integra solo.** El workflow de auto-aprobación aprueba los
+  pull requests de este repositorio cuando pasan las validaciones y
+  activa el auto-merge por REST: `github.rest.pulls.enableAutoMerge`
+  no existe en la versión de Octokit que trae `github-script@v7`, y el
+  merge se pide con merge commit porque un squash volvería a aplanar
+  la historia.
+
 ## 0.1.0-alpha.1 (2026-11-01) — El primer alfa de Tanit
 
 Tanit descubre tu API **en el código** y la exporta: una colección de

@@ -24,11 +24,13 @@
  *
  * ## Por qué es un alfa
  *
- * El proyecto todavía no ha publicado ninguna release. `1.0.0` afirma
- * una estabilidad que el producto no tiene, así que la primera
- * versión es `0.1.0-alpha.1`. La escalera de canales —alfa, beta, rc
- * y estable— vive en `constants/release/release-channel.constant.ts`.
+ * El proyecto todavía no ha publicado ninguna release estable. `1.0.0`
+ * afirma una estabilidad que el producto no tiene, así que la primera
+ * versión es `0.1.0-alpha.1` y las siguientes suben el número del
+ * prefijo: `0.1.0-alpha.2`, `0.1.0-beta.N`, `0.1.0-rc.N`. La escalera
+ * de canales —alfa, beta, rc y estable— vive en
+ * `constants/release/release-channel.constant.ts`.
  */
 
 /** La versión del CLI, la misma que la del paquete publicado. */
-export const CLI_VERSION = "0.1.0-alpha.1";
+export const CLI_VERSION = "0.1.0-alpha.2";
