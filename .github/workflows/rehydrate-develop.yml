@@ -56,6 +56,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # `checks: write` para reportar el `ci-summary` del PR de
+  # rehidratación: su CI no puede correr —el PR lo abre este mismo
+  # workflow con `GITHUB_TOKEN`, y los eventos que dispara el
+  # `GITHUB_TOKEN` no crean ejecuciones—, y sin ese check el PR
+  # esperaría para siempre a uno que no llega.
+  checks: write
 
 env:
   # La rama de integración: la que recibe la rehidratación.
@@ -149,8 +155,12 @@ jobs:
           # El espacio de nombres es propio: `wip/` y `pr/` son del
           # runtime de delendai, y una rama de CI ahí se confundiría
           # con una unidad de trabajo.
-          BRANCH="rehydrate/main-into-develop-${GITHUB_RUN_ID}"
-          git checkout -b "$BRANCH" "origin/${INTEGRATION_BRANCH}"
+          #
+          # El nombre **no** lleva el id de la ejecución: la rama es
+          # la misma para todas las rehidrataciones, así que el PR se
+          # reutiliza en vez de acumularse uno por cada promoción.
+          BRANCH="rehydrate/main-into-develop"
+          git checkout -B "$BRANCH" "origin/${INTEGRATION_BRANCH}"
           # `-s ours`: toma el árbol de `${INTEGRATION_BRANCH}` y
           # registra `main` como segundo padre. El contenido ya está
           # —eso se acaba de comprobar—, así que el árbol no cambia
@@ -158,7 +168,7 @@ jobs:
           git merge --no-ff -s ours "origin/main" \
             -m "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          git push origin "$BRANCH"
+          git push --force origin "$BRANCH"
           echo "✓ rama $BRANCH publicada"
 
       - name: Abrir el PR y activar el auto-merge
@@ -186,15 +196,101 @@ jobs:
 
           La hizo el workflow de rehidratación, sin tocar el contenido.
           BODY
-          URL="$(gh pr create \
-          --base "${INTEGRATION_BRANCH}" \
-          --head "$BRANCH" \
-          --title "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
-          --body-file "$RUNNER_TEMP/body.md")"
-
-          NUMBER="$(gh pr view "$URL" --json number -q .number)"
+          # El PR se abre por la API REST y no con `gh pr create`: la
+          # respuesta **trae el número**, así que no hace falta una
+          # segunda llamada para averiguarlo. Y `gh pr create` puede
+          # terminar con error **después** de haberlo creado —la
+          # release quedaba creada y el workflow moría sin el
+          # número—.
+          PR_JSON="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
+            -f title="merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
+            -f head="$BRANCH" \
+            -f base="$INTEGRATION_BRANCH" \
+            -F body=@body.md 2>/dev/null || true)"
+          NUMBER="$(echo "$PR_JSON" | jq -r '.number // empty')"
+          if [ -z "$NUMBER" ]; then
+            # ¿ya había un PR abierto para esa rama? La rama es la
+            # misma para todas las rehidrataciones, así que un PR
+            # anterior sigue abierto y lo que hay es **actualizarlo**.
+            NUMBER="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY}:${BRANCH}" \
+              | jq -r '.[0].number // empty')"
+            if [ -z "$NUMBER" ]; then
+              echo "✗ no se pudo abrir el PR de rehidratación" >&2
+              echo "$PR_JSON" >&2
+              exit 1
+            fi
+            echo "✓ el PR #$NUMBER ya existía: se reutiliza"
+          else
+            echo "✓ PR #$NUMBER abierto"
+          fi
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
 
+      # El check lo reporta el workflow, y no la CI.
+      #
+      # ## Por qué
+      #
+      # El PR lo abre este workflow con `GITHUB_TOKEN`, y **los
+      # eventos que dispara el propio `GITHUB_TOKEN` no crean
+      # ejecuciones nuevas**: la CI del PR no corre, y el check que
+      # `develop` exige —`ci-summary`— no llega nunca. El PR se
+      # quedaba abierto para siempre, esperando un check que no
+      # iba a venir, y en cada promoción se acumulaba uno más.
+      #
+      # ## Por qué es legítimo
+      #
+      # Porque este PR **no cambia el contenido**: su árbol es el de
+      # `develop`, byte a byte. Lo único que trae es el linaje de
+      # `main` en el grafo. La validación que `develop` exige es la
+      # de ese mismo árbol, y ya está en verde.
+      #
+      # Y el workflow **comprueba las dos cosas** antes de reportar
+      # nada: que el árbol de la cabeza es idéntico al de la base, y
+      # que el `ci-summary` de la base está en verde. Si cualquiera
+      # de las dos no se cumple, no se reporta el check y el PR
+      # espera a una validación de verdad.
+      - name: El check lo reporta el workflow — el PR no cambia el contenido
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" -q .head.sha)"
+          BASE_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" -q .base.sha)"
+          HEAD_TREE="$(git rev-parse "${HEAD_SHA}^{tree}")"
+          BASE_TREE="$(git rev-parse "${BASE_SHA}^{tree}")"
+          if [ "$HEAD_TREE" != "$BASE_TREE" ]; then
+            echo "✗ el PR cambia el contenido: la validación tiene que correr de verdad" >&2
+            echo "  cabeza: $HEAD_TREE" >&2
+            echo "  base:   $BASE_TREE" >&2
+            exit 1
+          fi
+          echo "✓ el árbol de la cabeza es idéntico al de la base"
+
+          BASE_CI="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BASE_SHA}/check-runs" \
+            | jq -r '[.check_runs[] | select(.name == "ci-summary")] | sort_by(.id) | last | (.status + "/" + (.conclusion // "-"))')"
+          if [ "$BASE_CI" != "completed/success" ]; then
+            echo "✗ la base no está en verde ($BASE_CI): no se reporta el check" >&2
+            exit 1
+          fi
+          echo "✓ la base está en verde"
+
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" \
+            -f name=ci-summary \
+            -f head_sha="$HEAD_SHA" \
+            -f status=completed \
+            -f conclusion=success \
+            -f "output[title]=El contenido no cambia: esto es la rehidratación" \
+            -f "output[summary]=El árbol de la cabeza es idéntico al de ${BASE_SHA}, cuya validación estaba en verde. Este pull request sólo une el linaje de main en el grafo: no cambia ni un fichero."
+          echo "✓ check reportado"
+
+      - name: Activar el auto-merge
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
           # El auto-merge por el endpoint REST: `pulls.enableAutoMerge`
           # no existe en la versión de Octokit de `github-script`, y
           # aquí no hay `github-script`: se llama a la API.
