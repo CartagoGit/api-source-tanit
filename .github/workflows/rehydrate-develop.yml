@@ -277,12 +277,37 @@ jobs:
           fi
           echo "✓ el árbol de la cabeza es idéntico al de la base"
 
-          BASE_CI="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BASE_SHA}/check-runs" \
-            | jq -r '[.check_runs[] | select(.name == "ci-summary")] | sort_by(.id) | last | (.status + "/" + (.conclusion // "-"))')"
-          if [ "$BASE_CI" != "completed/success" ]; then
-            echo "✗ la base no está en verde ($BASE_CI): no se reporta el check" >&2
-            exit 1
-          fi
+          # La base puede estar **en curso** de validación: la
+          # promoción y el merge en `${INTEGRATION_BRANCH}` ocurren
+          # casi a la vez, y el `ci-summary` de la base puede no
+          # haber terminado cuando este workflow llega. Se **espera**
+          # a que termine; sólo si falla, o si no termina nunca, se
+          # rinde.
+          #
+          # Rendirse en vez de esperar es lo que hacía que el ciclo
+          # no cerrara: el workflow se dying con "la base no está en
+          # verde (in_progress)" cuando la base iba a ponerse verde
+          # en un minuto.
+          deadline=$(( SECONDS + 1200 ))
+          while :; do
+            BASE_CI="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BASE_SHA}/check-runs" \
+              | jq -r '[.check_runs[] | select(.name == "ci-summary")] | sort_by(.id) | last | (if . == null then "" else (.status + "/" + (.conclusion // "-")) end)')"
+            case "$BASE_CI" in
+              completed/success)
+                break
+                ;;
+              completed/failure*|completed/cancelled*|completed/timed_out*)
+                echo "✗ la base está en rojo ($BASE_CI): no se reporta el check" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "✗ la base no terminó su validación (${BASE_CI:-sin check})" >&2
+              exit 1
+            fi
+            echo "… la base todavía no está en verde (${BASE_CI:-sin check})"
+            sleep "$POLL_SECONDS"
+          done
           echo "✓ la base está en verde"
 
           gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" \

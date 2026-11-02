@@ -165,6 +165,17 @@ describe("la rehidratación", () => {
     // Y si el árbol **no** es el mismo, no se reporta nada: la
     // validación tiene que correr de verdad.
     expect(raw).toContain("el PR cambia el contenido");
-    expect(raw).toContain("la base no está en verde");
+    expect(raw).toContain("la base está en rojo");
+  });
+
+  test("espera a que la base se ponga verde, en vez de rendirse", async () => {
+    const raw = await workflow();
+    // La promoción y el merge en `develop` ocurren casi a la vez, y
+    // el `ci-summary` de la base puede no haber terminado cuando
+    // este workflow llega. Rendirse en ese momento es lo que
+    // impedía cerrar el ciclo.
+    expect(raw).toContain("la base todavía no está en verde");
+    expect(raw).toContain("deadline=$(( SECONDS + 1200 ))");
+    expect(raw).toContain("no terminó su validación");
   });
 });
