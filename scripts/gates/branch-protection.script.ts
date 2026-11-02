@@ -22,10 +22,15 @@ const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CI_CONFIG = JSON.parse(readFileSync(resolve(ROOT, "delendai.config.json"), "utf8")) as {
   development?: {
+    branches?: {
+      integration?: string;
+      release?: string;
+    };
     integration?: {
       requiredChecks?: ReadonlyArray<string>;
       requireLatestIntegration?: boolean;
       requiredApprovals?: number;
+      releaseRequiredApprovals?: number;
       linearHistory?: boolean;
       allowForcePush?: boolean;
       allowDeleteIntegrationBranch?: boolean;
@@ -103,6 +108,43 @@ export const BRANCH_PROTECTION_POLICY = {
 } as const;
 
 export type FetchLike = typeof fetch;
+
+/**
+ * The branch the integration happens on, and the branch a version is cut
+ * from.
+ *
+ * Both come from the policy (`development.branches`), not from a name
+ * written here: a gate that hardcodes the branches it protects stops
+ * protecting the day the policy moves them.
+ */
+export const INTEGRATION_BRANCH: string =
+  CI_CONFIG.development?.branches?.integration ?? "develop";
+export const RELEASE_BRANCH: string =
+  CI_CONFIG.development?.branches?.release ?? "main";
+
+/**
+ * The approvals the **release** branch asks for.
+ *
+ * The integration branch integrates autonomously; the release branch is
+ * the one where a version is cut, and there the gate stays shut until
+ * somebody has looked. That is what `releaseRequiredApprovals` says —
+ * and it is what the gate compares, because a branch protected with
+ * fewer approvals than the policy declares is a branch where a release
+ * can slip out unattended.
+ */
+export const RELEASE_APPROVALS: number =
+  DEVELOPMENT_INTEGRATION.releaseRequiredApprovals ??
+  BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount;
+
+/**
+ * How many approvals a branch asks for, by its role.
+ *
+ * The integration branch and the release branch are the same repository
+ * with two different jobs, and they do not have the same door.
+ */
+export function requiredApprovalsFor(branch: string): number {
+  return branch === RELEASE_BRANCH ? RELEASE_APPROVALS : BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount;
+}
 
 interface IResponseLike {
   readonly ok: boolean;
@@ -282,7 +324,12 @@ async function resolveBranches(options: IResolveBranchesOptions): Promise<Readon
     .map((entry) => (entry as IGitHubBranchSummary).name)
     .filter((name): name is string => typeof name === "string" && name.startsWith("release/"));
 
-  return ["develop", ...releaseBranches];
+  // The branch a version is cut from is checked too. It was NOT, and
+  // that is how `main` kept a protection that contradicted the policy:
+  // the gate only ever looked at `develop` and at the `release/*`
+  // branches, so the branch where the releases happen was the one
+  // nobody verified.
+  return [...new Set([INTEGRATION_BRANCH, RELEASE_BRANCH, ...releaseBranches])];
 }
 
 interface ICheckBranchProtectionOptions {
@@ -475,18 +522,30 @@ async function checkBranchProtection(
   }
 
   const reviews = payload.required_pull_request_reviews;
-  if (reviews?.required_approving_review_count !== BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount) {
+  const expectedApprovals = requiredApprovalsFor(options.branch);
+  if (reviews?.required_approving_review_count !== expectedApprovals) {
     return {
       branch: options.branch,
       ok: false,
-      detail: `required_pull_request_reviews diverge de la política`,
+      detail:
+        `la rama pide ${String(reviews?.required_approving_review_count)} aprobaciones y la política declara ${expectedApprovals}. ` +
+        `Protege la rama con la política, o cambia la política: mientras las dos digan cosas distintas, ` +
+        `la puerta que decide qué sale de aquí tiene dos respuestas.`,
     };
   }
 
   if (payload.required_linear_history?.enabled !== BRANCH_PROTECTION_POLICY.requiredLinearHistory ||
       payload.allow_force_pushes?.enabled !== BRANCH_PROTECTION_POLICY.allowForcePushes ||
       payload.allow_deletions?.enabled !== BRANCH_PROTECTION_POLICY.allowDeletions) {
-    return { branch: options.branch, ok: false, detail: "historial, force-push, borrado o conversaciones divergen de la política" };
+    return {
+      branch: options.branch,
+      ok: false,
+      detail:
+        `la historia, el force-push o el borrado divergen de la política. ` +
+        `La política dice mergeMethod="${BRANCH_PROTECTION_POLICY.mergeMethod}" y linearHistory=${String(BRANCH_PROTECTION_POLICY.requiredLinearHistory)}: ` +
+        `exigir historia lineal en una rama que se integra con merge commit rechaza el propio merge commit, ` +
+        `y la promoción acaba aplastada con squash — que es lo que deja fuera del árbol los commits que \`lint:proposals\` audita.`,
+    };
   }
 
   // The `required-checks` RULESET this gate used to verify is gone, and

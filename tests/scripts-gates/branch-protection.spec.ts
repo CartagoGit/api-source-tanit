@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import {
   BRANCH_PROTECTION_POLICY,
+  INTEGRATION_BRANCH,
+  RELEASE_APPROVALS,
+  RELEASE_BRANCH,
   REQUIRED_CHECKS,
+  requiredApprovalsFor,
   validateBranchProtection,
   type FetchLike,
 } from "../../scripts/gates/branch-protection.script";
@@ -264,5 +268,141 @@ describe("branch-protection gate", () => {
     expect(BRANCH_PROTECTION_POLICY.requiredLinearHistory).toBe(false);
     expect(BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict).toBe(true);
     expect(BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount).toBe(0);
+  });
+});
+
+/**
+ * The release branch.
+ *
+ * It is where a version is cut, and it was the one branch nobody
+ * verified: the gate only looked at `develop` and at the `release/*`
+ * branches, so `main` could keep a protection that contradicted the
+ * policy — historia lineal exigida con `mergeMethod: "merge"` — y la
+ * promoción acababa aplastada con squash, que es lo que deja fuera
+ * del árbol los commits que `lint:proposals` audita.
+ */
+describe("la rama de release", () => {
+  const BASE_URL = "https://mock.github.local";
+  const REPO = "CartagoGit/api-source-tanit";
+
+  function releaseProtection(overrides: Record<string, unknown> = {}) {
+    return jsonResponse({
+      required_status_checks: {
+        strict: true,
+        contexts: [...REQUIRED_CHECKS],
+      },
+      enforce_admins: { enabled: true },
+      required_pull_request_reviews: {
+        // The release branch asks for the approvals the policy
+        // declares for it — one, no matter how autonomous the
+        // integration is.
+        required_approving_review_count: RELEASE_APPROVALS,
+      },
+      required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
+      allow_force_pushes: { enabled: false },
+      allow_deletions: { enabled: false },
+      required_conversation_resolution: { enabled: true },
+      ...overrides,
+    });
+  }
+
+  function routes(protection: InstanceType<typeof Response>) {
+    return {
+      [`${BASE_URL}/repos/${REPO}`]: repoResponse(),
+      [`${BASE_URL}/repos/${REPO}/branches/${RELEASE_BRANCH}`]: jsonResponse({
+        name: RELEASE_BRANCH,
+        protected: true,
+      }),
+      [`${BASE_URL}/repos/${REPO}/branches/${RELEASE_BRANCH}/protection`]: protection,
+    };
+  }
+
+  test("the policy names the release branch and its approvals", () => {
+    expect(RELEASE_BRANCH).toBe("main");
+    expect(RELEASE_APPROVALS).toBe(1);
+    // The two branches do not have the same door: the integration
+    // integrates autonomously, the release does not.
+    expect(BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount).toBe(0);
+    expect(requiredApprovalsFor(RELEASE_BRANCH)).toBe(RELEASE_APPROVALS);
+    expect(requiredApprovalsFor(INTEGRATION_BRANCH)).toBe(
+      BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount,
+    );
+  });
+
+  test("passes when the release branch is protected as the policy says", async () => {
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      branches: [RELEASE_BRANCH],
+      fetchImpl: createFetchStub(routes(releaseProtection())),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.results[1]).toMatchObject({
+      branch: RELEASE_BRANCH,
+      ok: true,
+    });
+  });
+
+  test("fails when the release branch asks for fewer approvals than the policy", async () => {
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      branches: [RELEASE_BRANCH],
+      fetchImpl: createFetchStub(
+        routes(
+          releaseProtection({
+            required_pull_request_reviews: { required_approving_review_count: 0 },
+          }),
+        ),
+      ),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.results[1].detail).toContain("0 aprobaciones");
+    expect(result.results[1].detail).toContain(String(RELEASE_APPROVALS));
+    // The message says what to do, not only what is wrong.
+    expect(result.results[1].detail).toContain("Protege la rama con la política");
+  });
+
+  test("fails when the release branch demands linear history against the policy", async () => {
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      branches: [RELEASE_BRANCH],
+      fetchImpl: createFetchStub(
+        routes(
+          releaseProtection({
+            required_linear_history: { enabled: true },
+          }),
+        ),
+      ),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.results[1].detail).toContain("historia");
+    // It says WHY that combination is the problem: historia lineal
+    // rechaza el merge commit que la política declara.
+    expect(result.results[1].detail).toContain("merge commit");
+  });
+
+  test("fails when the repository refuses the merge method the policy declares", async () => {
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      branches: [RELEASE_BRANCH],
+      fetchImpl: createFetchStub({
+        [`${BASE_URL}/repos/${REPO}`]: repoResponse(false),
+        [`${BASE_URL}/repos/${REPO}/branches/${RELEASE_BRANCH}`]: jsonResponse({
+          name: RELEASE_BRANCH,
+          protected: true,
+        }),
+        [`${BASE_URL}/repos/${REPO}/branches/${RELEASE_BRANCH}/protection`]: releaseProtection(),
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.results[0].detail).toContain("mergeMethod=merge");
+    expect(result.results[0].detail).toContain("allow_merge_commit=false");
   });
 });
