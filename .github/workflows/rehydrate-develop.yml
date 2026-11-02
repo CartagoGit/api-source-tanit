@@ -332,17 +332,19 @@ jobs:
           NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           set -euo pipefail
-          # El auto-merge por el endpoint REST: `pulls.enableAutoMerge`
-          # no existe en la versión de Octokit de `github-script`, y
-          # aquí no hay `github-script`: se llama a la API.
+          # El auto-merge se activa por el endpoint de **fusión** con
+          # `enable_auto_merge`, no por un `/auto-merge` aparte: ese
+          # endpoint **no existe** en la API REST, y llamarlo devolvía
+          # un 404 que el paso se comía sin decir nada.
           #
           # `develop` pide cero aprobaciones, así que el auto-merge
           # integra en cuanto `ci-summary` está en verde. Si la
           # protección de la rama cambiara, esto falla —y falla con
           # el motivo, que es lo que hace falta.
           gh api --method PUT \
-          "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/auto-merge" \
-          -f merge_method=merge
+          "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/merge" \
+          -f merge_method=merge \
+          -F enable_auto_merge=true
           echo "✓ auto-merge activado"
 
       # Se espera a que el PR se integre. El workflow termina en verde

@@ -70,9 +70,13 @@ describe("la rehidratación", () => {
     // "Changes must be made through a pull request".
     expect(raw).toContain('gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls"');
     expect(raw).toContain('-f base="$INTEGRATION_BRANCH"');
-    // Y el auto-merge es lo que integra, no un push.
-    expect(raw).toContain("/auto-merge");
-    expect(raw).toContain("merge_method=merge");
+    // Y el auto-merge es lo que integra, no un push. Se activa por el
+    // endpoint de **fusión** con `enable_auto_merge`: el
+    // `/auto-merge` aparte **no existe** en la API REST, y llamarlo
+    // devolvía un 404 que el paso se comía en silencio.
+    expect(raw).toContain('"repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/merge"');
+    expect(raw).toContain("-F enable_auto_merge=true");
+    expect(raw).not.toContain("pulls/${NUMBER}/auto-merge");
   });
 
   test("comprueba el invariante en vez de suponerlo", async () => {
