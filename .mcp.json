@@ -6,7 +6,8 @@
       "args": [
         "../delendai/tools/scripts/host/host-server.script.ts",
         "--workspace=.",
-        "--config=./delendai.config.json"
+        "--config=./delendai.config.json",
+        "--branch=main"
       ]
     }
   }
