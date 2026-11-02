@@ -66,6 +66,86 @@ function triggerOf(parsed: IParsedWorkflow): unknown {
   return parsed.on ?? parsed["true"];
 }
 
+/**
+ * Los scripts `run:` del workflow.
+ *
+ * Un workflow puede tener los scripts dondequiera: en un job, en un
+ * paso, dentro de un `if`. Se recogen todos.
+ */
+function runScripts(node: unknown, into: string[] = []): string[] {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      runScripts(item, into);
+    }
+    return into;
+  }
+  if (node === null || typeof node !== "object") {
+    return into;
+  }
+  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    if (key === "run" && typeof value === "string") {
+      into.push(value);
+      continue;
+    }
+    runScripts(value, into);
+  }
+  return into;
+}
+
+/**
+ * Los heredocs cuyo terminador no está en la columna 0.
+ *
+ * En YAML, la sangría base de un escalar de bloque se saca de su
+ * **primera** línea no vacía. Si esa línea está menos indentada que
+ * las demás, el parser les deja a todas las otras su sangría extra, y
+ * el script que ve bash no es el que el fichero dice.
+ *
+ * En un heredoc eso rompe el terminador: bash lo exige en la columna
+ * 0, y con dos espacios de más no lo reconoce —"here-document
+ * delimited by end-of-file"—, el heredoc se come el resto del script
+ * y el paso muere.
+ *
+ * El YAML **sí** es válido: un parser no ve el problema. Por eso hay
+ * que mirar el script que sale, no el fichero.
+ *
+ * No todo `<<` es un heredoc: `echo "files<<EOF"` es un valor
+ * multilínea de `GITHUB_OUTPUT`, y su terminador es `echo "EOF"`. Un
+ * `<<` dentro de una cadena no cuenta.
+ */
+export function heredocProblems(script: string): ReadonlyArray<string> {
+  const problems: string[] = [];
+  const lineas = script.split("\n");
+  const delimiters = new Map<string, boolean>();
+
+  for (const linea of lineas) {
+    const match = linea.match(/<<(-?)\s*['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?/);
+    if (match?.[2] === undefined) {
+      continue;
+    }
+    const indice = linea.indexOf("<<");
+    const comillasAntes = (linea.slice(0, indice).match(/["']/g) ?? []).length;
+    if (comillasAntes % 2 === 1) {
+      // El `<<` está dentro de una cadena: no es un heredoc.
+      continue;
+    }
+    // `<<-` admite un terminador indentado con tabuladores.
+    delimiters.set(match[2], match[1] === "-");
+  }
+
+  for (const [delimiter, conTabs] of delimiters) {
+    const encontrado = conTabs
+      ? lineas.some((linea) => linea.replace(/^\t+/, "") === delimiter)
+      : lineas.some((linea) => linea === delimiter);
+    if (!encontrado) {
+      problems.push(
+        `el terminador del heredoc "${delimiter}" no está en la columna 0: bash no lo reconoce`,
+      );
+    }
+  }
+
+  return problems;
+}
+
 export async function checkWorkflows(
   directory: string,
 ): Promise<ReadonlyArray<string>> {
@@ -112,6 +192,14 @@ export async function checkWorkflows(
 
     if (workflow.jobs === undefined || workflow.jobs === null) {
       problems.push(`${file}: sin "jobs" — no hace nada`);
+    }
+
+    // El script que bash va a ver, no el del fichero: el YAML puede
+    // ser válido y el script estar roto.
+    for (const script of runScripts(workflow.jobs)) {
+      for (const problem of heredocProblems(script)) {
+        problems.push(`${file}: ${problem}`);
+      }
     }
   }
 
