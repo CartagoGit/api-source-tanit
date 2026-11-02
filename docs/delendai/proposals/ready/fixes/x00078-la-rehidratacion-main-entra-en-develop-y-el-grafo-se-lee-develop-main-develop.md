@@ -56,7 +56,7 @@ PR de promoción (#71) está `dirty` por eso.
 - global_gate: lint
 
 ### S1 — la rehidratación, hoy y sola
-- **Status**: pending
+- **Status**: review
 - **Files**: `docs/CI.md`, `.github/workflows/rehydrate-develop.yml`, `tests/cli/rehydrate-develop.spec.ts`, `scripts/gates/lint-workflows.script.ts`, `tests/scripts-gates/lint-workflows.spec.ts`, `package.json`
 - **Gate**: lint
 
@@ -90,6 +90,8 @@ La slice entrega tres cosas, y las tres son el mismo invariante:
    check se pusiera rojo: el `ci-summary` era verde, porque el workflow
    roto no participaba en él. El gate `lint:workflows` comprueba que
    todos los workflows parsean y que tienen `name`, `on` y `jobs`.
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
