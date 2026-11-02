@@ -2,12 +2,31 @@ name: release-binaries
 
 # Al publicar una release, adjunta un ejecutable autocontenido por
 # plataforma. No necesitan Bun ni Node instalados en la máquina destino.
+#
+# ## Por qué lo dispara el tag y no el evento `release`
+#
+# Porque `release-cut` crea la release con `GITHUB_TOKEN`, y **los
+# eventos que dispara el propio `GITHUB_TOKEN` no crean ejecuciones
+# nuevas**. Es la regla de GitHub: `GITHUB_TOKEN` no puede disparar
+# workflows, y el evento `release` es uno de ellos. Con el workflow
+# escuchando a `release: [published, prereleased]`, la release se
+# creaba y **nadie adjuntaba los binarios**: la release salía vacía
+# sin que ningún check fallara.
+#
+# El tag sí es un disparador de fiar: es lo que el usuario empuja, y
+# `GITHUB_TOKEN` no lo empuja. Los tres workflows de release —
+# `release-cut`, este y `release-desktop`— escuchan el mismo tag.
+#
+# ## Por qué hay que esperar a la release
+#
+# Porque los tres arrancan a la vez y la release la crea `release-cut`.
+# Adjuntar antes de que exista es un error de forma ("release not
+# found"), no de contenido. La espera es acotada y su fallo dice qué
+# ha pasado.
 on:
-  release:
-    # `prereleased` además de `published`: un alfa también es una
-    # release, y son los ejecutables autocontenidos los que se
-    # descargan sin instalar nada.
-    types: [published, prereleased]
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
 
 jobs:
@@ -30,11 +49,42 @@ jobs:
       - name: Compilar los 4 binarios
         run: bun run build:binary --all
 
+      # La release la crea `release-cut`, que corre en paralelo con
+      # este workflow. Se espera a que exista, con un tope: si no
+      # aparece, el motivo se dice en el log en vez de dejar un error
+      # de forma.
+      - name: Esperar a que la release exista
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "✓ la release $TAG existe"
+              exit 0
+            fi
+            echo "… la release $TAG todavía no existe (intento $attempt)"
+            sleep 20
+          done
+          echo "✗ la release $TAG no apareció en 20 minutos; ¿falló release-cut?" >&2
+          exit 1
+
+      # `gh release upload` y no la acción `softprops/action-gh-release`:
+      # esa acción **crea** la release si no existe, y aquí la release
+      # ya existe y tiene sus notas y su marca de prerelease. Subir
+      # con `gh` no puede crear una release por error ni pisar las
+      # notas.
       - name: Adjuntar a la release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v3
-        with:
-          files: dist/apisrc-*
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/apisrc-* --clobber
+          echo "✓ binarios adjuntos a $TAG"
 
       - name: Subir como artefacto (ejecución manual)
         if: github.event_name == 'workflow_dispatch'

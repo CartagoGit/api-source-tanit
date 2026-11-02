@@ -7,6 +7,11 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00073` | `fix` | [`ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md`](ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md) |
+| `x00074` | `fix` | [`ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md`](ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md) |
+| `x00076` | `fix` | [`ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md`](ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md) |
+| `x00077` | `fix` | [`ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md`](ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md) |
+| `x00078` | `fix` | [`ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md`](ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md) |
 
 ## Bloqueadas
 

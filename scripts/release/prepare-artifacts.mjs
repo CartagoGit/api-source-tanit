@@ -71,6 +71,27 @@ import {
 } from "../../packages/contracts/constants/release/signing.constant.js";
 
 /** Los `os` que la release cubre. */
+/**
+ * La fecha de la clave desechable del dry-run.
+ *
+ * `gpg` rechaza una clave cuya fecha de creación esté en el futuro
+ * —«created N seconds in the future (time warp or clock problem)»— y
+ * la omite: el keyring importado queda vacío y el dry-run muere con
+ * «The GPG keyring could not be imported». La clave se crea con el
+ * reloj del sistema, así que basta con que el reloj se adelante un
+ * segundo a sí mismo —cosa que pasa bajo carga— para que el dry-run
+ * falle por una causa que no tiene que ver con lo que está probando.
+ *
+ * La clave del dry-run se tira al terminar: no necesita una fecha
+ * real. Se crea con una fecha fija en el pasado, y entonces el
+ * rechazo es imposible por construcción: no hay reloj que pueda
+ * adelantarse a una fecha de 2020.
+ */
+const DRY_RUN_KEY_DATE = "20200101T000000";
+
+/** Cuántos intentos se le dan a la firma del dry-run. */
+const DRY_RUN_SIGN_ATTEMPTS = 3;
+
 const KNOWN_OS = ["macos", "windows", "linux"];
 /** Las arquitecturas que la release cubre. */
 const KNOWN_ARCH = ["x64", "arm64"];
@@ -562,6 +583,40 @@ async function signDryRunLinux(stage) {
     return false;
   }
 
+  // Firmar es hablar con `gpg-agent`, y `gpg-agent` es un proceso más
+  // que compite por la máquina: bajo carga un intento puede fallar
+  // por razones que no tienen nada que ver con lo que se está
+  // probando. Un fallo transitorio se reintenta; tres fallos seguidos
+  // ya no son transitorios, y entonces el dry-run **falla con el
+  // motivo** en vez de seguir con los artefactos sin firmar y
+  // fingir que todo está bien — un dry-run que no firmó y no lo dice
+  // es un dry-run que parece que firmó.
+  let lastError = "";
+  for (let attempt = 1; attempt <= DRY_RUN_SIGN_ATTEMPTS; attempt += 1) {
+    try {
+      await signDryRunLinuxOnce(stage);
+      return true;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      const headline = lastError.split("\n")[0] ?? lastError;
+      console.log(`→ Dry run: signing attempt ${attempt}/${DRY_RUN_SIGN_ATTEMPTS} failed: ${headline}`);
+      if (attempt < DRY_RUN_SIGN_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+  throw new ReleaseError(
+    `The dry run could not sign the Linux artifacts after ${DRY_RUN_SIGN_ATTEMPTS} attempts:\n${lastError}`,
+  );
+}
+
+/**
+ * Un intento de firma: clave desechable, keyring exportado y firma.
+ *
+ * Falla ruidosamente —toda causa con su motivo— para que quien
+ * reintenta sepa qué pasó en vez de repetir a ciegas.
+ */
+async function signDryRunLinuxOnce(stage) {
   const home = await mkdtemp(join(tmpdir(), "tanit-dryrun-gnupg-"));
   const keyFile = join(home, "release-keyring.gpg");
   const env = { ...process.env, GNUPGHOME: home };
@@ -577,6 +632,11 @@ async function signDryRunLinux(stage) {
         "loopback",
         "--passphrase-fd",
         "0",
+        // La clave nace con una fecha fija en el pasado: `gpg` no
+        // puede rechazarla por estar «en el futuro» aunque el reloj
+        // de la máquina se adelante.
+        "--faked-system-time",
+        DRY_RUN_KEY_DATE,
         "--quick-generate-key",
         "Tanit Release Dry Run <dry-run@example.invalid>",
         "default",
@@ -586,8 +646,9 @@ async function signDryRunLinux(stage) {
       { encoding: "utf8", input: "\n", env },
     );
     if (generated.status !== 0) {
-      console.log("→ Dry run: the throwaway GPG key could not be generated, the Linux artifacts stay unsigned");
-      return false;
+      throw new ReleaseError(
+        `The throwaway GPG key could not be generated:\n${generated.stderr ?? ""}${generated.stdout ?? ""}`,
+      );
     }
 
     const listed = spawnSync("gpg", ["--list-keys", "--with-colons"], { encoding: "utf8", env });
@@ -599,8 +660,9 @@ async function signDryRunLinux(stage) {
       }
     }
     if (keyId === "") {
-      console.log("→ Dry run: the throwaway GPG key has no fingerprint, the Linux artifacts stay unsigned");
-      return false;
+      throw new ReleaseError(
+        `The throwaway GPG key has no fingerprint:\n${listed.stderr ?? ""}${listed.stdout ?? ""}`,
+      );
     }
 
     const exported = spawnSync(
@@ -619,10 +681,20 @@ async function signDryRunLinux(stage) {
       { input: "\n", env },
     );
     if (exported.status !== 0 || exported.stdout === undefined) {
-      console.log("→ Dry run: the throwaway GPG key could not be exported, the Linux artifacts stay unsigned");
-      return false;
+      throw new ReleaseError(
+        `The throwaway GPG key could not be exported:\n${exported.stderr ?? ""}`,
+      );
     }
     await writeFile(keyFile, exported.stdout);
+
+    // Ganchos de test: quien lo necesita para comprobar el keyring
+    // exportado (que normalmente se va con el directorio temporal)
+    // dice dónde lo quiere. Sin esto, no hay forma de mirar la clave
+    // desechable después de que el dry-run la haya usado.
+    const keepKeyring = process.env.TANIT_DRY_RUN_KEYRING;
+    if (keepKeyring) {
+      await writeFile(keepKeyring, exported.stdout);
+    }
 
     const signed = spawnSync(
       "bash",
@@ -651,7 +723,6 @@ async function signDryRunLinux(stage) {
       );
     }
     console.log(`→ Dry run: the Linux artifacts are signed with a throwaway key (${keyId})`);
-    return true;
   } finally {
     await rm(home, { recursive: true, force: true });
   }

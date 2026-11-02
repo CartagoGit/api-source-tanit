@@ -80,11 +80,39 @@ describe("la auto-aprobación", () => {
     expect(raw).not.toContain("actions/checkout");
   });
 
-  test("el método de merge depende de la rama", async () => {
+  test("el merge es siempre un merge commit, nunca un squash", async () => {
     const raw = await workflow();
-    // `main` exige historia lineal (squash); `develop` no, y su
-    // historia son merge commits.
-    expect(raw).toContain('base === "main" ? "squash" : "merge"');
+    // La política declarada en `delendai.config.json` es
+    // `mergeMethod: "merge"`, y las dos ramas lo cumplen.
+    expect(raw).toContain('const method = "merge"');
+    // Un squash aplana la historia: los commits que `lint:proposals`
+    // audita dejan de ser ancestros de HEAD y `main` se queda en rojo.
+    // La regex cubre las dos comillas: con `not.toContain('"squash"')`
+    // un `merge_method: 'squash'` se escapaba.
+    expect(raw).not.toMatch(/['"]squash['"]/);
+  });
+
+  test("activa el auto-merge por el endpoint REST, no por un método de Octokit", async () => {
+    const raw = await workflow();
+    // Se busca la **llamada**, no la mención: el workflow explica en un
+    // comentario por qué no usa ese método, y ese comentario lo nombra.
+    // Una búsqueda de la cadena suelta daría un positivo falso; la
+    // regex exige los paréntesis de la invocación.
+    //
+    // `github.rest.pulls.enableAutoMerge` no existe en la versión de
+    // Octokit de `github-script@v7`: la llamada moría con
+    // "enableAutoMerge is not a function", y el PR se quedaba
+    // aprobado pero sin auto-merge, esperando a un humano.
+    expect(raw).not.toMatch(/github\.rest\.pulls\.enableAutoMerge\s*\(/);
+    // Y la llamada tiene que ser **la del endpoint REST**, no cualquier
+    // cosa que mentione la ruta: un comentario la nombra, así que la
+    // aserción exige el `github.request(` con la ruta y el método.
+    expect(raw).toMatch(
+      /github\.request\(\s*["']PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/auto-merge["']/,
+    );
+    // Y el cuerpo tiene que llevar el método: la ruta sola no dice con
+    // qué se va a mergear.
+    expect(await workflowWithoutComments()).toMatch(/merge_method:\s*method/);
   });
 
   test("usa pull-requests: write y nada más", async () => {

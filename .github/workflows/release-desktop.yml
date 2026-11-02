@@ -36,10 +36,14 @@ name: release-desktop
 #                     ▼
 #                  publish      → sólo si todo lo anterior pasó
 on:
-  release:
-    # `prereleased` además de `published`: un alfa también construye
-    # los instaladores, pero no los publica (ver el job `publish`).
-    types: [published, prereleased]
+  push:
+    # El tag y no el evento `release`: `release-cut` crea la release
+    # con `GITHUB_TOKEN`, y **los eventos que dispara el propio
+    # `GITHUB_TOKEN` no crean ejecuciones nuevas**. Con el workflow
+    # escuchando a `release`, los instaladores no se construían nunca
+    # en el momento de la release.
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       sign:
@@ -107,12 +111,34 @@ jobs:
     permissions:
       contents: write
 
+    # El canal lo dice el gate, no el evento: el prefijo de la
+    # versión decide si lo que sale es una release estable o una
+    # prerelease. `release-cut` usa la misma fuente, así que los dos
+    # workflows no pueden discrepar.
+    outputs:
+      channel: ${{ steps.channel.outputs.channel }}
+
     steps:
       - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+
+      # El canal lo dice el gate, no el evento: el prefijo de la
+      # versión decide si lo que sale es una release estable o una
+      # prerelease. `release-cut` usa la misma fuente, así que los dos
+      # workflows no pueden discrepar.
+      #
+      # Va **después** del checkout porque el gate es un script del
+      # repositorio: sin el código en el disco no hay nada que
+      # preguntar.
+      - name: El canal lo dice el gate
+        id: channel
+        run: |
+          channel="$(bun scripts/gates/lint-release-channel.script.ts --print-channel)"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "✓ el canal es $channel"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -507,7 +533,12 @@ jobs:
     # publica: mientras la versión no sea estable, la app de escritorio
     # se distribuye desde la release del CLI, no como instalador
     # firmado que la gente se instala en su máquina.
-    if: github.event_name == 'release' && !github.event.release.prerelease
+    #
+    # Lo decide el **canal**, no el evento: antes se miraba
+    # `github.event.release.prerelease`, y el evento `release` ya no
+    # llega aquí — este workflow lo dispara el tag. El canal lo dice
+    # el gate, que es la misma fuente que usa `release-cut`.
+    if: needs.build.outputs.channel == 'stable'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -520,6 +551,26 @@ jobs:
           bun-version: 1.4.2
 
       - run: bun install --frozen-lockfile
+
+      # La release la crea `release-cut`, que corre en paralelo con
+      # este workflow. Publicar sobre una release que aún no existe
+      # es un error de forma; se espera con un tope.
+      - name: Esperar a que la release exista
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "✓ la release $TAG existe"
+              exit 0
+            fi
+            echo "… la release $TAG todavía no existe (intento $attempt)"
+            sleep 20
+          done
+          echo "✗ la release $TAG no apareció en 20 minutos; ¿falló release-cut?" >&2
+          exit 1
 
       # Se baja lo que firmó cada corredor. El layout del staging se
       # conserva, así que los manifest siguen apuntando a rutas que
@@ -794,5 +845,9 @@ jobs:
       - name: Adjuntar a la release
         uses: softprops/action-gh-release@v3
         with:
+          # El tag, explícito: este workflow lo dispara el tag, y la
+          # release —que ya existe, porque arriba se esperó a que
+          # apareciera— es la de ese tag.
+          tag_name: ${{ github.ref_name }}
           files: ${{ steps.assets.outputs.files }}
           fail_on_unmatched_files: true
