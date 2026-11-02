@@ -2,7 +2,9 @@
 
 ## Branch protection
 
-El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-protection.script.ts) comprueba la política real de GitHub para `develop` y cualquier rama `release/*` que exista en el repositorio. La validación exige dos cosas:
+El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-protection.script.ts) comprueba la política real de GitHub para **las dos ramas que la política declara** — la de integración y la de release — y para cualquier rama `release/*` que exista en el repositorio. Los nombres no están escritos en el script: salen de `development.branches` en [delendai.config.json](../delendai.config.json), así que un gate que protege una rama que la política ya no nombra deja de protegerla sin que nadie se entere.
+
+La validación exige dos cosas:
 
 1. `protected=true`
 2. `required_status_checks.contexts` contiene exactamente los checks que hoy publica el workflow principal de validación:
@@ -16,10 +18,25 @@ El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-prot
    - `integration-verifier`
    - `ci-summary`
 
+Además, cada rama se compara con **el número de aprobaciones que le toca por su papel**:
+
+| Rama | Aprobaciones | De dónde sale |
+| --- | --- | --- |
+| Integración (`develop`) | `development.integration.requiredApprovals` | integra de forma autónoma |
+| Release (`main`) | `development.integration.releaseRequiredApprovals` | es donde se corta una versión: la puerta se cierra hasta que alguien ha mirado |
+
+Una rama de release protegida con **menos** aprobaciones de las que la política declara es una rama por la que una versión puede salir sin que nadie la haya mirado; el gate falla y dice cuántas faltan. La comparación es por rama, no por repositorio: `develop` y `main` son el mismo repositorio con dos trabajos distintos, y no tienen la misma puerta.
+
+> Esto no es hipotético: `main` estuvo rojo porque exigía historia lineal mientras la política declara `mergeMethod: "merge"`. Un squash aplana la historia y deja fuera del árbol los commits que `lint:proposals` audita, así que `shippedIn` dejan de ser ancestros de `HEAD` y el gate falla con 166 referencias inalcanzables. El gate compara ahora, en cada rama, la historia lineal y el método de merge con lo que la política declara, y explica el arreglo cuando discrepan.
+
 El job `ci-summary` usa [scripts/gates/ci-summary.script.ts](../scripts/gates/ci-summary.script.ts)
 y devuelve `exit 1` cuando cualquier job requerido termina en `failure`, `cancelled` o `skipped`.
 También existe el workflow [ci-summary.yml](../.github/workflows/ci-summary.yml), que conserva un
 check visible para la conclusión final del workflow `validate`.
+
+### Cuándo se ejecuta
+
+El job `branch-protection` del workflow [validate.yml](../.github/workflows/validate.yml) corre en **cualquier push a una rama**, no sólo en `develop`. Vigilar una sola rama dejaba las otras sin vigilancia: una rama de release mal protegida se enteraba el día de la promoción, cuando ya era tarde para corregirla sin historial roto.
 
 ## Ruleset
 
