@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: general
 date: 2026-11-02
+shippedIn:
+  - c50d145
 ---
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
