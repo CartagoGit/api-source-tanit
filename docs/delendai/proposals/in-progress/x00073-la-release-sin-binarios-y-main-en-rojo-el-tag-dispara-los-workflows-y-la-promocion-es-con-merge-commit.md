@@ -2,12 +2,16 @@
 id: x00073
 title: "La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-01
 shipped-in:
   - "ecd09e30042d1000efb501b9fd85ef7049c72531"
+last-transition-id: 8ef6fd22-cb06-4c92-9215-88a0e519793f
+last-correlation-id: 8ef6fd22-cb06-4c92-9215-88a0e519793f
+last-transition-from: ready
+last-transition-at: 2026-11-02T19:06:13.665Z
 ---
 
 # x00073 — La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit
