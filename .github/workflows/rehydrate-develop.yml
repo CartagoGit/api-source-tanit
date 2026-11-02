@@ -202,11 +202,19 @@ jobs:
           # terminar con error **después** de haberlo creado —la
           # release quedaba creada y el workflow moría sin el
           # número—.
+          #
+          # La ruta del cuerpo es **absoluta**: `body.md` está en
+          # `$RUNNER_TEMP`, y el directorio de trabajo del paso es el
+          # checkout del repo. Con una ruta relativa el fichero no
+          # existe, `gh` falla, y el PR no se abre.
+          #
+          # Y el error **no** se tapa: un `2>/dev/null` convierte
+          # "no se pudo abrir el PR" en un misterio.
           PR_JSON="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
             -f title="merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
             -f head="$BRANCH" \
             -f base="$INTEGRATION_BRANCH" \
-            -F body=@body.md 2>/dev/null || true)"
+            -F body=@"$RUNNER_TEMP/body.md" 2>"$RUNNER_TEMP/pr.err" || true)"
           NUMBER="$(echo "$PR_JSON" | jq -r '.number // empty')"
           if [ -z "$NUMBER" ]; then
             # ¿ya había un PR abierto para esa rama? La rama es la
@@ -216,6 +224,8 @@ jobs:
               | jq -r '.[0].number // empty')"
             if [ -z "$NUMBER" ]; then
               echo "✗ no se pudo abrir el PR de rehidratación" >&2
+              echo "  lo que dijo la API:" >&2
+              cat "$RUNNER_TEMP/pr.err" >&2 || true
               echo "$PR_JSON" >&2
               exit 1
             fi
