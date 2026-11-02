@@ -90,6 +90,31 @@ describe("los workflows de release", () => {
     }
   });
 
+  test("los tres se traen la historia entera", async () => {
+    for (const name of RELEASE_WORKFLOWS) {
+      const raw = await workflow(name);
+      // El gate `lint:proposals` audita la historia: exige que cada
+      // `shippedIn` de una propuesta cerrada sea ancestro de HEAD. Un
+      // checkout sin historial —el defecto de `actions/checkout`— le
+      // deja al gate 223 referencias inalcanzables, y la release
+      // falla **antes de compilar un solo binario**.
+      expect(raw, `${name} no se trae la historia`).toContain(
+        "fetch-depth: 0",
+      );
+    }
+  });
+
+  test("el que corta la release la actualiza si ya existe", async () => {
+    const raw = await workflow("release-cut.yml");
+    // Un tag puede volver a empujarse —por ejemplo, cuando la
+    // release salió vacía por un fallo del workflow de binarios— y en
+    // ese caso las notas y la marca tienen que volver a quedar como
+    // deben. Si `gh release create` falla, el workflow se pone rojo y
+    // la release se queda como estaba.
+    expect(raw).toContain("gh release edit");
+    expect(raw).toContain("gh release view");
+  });
+
   test("el que adjunta espera a que la release exista", async () => {
     for (const name of ["release-binaries.yml", "release-desktop.yml"]) {
       const raw = await workflow(name);

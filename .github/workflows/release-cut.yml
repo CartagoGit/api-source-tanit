@@ -50,6 +50,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # El gate `lint:proposals` audita la historia: exige que
+          # cada `shippedIn` sea ancestro de HEAD. Sin el historial
+          # entero, el gate ve 223 referencias inalcanzables y la
+          # release falla antes de compilar nada.
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -97,16 +103,36 @@ jobs:
           # de cómo el CLI interprete el flag, y una release estable
           # marcada como prerelease (o al revés) es exactamente el
           # error que este workflow existe para no cometer.
-          if [ "$VERSION" = "stable" ]; then
+          #
+          # Y si la release ya existe, se **edita** en vez de fallar:
+          # un tag puede volver a empujarse (por ejemplo, cuando la
+          # release salió vacía por un fallo del workflow de binarios),
+          # y en ese caso las notas y la marca tienen que volver a
+          # quedar como deben, no reventar el workflow.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            if [ "$VERSION" = "stable" ]; then
+              gh release edit "$TAG" \
+                --title "$TAG" \
+                --notes-file notes.md \
+                --prerelease=false
+            else
+              gh release edit "$TAG" \
+                --title "$TAG" \
+                --notes-file notes.md \
+                --prerelease
+            fi
+            echo "✓ release $TAG actualizada (canal $VERSION)"
+          elif [ "$VERSION" = "stable" ]; then
             gh release create "$TAG" \
               --title "$TAG" \
               --notes-file notes.md \
               --verify-tag
+            echo "✓ release $TAG creada (canal $VERSION)"
           else
             gh release create "$TAG" \
               --title "$TAG" \
               --notes-file notes.md \
               --prerelease \
               --verify-tag
+            echo "✓ release $TAG creada (canal $VERSION)"
           fi
-          echo "✓ release $TAG creada (canal $VERSION)"

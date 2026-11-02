@@ -120,6 +120,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # El gate `lint:proposals` audita la historia: exige que
+          # cada `shippedIn` sea ancestro de HEAD. Sin el historial
+          # entero, el gate ve 223 referencias inalcanzables y la
+          # release falla antes de compilar nada.
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -545,6 +551,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # El gate `lint:proposals` audita la historia: exige que
+          # cada `shippedIn` sea ancestro de HEAD. Sin el historial
+          # entero, el gate ve 223 referencias inalcanzables y la
+          # release falla antes de compilar nada.
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
