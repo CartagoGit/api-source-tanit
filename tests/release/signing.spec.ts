@@ -614,6 +614,52 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     await rm(stage, { recursive: true, force: true });
   });
 
+  test("the throwaway key of the dry run survives a clock that is behind", async () => {
+    const stage = await tempDir("tanit-release-clock");
+    // The keyring goes **outside** the stage: the stage is what the
+    // manifest is built from, and a file that lands in there is an
+    // asset the manifest has to explain.
+    const outside = await tempDir("tanit-release-clock-keyring");
+    const keyring = join(outside, "throwaway-keyring.gpg");
+    const prepared = run("bun", ["run", PREPARE, "--dry-run", "--stage", stage], {
+      TANIT_DRY_RUN_KEYRING: keyring,
+    });
+    expect(prepared.status, prepared.output).toBe(0);
+
+    // The keyring is imported with a clock **behind** the moment the
+    // dry run ran. `gpg` refuses a key whose creation date is in the
+    // future —«created N days in the future (time warp or clock
+    // problem)»— and then skips it, so the keyring arrives empty and
+    // the dry run dies with «The GPG keyring could not be imported».
+    // That is what broke the suite: the throwaway key was born with
+    // the wall clock, and the wall clock is not always where it was
+    // a second ago.
+    //
+    // The key of a dry run does not need a real date — it is thrown
+    // away when the dry run ends — so it is born with a fixed one in
+    // the past, and no clock can be ahead of it.
+    const home = await tempDir("tanit-release-clock-gnupg");
+    const imported = run(
+      "gpg",
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--faked-system-time",
+        "20260101T000000",
+        "--import",
+        keyring,
+      ],
+      { GNUPGHOME: home },
+    );
+    expect(imported.status, imported.output).toBe(0);
+    expect(imported.output).not.toContain("in the future");
+
+    await rm(stage, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true });
+  });
+
   test("it signs with a key that is not in the runner's default keyring", async () => {
     const stage = await dryRunStaging("tanit-release-explicit-key");
     const home = await tempDir("tanit-release-gnupg");
@@ -1063,7 +1109,8 @@ describe("the signature verifier", () => {
     const root = await tempDir("tanit-release-traversal-receipt");
     const stage = join(root, "stage");
     await mkdir(stage, { recursive: true });
-    expect(run("bun", ["run", PREPARE, "--dry-run", "--stage", stage]).status).toBe(0);
+    const prepared = run("bun", ["run", PREPARE, "--dry-run", "--stage", stage]);
+    expect(prepared.status, prepared.output).toBe(0);
 
     const manifest = await readManifest(stage);
     const victim = manifest.artifacts.find(
