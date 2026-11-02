@@ -2,16 +2,16 @@
 id: x00073
 title: "La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-01
 shipped-in:
   - "ecd09e30042d1000efb501b9fd85ef7049c72531"
-last-transition-id: aef0fe59-902a-4f23-9e22-6c0dea59567c
-last-correlation-id: aef0fe59-902a-4f23-9e22-6c0dea59567c
-last-transition-from: ready
-last-transition-at: 2026-11-02T18:22:56.641Z
+last-transition-id: 85e19132-c127-4deb-bffa-9f09706087ab
+last-correlation-id: 85e19132-c127-4deb-bffa-9f09706087ab
+last-transition-from: in-progress
+last-transition-at: 2026-11-02T18:23:19.585Z
 ---
 
 # x00073 — La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit
@@ -87,7 +87,7 @@ la versión, que es donde la divergencia costó una release.
 - review-log: approved by minimax-m3 — verified at ecd09e30042d, validate exit 0 and tests 8/8 claimed, no recorded run cited; acceptance 4/4: (1) .github/workflows/auto-approve.yml:156 — const method = "merge"; (ya no hay base === "main" ? ... : ...). La protección real de main: required_linear_history.e… (2) .github/workflows/auto-approve.yml:158-166 — await github.request("PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge", {..., merge_method: method}). El … (3) tests/cli/auto-approve.spec.ts:83-107. Mutación verificada por el revisor y repetida aquí: borrar la llamada github.request() entera, cambiarla por otro endpoi… (4) docs/CI.md:135-150: un bloque con los dos porqués (el squash aplana la historia y deja fuera del árbol los commits que lint:proposals audita; enableAutoMerge n… — Revisión independiente por delivery-verifier, dos rondas. Ronda 1 sobre d5e5a51: 0 bloqueantes, 2 importantes y 3 menores. Ronda 2: los tres puntos de test verificados por mutación. El bloqueante de la ronda 2 (el tip de la rama, con 16 propuestas movidas por el runtime) corregido en 77acac8: git diff --name-status -M origin/develop HEAD -- docs/delendai/proposals/done/ vacío y lint:proposals exit 0 (168 propuestas sin drift).
 
 ### S2-el-gate-vigila-la-rama-de-release — S2 — El gate de protección comprueba también la rama de release
-- **Status**: pending
+- **Status**: review
 - **Files**: `scripts/gates/branch-protection.script.ts`, `tests/scripts-gates/branch-protection.spec.ts`, `docs/CI.md`
 - **Gate**: type
 - acceptance:
@@ -96,15 +96,19 @@ la versión, que es donde la divergencia costó una release.
   - "Una divergencia en `main` —la que costó la release: historia lineal exigida con `mergeMethod: \"merge\"`— hace fallar el gate con el motivo escrito."
   - "El gate dice qué hacer cuando divergen: la rama se protege con la política, o la política se cambia."
   - "Tests cubren la rama de release conforme y las tres divergencias: aprobaciones, historia lineal y método de merge."
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ### S3-alfa-2-y-sus-notas — S3 — La versión 0.1.0-alpha.2 y sus notas de release
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`, `packages/desktop/tauri.conf.json`, `packages/contracts/constants/cli/cli-version.constant.ts`, `CHANGELOG.md`
 - **Gate**: none
 - acceptance:
   - "La versión es `0.1.0-alpha.2` en las tres copias: `package.json`, `packages/desktop/tauri.conf.json` y `CLI_VERSION`."
   - "El gate `lint-release-channel` dice que el canal es `alpha`."
   - "El CHANGELOG tiene la sección `0.1.0-alpha.2` con lo que cambia respecto a `alpha.1`: los binarios adjuntos, la promoción con merge commit y el auto-merge del bot."
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
