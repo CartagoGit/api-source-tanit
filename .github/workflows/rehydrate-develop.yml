@@ -220,8 +220,14 @@ jobs:
             # ¿ya había un PR abierto para esa rama? La rama es la
             # misma para todas las rehidrataciones, así que un PR
             # anterior sigue abierto y lo que hay es **actualizarlo**.
-            NUMBER="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY}:${BRANCH}" \
-              | jq -r '.[0].number // empty')"
+            #
+            # El filtro va en local, no en el parámetro `head` de la
+            # API: ese parámetro quiere `dueño:rama`, y
+            # `repos/${GITHUB_REPOSITORY}` es `dueño/repo` — con la
+            # barra de más no encuentra nada y el workflow se rinde
+            # con un PR abierto que sí existe.
+            NUMBER="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+              | jq -r --arg head "$BRANCH" '[.[] | select(.head.ref == $head) | .number] | first // empty')"
             if [ -z "$NUMBER" ]; then
               echo "✗ no se pudo abrir el PR de rehidratación" >&2
               echo "  lo que dijo la API:" >&2
