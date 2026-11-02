@@ -567,7 +567,7 @@ async function checkBranchProtection(
       ok: false,
       detail:
         `la rama pide ${String(reviews?.required_approving_review_count)} aprobaciones y la política declara ${expectedApprovals}. ` +
-        `Protege la rama con la política, o cambia la política: mientras las dos digan cosas distintas, ` +
+        `` +
         `la puerta que decide qué sale de aquí tiene dos respuestas.`,
     };
   }
@@ -597,7 +597,7 @@ async function checkBranchProtection(
         `La política dice mergeMethod="${BRANCH_PROTECTION_POLICY.mergeMethod}" y linearHistory=${String(BRANCH_PROTECTION_POLICY.requiredLinearHistory)}: ` +
         `exigir historia lineal en una rama que se integra con merge commit rechaza el propio merge commit, ` +
         `y la promoción acaba aplastada con squash — que es lo que deja fuera del árbol los commits que \`lint:proposals\` audita. ` +
-        `Protege la rama con la política, o cambia la política: mientras las dos digan cosas distintas, ` +
+        `` +
         `la puerta que decide qué sale de aquí tiene dos respuestas.`,
     };
   }
