@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 
 import {
   BRANCH_PROTECTION_POLICY,
@@ -7,11 +9,16 @@ import {
   RELEASE_BRANCH,
   REQUIRED_CHECKS,
   requiredApprovalsFor,
+  resolveBranches,
   validateBranchProtection,
   type FetchLike,
 } from "../../scripts/gates/branch-protection.script";
+import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
 
-function jsonResponse(body: unknown, init?: ResponseInit): InstanceType<typeof Response> {
+/** The workflow that runs the gate. */
+const VALIDATE_WORKFLOW = join(REPO_ROOT, ".github", "workflows", "validate.yml");
+
+function jsonResponse(body: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof Response> {
   return new Response(JSON.stringify(body), {
     status: init?.status ?? 200,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
@@ -21,15 +28,34 @@ function jsonResponse(body: unknown, init?: ResponseInit): InstanceType<typeof R
 function createFetchStub(
   routes: Record<string, InstanceType<typeof Response>>,
 ): FetchLike {
-  return (async (input: RequestInfo | URL) => {
+  return (async (input: Parameters<FetchLike>[0]) => {
     const url = typeof input === "string"
       ? input
       : input instanceof URL
         ? input.toString()
-        : input.url;
+        : "url" in input ? input.url : input.toString();
     const response = routes[url];
     return response ?? jsonResponse({ message: `missing route for ${url}` }, { status: 404 });
   }) as FetchLike;
+}
+
+/**
+ * The detail of one result.
+ *
+ * `noUncheckedIndexedAccess` is on, so an index out of range gives
+ * `undefined`. A `?.detail` would leave the test green over a
+ * message that never arrived; here either the message is there or the
+ * test fails.
+ */
+function detailOf(
+  result: { readonly results: ReadonlyArray<{ readonly detail: string }> },
+  index: number,
+): string {
+  const entry = result.results[index];
+  if (entry === undefined) {
+    throw new Error(`el gate no devolvió el resultado ${index}`);
+  }
+  return entry.detail;
 }
 
 /**
@@ -217,8 +243,8 @@ describe("branch-protection gate", () => {
       branch: "(repository)",
       ok: false,
     });
-    expect(result.results[0].detail).toContain("mergeMethod=merge");
-    expect(result.results[0].detail).toContain("allow_merge_commit=false");
+    expect(detailOf(result, 0)).toContain("mergeMethod=merge");
+    expect(detailOf(result, 0)).toContain("allow_merge_commit=false");
   });
 
   test("concludes nothing when the response does not carry the merge settings", async () => {
@@ -255,7 +281,7 @@ describe("branch-protection gate", () => {
       branch: "(repository)",
       ok: true,
     });
-    expect(result.results[0].detail).toContain("no se concluye nada");
+    expect(detailOf(result, 0)).toContain("no se concluye nada");
   });
 
   test("the live policy does not demand linear history, so a merge commit can land", () => {
@@ -359,10 +385,10 @@ describe("la rama de release", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[1].detail).toContain("0 aprobaciones");
-    expect(result.results[1].detail).toContain(String(RELEASE_APPROVALS));
+    expect(detailOf(result, 1)).toContain("0 aprobaciones");
+    expect(detailOf(result, 1)).toContain(String(RELEASE_APPROVALS));
     // The message says what to do, not only what is wrong.
-    expect(result.results[1].detail).toContain("Protege la rama con la política");
+    expect(detailOf(result, 1)).toContain("Protege la rama con la política");
   });
 
   test("fails when the release branch demands linear history against the policy", async () => {
@@ -380,10 +406,18 @@ describe("la rama de release", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[1].detail).toContain("historia");
+    expect(detailOf(result, 1)).toContain("historia");
+    // It says WHICH of the three diverged: "la historia, el force-push
+    // o el borrado" leaves the reader to guess, and the remedy is only
+    // actionable once the reader knows.
+    expect(detailOf(result, 1)).toContain("la historia (linearHistory=true)");
     // It says WHY that combination is the problem: historia lineal
     // rechaza el merge commit que la política declara.
-    expect(result.results[1].detail).toContain("merge commit");
+    expect(detailOf(result, 1)).toContain("merge commit");
+    // And it says WHAT TO DO, like the approvals divergence does. A
+    // message that explains the problem but not the remedy leaves the
+    // reader guessing, and this is the divergence that cost a release.
+    expect(detailOf(result, 1)).toContain("Protege la rama con la política");
   });
 
   test("fails when the repository refuses the merge method the policy declares", async () => {
@@ -402,7 +436,144 @@ describe("la rama de release", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[0].detail).toContain("mergeMethod=merge");
-    expect(result.results[0].detail).toContain("allow_merge_commit=false");
+    expect(detailOf(result, 0)).toContain("mergeMethod=merge");
+    expect(detailOf(result, 0)).toContain("allow_merge_commit=false");
+    // The merge method is a switch of the REPOSITORY, so it is
+    // checked once for every branch — but the branch being cut is
+    // still the one that is on the list, and a release cannot be
+    // trusted when the repository refuses the merge commits the
+    // policy declares.
+    expect(result.checkedBranches).toContain(RELEASE_BRANCH);
+  });
+});
+
+/**
+ * El gate tiene que mirar la rama de release DE VERDAD.
+ *
+ * Dos líneas deciden si la rama de release está vigilada, y las dos
+ * pueden estropearse dejando la CI verde:
+ *
+ * - la lista de ramas que el gate decide mirar: si la rama de
+ *   release sale de la lista, el gate deja de mirarla;
+ * - el `if` del job que ejecuta el gate: si el job sólo corre en
+ *   `develop`, el gate no llega a ejecutarse sobre `main`.
+ *
+ * Una línea que decide qué se vigila y no tiene ningún test que la
+ * vigile es una afirmación, no una comprobación. Por eso están aquí.
+ */
+describe("el gate vigila la rama de release de verdad", () => {
+  const BASE_URL = "https://mock.github.local";
+  const REPO = "CartagoGit/api-source-tanit";
+
+  function recordingFetchStub(
+    routes: Record<string, InstanceType<typeof Response>>,
+    requested: string[],
+  ): FetchLike {
+    return (async (input: Parameters<FetchLike>[0]) => {
+      const url = typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : "url" in input ? input.url : input.toString();
+      requested.push(url);
+      const response = routes[url];
+      return response ?? jsonResponse({ message: `missing route for ${url}` }, { status: 404 });
+    }) as FetchLike;
+  }
+
+  function conformingProtection(approvals: number) {
+    return jsonResponse({
+      required_status_checks: {
+        strict: true,
+        contexts: [...REQUIRED_CHECKS],
+      },
+      enforce_admins: { enabled: true },
+      required_pull_request_reviews: {
+        required_approving_review_count: approvals,
+      },
+      required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
+      allow_force_pushes: { enabled: false },
+      allow_deletions: { enabled: false },
+      required_conversation_resolution: { enabled: true },
+    });
+  }
+
+  test("la lista de ramas incluye la de release aunque nadie la nombre", async () => {
+    const branches = await resolveBranches({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      fetchImpl: createFetchStub({
+        [`${BASE_URL}/repos/${REPO}/branches?per_page=100`]: jsonResponse([
+          { name: "develop" },
+          { name: "main" },
+          { name: "release/1.0.0" },
+        ]),
+      }),
+    });
+
+    expect(branches).toEqual([INTEGRATION_BRANCH, RELEASE_BRANCH, "release/1.0.0"]);
+  });
+
+  test("sin lista a mano, pregunta por la rama de release y la compara", async () => {
+    const requested: string[] = [];
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      fetchImpl: recordingFetchStub(
+        {
+          [`${BASE_URL}/repos/${REPO}/branches?per_page=100`]: jsonResponse([
+            { name: "develop" },
+            { name: "main" },
+            { name: "release/1.0.0" },
+          ]),
+          [`${BASE_URL}/repos/${REPO}`]: repoResponse(),
+          [`${BASE_URL}/repos/${REPO}/branches/develop`]: jsonResponse({
+            name: "develop",
+            protected: true,
+          }),
+          [`${BASE_URL}/repos/${REPO}/branches/develop/protection`]: conformingProtection(
+            BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount,
+          ),
+          [`${BASE_URL}/repos/${REPO}/branches/main`]: jsonResponse({
+            name: "main",
+            protected: true,
+          }),
+          [`${BASE_URL}/repos/${REPO}/branches/main/protection`]: conformingProtection(RELEASE_APPROVALS),
+          [`${BASE_URL}/repos/${REPO}/branches/release%2F1.0.0`]: jsonResponse({
+            name: "release/1.0.0",
+            protected: true,
+          }),
+          [`${BASE_URL}/repos/${REPO}/branches/release%2F1.0.0/protection`]: conformingProtection(0),
+        },
+        requested,
+      ),
+    });
+
+    expect(result.checkedBranches).toContain(RELEASE_BRANCH);
+    // It was really asked about it — and the branch it asked about is
+    // the one where a version is cut.
+    expect(requested).toContain(`${BASE_URL}/repos/${REPO}/branches/${RELEASE_BRANCH}/protection`);
+    expect(result.ok).toBe(true);
+  });
+
+  test("el job del gate no está atado a la rama de integración", () => {
+    const script =
+      `const text = await Bun.file(${JSON.stringify(VALIDATE_WORKFLOW)}).text(); ` +
+      `console.log(JSON.stringify(Bun.YAML.parse(text)));`;
+    const parsed = spawnSync("bun", ["-e", script], { encoding: "utf8" });
+    expect(parsed.status, parsed.stderr).toBe(0);
+    const workflow = JSON.parse(parsed.stdout) as {
+      readonly on?: { readonly push?: { readonly branches?: ReadonlyArray<string> } };
+      readonly jobs: Readonly<Record<string, { readonly if?: unknown }>>;
+    };
+
+    // The workflow has to wake up on the release branch...
+    expect(workflow.on?.push?.branches).toContain(RELEASE_BRANCH);
+    // ...and the gate job must not be restricted to the integration
+    // branch. With both true the gate runs over `main`; with the
+    // second false it never does, and the branch where versions are
+    // cut stays unwatched while the CI stays green.
+    const condition = String(workflow.jobs["branch-protection"]?.if ?? "");
+    expect(condition).not.toMatch(/refs\/heads\/develop/);
   });
 });

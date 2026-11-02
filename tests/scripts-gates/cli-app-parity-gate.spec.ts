@@ -48,6 +48,9 @@ describe("the parity gate", () => {
       // Asked for as served and with no handler: a call that would
       // answer UNKNOWN_HANDLER.
       expect(pending.has(operation)).toBe(true);
+      // And it is asked for AS pending — that is what the pending
+      // backlog means, and it is what the gate counts.
+      expect(asks.some((ask) => ask.kind === "pending")).toBe(true);
     }
   });
 

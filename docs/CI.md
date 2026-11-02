@@ -2,21 +2,12 @@
 
 ## Branch protection
 
-El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-protection.script.ts) comprueba la política real de GitHub para **las dos ramas que la política declara** — la de integración y la de release — y para cualquier rama `release/*` que exista en el repositorio. Los nombres no están escritos en el script: salen de `development.branches` en [delendai.config.json](../delendai.config.json), así que un gate que protege una rama que la política ya no nombra deja de protegerla sin que nadie se entere.
+El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-protection.script.ts) comprueba la política real de GitHub para **las dos ramas que la política declara** — la de integración y la de release — y para cualquier rama `release/*` que exista en el repositorio. Los nombres no están escritos en el script: salen de `development.branches` en [delendai.config.json](../delendai.config.json), y si el bloque falta el gate **se niega a arrancar** en vez de proteger unos nombres inventados — un gate que se supone a su propia expectativa pasa lo que encuentra.
 
 La validación exige dos cosas:
 
 1. `protected=true`
-2. `required_status_checks.contexts` contiene exactamente los checks que hoy publica el workflow principal de validación:
-   - `typecheck`
-   - `lint`
-   - `test-coverage`
-   - `validate-examples`
-   - `bench-check`
-   - `security-audit`
-   - `validate-package`
-   - `integration-verifier`
-   - `ci-summary`
+2. `required_status_checks.contexts` contiene los checks que la política declara en `development.integration.requiredChecks` — hoy, uno: `ci-summary`
 
 Además, cada rama se compara con **el número de aprobaciones que le toca por su papel**:
 
@@ -25,9 +16,9 @@ Además, cada rama se compara con **el número de aprobaciones que le toca por s
 | Integración (`develop`) | `development.integration.requiredApprovals` | integra de forma autónoma |
 | Release (`main`) | `development.integration.releaseRequiredApprovals` | es donde se corta una versión: la puerta se cierra hasta que alguien ha mirado |
 
-Una rama de release protegida con **menos** aprobaciones de las que la política declara es una rama por la que una versión puede salir sin que nadie la haya mirado; el gate falla y dice cuántas faltan. La comparación es por rama, no por repositorio: `develop` y `main` son el mismo repositorio con dos trabajos distintos, y no tienen la misma puerta.
+Una rama de release protegida con **menos** aprobaciones de las que la política declara es una rama por la que una versión puede salir sin que nadie la haya mirado; el gate falla y dice las dos cifras —las que pide la rama y las que declara la política—. La comparación es por rama, no por repositorio: `develop` y `main` son el mismo repositorio con dos trabajos distintos, y no tienen la misma puerta. Las ramas `release/*` siguen el conteo de integración: no son la rama de corte, son otra puerta.
 
-> Esto no es hipotético: `main` estuvo rojo porque exigía historia lineal mientras la política declara `mergeMethod: "merge"`. Un squash aplana la historia y deja fuera del árbol los commits que `lint:proposals` audita, así que `shippedIn` dejan de ser ancestros de `HEAD` y el gate falla con 166 referencias inalcanzables. El gate compara ahora, en cada rama, la historia lineal y el método de merge con lo que la política declara, y explica el arreglo cuando discrepan.
+> Esto no es hipotético: `main` estuvo rojo porque exigía historia lineal mientras la política declara `mergeMethod: "merge"`. Un squash aplana la historia y deja fuera del árbol los commits que `lint:proposals` audita, así que `shippedIn` dejan de ser ancestros de `HEAD` y el gate falla con 166 referencias inalcanzables. El gate compara ahora, en cada rama, la historia lineal, el force-push y el borrado con lo que la política declara, y el método de merge con lo que declara **el repositorio** —que es donde vive ese interruptor—. Cuando divergen, el mensaje dice **qué** diverge y **qué hacer**: proteger la rama con la política, o cambiar la política.
 
 El job `ci-summary` usa [scripts/gates/ci-summary.script.ts](../scripts/gates/ci-summary.script.ts)
 y devuelve `exit 1` cuando cualquier job requerido termina en `failure`, `cancelled` o `skipped`.
@@ -36,7 +27,9 @@ check visible para la conclusión final del workflow `validate`.
 
 ### Cuándo se ejecuta
 
-El job `branch-protection` del workflow [validate.yml](../.github/workflows/validate.yml) corre en **cualquier push a una rama**, no sólo en `develop`. Vigilar una sola rama dejaba las otras sin vigilancia: una rama de release mal protegida se enteraba el día de la promoción, cuando ya era tarde para corregirla sin historial roto.
+El job `branch-protection` del workflow [validate.yml](../.github/workflows/validate.yml) ya no está atado a `develop`: corre en cualquier push a una rama. Vigilar una sola rama dejaba las otras sin vigilancia: una rama de release mal protegida se enteraba el día de la promoción, cuando ya era tarde para corregirla sin historial roto.
+
+El workflow se dispara en `main` y en `develop`, así que el gate llega a ejecutarse sobre la rama donde se corta una versión. Los dos hechos van juntos y los dos tienen su test: si la lista de ramas que el gate decide mirar dejara fuera la de release, el gate dejaría de mirarla; y si el `if` del job volviera a mirar sólo `develop`, el gate no llegaría a ejecutarse sobre `main`. En los dos casos la CI seguiría en verde mientras la rama de release queda sin vigilar.
 
 ## Ruleset
 
@@ -45,7 +38,7 @@ El workflow manual `integration-delendai` puede crear o actualizar el ruleset
 de administración del repositorio. Sin ese secreto sólo emite un warning y no cambia GitHub.
 
 Para promover la protección: ejecuta `integration-delendai` con `workflow_dispatch`, verifica
-`bun run ci:branch-protection` y confirma que `develop` exige los nueve checks. En una emergencia
+`bun run ci:branch-protection` y confirma que las ramas que declara la política exigen el check que la política nombra. En una emergencia
 (rotación de secretos o incidente de infraestructura), un administrador puede usar el bypass
 temporal del ruleset, documentar el motivo y retirarlo inmediatamente después del arreglo.
 

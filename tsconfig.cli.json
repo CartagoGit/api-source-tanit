@@ -15,6 +15,7 @@
     "tests/cli/**/*.ts",
     "tests/e2e/**/*.ts",
     "tests/release/**/*.ts",
+    "tests/scripts-gates/**/*.ts",
     "tests/helpers/**/*.ts",
     "vitest.config.ts",
     "examples/example-app/**/*.ts"
