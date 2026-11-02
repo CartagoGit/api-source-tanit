@@ -85,7 +85,28 @@ Tres decisiones que no son obvias:
 `tests/cli/rehydrate-develop.spec.ts` vigila las tres cosas que pueden
 romperse en silencio: que deje de dispararse, que empuje a donde no
 debe, y que se dé por bueno sin haber rehidratado nada.
+### El YAML de los workflows
 
+Un workflow con el YAML roto **no falla donde se ve**. GitHub lo
+ejecuta con el **nombre del fichero** en vez del suyo, pierde sus
+filtros de disparador —se pone a correr en cada push de cada rama— y
+muere con un error de sintaxis en un log que nadie mira. El
+`ci-summary` sigue verde: el workflow que debía hacer un trabajo se
+limita a no hacerlo, y nada en el repositorio dice que eso esté
+pasando.
+
+El gate [scripts/gates/lint-workflows.script.ts](../scripts/gates/lint-workflows.script.ts)
+comprueba que **todos** los workflows parsean y que tienen `name`,
+`on` y `jobs`. Sin `name`, GitHub muestra el nombre del fichero y el
+workflow pasa desapercibido; sin `on`, no se dispara por nada; sin
+`jobs`, no hace nada.
+
+Pasó con `rehydrate-develop.yml`: el cuerpo del pull request iba en
+un argumento con comillas y su continuación **no** estaba indentada,
+así que YAML la leía como claves nuevas. El workflow se ejecutó en
+cada push de cada rama y nunca rehidrató nada. El gate que ya
+vigilaba el `ci-summary` no lo veía, porque el `ci-summary` era
+verde: el workflow roto no participaba en él.
 ## Ruleset
 
 El workflow manual `integration-delendai` puede crear o actualizar el ruleset

@@ -56,8 +56,8 @@ PR de promoción (#71) está `dirty` por eso.
 - global_gate: lint
 
 ### S1 — la rehidratación, hoy y sola
-- **Status**: pending
-- **Files**: `docs/CI.md`, `.github/workflows/rehydrate-develop.yml`, `tests/cli/rehydrate-develop.spec.ts`
+- **Status**: review
+- **Files**: `docs/CI.md`, `.github/workflows/rehydrate-develop.yml`, `tests/cli/rehydrate-develop.spec.ts`, `scripts/gates/lint-workflows.script.ts`, `tests/scripts-gates/lint-workflows.spec.ts`, `package.json`
 - **Gate**: lint
 
 La slice entrega tres cosas, y las tres son el mismo invariante:
@@ -81,6 +81,17 @@ La slice entrega tres cosas, y las tres son el mismo invariante:
    esté en verde. La promoción (el PR contra `main`) sí sigue pidiendo
    aprobación, y esa la da el bot de `auto-approve` porque el PR lo firma el
    dueño.
+
+4. **El gate que vigila el YAML.** La primera versión de este workflow
+   tenía el YAML roto —el cuerpo del PR iba en un argumento con comillas
+   y su continuación no estaba indentada, y YAML lo leía como claves
+   nuevas—. GitHub lo ejecutó con el **nombre del fichero** en vez del
+   suyo, **sin filtros de rama**, y murió en cada push sin que ningún
+   check se pusiera rojo: el `ci-summary` era verde, porque el workflow
+   roto no participaba en él. El gate `lint:workflows` comprueba que
+   todos los workflows parsean y que tienen `name`, `on` y `jobs`.
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
