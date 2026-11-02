@@ -438,6 +438,11 @@ describe("la rama de release", () => {
     expect(result.ok).toBe(false);
     expect(detailOf(result, 0)).toContain("mergeMethod=merge");
     expect(detailOf(result, 0)).toContain("allow_merge_commit=false");
+    // And it says WHAT TO DO, like the two branch divergences do. A
+    // message that explains the problem but not the remedy leaves the
+    // reader guessing — and `docs/CI.md` promises the remedy for
+    // every divergence, so the promise has to be under test.
+    expect(detailOf(result, 0)).toContain("Deja que el repositorio acepte el metodo");
     // The merge method is a switch of the REPOSITORY, so it is
     // checked once for every branch — but the branch being cut is
     // still the one that is on the list, and a release cannot be
