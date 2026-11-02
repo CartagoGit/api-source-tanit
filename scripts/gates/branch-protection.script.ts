@@ -144,10 +144,24 @@ export const RELEASE_BRANCH: string = DECLARED_BRANCHES.release;
  * and it is what the gate compares, because a branch protected with
  * fewer approvals than the policy declares is a branch where a release
  * can slip out unattended.
+ *
+ * There is no fallback here: a policy that does not say how many
+ * approvals the release branch asks for leaves the branch open as wide
+ * as the integration one, which is the opposite of what this gate
+ * exists to prevent. A gate that invents its own expectation passes
+ * whatever it finds.
  */
-export const RELEASE_APPROVALS: number =
-  DEVELOPMENT_INTEGRATION.releaseRequiredApprovals ??
-  BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount;
+export const RELEASE_APPROVALS: number = (() => {
+  const declared = DEVELOPMENT_INTEGRATION.releaseRequiredApprovals;
+  if (typeof declared !== "number") {
+    throw new Error(
+      "development.integration.releaseRequiredApprovals is missing. The branch where a " +
+        "version is cut asks for its own number of approvals, and this gate refuses to " +
+        "assume it is the integration's: an undeclared value here means an open door.",
+    );
+  }
+  return declared;
+})();
 
 /**
  * How many approvals a branch asks for, by its role.
@@ -428,7 +442,9 @@ async function checkMergeStrategy(
       detail:
         `la politica declara mergeMethod=${declared} y el repositorio ` +
         `allow_merge_commit=${String(payload.allow_merge_commit)}; ` +
-        `el trabajo aterrizaria aplastado y el grafo dejaria de contar de donde sale`,
+        `el trabajo aterrizaria aplastado y el grafo dejaria de contar de donde sale. ` +
+        `Deja que el repositorio acepte el metodo que declara la politica, o cambia la ` +
+        `politica: mientras las dos digan cosas distintas, el grafo deja de contar de donde sale.`,
     };
   }
 

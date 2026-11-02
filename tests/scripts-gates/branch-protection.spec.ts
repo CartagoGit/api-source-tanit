@@ -569,11 +569,14 @@ describe("el gate vigila la rama de release de verdad", () => {
 
     // The workflow has to wake up on the release branch...
     expect(workflow.on?.push?.branches).toContain(RELEASE_BRANCH);
-    // ...and the gate job must not be restricted to the integration
-    // branch. With both true the gate runs over `main`; with the
-    // second false it never does, and the branch where versions are
-    // cut stays unwatched while the CI stays green.
+    // ...and the gate job must run on a push, not only on the
+    // integration branch. Both facts are needed: a condition that
+    // says `pull_request` would never run the gate over a push at
+    // all, and one that says `refs/heads/develop` would never run it
+    // over `main`. Either way the branch where versions are cut stays
+    // unwatched while the CI stays green.
     const condition = String(workflow.jobs["branch-protection"]?.if ?? "");
+    expect(condition).toContain("push");
     expect(condition).not.toMatch(/refs\/heads\/develop/);
   });
 });
