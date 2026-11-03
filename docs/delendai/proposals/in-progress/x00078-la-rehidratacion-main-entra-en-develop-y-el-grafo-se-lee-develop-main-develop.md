@@ -2,10 +2,14 @@
 id: x00078
 title: "la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: 659f3e01-9fb4-4455-8689-9359ee3d9493
+last-correlation-id: 659f3e01-9fb4-4455-8689-9359ee3d9493
+last-transition-from: ready
+last-transition-at: 2026-11-03T02:41:38.500Z
 ---
 
 # x00078 — la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop
