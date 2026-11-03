@@ -2,14 +2,14 @@
 id: x00076
 title: "El bench de rendimiento mide la suerte del planificador y bloquea la publicación"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-02
-last-transition-id: 31e7e833-e573-4963-839a-c4dc49e24ebd
-last-correlation-id: 31e7e833-e573-4963-839a-c4dc49e24ebd
-last-transition-from: ready
-last-transition-at: 2026-11-03T05:44:06.162Z
+last-transition-id: e984f4b7-7cc5-4c00-9ea7-9b6d3b3a6984
+last-correlation-id: e984f4b7-7cc5-4c00-9ea7-9b6d3b3a6984
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T05:44:42.086Z
 ---
 
 # x00076 — El bench de rendimiento mide la suerte del planificador y bloquea la publicación
@@ -32,13 +32,15 @@ El bench de resolución de módulos mide **una sola** pasada fría y la compara 
 - global_gate: none
 
 ### S1-el-presupuesto-se-compara-con-la-mejor-pasada — S1 — El presupuesto se compara con la mejor de las pasadas
-- **Status**: pending
+- **Status**: review
 - **Files**: `tests/core/module-resolution.bench.ts`
 - **Gate**: none
 - acceptance:
   - "El bench hace varias pasadas frías con un resolutor nuevo cada vez y compara el presupuesto con la mejor de ellas."
   - "El bench dice cuántas pasadas midió y cuál fue la mejor."
   - "El presupuesto sigue siendo 100 ms: el arreglo cambia lo que se mide, no el límite."
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash-preview
 
 ## acceptance
 
