@@ -10,9 +10,9 @@ last-transition-id: 00f79f1a-5740-476d-b07c-3ef663decb2d
 last-correlation-id: 00f79f1a-5740-476d-b07c-3ef663decb2d
 last-transition-from: review
 last-transition-at: 2026-11-03T07:51:26.927Z
-shipped-in:
   - "ac8994246c4b1e08a5bfb23414dfd1365b76e3f2"
----
+shippedIn: [ac8994246c4b1e08a5bfb23414dfd1365b76e3f2]
+
 
 # x00081 — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido
 
