@@ -396,9 +396,10 @@ con squash.
 |---|---|
 | `delendai.config.json` → `development.integration.mergeMethod` | `merge` |
 | `delendai.config.json` → `development.integration.linearHistory` | `false` |
-| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `false` |
+| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `true` |
 | GitHub → `develop` → *Require linear history* | **desactivado** |
 | GitHub → repositorio → *Allow merge commits* | **activado** |
+| GitHub → repositorio → *Automatically delete head branches* | **activado** |
 
 **Por qué merge commit y no squash.** Un squash **destruye** los
 commits de la rama: entran cuatro commits y aterrizan como uno, y
@@ -442,11 +443,24 @@ ascendencia: sin él, `git log --graph` vuelve a mostrar una sola línea
 y las ramas desaparecen de la historia. Es el interruptor que
 contradice a `mergeMethod: "merge"`.
 
-**Por qué la rama no la borra GitHub.** Una propuesta aterriza **un
-pull request por slice**, y un slice puede tener más de una revisión:
-si el forge borrase la rama al primer merge, se perderían las slices
-siguientes. El borrado es decisión de delendai, que lo hace cuando la
-propuesta se cierra y ya no quedan slices.
+**Por qué aquí la rama sí se borra.** En este repo una unidad publica
+**un pull request por propuesta**, con todas sus slices: los pull
+requests mergeados lo enseñan —`pr/…-all-g1/…` en el nombre—. Borrar la
+rama al integrar, entonces, no deja ninguna slice sin publicar. Y no se
+pierde nada: la integración es un **merge commit**, así que los commits
+de la rama siguen en la historia de `develop` y `git log --graph
+develop` los enseña aunque la rama ya no exista.
+
+Por eso `development.integration.deleteMergedWorkRef` está en `true`: con
+esa política, el repositorio borra la rama de la publicación al integrar
+—el interruptor *Automatically delete head branches* de GitHub, activado
+aquí— y el runtime borra la ref de trabajo local cuando su contenido ya
+está en `develop`.
+
+**El borrado automático puede fallar, y entonces nadie se entera.** Una
+rama abandonada, un worktree que se quedó, una publicación que alguien
+empujó a mano: nada de eso avisa. `bun run lint:work-refs` lo vigila en
+cada `lint`, y `delendai work doctor` lo dice cuando se le pregunta.
 
 Cómo leerlo:
 
@@ -454,6 +468,43 @@ Cómo leerlo:
 git log --graph --oneline develop      # las ramas se ven
 git log --first-parent --oneline develop   # una línea por cambio
 ```
+
+---
+
+## Los restos — ramas, worktrees y refs que ya no guardan nada
+
+Una unidad de trabajo publica su trabajo en una rama (`pr/...`) y trabaja
+en otra (`wip/...`). Cuando ese trabajo aterriza en `develop`, las dos
+refs dejan de guardar nada… y se quedan. El clon se llena de ramas que
+nadie sabe si son trabajo vivo o trabajo ya integrado.
+
+El runtime sabe lo que es un resto y sabe limpiarlo (`delendai work
+reap`, `delendai work retire`, `delendai work doctor`). El gate
+`lint:work-refs` **le pregunta**: con el runtime instalado, usa el
+informe del doctor (`delendai --json work doctor`), y sus veredictos y su
+remedio son los del runtime, palabra por palabra. Sin runtime —la CI de
+este repo no lo instala, porque el runtime vive en otro repositorio— el
+gate hace la misma pregunta con `git`: si el commit de la ref es
+ancestro del de la rama de integración. Los dos modos hablan de lo
+mismo con los mismos nombres, así que el veredicto es el mismo; sólo
+cambia quién lo pronuncia.
+
+| veredicto | qué es un resto | cómo se quita |
+|---|---|---|
+| `publications-hold-work` | una publicación (`pr/…`) cuyo trabajo ya está integrado | `delendai work retire --ref=refs/heads/pr/… --reason="landed on develop"` |
+| `no-abandoned-work-refs` | una ref de trabajo (`wip/…`) local sin worktree encima | `delendai work publish`, o `delendai work retire --ref=refs/heads/wip/… --reason="<por qué>"` |
+| `no-leftover-worktrees` | un worktree que no está en ninguna ref de trabajo | `git worktree remove --force <ruta>` |
+| `no-husk-directories` | un directorio junto a las unidades que no es una unidad | `delendai work reap --apply` |
+
+Lo que el gate **no** toca, porque no es un resto:
+
+- Las refs de trabajo **del forge** (`wip/…` en `origin`): el runtime
+  las deja a propósito, como archivo del trabajo ya integrado.
+- Los claims del runtime (`refs/delendai/claims/…`).
+- Las refs retiradas (`refs/retired/…`): guardan el commit de un
+  trabajo retirado para que no se pierda, y no son ramas.
+
+---
 
 ## Proposal workflow
 

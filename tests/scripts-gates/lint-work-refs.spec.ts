@@ -5,13 +5,22 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  WORKTREE_ROOT,
+  DOCTOR_CHECKS,
+  HUSK_QUIET_MS,
+  abandonedWorkRefs,
+  failedVerdicts,
   forgeRefOf,
-  huskWorktrees,
-  integratedRefs,
+  huskDirectories,
   isWorkRef,
+  leftoverWorktrees,
+  parseDoctorReport,
+  publicationsOf,
   refName,
+  spentPublications,
+  type IUnitDirectory,
+  type IVerdict,
   type IWorkRef,
+  type IWorktree,
 } from "../../scripts/gates/lint-work-refs.script.js";
 
 /** Un clon de mentira con un commit, para probar la ascendencia de verdad. */
@@ -55,110 +64,178 @@ describe("las refs de trabajo y de publicación", () => {
   });
 });
 
-describe("qué refs están ya integradas", () => {
-  test("la ref cuyo commit está en la historia se marca, y la otra no", () => {
+describe("las publicaciones", () => {
+  test("la misma publicación vista desde dos sitios es una sola", () => {
     const refs: IWorkRef[] = [
-      { ref: "refs/heads/pr/a", sha: "integrada" },
-      { ref: "refs/heads/pr/b", sha: "viva" },
+      { ref: "refs/heads/pr/equipo/tema", sha: "vieja" },
+      { ref: "refs/remotes/origin/pr/equipo/tema", sha: "del-forge" },
     ];
-    expect(integratedRefs(refs, (sha) => sha === "integrada")).toEqual([
-      "refs/heads/pr/a",
+    expect(publicationsOf(refs)).toEqual([
+      { ref: "refs/remotes/origin/pr/equipo/tema", sha: "del-forge" },
     ]);
   });
 
-  test("una ref de trabajo con alguien trabajando en ella no es un resto", () => {
-    const refs: IWorkRef[] = [
-      { ref: "refs/heads/wip/alguien/x", sha: "integrada" },
-    ];
-    expect(integratedRefs(refs, () => true, ["wip/alguien/x"])).toEqual([]);
+  test("una ref de trabajo no es una publicación", () => {
+    const refs: IWorkRef[] = [{ ref: "refs/heads/wip/equipo/tema", sha: "x" }];
+    expect(publicationsOf(refs)).toEqual([]);
   });
 
-  test("una ref de trabajo abandonada e integrada sí es un resto", () => {
+  test("la publicación cuyo commit está en la historia está gastada, la otra no", () => {
     const refs: IWorkRef[] = [
-      { ref: "refs/heads/wip/alguien/x", sha: "integrada" },
+      { ref: "refs/heads/pr/gastada", sha: "integrada" },
+      { ref: "refs/heads/pr/viva", sha: "sin-integrar" },
     ];
-    expect(integratedRefs(refs, () => true, [])).toEqual([
-      "refs/heads/wip/alguien/x",
+    expect(spentPublications(refs, (sha) => sha === "integrada")).toEqual([
+      "pr/gastada",
     ]);
   });
 
-  test("una publicación del forge se marca por su nombre de ref", () => {
+  test("una ref de trabajo no se gasta por estar en la historia", () => {
+    const refs: IWorkRef[] = [{ ref: "refs/heads/wip/equipo/tema", sha: "x" }];
+    expect(spentPublications(refs, () => true)).toEqual([]);
+  });
+});
+
+describe("las refs de trabajo abandonadas", () => {
+  test("una ref sin worktree encima está abandonada", () => {
     const refs: IWorkRef[] = [
-      { ref: "refs/remotes/origin/pr/x/y", sha: "integrada" },
+      { ref: "refs/heads/wip/equipo/tema", sha: "x" },
+      { ref: "refs/heads/wip/otro/tema", sha: "y" },
     ];
-    expect(integratedRefs(refs, () => true)).toEqual([
-      "refs/remotes/origin/pr/x/y",
+    expect(abandonedWorkRefs(refs, ["wip/otro/tema"])).toEqual([
+      "wip/equipo/tema",
+    ]);
+  });
+
+  test("una ref del forge no es una ref local abandonada", () => {
+    const refs: IWorkRef[] = [
+      { ref: "refs/remotes/origin/wip/equipo/tema", sha: "x" },
+    ];
+    expect(abandonedWorkRefs(refs, [])).toEqual([]);
+  });
+});
+
+describe("los worktrees y los directorios que sobran", () => {
+  test("un worktree que no está en una ref de trabajo sobra", () => {
+    const worktrees: IWorktree[] = [
+      { path: "/repo", branch: "develop" },
+      { path: "/repo/.cache/delendai/.worktrees/unidad", branch: "wip/equipo/tema" },
+      { path: "/repo/.cache/delendai/.worktrees/resto", branch: "" },
+    ];
+    expect(leftoverWorktrees(worktrees, "/repo")).toEqual([
+      "/repo/.cache/delendai/.worktrees/resto",
+    ]);
+  });
+
+  test("un directorio sin worktree es un resto", () => {
+    const worktrees: IWorktree[] = [
+      { path: "/repo", branch: "develop" },
+      { path: "/units/unidad", branch: "wip/equipo/tema" },
+    ];
+    const units: IUnitDirectory[] = [
+      { name: "unidad", path: "/units/unidad", touchedAt: 0 },
+      { name: "resto", path: "/units/resto", touchedAt: 0 },
+    ];
+    expect(huskDirectories(worktrees, units, HUSK_QUIET_MS + 1)).toEqual([
+      "resto",
+    ]);
+  });
+
+  test("un directorio recién tocado no es un resto todavía", () => {
+    const worktrees: IWorktree[] = [{ path: "/repo", branch: "develop" }];
+    const units: IUnitDirectory[] = [
+      { name: "resto", path: "/units/resto", touchedAt: 1_000 },
+    ];
+    expect(huskDirectories(worktrees, units, 1_000 + 1)).toEqual([]);
+  });
+});
+
+describe("el informe del doctor", () => {
+  test("se leen sus veredictos", () => {
+    const verdicts = parseDoctorReport(
+      JSON.stringify({
+        broken: 1,
+        results: [
+          {
+            id: "publications-hold-work",
+            holds: false,
+            observed: "1 spent: pr/equipo/tema",
+            remedy: "retire it",
+          },
+          { id: "checkout-clean", holds: true, observed: "clean" },
+        ],
+      }),
+    );
+    expect(verdicts).toHaveLength(2);
+    expect(verdicts[0]?.id).toBe("publications-hold-work");
+    expect(verdicts[0]?.holds).toBe(false);
+  });
+
+  test("un informe que no es del doctor no da veredictos", () => {
+    expect(parseDoctorReport("{}")).toEqual([]);
+    expect(parseDoctorReport("[]")).toEqual([]);
+  });
+
+  test("el gate mira cuatro veredictos, y sólo los que fallan", () => {
+    expect(DOCTOR_CHECKS).toHaveLength(4);
+    const verdicts: IVerdict[] = [
+      { id: "publications-hold-work", holds: false, observed: "", remedy: "" },
+      { id: "no-abandoned-work-refs", holds: true, observed: "", remedy: "" },
+      { id: "checkout-clean", holds: false, observed: "", remedy: "" },
+      { id: "no-husk-directories", holds: false, observed: "", remedy: "" },
+    ];
+    expect(failedVerdicts(verdicts).map((each) => each.id)).toEqual([
+      "publications-hold-work",
+      "no-husk-directories",
     ]);
   });
 });
 
-describe("los worktrees que se quedan sin ref", () => {
-  test("el worktree sin ref de trabajo es un resto, y el que la tiene no", () => {
-    const husks = huskWorktrees(
-      [
-        { path: join(WORKTREE_ROOT, "unidad"), branch: "wip/alguien/x" },
-        { path: join(WORKTREE_ROOT, "restos"), branch: "wip/alguien/y" },
-        { path: "/otro/clon", branch: "wip/alguien/z" },
-      ],
-      ["wip/alguien/x"],
-    );
-    expect(husks).toEqual([join(WORKTREE_ROOT, "restos")]);
-  });
-
-  test("el checkout principal no cuenta como resto", () => {
-    expect(huskWorktrees([{ path: "/repo", branch: "develop" }], [])).toEqual(
-      [],
-    );
-  });
-});
-
-describe("la ascendencia, con git de verdad", () => {
-  test("un commit fusionado es ancestro de la rama, y el otro no", async () => {
+describe("la ascendencia, de verdad", () => {
+  test("una rama integrada está gastada y una que no, no", async () => {
     const { root, base } = await repoWithACommit();
     try {
-      const git = (...args: readonly string[]): boolean => {
+      const git = (...args: readonly string[]): string =>
+        execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+      git("checkout", "-b", "pr/equipo/tema");
+      execFileSync("git", ["commit", "--allow-empty", "-m", "trabajo"], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      const tip = git("rev-parse", "HEAD");
+      git("checkout", "develop");
+      git("merge", "--no-ff", "-m", "merge", "pr/equipo/tema");
+      git("checkout", "-b", "pr/equipo/otra");
+      execFileSync("git", ["commit", "--allow-empty", "-m", "otro"], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      const otra = git("rev-parse", "HEAD");
+
+      const isAncestor = (sha: string): boolean => {
         try {
-          execFileSync("git", args, { cwd: root, encoding: "utf8" });
+          execFileSync("git", ["merge-base", "--is-ancestor", sha, "develop"], {
+            cwd: root,
+            encoding: "utf8",
+          });
           return true;
         } catch {
           return false;
         }
       };
-      const sha = (ref: string): string =>
-        execFileSync("git", ["rev-parse", ref], {
-          cwd: root,
-          encoding: "utf8",
-        }).trim();
 
-      // Una rama con trabajo que se integra.
-      git("checkout", "-b", "wip/alguien/integrada");
-      execFileSync("git", ["commit", "--allow-empty", "-m", "trabajo"], {
-        cwd: root,
-        encoding: "utf8",
-      });
-      const integrated = sha("HEAD");
-      git("checkout", "develop");
-      git("merge", "--no-ff", "-m", "merge", "wip/alguien/integrada");
-
-      // Otra rama con trabajo que sigue sin integrarse.
-      git("checkout", "-b", "wip/alguien/viva");
-      execFileSync("git", ["commit", "--allow-empty", "-m", "a medias"], {
-        cwd: root,
-        encoding: "utf8",
-      });
-      const viva = sha("HEAD");
-      git("checkout", "develop");
-
-      const isAncestor = (candidate: string): boolean =>
-        git("merge-base", "--is-ancestor", candidate, "develop");
-      const refs: IWorkRef[] = [
-        { ref: "refs/heads/pr/alguien/integrada", sha: integrated },
-        { ref: "refs/heads/wip/alguien/viva", sha: viva },
-      ];
-      expect(integratedRefs(refs, isAncestor)).toEqual([
-        "refs/heads/pr/alguien/integrada",
-      ]);
-      expect(base).not.toBe("");
+      expect(isAncestor(base)).toBe(true);
+      expect(isAncestor(tip)).toBe(true);
+      expect(isAncestor(otra)).toBe(false);
+      expect(
+        spentPublications(
+          [
+            { ref: "refs/heads/pr/equipo/tema", sha: tip },
+            { ref: "refs/heads/pr/equipo/otra", sha: otra },
+          ],
+          isAncestor,
+        ),
+      ).toEqual(["pr/equipo/tema"]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

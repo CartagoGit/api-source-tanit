@@ -37,7 +37,11 @@ Por dos medios, porque cada uno cubre una cosa:
   la publicación al integrar, y el runtime borra la ref de trabajo local
   cuando su contenido está en `develop`.
 - **Un gate** (`lint:work-refs`): si aun así queda alguna, el `lint` lo
-  dice, con el nombre de la ref y el comando que la borra.
+  dice, con el nombre de la ref y el comando que la borra. El gate
+  **pregunta al doctor del runtime** (`delendai --json work doctor`) y
+  usa sus veredictos y su remedio; sin runtime —la CI de este repo no lo
+  instala— hace la misma pregunta con `git`, y el remedio sigue siendo
+  el comando del runtime.
 
 ## non-goals
 
@@ -58,25 +62,25 @@ Por dos medios, porque cada uno cubre una cosa:
 
 ### S1 — la politica borra el ref de trabajo cuando su trabajo aterriza
 - **Status**: pending
-- **Files**: `delendai.config.json`
+- **Files**: `delendai.config.json`, `CONTRIBUTING.md`
 - **Gate**: none
 - acceptance:
   - "development.integration.deleteMergedWorkRef está en true: la rama de la publicación se borra al integrar, y el runtime borra la ref de trabajo local cuando su contenido está en develop."
-  - "La política dice por qué en este repo es seguro: una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar."
+  - "La política dice por qué en este repo es seguro, y lo dice en CONTRIBUTING.md («Cómo aterriza el trabajo»): una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar."
 
 ### S2 — un gate que dice cuando hay ramas y refs que ya están integrados
 - **Status**: pending
-- **Files**: `scripts/gates/lint-work-refs.script.ts`, `tests/scripts-gates/lint-work-refs.spec.ts`, `package.json`
+- **Files**: `scripts/gates/lint-work-refs.script.ts`, `tests/scripts-gates/lint-work-refs.spec.ts`, `package.json`, `CONTRIBUTING.md`
 - **Gate**: lint
 - acceptance:
   - "Hay un gate que falla si queda alguna publicación (pr/) o ref de trabajo (wip/) cuyo trabajo ya está en develop, y dice cuál es y cómo se limpia."
-  - "El gate se apoya en el doctor del runtime, no en una copia de su lógica."
+  - "El gate pregunta al doctor del runtime (delendai --json work doctor) y usa sus veredictos y su remedio; sin runtime instalado —la CI de este repo no lo tiene— comprueba lo mismo con git, y el remedio sigue siendo el comando del runtime (delendai work retire / delendai work reap)."
   - "El gate está encadenado en lint, así que la CI lo ve."
 
 ## acceptance
 
 - development.integration.deleteMergedWorkRef está en true: la rama de la publicación se borra al integrar, y el runtime borra la ref de trabajo local cuando su contenido está en develop.
-- La política dice por qué en este repo es seguro: una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar.
+- La política dice por qué en este repo es seguro, y lo dice en CONTRIBUTING.md («Cómo aterriza el trabajo»): una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar.
 - Hay un gate que falla si queda alguna publicación (pr/) o ref de trabajo (wip/) cuyo trabajo ya está en develop, y dice cuál es y cómo se limpia.
-- El gate se apoya en el doctor del runtime, no en una copia de su lógica.
+- El gate pregunta al doctor del runtime (delendai --json work doctor) y usa sus veredictos y su remedio; sin runtime instalado —la CI de este repo no lo tiene— comprueba lo mismo con git, y el remedio sigue siendo el comando del runtime (delendai work retire / delendai work reap).
 - El gate está encadenado en lint, así que la CI lo ve.
