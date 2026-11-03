@@ -10,6 +10,8 @@ last-transition-id: 8f1d12c7-cd33-4425-a965-7be8d03f343d
 last-correlation-id: 8f1d12c7-cd33-4425-a965-7be8d03f343d
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T02:38:18.942Z
+shipped-in:
+  - "3dff2e0a"
 ---
 
 # x00074 — El dry run de la release falla cuando el reloj se adelanta un segundo
@@ -32,11 +34,13 @@ La suite de release es flaky: el dry run genera una clave GPG desechable con el 
 - global_gate: none
 
 ### S1-clave-desechable-con-fecha-fija — S1 — La clave desechable del dry run se crea con una fecha fija
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/release/prepare-artifacts.mjs`, `tests/release/signing.spec.ts`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash
+- review-log: approved by minimax-m3.1-flash — verified at 3dff2e0a, validate exit 0 and tests 46/47 claimed, no recorded run cited — Revisión independiente de la entrega 3dff2e0a (fix(release): la clave desechable del dry run no depende del reloj). La clave del dry run nace con --faked-system-time 20200101T000000 (scripts/release/prepare-artifacts.mjs:90 y :635-640), así que gpg no puede rechazarla por estar en el futuro aunque el reloj de la máquina se adelante un segundo. Ejecuté los specs de la slice: tests/release/signing.spec.ts da 46 tests en verde y 1 omitido, el que necesita la clave real de la release, que esta slice no toca. Repetí el spec tres veces y las tres pasadas salieron en verde. [another instance]
 
 ## acceptance
 
