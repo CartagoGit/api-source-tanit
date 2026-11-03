@@ -2,10 +2,14 @@
 id: x00080
 title: "el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer"
 kind: fix
-status: ready
+status: review
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: b71c8ef6-f5e0-4015-b1de-a8903f28983c
+last-correlation-id: b71c8ef6-f5e0-4015-b1de-a8903f28983c
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T02:45:00.698Z
 ---
 
 # x00080 — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer
@@ -68,7 +72,7 @@ comentarios solo lo leen los que los saben quitar.
 - global_gate: type
 
 ### S1 — el fichero es JSON estricto y el gate lo vigila
-- **Status**: pending
+- **Status**: review
 - **Files**: `scripts/gates/sync-mcp-config.script.ts`, `.vscode/mcp.json`, `tests/scripts-gates/lint-mcp-config.spec.ts`, `CONTRIBUTING.md`
 - **Gate**: type
 - acceptance:
@@ -77,6 +81,9 @@ comentarios solo lo leen los que los saben quitar.
   - "`lint:mcp` dice **por qué** falla cuando el fichero no parsea en estricto, y no sólo que no coincide con `.mcp.json`."
   - "Hay un test que ata el invariante: los dos ficheros de configuración MCP parsean con `JSON.parse`."
   - "El aviso de «no lo edites a mano» sigue llegando al que abra el fichero: en `CONTRIBUTING.md` y en el mensaje de `lint:mcp`."
+- shipped-in: `259ba3c76cd3`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 

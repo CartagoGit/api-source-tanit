@@ -2,12 +2,16 @@
 id: x00079
 title: "el typecheck no puede depender de la version de TypeScript que se descarga al vuelo"
 kind: fix
-status: ready
+status: review
 type: proposal
 track: general
 date: 2026-11-02
 shippedIn:
   - c50d145
+last-transition-id: af639f40-b7df-4884-8a80-bc3d7cecd913
+last-correlation-id: af639f40-b7df-4884-8a80-bc3d7cecd913
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T05:44:00.332Z
 ---
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
@@ -66,7 +70,7 @@ tipos**. Un `TS2321` en el fichero de configuración de vitest no dice
 - global_gate: type
 
 ### S1 — typescript declarado, y el gate que lo vigila
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`, `bun.lock`, `scripts/gates/lint-bun-ci.script.ts`, `tests/scripts-gates/lint-bun-ci.spec.ts`
 - **Gate**: type
 
@@ -89,6 +93,9 @@ Dos cosas, y las dos son el mismo invariante:
    lockfile, el gate lo dice —que es justo lo que
    `bun install --frozen-lockfile` rechaza en la CI, pero con un
    mensaje que nadie entiende.
+- shipped-in: `598883ae2a25`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 

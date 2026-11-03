@@ -2,10 +2,14 @@
 id: x00078
 title: "la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop"
 kind: fix
-status: ready
+status: review
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
+last-correlation-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T02:42:11.730Z
 ---
 
 # x00078 — la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop
@@ -92,6 +96,7 @@ La slice entrega tres cosas, y las tres son el mismo invariante:
    todos los workflows parsean y que tienen `name`, `on` y `jobs`.
 - review-state: in_review
 - review-implementer: minimax-m3.1-flash
+- shipped-in: `98300ceb5252`
 
 ## acceptance
 
