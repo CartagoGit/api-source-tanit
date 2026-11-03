@@ -2,14 +2,14 @@
 id: x00082
 title: "Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila"
 kind: fix
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-03
-last-transition-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
-last-correlation-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
-last-transition-from: in-progress
-last-transition-at: 2026-11-03T17:45:02.554Z
+last-transition-id: ad7952ff-6567-493f-80e3-9e301fa36a01
+last-correlation-id: ad7952ff-6567-493f-80e3-9e301fa36a01
+last-transition-from: review
+last-transition-at: 2026-11-03T17:55:07.497Z
 shipped-in:
   - "88cfb72e78244cbd4a4a34b6a901ac24fafa79ca"
 ---
@@ -80,7 +80,7 @@ Por dos medios, porque cada uno cubre una cosa:
 - review-log: approved by minimax-m3.1-flash-preview — verified at 88cfb72e7824, validate exit 0 and tests 17/17 claimed, no recorded run cited; acceptance 2/2: (1) delendai.config.json pone development.integration.deleteMergedWorkRef en true, y el repositorio tiene delete_branch_on_merge en true: al integrar el PR #114, G… (2) CONTRIBUTING.md, en «Cómo aterriza el trabajo», dice que en este repo una unidad publica un pull request por propuesta con todas sus slices —los pull requests … — la politica esta en true y el interruptor del repositorio tambien: GitHub borro solo la rama de la publicacion al integrar el PR #114. CONTRIBUTING.md cuenta por que en este repo es seguro.
 
 ### S2 — un gate que dice cuando hay ramas y refs que ya están integrados
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/gates/lint-work-refs.script.ts`, `tests/scripts-gates/lint-work-refs.spec.ts`, `package.json`, `CONTRIBUTING.md`
 - **Gate**: lint
 - acceptance:
@@ -88,8 +88,10 @@ Por dos medios, porque cada uno cubre una cosa:
   - "El gate pregunta al doctor del runtime (delendai --json work doctor) y usa sus veredictos y su remedio; sin runtime instalado —la CI de este repo no lo tiene— comprueba lo mismo con git, y el remedio sigue siendo el comando del runtime (delendai work retire / delendai work reap)."
   - "El gate está encadenado en lint, así que la CI lo ve."
 - shipped-in: `b46ab418a8b6`
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — verified at 88cfb72e7824, validate exit 0 and tests 17/17 claimed, no recorded run cited; acceptance 3/3: (1) scripts/gates/lint-work-refs.script.ts sale con 1 y nombra la ref y el comando. Probado con una publicación canónica ya integrada (pr/minimax-m3.1-flash/create… (2) El gate ejecuta delendai --json work doctor y lee sus resultados: los cuatro veredictos que hablan de restos (publications-hold-work, no-abandoned-work-refs, n… (3) package.json encadena bun run lint:work-refs en el script lint, justo antes de lint:clean-tree. bun run lint sale con 0 e imprime el gate, y el PR #114 lo corr… — el gate pregunta al doctor del runtime y, sin runtime, hace la misma pregunta con git: fallo con una publicacion canonica ya integrada en los dos modos y volvio a pasar al borrarla. Va encadenado en lint y la CI del PR #114 lo corrio en verde.
 
 ## acceptance
 
