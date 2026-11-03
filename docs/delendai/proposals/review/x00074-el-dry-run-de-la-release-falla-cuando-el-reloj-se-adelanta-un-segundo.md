@@ -2,14 +2,14 @@
 id: x00074
 title: "El dry run de la release falla cuando el reloj se adelanta un segundo"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-02
-last-transition-id: dc8abce0-1fb9-480e-b7d8-447092dd2cf7
-last-correlation-id: dc8abce0-1fb9-480e-b7d8-447092dd2cf7
-last-transition-from: ready
-last-transition-at: 2026-11-03T02:37:39.476Z
+last-transition-id: 8f1d12c7-cd33-4425-a965-7be8d03f343d
+last-correlation-id: 8f1d12c7-cd33-4425-a965-7be8d03f343d
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T02:38:18.942Z
 ---
 
 # x00074 — El dry run de la release falla cuando el reloj se adelanta un segundo
@@ -32,9 +32,11 @@ La suite de release es flaky: el dry run genera una clave GPG desechable con el 
 - global_gate: none
 
 ### S1-clave-desechable-con-fecha-fija — S1 — La clave desechable del dry run se crea con una fecha fija
-- **Status**: pending
+- **Status**: review
 - **Files**: `scripts/release/prepare-artifacts.mjs`, `tests/release/signing.spec.ts`
 - **Gate**: none
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
