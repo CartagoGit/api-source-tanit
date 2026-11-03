@@ -2,14 +2,14 @@
 id: x00081
 title: "el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-02
-last-transition-id: 8a5ac162-ebb9-4690-b6dc-7c65107644ce
-last-correlation-id: 8a5ac162-ebb9-4690-b6dc-7c65107644ce
-last-transition-from: ready
-last-transition-at: 2026-11-03T07:23:42.880Z
+last-transition-id: 531543f2-5fa8-4ac9-9d9d-cc58851f0443
+last-correlation-id: 531543f2-5fa8-4ac9-9d9d-cc58851f0443
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T07:24:03.015Z
 ---
 
 # x00081 — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido
@@ -68,7 +68,7 @@ propio DelendAI usa para sus servidores de proyecto (`mcp-project-<ns>`).
 - global_gate: type
 
 ### S1 — el nombre del servidor y el gate que lo ata a sus consumidores
-- **Status**: pending
+- **Status**: review
 - **Files**: `.mcp.json`, `.vscode/mcp.json`, `.github/agents/orchestrator.agent.md`, `.github/agents/delivery_verifier.agent.md`, `.github/agents/implementation_runner.agent.md`, `.github/agents/proposal_guardian.agent.md`, `.github/agents/technical_investigator.agent.md`, `scripts/gates/lint-mcp-server-key.script.ts`, `tests/scripts-gates/lint-mcp-server-key.spec.ts`, `CONTRIBUTING.md`
 - **Gate**: type
 - acceptance:
@@ -77,6 +77,9 @@ propio DelendAI usa para sus servidores de proyecto (`mcp-project-<ns>`).
   - "Hay un gate que falla si algún `tools:` de un `.agent.md` concede tools de un servidor que no está registrado en `.mcp.json` — con el nombre del grant y el del servidor, para que el motivo baste."
   - "El gate también falla si `.mcp.json` y `.vscode/mcp.json` no declaran los mismos servidores."
   - "`CONTRIBUTING.md` dice cuál es la clave y por qué los grants dependen de ella."
+- shipped-in: `5b12837ed707`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
