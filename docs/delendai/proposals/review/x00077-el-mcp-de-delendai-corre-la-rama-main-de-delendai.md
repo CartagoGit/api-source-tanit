@@ -10,6 +10,8 @@ last-transition-id: c2ea9bf1-b4f1-478d-8c2c-e2e45a4184ac
 last-correlation-id: c2ea9bf1-b4f1-478d-8c2c-e2e45a4184ac
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T05:42:30.841Z
+shipped-in:
+  - "fed5f2121a20"
 ---
 
 # x00077 — El MCP de delendai corre la rama main de delendai
@@ -31,12 +33,14 @@ El MCP de este proyecto ejecutaba `../delendai/...`, es decir, el checkout de de
 - global_gate: type
 
 ### S1 — S1
-- **Status**: review
+- **Status**: done
 - **Files**: `.mcp.json`, `.vscode/mcp.json`
 - **Gate**: type
 - shipped-in: `fed5f2121a20`
-- review-state: in_review
+- review-state: done
 - review-implementer: claude-opus-5-5
+- review-reviewer: minimax-m3.1-flash
+- review-log: approved by minimax-m3.1-flash — verified at fed5f2121a20, validate exit 0 and tests 7/7 claimed, no recorded run cited — Revisión independiente de la entrega fed5f212 (el MCP corre la rama main de delendai), entregada por claude-opus-5-5. .mcp.json pasa --branch=main al host-server, así que el MCP sigue la rama main de delendai y un cambio en su checkout deja de reiniciarlo; .vscode/mcp.json es el derivado de aquél. Ejecuté los specs que cubren la configuración MCP: tests/scripts-gates/lint-mcp-config.spec.ts da 7/7 en verde, y el gate lint:mcp dice que los dos ficheros declaran el mismo servidor.
 
 ## acceptance
 
