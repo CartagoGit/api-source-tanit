@@ -103,15 +103,17 @@ la versión, que es donde la divergencia costó una release.
 - review-log: approved by minimax-m3.1-flash — verified at b888be88acf3, validate exit 0 and tests 15/15 claimed, no recorded run cited; acceptance 5/5: (1) scripts/gates/branch-protection.script.ts:135-136 saca INTEGRATION_BRANCH y RELEASE_BRANCH de DECLARED_BRANCHES, y :121-133 se niega a arrancar si el bloque no… (2) scripts/gates/branch-protection.script.ts:154-163 lee development.integration.releaseRequiredApprovals y lanza si no está declarado, sin inventar un valor; :17… (3) scripts/gates/branch-protection.script.ts:582-587 dice cuál divergió (la historia con su linearHistory, el force-push o el borrado) y :593-600 añade el motivo … (4) scripts/gates/branch-protection.script.ts:570-571 (aprobaciones) y :600-601 (historia, force-push y borrado) dicen «Protege la rama con la política, o cambia l… (5) tests/scripts-gates/branch-protection.spec.ts, 15 tests en verde: :358 la rama de release conforme, :373 menos aprobaciones, :394 historia lineal y :423 método… — Revisión independiente de la entrega b888be88acf3476a002bea542da625be85b024e4 (merge del PR #74). Leí el diff entregado de la slice y ejecuté su gate y sus propios specs: bunx vitest run tests/scripts-gates/branch-protection.spec.ts da 15/15 en verde y bun run typecheck da las 6 secciones en verde. Comprobé los cinco criterios de aceptación contra el código entregado, no contra el de hoy: scripts/gates/branch-protection.script.ts y tests/scripts-gates/branch-protection.spec.ts no han cambiado desde la entrega. Dientes por mutación verificados sobre el gate: sin RELEASE_BRANCH caen 3 tests, sin conmutar en requiredApprovalsFor caen 5, sin comparar required_linear_history cae 1 y sin la frase de remedio caen 2. Los cambios posteriores c50d1454 y 25498006 no tocan los ficheros de esta slice.
 
 ### S3-alfa-2-y-sus-notas — S3 — La versión 0.1.0-alpha.2 y sus notas de release
-- **Status**: review
+- **Status**: done
 - **Files**: `package.json`, `packages/desktop/tauri.conf.json`, `packages/contracts/constants/cli/cli-version.constant.ts`, `CHANGELOG.md`
 - **Gate**: none
 - acceptance:
   - "La versión es `0.1.0-alpha.2` en las tres copias: `package.json`, `packages/desktop/tauri.conf.json` y `CLI_VERSION`."
   - "El gate `lint-release-channel` dice que el canal es `alpha`."
   - "El CHANGELOG tiene la sección `0.1.0-alpha.2` con lo que cambia respecto a `alpha.1`: los binarios adjuntos, la promoción con merge commit y el auto-merge del bot."
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3
+- review-reviewer: minimax-m3.1-flash
+- review-log: approved by minimax-m3.1-flash — verified at b888be88acf3, validate exit 0 and tests 16/16 claimed, no recorded run cited; acceptance 3/3: (1) En el commit entregado b888be88 las tres copias dicen 0.1.0-alpha.2: package.json ("version": "0.1.0-alpha.2"), packages/desktop/tauri.conf.json ("version": "0… (2) bun run lint:release-channel responde "lint:release-channel — 0.1.0-alpha.2 (canal alpha, prerelease): las tres copias coinciden" y sale con 0. El criterio lla… (3) CHANGELOG.md:3 abre "## 0.1.0-alpha.2 (2026-11-02) — La release con binarios de verdad" y dice que alpha.1 se publicó sin un solo ejecutable adjunto. Las tres … — Revisión independiente de la entrega b888be88acf3476a002bea542da625be85b024e4. Esta slice no trae specs propios, así que corrí los que cubren lo que entrega: tests/release/release-channel.spec.ts y tests/release/release-notes.spec.ts dan 16/16 en verde, y el gate que nombra el criterio, bun run lint:release-channel, sale con 0 diciendo que el canal es alpha. Comprobé los tres criterios contra el estado entregado (git show del commit de entrega) y no contra el de hoy: las tres copias de la versión y la sección del CHANGELOG son las que b888be88 dejó.
 
 ## acceptance
 
