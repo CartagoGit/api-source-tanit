@@ -16,11 +16,41 @@ Que la rama de la publicacion y la ref de trabajo de una unidad desaparezcan cua
 
 ## why
 
-TODO: why this work matters now.
+Las unidades de trabajo publican su trabajo en una rama (`pr/...`) y
+trabajan en otra (`wip/...`). Cuando ese trabajo aterriza en `develop`,
+las dos refs dejan de guardar nada, y se quedan: el 3 de noviembre de
+2026 eran **ocho publicaciones** y **dos worktrees** sin ref, más una
+rama de trabajo local abandonada. Nadie lo notaba porque el runtime
+solo lo dice cuando se le pregunta (`delendai work doctor`), y porque
+`develop.integration.deleteMergedWorkRef` estaba en `false`: la política
+del runtime es deliberada, pero en este repo no encaja.
+
+La política del runtime dice por qué la deja apagada: *"una propuesta
+aterriza un pull request por slice; el interruptor de GitHub borraría la
+rama en la primera slice y dejaría huérfanas las demás"*. Aquí una
+unidad publica **una propuesta entera con sus slices** (`--slice=all`),
+así que borrar esa rama al integrar no deja slice sin publicar: lo que
+queda es exactamente lo que hay que borrar.
+
+Por dos medios, porque cada uno cubre una cosa:
+- **La política** (`deleteMergedWorkRef: true`): GitHub borra la rama de
+  la publicación al integrar, y el runtime borra la ref de trabajo local
+  cuando su contenido está en `develop`.
+- **Un gate** (`lint:work-refs`): si aun así queda alguna, el `lint` lo
+  dice, con el nombre de la ref y el comando que la borra.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- **No se toca el runtime**: `delendai` es de otra gente y la limpieza
+  ya está hecha ahí (`work reap`, `work retire`, `work doctor`). Lo que
+  falta es la política de este repo y que alguien mire.
+- **No se borra trabajo**: el gate solo dice que una ref *ya está*
+  integrada. Una ref cuyo commit no está en `develop` es una unidad
+  viva, y ahí el gate se calla.
+- **No se tocan las refs de archivo** (`refs/retired/...`): guardan el
+  commit de un trabajo retirado para que no se pierda, y no son ramas.
+- **No se tocan los claims** (`refs/delendai/claims/...`): son del
+  runtime, y los suelta él cuando la propuesta se cierra.
 
 ## slices
 

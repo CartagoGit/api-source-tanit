@@ -11,7 +11,7 @@
       "requiredApprovals": 0,
       "releaseRequiredApprovals": 1,
       "mergeMethod": "merge",
-      "deleteMergedWorkRef": false,
+      "deleteMergedWorkRef": true,
       "linearHistory": false
     }
   },
