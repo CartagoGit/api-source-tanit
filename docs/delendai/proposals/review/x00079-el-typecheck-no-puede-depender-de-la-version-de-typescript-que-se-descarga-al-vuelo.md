@@ -2,16 +2,16 @@
 id: x00079
 title: "el typecheck no puede depender de la version de TypeScript que se descarga al vuelo"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-02
 shippedIn:
   - c50d145
-last-transition-id: 3165d50b-3358-4055-853e-0d5e22ae18fa
-last-correlation-id: 3165d50b-3358-4055-853e-0d5e22ae18fa
-last-transition-from: review
-last-transition-at: 2026-11-03T05:43:31.225Z
+last-transition-id: af639f40-b7df-4884-8a80-bc3d7cecd913
+last-correlation-id: af639f40-b7df-4884-8a80-bc3d7cecd913
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T05:44:00.332Z
 ---
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
