@@ -2,14 +2,14 @@
 id: x00077
 title: "El MCP de delendai corre la rama main de delendai"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: infra
 date: 2026-11-02
-last-transition-id: 4fd69bfa-1b10-47ab-a3f7-34d225921fef
-last-correlation-id: 4fd69bfa-1b10-47ab-a3f7-34d225921fef
-last-transition-from: ready
-last-transition-at: 2026-11-03T02:40:26.237Z
+last-transition-id: 015e3317-a903-4ab1-a3ff-28fde259d8fa
+last-correlation-id: 015e3317-a903-4ab1-a3ff-28fde259d8fa
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T02:41:03.669Z
 ---
 
 # x00077 — El MCP de delendai corre la rama main de delendai
@@ -31,9 +31,12 @@ El MCP de este proyecto ejecutaba `../delendai/...`, es decir, el checkout de de
 - global_gate: type
 
 ### S1 — S1
-- **Status**: pending
+- **Status**: review
 - **Files**: `.mcp.json`, `.vscode/mcp.json`
 - **Gate**: type
+- shipped-in: `fed5f2121a20`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
