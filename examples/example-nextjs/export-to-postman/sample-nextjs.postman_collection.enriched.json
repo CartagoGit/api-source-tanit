@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-nextjs (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-nextjs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "b8e9d1ad-6b9a-5a22-bfb3-e1e67f3ceca4"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}
