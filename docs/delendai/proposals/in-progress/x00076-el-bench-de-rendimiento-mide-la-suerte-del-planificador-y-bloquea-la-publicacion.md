@@ -2,10 +2,14 @@
 id: x00076
 title: "El bench de rendimiento mide la suerte del planificador y bloquea la publicación"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: dd808f6a-45b3-41e9-8ed2-8d1239d42470
+last-correlation-id: dd808f6a-45b3-41e9-8ed2-8d1239d42470
+last-transition-from: ready
+last-transition-at: 2026-11-03T02:39:02.512Z
 ---
 
 # x00076 — El bench de rendimiento mide la suerte del planificador y bloquea la publicación
