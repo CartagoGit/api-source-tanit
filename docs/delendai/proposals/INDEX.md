@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00082` | `fix` | [`ready/fixes/x00082-las-ramas-y-los-refs-que-ya-estan-integrados-se-borran-solos-y-un-gate-lo-vigila.md`](ready/fixes/x00082-las-ramas-y-los-refs-que-ya-estan-integrados-se-borran-solos-y-un-gate-lo-vigila.md) |
 
 ## Bloqueadas
 
