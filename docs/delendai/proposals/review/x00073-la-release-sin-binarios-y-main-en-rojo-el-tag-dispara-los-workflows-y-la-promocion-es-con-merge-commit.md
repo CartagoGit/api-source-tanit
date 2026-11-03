@@ -8,6 +8,7 @@ track: general
 date: 2026-11-01
 shipped-in:
   - "ecd09e30042d1000efb501b9fd85ef7049c72531"
+  - "b888be88acf3476a002bea542da625be85b024e4"
 last-transition-id: 031ce9ac-3315-46fc-bcff-5edf925c9bfc
 last-correlation-id: 031ce9ac-3315-46fc-bcff-5edf925c9bfc
 last-transition-from: in-progress
@@ -87,7 +88,7 @@ la versión, que es donde la divergencia costó una release.
 - review-log: approved by minimax-m3 — verified at ecd09e30042d, validate exit 0 and tests 8/8 claimed, no recorded run cited; acceptance 4/4: (1) .github/workflows/auto-approve.yml:156 — const method = "merge"; (ya no hay base === "main" ? ... : ...). La protección real de main: required_linear_history.e… (2) .github/workflows/auto-approve.yml:158-166 — await github.request("PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge", {..., merge_method: method}). El … (3) tests/cli/auto-approve.spec.ts:83-107. Mutación verificada por el revisor y repetida aquí: borrar la llamada github.request() entera, cambiarla por otro endpoi… (4) docs/CI.md:135-150: un bloque con los dos porqués (el squash aplana la historia y deja fuera del árbol los commits que lint:proposals audita; enableAutoMerge n… — Revisión independiente por delivery-verifier, dos rondas. Ronda 1 sobre d5e5a51: 0 bloqueantes, 2 importantes y 3 menores. Ronda 2: los tres puntos de test verificados por mutación. El bloqueante de la ronda 2 (el tip de la rama, con 16 propuestas movidas por el runtime) corregido en 77acac8: git diff --name-status -M origin/develop HEAD -- docs/delendai/proposals/done/ vacío y lint:proposals exit 0 (168 propuestas sin drift).
 
 ### S2-el-gate-vigila-la-rama-de-release — S2 — El gate de protección comprueba también la rama de release
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/gates/branch-protection.script.ts`, `tests/scripts-gates/branch-protection.spec.ts`, `docs/CI.md`
 - **Gate**: type
 - acceptance:
@@ -96,8 +97,10 @@ la versión, que es donde la divergencia costó una release.
   - "Una divergencia en `main` —la que costó la release: historia lineal exigida con `mergeMethod: \"merge\"`— hace fallar el gate con el motivo escrito."
   - "El gate dice qué hacer cuando divergen: la rama se protege con la política, o la política se cambia."
   - "Tests cubren la rama de release conforme y las tres divergencias: aprobaciones, historia lineal y método de merge."
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3
+- review-reviewer: minimax-m3.1-flash
+- review-log: approved by minimax-m3.1-flash — verified at b888be88acf3, validate exit 0 and tests 15/15 claimed, no recorded run cited; acceptance 5/5: (1) scripts/gates/branch-protection.script.ts:135-136 saca INTEGRATION_BRANCH y RELEASE_BRANCH de DECLARED_BRANCHES, y :121-133 se niega a arrancar si el bloque no… (2) scripts/gates/branch-protection.script.ts:154-163 lee development.integration.releaseRequiredApprovals y lanza si no está declarado, sin inventar un valor; :17… (3) scripts/gates/branch-protection.script.ts:582-587 dice cuál divergió (la historia con su linearHistory, el force-push o el borrado) y :593-600 añade el motivo … (4) scripts/gates/branch-protection.script.ts:570-571 (aprobaciones) y :600-601 (historia, force-push y borrado) dicen «Protege la rama con la política, o cambia l… (5) tests/scripts-gates/branch-protection.spec.ts, 15 tests en verde: :358 la rama de release conforme, :373 menos aprobaciones, :394 historia lineal y :423 método… — Revisión independiente de la entrega b888be88acf3476a002bea542da625be85b024e4 (merge del PR #74). Leí el diff entregado de la slice y ejecuté su gate y sus propios specs: bunx vitest run tests/scripts-gates/branch-protection.spec.ts da 15/15 en verde y bun run typecheck da las 6 secciones en verde. Comprobé los cinco criterios de aceptación contra el código entregado, no contra el de hoy: scripts/gates/branch-protection.script.ts y tests/scripts-gates/branch-protection.spec.ts no han cambiado desde la entrega. Dientes por mutación verificados sobre el gate: sin RELEASE_BRANCH caen 3 tests, sin conmutar en requiredApprovalsFor caen 5, sin comparar required_linear_history cae 1 y sin la frase de remedio caen 2. Los cambios posteriores c50d1454 y 25498006 no tocan los ficheros de esta slice.
 
 ### S3-alfa-2-y-sus-notas — S3 — La versión 0.1.0-alpha.2 y sus notas de release
 - **Status**: review
