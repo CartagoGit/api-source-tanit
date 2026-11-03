@@ -10,6 +10,8 @@ last-transition-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
 last-correlation-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T02:42:11.730Z
+shipped-in:
+  - "98300ceb5252"
 ---
 
 # x00078 — la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop
@@ -60,7 +62,7 @@ PR de promoción (#71) está `dirty` por eso.
 - global_gate: lint
 
 ### S1 — la rehidratación, hoy y sola
-- **Status**: review
+- **Status**: done
 - **Files**: `docs/CI.md`, `.github/workflows/rehydrate-develop.yml`, `tests/cli/rehydrate-develop.spec.ts`, `scripts/gates/lint-workflows.script.ts`, `tests/scripts-gates/lint-workflows.spec.ts`, `package.json`
 - **Gate**: lint
 
@@ -94,9 +96,11 @@ La slice entrega tres cosas, y las tres son el mismo invariante:
    check se pusiera rojo: el `ci-summary` era verde, porque el workflow
    roto no participaba en él. El gate `lint:workflows` comprueba que
    todos los workflows parsean y que tienen `name`, `on` y `jobs`.
-- review-state: in_review
-- review-implementer: minimax-m3.1-flash
 - shipped-in: `98300ceb5252`
+- review-state: done
+- review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3
+- review-log: approved by minimax-m3 — verified at 98300ceb5252, validate exit 0 and tests 18/18 claimed, no recorded run cited — Revisión independiente de la entrega 98300ceb (la rehidratación, hoy y sola). El merge de main en develop es con merge commit, el workflow rehydrate-develop.yml se dispara en cada push a main y hace el trabajo solo, y docs/CI.md escribe la regla. Ejecuté los specs de la slice: tests/cli/rehydrate-develop.spec.ts y tests/scripts-gates/lint-workflows.spec.ts dan 18/18 en verde, y el gate lint:workflows pasa.
 
 ## acceptance
 
