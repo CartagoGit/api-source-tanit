@@ -10,6 +10,8 @@ last-transition-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
 last-correlation-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T17:45:02.554Z
+shipped-in:
+  - "88cfb72e78244cbd4a4a34b6a901ac24fafa79ca"
 ---
 
 # x00082 — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila
@@ -65,15 +67,17 @@ Por dos medios, porque cada uno cubre una cosa:
 - global_gate: none
 
 ### S1 — la politica borra el ref de trabajo cuando su trabajo aterriza
-- **Status**: review
+- **Status**: done
 - **Files**: `delendai.config.json`, `CONTRIBUTING.md`
 - **Gate**: none
 - acceptance:
   - "development.integration.deleteMergedWorkRef está en true: la rama de la publicación se borra al integrar, y el runtime borra la ref de trabajo local cuando su contenido está en develop."
   - "La política dice por qué en este repo es seguro, y lo dice en CONTRIBUTING.md («Cómo aterriza el trabajo»): una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar."
 - shipped-in: `b46ab418a8b6`
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — verified at 88cfb72e7824, validate exit 0 and tests 17/17 claimed, no recorded run cited; acceptance 2/2: (1) delendai.config.json pone development.integration.deleteMergedWorkRef en true, y el repositorio tiene delete_branch_on_merge en true: al integrar el PR #114, G… (2) CONTRIBUTING.md, en «Cómo aterriza el trabajo», dice que en este repo una unidad publica un pull request por propuesta con todas sus slices —los pull requests … — la politica esta en true y el interruptor del repositorio tambien: GitHub borro solo la rama de la publicacion al integrar el PR #114. CONTRIBUTING.md cuenta por que en este repo es seguro.
 
 ### S2 — un gate que dice cuando hay ramas y refs que ya están integrados
 - **Status**: review
