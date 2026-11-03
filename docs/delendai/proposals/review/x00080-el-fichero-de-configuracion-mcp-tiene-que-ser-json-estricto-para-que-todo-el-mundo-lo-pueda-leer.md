@@ -10,6 +10,8 @@ last-transition-id: b71c8ef6-f5e0-4015-b1de-a8903f28983c
 last-correlation-id: b71c8ef6-f5e0-4015-b1de-a8903f28983c
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T02:45:00.698Z
+shipped-in:
+  - "259ba3c76cd3"
 ---
 
 # x00080 — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer
@@ -72,7 +74,7 @@ comentarios solo lo leen los que los saben quitar.
 - global_gate: type
 
 ### S1 — el fichero es JSON estricto y el gate lo vigila
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/gates/sync-mcp-config.script.ts`, `.vscode/mcp.json`, `tests/scripts-gates/lint-mcp-config.spec.ts`, `CONTRIBUTING.md`
 - **Gate**: type
 - acceptance:
@@ -82,8 +84,10 @@ comentarios solo lo leen los que los saben quitar.
   - "Hay un test que ata el invariante: los dos ficheros de configuración MCP parsean con `JSON.parse`."
   - "El aviso de «no lo edites a mano» sigue llegando al que abra el fichero: en `CONTRIBUTING.md` y en el mensaje de `lint:mcp`."
 - shipped-in: `259ba3c76cd3`
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — verified at 259ba3c76cd3, validate exit 0 and tests 7/7 claimed, no recorded run cited; acceptance 5/5: (1) scripts/gates/sync-mcp-config.script.ts genera .vscode/mcp.json con JSON.stringify y nada más; el fichero del disco es ese mismo JSON, sin comentarios, y JSON.… (2) El fichero del disco es JSON estricto: tests/scripts-gates/lint-mcp-config.spec.ts lo parafilea con JSON.parse, no con un parser que sepa quitar comentarios. (3) El mensaje de lint:mcp nombra el motivo del parseo estricto y el fichero que no cuadra, no sólo que los dos difieren. (4) tests/scripts-gates/lint-mcp-config.spec.ts ata el invariante: los dos ficheros parsean con JSON.parse. 7/7 en verde. (5) El aviso sigue en CONTRIBUTING.md y en el mensaje de lint:mcp. — Revisión independiente de la entrega 259ba3c7 (el fichero de configuracion MCP tiene que ser JSON estricto), entregada por minimax-m3.1-flash. Ejecuté los specs del gate: tests/scripts-gates/lint-mcp-config.spec.ts da 7/7 en verde, y lint:mcp pasa.
 
 ## acceptance
 
