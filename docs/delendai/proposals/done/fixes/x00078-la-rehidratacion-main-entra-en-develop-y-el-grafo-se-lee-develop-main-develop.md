@@ -2,18 +2,14 @@
 id: x00078
 title: "la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop"
 kind: fix
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-02
-last-transition-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
-last-correlation-id: a65c2b76-4cfd-4738-87d2-b35c508f1c6a
-last-transition-from: in-progress
-last-transition-at: 2026-11-03T02:42:11.730Z
-shipped-in:
-  - "98300ceb5252"
----
-
+last-transition-id: fffef1fc-4882-49f3-9094-6c47e0c3d6a8
+last-correlation-id: fffef1fc-4882-49f3-9094-6c47e0c3d6a8
+last-transition-from: review
+last-transition-at: 2026-11-03T06:38:43.319Z
 # x00078 — la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop
 
 ## goal
@@ -119,3 +115,4 @@ La slice entrega tres cosas, y las tres son el mismo invariante:
   (un push directo a `develop` lo rechaza la protección de la rama).
 - `docs/CI.md` describe el ciclo `develop -> main -> develop` y dice qué
   ocurre cuando `main` cambia.
+shippedIn: [98300ceb5252]
