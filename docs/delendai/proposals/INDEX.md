@@ -7,13 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00073` | `fix` | [`ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md`](ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md) |
-| `x00074` | `fix` | [`ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md`](ready/fixes/x00074-el-dry-run-de-la-release-falla-cuando-el-reloj-se-adelanta-un-segundo.md) |
-| `x00076` | `fix` | [`ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md`](ready/fixes/x00076-el-bench-de-rendimiento-mide-la-suerte-del-planificador-y-bloquea-la-publicacion.md) |
-| `x00077` | `fix` | [`ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md`](ready/fixes/x00077-el-mcp-de-delendai-corre-la-rama-main-de-delendai.md) |
-| `x00078` | `fix` | [`ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md`](ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md) |
-| `x00079` | `fix` | [`ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md`](ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md) |
-| `x00080` | `fix` | [`ready/fixes/x00080-el-fichero-de-configuracion-mcp-tiene-que-ser-json-estricto-para-que-todo-el-mundo-lo-pueda-leer.md`](ready/fixes/x00080-el-fichero-de-configuracion-mcp-tiene-que-ser-json-estricto-para-que-todo-el-mundo-lo-pueda-leer.md) |
 | `x00081` | `fix` | [`ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md`](ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md) |
 
 ## Bloqueadas
@@ -170,6 +163,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00059` — `generateCollectionsWithAllFrameworks()` actually returns the array — closes the `monorepo` P1 facade bug — `6450a2d, 6450a2d`
 - `x00060` — Generate is a transaction — no write before 0-endpoint validation, atomic commit — `5645bcf`
 - `x00061` — Per-spec framework discriminator for response inference — closes the hybrid-project dispatcher bug — `22bcd73`
+- `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `—`
 
 ### infra
 
