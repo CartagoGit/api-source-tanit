@@ -2,17 +2,17 @@
 id: x00072
 title: "Los ejemplos y la fixture de tRPC siguen en zod v3 con una vulnerabilidad alta abierta"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-01
 shippedIn:
   - 794d26b
 shipped-in: ["794d26b"]
-last-transition-id: 00832b56-bbfb-4fc6-a423-b08b45cda0e9
-last-correlation-id: 00832b56-bbfb-4fc6-a423-b08b45cda0e9
-last-transition-from: in-progress
-last-transition-at: 2026-11-01T05:47:49.713Z
+last-transition-id: 1449d60e-5ee6-4ab5-8750-d08c539105f0
+last-correlation-id: 1449d60e-5ee6-4ab5-8750-d08c539105f0
+last-transition-from: review
+last-transition-at: 2026-11-03T03:31:12.526Z
 ---
 
 # x00072 — zod v4 en los ejemplos y en la fixture de tRPC
