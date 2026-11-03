@@ -257,9 +257,16 @@ async function main(): Promise<number> {
     .filter((each) => each.ref.startsWith("refs/heads/wip/"))
     .map((each) => refName(each.ref));
 
+  // La ascendencia se pregunta commit a commit, porque `git` responde de
+  // una en una; el predicado que recibe el gate ya sólo mira el
+  // conjunto de las que están dentro.
+  const landed = new Set<string>();
+  for (const each of refs) {
+    if (await isAncestor(each.sha)) landed.add(each.sha);
+  }
   const integrated = integratedRefs(
     refs,
-    (sha) => isAncestor(sha),
+    (sha) => landed.has(sha),
     worktreeBranches,
   );
   const husks = huskWorktrees(worktrees, workBranches);
