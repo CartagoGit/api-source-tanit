@@ -2,10 +2,14 @@
 id: x00080
 title: "el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: fdfcdc65-ec7f-4ade-91f9-39e7d4f2e9ec
+last-correlation-id: fdfcdc65-ec7f-4ade-91f9-39e7d4f2e9ec
+last-transition-from: ready
+last-transition-at: 2026-11-03T02:44:11.874Z
 ---
 
 # x00080 — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer
