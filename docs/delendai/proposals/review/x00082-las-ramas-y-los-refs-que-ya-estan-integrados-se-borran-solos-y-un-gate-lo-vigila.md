@@ -2,14 +2,14 @@
 id: x00082
 title: "Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-03
-last-transition-id: f4110fa1-763d-4d97-b491-c2ec2b774901
-last-correlation-id: f4110fa1-763d-4d97-b491-c2ec2b774901
-last-transition-from: ready
-last-transition-at: 2026-11-03T17:44:41.115Z
+last-transition-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
+last-correlation-id: 884dc118-9c4d-4157-bd79-f65f69c7903d
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T17:45:02.554Z
 ---
 
 # x00082 — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila
@@ -65,21 +65,27 @@ Por dos medios, porque cada uno cubre una cosa:
 - global_gate: none
 
 ### S1 — la politica borra el ref de trabajo cuando su trabajo aterriza
-- **Status**: pending
+- **Status**: review
 - **Files**: `delendai.config.json`, `CONTRIBUTING.md`
 - **Gate**: none
 - acceptance:
   - "development.integration.deleteMergedWorkRef está en true: la rama de la publicación se borra al integrar, y el runtime borra la ref de trabajo local cuando su contenido está en develop."
   - "La política dice por qué en este repo es seguro, y lo dice en CONTRIBUTING.md («Cómo aterriza el trabajo»): una unidad publica un pull request por propuesta, así que borrar esa rama no deja slices sin publicar."
+- shipped-in: `b46ab418a8b6`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ### S2 — un gate que dice cuando hay ramas y refs que ya están integrados
-- **Status**: pending
+- **Status**: review
 - **Files**: `scripts/gates/lint-work-refs.script.ts`, `tests/scripts-gates/lint-work-refs.spec.ts`, `package.json`, `CONTRIBUTING.md`
 - **Gate**: lint
 - acceptance:
   - "Hay un gate que falla si queda alguna publicación (pr/) o ref de trabajo (wip/) cuyo trabajo ya está en develop, y dice cuál es y cómo se limpia."
   - "El gate pregunta al doctor del runtime (delendai --json work doctor) y usa sus veredictos y su remedio; sin runtime instalado —la CI de este repo no lo tiene— comprueba lo mismo con git, y el remedio sigue siendo el comando del runtime (delendai work retire / delendai work reap)."
   - "El gate está encadenado en lint, así que la CI lo ve."
+- shipped-in: `b46ab418a8b6`
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash
 
 ## acceptance
 
