@@ -2,10 +2,14 @@
 id: x00082
 title: "Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-03
+last-transition-id: f4110fa1-763d-4d97-b491-c2ec2b774901
+last-correlation-id: f4110fa1-763d-4d97-b491-c2ec2b774901
+last-transition-from: ready
+last-transition-at: 2026-11-03T17:44:41.115Z
 ---
 
 # x00082 — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila
