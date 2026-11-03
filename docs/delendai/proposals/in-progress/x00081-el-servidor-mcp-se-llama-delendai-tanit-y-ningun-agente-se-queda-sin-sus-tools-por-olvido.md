@@ -2,10 +2,14 @@
 id: x00081
 title: "el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: 8a5ac162-ebb9-4690-b6dc-7c65107644ce
+last-correlation-id: 8a5ac162-ebb9-4690-b6dc-7c65107644ce
+last-transition-from: ready
+last-transition-at: 2026-11-03T07:23:42.880Z
 ---
 
 # x00081 — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido
