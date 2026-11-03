@@ -8,10 +8,10 @@ track: general
 date: 2026-11-02
 shippedIn:
   - c50d145
-last-transition-id: af639f40-b7df-4884-8a80-bc3d7cecd913
-last-correlation-id: af639f40-b7df-4884-8a80-bc3d7cecd913
+last-transition-id: 7a7062e0-c6d9-4ae3-99eb-42805862d2a3
+last-correlation-id: 7a7062e0-c6d9-4ae3-99eb-42805862d2a3
 last-transition-from: in-progress
-last-transition-at: 2026-11-03T05:44:00.332Z
+last-transition-at: 2026-11-03T05:59:17.467Z
 ---
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
