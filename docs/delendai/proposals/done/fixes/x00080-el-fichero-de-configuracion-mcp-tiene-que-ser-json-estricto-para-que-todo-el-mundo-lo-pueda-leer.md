@@ -10,9 +10,9 @@ last-transition-id: 567ca2ab-1cec-413c-86af-db4a15c8a5fe
 last-correlation-id: 567ca2ab-1cec-413c-86af-db4a15c8a5fe
 last-transition-from: review
 last-transition-at: 2026-11-03T06:39:44.656Z
-shipped-in:
-  - "259ba3c76cd3"
----
+shippedIn:
+  - "1ae1577b1a5e"
+
 
 # x00080 — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer
 

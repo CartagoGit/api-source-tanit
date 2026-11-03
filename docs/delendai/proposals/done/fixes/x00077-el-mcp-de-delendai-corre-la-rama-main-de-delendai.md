@@ -10,9 +10,9 @@ last-transition-id: 707ce632-6f41-4549-b600-66819d796e3f
 last-correlation-id: 707ce632-6f41-4549-b600-66819d796e3f
 last-transition-from: review
 last-transition-at: 2026-11-03T06:38:16.011Z
-shipped-in:
+shippedIn:
   - "fed5f2121a20"
----
+
 
 # x00077 — El MCP de delendai corre la rama main de delendai
 
