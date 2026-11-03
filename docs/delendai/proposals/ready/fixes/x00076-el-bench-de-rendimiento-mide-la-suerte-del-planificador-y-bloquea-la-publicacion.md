@@ -2,16 +2,10 @@
 id: x00076
 title: "El bench de rendimiento mide la suerte del planificador y bloquea la publicación"
 kind: fix
-status: review
+status: ready
 type: proposal
 track: general
 date: 2026-11-02
-last-transition-id: a3fb3638-32c2-47be-a9f7-40ef4900b141
-last-correlation-id: a3fb3638-32c2-47be-a9f7-40ef4900b141
-last-transition-from: in-progress
-last-transition-at: 2026-11-03T04:17:00.845Z
-shipped-in:
-  - "d1cb58027c8b"
 ---
 
 # x00076 — El bench de rendimiento mide la suerte del planificador y bloquea la publicación
@@ -34,17 +28,13 @@ El bench de resolución de módulos mide **una sola** pasada fría y la compara 
 - global_gate: none
 
 ### S1-el-presupuesto-se-compara-con-la-mejor-pasada — S1 — El presupuesto se compara con la mejor de las pasadas
-- **Status**: done
+- **Status**: pending
 - **Files**: `tests/core/module-resolution.bench.ts`
 - **Gate**: none
 - acceptance:
   - "El bench hace varias pasadas frías con un resolutor nuevo cada vez y compara el presupuesto con la mejor de ellas."
   - "El bench dice cuántas pasadas midió y cuál fue la mejor."
   - "El presupuesto sigue siendo 100 ms: el arreglo cambia lo que se mide, no el límite."
-- review-state: done
-- review-implementer: minimax-m3.1-flash
-- review-reviewer: minimax-m3.1-flash
-- review-log: approved by minimax-m3.1-flash — verified at d1cb58027c8b, validate exit 0 and tests 84/84 claimed, no recorded run cited; acceptance 3/3: (1) tests/core/module-resolution.bench.ts mide COLD_PASSES pasadas frías creando un resolutor nuevo en cada una, y el presupuesto se compara con la mejor: la línea… (2) La salida del bench lo dice: «cold 118.20 ms (best of 5: 141.6, 151.5, 118.2, 192.0, 260.7)» — cuántas midió y cuál fue la mejor. La constante COLD_PASSES está… (3) BUDGET_MS = 100 ms sigue declarado en tests/core/module-resolution.bench.ts y el fallo sigue leyendo «exceeds the 100 ms budget»: el límite no se tocó. tests/c… — Revisión independiente de la entrega d1cb5802 (fix(bench): el presupuesto se compara con la mejor de las pasadas). El bench mide varias pasadas frías con un resolutor nuevo cada vez y se queda con la mejor: la propia salida lo dice, «cold 118.20 ms (best of 5: 141.6, 151.5, 118.2, 192.0, 260.7)». El límite no se movió: BUDGET_MS sigue siendo 100 ms. Ejecuté los specs del resolutor: tests/core/module-resolution.spec.ts da 84/84 en verde. [another instance]
 
 ## acceptance
 
