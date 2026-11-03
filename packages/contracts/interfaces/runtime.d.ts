@@ -62,6 +62,12 @@ declare module "node:fs/promises" {
     size: number;
     /** Permission bits, used to check the execute bit. */
     mode: number;
+    /**
+     * Last write, in milliseconds since the epoch. The gates use it to
+     * tell a directory somebody is writing to right now from one that
+     * was left behind.
+     */
+    mtimeMs: number;
   }>;
   export function copyFile(src: string, dest: string): Promise<void>;
   export function symlink(target: string, path: string): Promise<void>;
