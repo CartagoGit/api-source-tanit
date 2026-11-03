@@ -2,7 +2,7 @@
 id: f00018
 title: "SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS"
 kind: feat
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
@@ -10,9 +10,10 @@ shipped-in:
   - "686dc80b"
   - "7a98dac4"
   - "641f6c08"
-last-transition-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
-last-correlation-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
-last-transition-from: in-progress
+last-transition-id: c0dbc4f1-6ba7-4cad-b999-abae20eb01fe
+last-correlation-id: c0dbc4f1-6ba7-4cad-b999-abae20eb01fe
+last-transition-from: review
+last-transition-at: 2026-11-03T06:36:00.295Z
 ---
 
 # f00018 — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS
