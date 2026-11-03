@@ -2,10 +2,16 @@
 id: x00081
 title: "el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido"
 kind: fix
-status: ready
+status: review
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: 531543f2-5fa8-4ac9-9d9d-cc58851f0443
+last-correlation-id: 531543f2-5fa8-4ac9-9d9d-cc58851f0443
+last-transition-from: in-progress
+last-transition-at: 2026-11-03T07:24:03.015Z
+shipped-in:
+  - "ac8994246c4b1e08a5bfb23414dfd1365b76e3f2"
 ---
 
 # x00081 — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido
@@ -64,7 +70,7 @@ propio DelendAI usa para sus servidores de proyecto (`mcp-project-<ns>`).
 - global_gate: type
 
 ### S1 — el nombre del servidor y el gate que lo ata a sus consumidores
-- **Status**: pending
+- **Status**: done
 - **Files**: `.mcp.json`, `.vscode/mcp.json`, `.github/agents/orchestrator.agent.md`, `.github/agents/delivery_verifier.agent.md`, `.github/agents/implementation_runner.agent.md`, `.github/agents/proposal_guardian.agent.md`, `.github/agents/technical_investigator.agent.md`, `scripts/gates/lint-mcp-server-key.script.ts`, `tests/scripts-gates/lint-mcp-server-key.spec.ts`, `CONTRIBUTING.md`
 - **Gate**: type
 - acceptance:
@@ -73,6 +79,11 @@ propio DelendAI usa para sus servidores de proyecto (`mcp-project-<ns>`).
   - "Hay un gate que falla si algún `tools:` de un `.agent.md` concede tools de un servidor que no está registrado en `.mcp.json` — con el nombre del grant y el del servidor, para que el motivo baste."
   - "El gate también falla si `.mcp.json` y `.vscode/mcp.json` no declaran los mismos servidores."
   - "`CONTRIBUTING.md` dice cuál es la clave y por qué los grants dependen de ella."
+- shipped-in: `5b12837ed707`
+- review-state: done
+- review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — verified at ac8994246c4b, validate exit 0 and tests 9/9 claimed, no recorded run cited; acceptance 5/5: (1) `.mcp.json` declara la clave `delendai-tanit` y `.vscode/mcp.json` es su derivado, con la misma clave. (2) Los cinco `.github/agents/*.agent.md` conceden sus tools con `delendai-tanit/*`, y esa es la clave registrada. (3) scripts/gates/lint-mcp-server-key.script.ts recorre los `tools:` de cada `.agent.md` y falla cuando el grant nombra un servidor que no está en `.mcp.json`, dic… (4) El mismo gate compara los dos conjuntos de servidores y falla cuando no coinciden. (5) CONTRIBUTING.md tiene la sección «El nombre del servidor: `delendai-tanit`» que explica la clave y que los grants dependen de ella. — Revisión independiente de la entrega ac899424 (PR #106: el servidor MCP se llama delendai-tanit y un gate ata su nombre a sus consumidores), entregada por minimax-m3.1-flash. Ejecuté los specs del gate: tests/scripts-gates/lint-mcp-server-key.spec.ts da 9/9 en verde, el gate lint:mcp-server-key está encadenado en la cadena de lint y bun run lint sale con 0, y el typecheck de las 6 secciones pasa.
 
 ## acceptance
 
