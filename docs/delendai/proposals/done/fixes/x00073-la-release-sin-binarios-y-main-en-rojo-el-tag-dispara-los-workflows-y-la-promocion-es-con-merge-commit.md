@@ -11,11 +11,6 @@ last-transition-id: a013a9d7-38d3-475e-bf90-15f16d5d7d25
 last-correlation-id: a013a9d7-38d3-475e-bf90-15f16d5d7d25
 last-transition-from: review
 last-transition-at: 2026-11-03T06:36:56.123Z
-shippedIn:
-  - "ecd09e30042d"
-  - "b888be88acf3"
-
-
 # x00073 — La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit
 
 ## goal
@@ -123,3 +118,4 @@ la versión, que es donde la divergencia costó una release.
 - La promoción de `develop` a `main` deja los commits de `develop` **en la historia de `main`**: `git merge-base --is-ancestor` es cierto para los commits que auditan las propuestas cerradas.
 - Un PR del dueño con la validación en verde se **aprueba y se mergea solo**, sin que haga falta pulsar ningún botón.
 - Ninguno de los tres fallos vuelve a pasar en silencio: cada uno tiene un test o un gate que se enroja.
+shippedIn: [ecd09e30042d, b888be88acf3]

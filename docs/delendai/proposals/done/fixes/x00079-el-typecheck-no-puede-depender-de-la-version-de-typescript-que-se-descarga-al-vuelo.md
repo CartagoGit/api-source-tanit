@@ -6,15 +6,13 @@ status: done
 type: proposal
 track: general
 date: 2026-11-02
-shippedIn:
-  - c50d145
 last-transition-id: b75ad95b-ab18-49d5-8bba-c0857434f499
 last-correlation-id: b75ad95b-ab18-49d5-8bba-c0857434f499
 last-transition-from: review
 last-transition-at: 2026-11-03T06:39:16.483Z
-shipped-in:
   - "598883ae2a25"
----
+shippedIn: [598883ae2a25]
+
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
 

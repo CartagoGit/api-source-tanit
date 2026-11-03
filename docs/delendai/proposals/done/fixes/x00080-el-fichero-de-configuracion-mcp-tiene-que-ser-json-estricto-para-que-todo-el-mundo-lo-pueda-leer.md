@@ -10,10 +10,6 @@ last-transition-id: 567ca2ab-1cec-413c-86af-db4a15c8a5fe
 last-correlation-id: 567ca2ab-1cec-413c-86af-db4a15c8a5fe
 last-transition-from: review
 last-transition-at: 2026-11-03T06:39:44.656Z
-shippedIn:
-  - "1ae1577b1a5e"
-
-
 # x00080 — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer
 
 ## goal
@@ -97,3 +93,4 @@ comentarios solo lo leen los que los saben quitar.
   `lint:mcp` con un motivo que nombra el comentario, no «no coincide».
 - El arranque del servidor MCP no vuelve a depender de qué versión
   del runtime sepa leer comentarios.
+shippedIn: [1ae1577b1a5e]

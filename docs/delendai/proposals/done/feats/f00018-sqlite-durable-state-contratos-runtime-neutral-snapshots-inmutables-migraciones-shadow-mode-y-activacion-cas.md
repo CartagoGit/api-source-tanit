@@ -11,12 +11,6 @@ last-transition-id: c0dbc4f1-6ba7-4cad-b999-abae20eb01fe
 last-correlation-id: c0dbc4f1-6ba7-4cad-b999-abae20eb01fe
 last-transition-from: review
 last-transition-at: 2026-11-03T06:36:00.295Z
-shippedIn:
-  - "686dc80b"
-  - "7a98dac4"
-  - "641f6c08"
-
-
 # f00018 — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS
 
 ## Goal
@@ -125,3 +119,4 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 - doctor --json informa versión de DB, migración, snapshot activo, última escritura, corrupción, paridad y secretos omitidos.
 - La escritura shadow es opt-in y no altera el comportamiento si la DB no está disponible; el fallo queda diagnosticado, no oculto.
 - Tests cubren shadow disabled/enabled, paridad igual/desigual, DB ausente, restart y salida JSON estable.
+shippedIn: [686dc80b, 7a98dac4, 641f6c08]

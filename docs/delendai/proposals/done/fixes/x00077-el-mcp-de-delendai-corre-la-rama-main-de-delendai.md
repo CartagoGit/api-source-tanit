@@ -10,10 +10,6 @@ last-transition-id: 707ce632-6f41-4549-b600-66819d796e3f
 last-correlation-id: 707ce632-6f41-4549-b600-66819d796e3f
 last-transition-from: review
 last-transition-at: 2026-11-03T06:38:16.011Z
-shippedIn:
-  - "fed5f2121a20"
-
-
 # x00077 — El MCP de delendai corre la rama main de delendai
 
 ## goal
@@ -46,3 +42,4 @@ El MCP de este proyecto ejecutaba `../delendai/...`, es decir, el checkout de de
 
 - El servidor MCP arranca desde la rama `main` de delendai, y un cambio en el checkout de delendai no lo reinicia.
 - `.vscode/mcp.json` se regenera desde `.mcp.json` con `mcp:sync`.
+shippedIn: [fed5f2121a20]

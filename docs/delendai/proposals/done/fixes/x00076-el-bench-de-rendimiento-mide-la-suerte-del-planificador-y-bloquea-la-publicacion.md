@@ -10,10 +10,6 @@ last-transition-id: 8bf41f18-4283-4441-b352-5bfebe378405
 last-correlation-id: 8bf41f18-4283-4441-b352-5bfebe378405
 last-transition-from: review
 last-transition-at: 2026-11-03T06:37:49.081Z
-shippedIn:
-  - "d1cb58027c8b"
-
-
 # x00076 — El bench de rendimiento mide la suerte del planificador y bloquea la publicación
 
 ## goal
@@ -51,3 +47,4 @@ El bench de resolución de módulos mide **una sola** pasada fría y la compara 
 - El bench hace varias pasadas frías con un resolutor nuevo cada vez y compara el presupuesto con la mejor de ellas.
 - El bench dice cuántas pasadas midió y cuál fue la mejor.
 - El presupuesto sigue siendo 100 ms: el arreglo cambia lo que se mide, no el límite.
+shippedIn: [d1cb58027c8b]
