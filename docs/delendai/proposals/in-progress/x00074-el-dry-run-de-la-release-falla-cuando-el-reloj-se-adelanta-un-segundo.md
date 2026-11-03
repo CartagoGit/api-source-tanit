@@ -2,10 +2,14 @@
 id: x00074
 title: "El dry run de la release falla cuando el reloj se adelanta un segundo"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-02
+last-transition-id: 7a142a49-cb86-4447-83f3-a4a51491d483
+last-correlation-id: 7a142a49-cb86-4447-83f3-a4a51491d483
+last-transition-from: ready
+last-transition-at: 2026-11-03T02:20:36.024Z
 ---
 
 # x00074 — El dry run de la release falla cuando el reloj se adelanta un segundo
