@@ -12,6 +12,8 @@ last-transition-id: 7a7062e0-c6d9-4ae3-99eb-42805862d2a3
 last-correlation-id: 7a7062e0-c6d9-4ae3-99eb-42805862d2a3
 last-transition-from: in-progress
 last-transition-at: 2026-11-03T05:59:17.467Z
+shipped-in:
+  - "598883ae2a25"
 ---
 
 # x00079 — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo
@@ -70,7 +72,7 @@ tipos**. Un `TS2321` en el fichero de configuración de vitest no dice
 - global_gate: type
 
 ### S1 — typescript declarado, y el gate que lo vigila
-- **Status**: review
+- **Status**: done
 - **Files**: `package.json`, `bun.lock`, `scripts/gates/lint-bun-ci.script.ts`, `tests/scripts-gates/lint-bun-ci.spec.ts`
 - **Gate**: type
 
@@ -94,8 +96,10 @@ Dos cosas, y las dos son el mismo invariante:
    `bun install --frozen-lockfile` rechaza en la CI, pero con un
    mensaje que nadie entiende.
 - shipped-in: `598883ae2a25`
-- review-state: in_review
+- review-state: done
 - review-implementer: minimax-m3.1-flash
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — verified at 598883ae2a25, validate exit 0 and tests 14/14 claimed, no recorded run cited — Revisión independiente de la entrega 598883ae (typescript declarado, y el gate que lo vigila), entregada por minimax-m3.1-flash. typescript queda declarado en devDependencies con la versión del lockfile, de modo que bunx tsc deja de descargar y usa la local, y el gate lint:bun-ci lo vigila. Ejecuté los specs del gate: tests/scripts-gates/lint-bun-ci.spec.ts da 14/14 en verde, y el typecheck de las 6 secciones pasa.
 
 ## acceptance
 
