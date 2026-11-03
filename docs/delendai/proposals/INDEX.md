@@ -14,6 +14,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `x00078` | `fix` | [`ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md`](ready/fixes/x00078-la-rehidratacion-main-entra-en-develop-y-el-grafo-se-lee-develop-main-develop.md) |
 | `x00079` | `fix` | [`ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md`](ready/fixes/x00079-el-typecheck-no-puede-depender-de-la-version-de-typescript-que-se-descarga-al-vuelo.md) |
 | `x00080` | `fix` | [`ready/fixes/x00080-el-fichero-de-configuracion-mcp-tiene-que-ser-json-estricto-para-que-todo-el-mundo-lo-pueda-leer.md`](ready/fixes/x00080-el-fichero-de-configuracion-mcp-tiene-que-ser-json-estricto-para-que-todo-el-mundo-lo-pueda-leer.md) |
+| `x00081` | `fix` | [`ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md`](ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md) |
 
 ## Bloqueadas
 

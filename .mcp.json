@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "delendai": {
+    "delendai-tanit": {
       "type": "stdio",
       "command": "bun",
       "args": [

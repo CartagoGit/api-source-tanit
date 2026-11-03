@@ -274,6 +274,25 @@ intentarlo, en bucle. JSON estricto es un subconjunto de JSONC: un
 fichero sin comentarios lo lee todo el mundo. `lint:mcp` vigila que los
 dos ficheros parseen en estricto.
 
+### El nombre del servidor: `delendai-tanit`
+
+El servidor se registra con la clave **`delendai-tanit`**, y esa clave
+no es decorativa: es la que **cualifica los nombres de las tools**. Un
+`.agent.md` que concede `tools: [read, delendai-tanit/*]` pide las
+tools del servidor llamado `delendai-tanit`.
+
+Por eso los grants y la clave no pueden separarse: si renuevas la
+clave y no los grants, el agente sigue arrancando y lo único que pasa
+es que **se queda sin tools MCP**, sin que nada lo diga. El gate
+[`lint:mcp-server-key`](scripts/gates/lint-mcp-server-key.script.ts)
+comprueba que todo grant nombra un servidor registrado en `.mcp.json`,
+y que los dos ficheros de configuración declaran los mismos.
+
+Un `:` en la clave no vale: el editor compone el identificador de cada
+tool como `mcp_<servidor>_<tool>`, y el nombre de una tool MCP está
+limitado a `^[a-zA-Z0-9_-]{1,64}$`. DelendAI usa `mcp-project-<ns>`
+para sus propios servidores de proyecto; aquí, `delendai-tanit`.
+
 ### Dónde escribe la herramienta
 
 En `<proyecto escaneado>/tanit/`. **Nunca** en `build/`: es
