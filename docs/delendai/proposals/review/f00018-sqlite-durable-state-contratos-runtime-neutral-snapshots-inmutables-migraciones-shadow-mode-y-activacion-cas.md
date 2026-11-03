@@ -6,6 +6,10 @@ status: review
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
+shipped-in:
+  - "686dc80b"
+  - "7a98dac4"
+  - "641f6c08"
 last-transition-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
 last-correlation-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
 last-transition-from: in-progress
