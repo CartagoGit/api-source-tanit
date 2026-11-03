@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00081` | `fix` | [`ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md`](ready/fixes/x00081-el-servidor-mcp-se-llama-delendai-tanit-y-ningun-agente-se-queda-sin-sus-tools-por-olvido.md) |
 
 ## Bloqueadas
 
@@ -83,6 +82,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
 - `f00016` — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic — `6be589b, a647b8e, 4d959bc, 07cfa5f, 5e32cb9`
 - `f00017` — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage — `167fd5e, c6e4be3`
+- `f00018` — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS — `686dc80b, 7a98dac4, 641f6c08`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
@@ -163,7 +163,15 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00059` — `generateCollectionsWithAllFrameworks()` actually returns the array — closes the `monorepo` P1 facade bug — `6450a2d, 6450a2d`
 - `x00060` — Generate is a transaction — no write before 0-endpoint validation, atomic commit — `5645bcf`
 - `x00061` — Per-spec framework discriminator for response inference — closes the hybrid-project dispatcher bug — `22bcd73`
-- `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `—`
+- `x00072` — Los ejemplos y la fixture de tRPC siguen en zod v3 con una vulnerabilidad alta abierta — `ff4a4b208566, 496a3263f9de`
+- `x00073` — La release sin binarios y main en rojo: el tag dispara los workflows y la promoción es con merge commit — `ecd09e30042d, b888be88acf3`
+- `x00074` — El dry run de la release falla cuando el reloj se adelanta un segundo — `3dff2e0aef25`
+- `x00076` — El bench de rendimiento mide la suerte del planificador y bloquea la publicación — `d1cb58027c8b`
+- `x00077` — El MCP de delendai corre la rama main de delendai — `fed5f2121a20`
+- `x00078` — la rehidratación: main entra en develop y el grafo se lee develop -> main -> develop — `98300ceb5252`
+- `x00079` — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo — `598883ae2a25`
+- `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
+- `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
 
 ### infra
 
