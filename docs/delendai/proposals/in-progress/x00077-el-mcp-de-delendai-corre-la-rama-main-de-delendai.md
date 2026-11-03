@@ -2,10 +2,14 @@
 id: x00077
 title: "El MCP de delendai corre la rama main de delendai"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: infra
 date: 2026-11-02
+last-transition-id: 5106ef0e-5523-4287-8a11-d2f6d40cde1c
+last-correlation-id: 5106ef0e-5523-4287-8a11-d2f6d40cde1c
+last-transition-from: ready
+last-transition-at: 2026-11-03T05:41:59.074Z
 ---
 
 # x00077 — El MCP de delendai corre la rama main de delendai
