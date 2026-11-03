@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00082` | `fix` | [`ready/fixes/x00082-las-ramas-y-los-refs-que-ya-estan-integrados-se-borran-solos-y-un-gate-lo-vigila.md`](ready/fixes/x00082-las-ramas-y-los-refs-que-ya-estan-integrados-se-borran-solos-y-un-gate-lo-vigila.md) |
 
 ## Bloqueadas
 
@@ -173,6 +172,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00079` — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo — `598883ae2a25`
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
+- `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
 
 ### infra
 

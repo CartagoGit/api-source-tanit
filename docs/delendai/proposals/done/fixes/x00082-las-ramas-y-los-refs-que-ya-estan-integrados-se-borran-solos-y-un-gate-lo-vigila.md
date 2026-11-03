@@ -12,6 +12,7 @@ last-transition-from: review
 last-transition-at: 2026-11-03T17:55:07.497Z
 shipped-in:
   - "88cfb72e78244cbd4a4a34b6a901ac24fafa79ca"
+shippedIn: [88cfb72e78244cbd4a4a34b6a901ac24fafa79ca]
 ---
 
 # x00082 — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila
