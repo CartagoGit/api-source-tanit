@@ -93,4 +93,4 @@ comentarios solo lo leen los que los saben quitar.
   `lint:mcp` con un motivo que nombra el comentario, no «no coincide».
 - El arranque del servidor MCP no vuelve a depender de qué versión
   del runtime sepa leer comentarios.
-shippedIn: [1ae1577b1a5e]
+shippedIn: [1ae1577b]
