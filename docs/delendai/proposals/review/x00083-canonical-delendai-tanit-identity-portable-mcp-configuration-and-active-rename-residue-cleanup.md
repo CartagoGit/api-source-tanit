@@ -2,14 +2,14 @@
 id: x00083
 title: "Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: d7e42b59-d09f-49fc-8641-7d652c572dcd
-last-correlation-id: d7e42b59-d09f-49fc-8641-7d652c572dcd
-last-transition-from: review
-last-transition-at: 2026-11-08T03:47:52.552Z
+last-transition-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
+last-correlation-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
+last-transition-from: in-progress
+last-transition-at: 2026-11-08T13:45:30.217Z
 ---
 
 # x00083 — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup
@@ -36,6 +36,8 @@ El nombre MCP y los permisos divergían de la identidad solicitada; el validador
 - **Files**: `.mcp.json`, `.github/agents/`, `scripts/gates/lint-mcp-server-key.script.ts`, `scripts/gates/sync-mcp-config.script.ts`, `tests/scripts-gates/lint-mcp-server-key.spec.ts`, `tests/scripts-gates/lint-mcp-config.spec.ts`, `CONTRIBUTING.md`, `docs/delendai/AGENT-BOOTSTRAP.md`, `scripts/build/api-reference.script.ts`, `docs/API.md`, `docs/delendai/proposals/`
 - **Gate**: e2e
 - shipped-in: `077077a01bfa`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 

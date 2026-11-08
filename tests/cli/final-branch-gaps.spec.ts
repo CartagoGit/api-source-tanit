@@ -75,14 +75,16 @@ describe("final CLI argument fallbacks", () => {
       fs.mkdir(join(root, "tanit"), { recursive: true }),
     );
     await writeFile(join(root, "tanit", "open-file-fallback.postman_collection.json"), "{}");
+    const launch = vi.fn().mockResolvedValue(true);
     expect(await withArgv(
       ["--project-root", root, "--file"],
-      () => openPostman(),
+      () => openPostman(undefined, { launch }),
     )).toBe(0);
     expect(await withArgv(
       ["--project-root", root, "--config", join(root, "missing.config.ts")],
-      () => openPostman(),
+      () => openPostman(undefined, { launch }),
     )).toBe(1);
+    expect(launch).toHaveBeenCalledOnce();
   });
 });
 
