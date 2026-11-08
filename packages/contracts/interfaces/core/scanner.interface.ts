@@ -30,6 +30,7 @@ import type {
   IEndpointAuth,
   IEndpointConfidence,
 } from "./endpoint-legacy.interface.js";
+import type { IGenerationResult } from "./discovery.interface.js";
 import type { ITransportMeta, TransportKind } from "./transport.interface.js";
 
 /** Stable framework id. Used as a key in config. */
@@ -465,6 +466,8 @@ export interface IDetectedFramework {
  * the bug: the key, not the position, decides the role.
  */
 export interface IDiscoveryOrchestrator {
+  /** Prepare results through the injected framework registry before exposing them to any host. */
+  prepareResult?(result: IGenerationResult): Promise<IGenerationResult>;
   /**
    * Everyone who recognises the project, ordered by confidence.
    *
