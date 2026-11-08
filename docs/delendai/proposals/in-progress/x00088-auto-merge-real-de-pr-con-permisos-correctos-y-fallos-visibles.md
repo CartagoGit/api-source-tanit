@@ -32,7 +32,7 @@ PR116 quedó abierta con todos los checks verdes y autoMergeRequest nulo: el wor
 
 ### S1 — Usar la mutación oficial y validar el contrato del workflow
 - **Status**: done
-- **Files**: `.github/workflows/auto-approve.yml`, `tests/scripts-gates/auto-merge-workflow.spec.ts`
+- **Files**: `.github/workflows/auto-approve.yml`, `tests/scripts-gates/auto-merge-workflow.spec.ts`, `tests/cli/auto-approve.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "El job propietario tiene permisos de contents:write y pull-requests:write."
