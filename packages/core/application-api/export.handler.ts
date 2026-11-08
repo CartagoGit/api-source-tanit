@@ -14,8 +14,6 @@
  * — the same ones the CLI writes, through the same exporters — and
  * the write is atomic, so a failure never leaves half a file.
  */
-import { join } from "node:path";
-
 import type { IHandler } from "./dispatcher.js";
 import {
   ExportInputSchema,
@@ -23,7 +21,7 @@ import {
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { ProjectHistoryService } from "../session/project-history.service.js";
-import { writeExport } from "./export-artifacts.helper.js";
+import { resolveExportDestination, writeExport } from "./export-artifacts.helper.js";
 import { apiError } from "./error.js";
 
 /** Resultado de escribir los artefactos de un formato. */
@@ -52,22 +50,10 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
         );
       }
 
-      // Where the files go, in order of specificity:
-      //
-      //   1. the directory the caller named;
-      //   2. the folder of the file the caller named;
-      //   3. the project's own `tanit` folder.
-      //
-      // The second rule used to be the only one, and the field
-      // `outputDirectory` was in the schema but never read — so a
-      // caller that said "write them in /tmp/out" got them in the
-      // project's folder, and the dry run had answered about
-      // /tmp/out.
-      const directory =
-        input.outputDirectory ??
-        (input.outputPath ? dirnameOf(input.outputPath) : join(snap.projectRoot, "tanit"));
-
-      const written = await writeExport(snap, input.target, directory);
+      const destination = resolveExportDestination(snap, input.outputDirectory, input.outputPath);
+      const written = await writeExport(
+        snap, input.target, destination.directory, destination.outputPath,
+      );
 
       // The export is a point in time, and the history remembers it.
       // Without this the persisted history would only have the
@@ -84,9 +70,13 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
       try {
         const record = await history.record(input.projectRoot, snap, {
           formats: [input.target],
-          output: directory,
+          output: destination.directory,
           source: "export",
-          configuration: { formats: [input.target], outputDirectory: directory },
+          configuration: {
+            formats: [input.target],
+            outputDirectory: destination.directory,
+            ...(destination.outputPath !== undefined ? { outputPath: destination.outputPath } : {}),
+          },
         });
         historyId = record.id;
       } catch (error) {
@@ -94,7 +84,7 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
       }
 
       return {
-        outputPath: input.outputPath ?? written.outputPath,
+        outputPath: written.outputPath,
         bytes: written.bytes,
         files: written.files,
         historyId,
@@ -102,10 +92,4 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
       };
     },
   };
-}
-
-/** The directory of a path. */
-function dirnameOf(path: string): string {
-  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return index <= 0 ? path : path.slice(0, index);
 }
