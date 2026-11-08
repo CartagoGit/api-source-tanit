@@ -32,7 +32,7 @@ settings.handlers.ts cierra la sesión antes del reemplazo, reconstruye sólo el
 
 ### S1 — Preservar configuración y sesión al aplicar parches
 - **Status**: in-progress
-- **Files**: `packages/core/application-api/settings.handlers.ts`, `packages/core/session/project-session.service.ts`, `packages/core/session/session-events.ts`, `packages/contracts/interfaces/core/session.interface.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `tests/application-api/settings.handlers.spec.ts`, `tests/core/session/session-lifecycle.spec.ts`
+- **Files**: `packages/core/application-api/settings.handlers.ts`, `packages/core/session/project-session.service.ts`, `packages/core/session/session-events.ts`, `packages/contracts/interfaces/core/session.interface.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `tests/application-api/settings.handlers.spec.ts`, `tests/core/session/session-lifecycle.spec.ts`, `docs/API.md`
 - **Gate**: e2e
 - acceptance:
   - "Cambiar una opción conserva todas las demás."
@@ -42,7 +42,7 @@ settings.handlers.ts cierra la sesión antes del reemplazo, reconstruye sólo el
 
 - implementation-commits: `c53747ab9d35fbc2eee0fd9c6e7d66b24de5a5c2`, `6999c1a901d36c2ad095a3d8d3f1c1399eaeecd8`
 - evidence: 69 focused tests passed across settings, shared handler, session and lifecycle specs; all six typecheck sections passed for settings, and core typecheck passed after lifecycle changes. Contracts, naming, boundary and type-escape gates passed. The existing session identity and listeners survive configuration changes; watch-only changes avoid rescanning; failed or aborted candidate scans preserve the previous snapshot/options. Direct/global close emits typed lifecycle notification once and releases resources even when an observer fails.
-- proof: pending governed full validation against the published canonical identity prerequisite.
+- proof: governed full validation initially detected stale generated API documentation after session API changes; regenerated docs/API.md from source and committed it before repeating proof.
 
 ## acceptance
 
