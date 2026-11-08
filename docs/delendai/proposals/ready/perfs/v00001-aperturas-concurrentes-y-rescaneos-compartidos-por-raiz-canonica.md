@@ -28,16 +28,16 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
 
 ### S1 — Apertura en curso compartida
 - **Status**: pending
-- **Files**: `packages/core/session/project-session.service.ts`, `tests/core/project-session.spec.ts`
+- **Files**: `packages/core/session/project-session.service.ts`, `tests/core/session/project-session.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Dos aperturas simultáneas de la misma raíz comparten sesión y un scan."
   - "Los fallos liberan la apertura en curso y permiten reintentar."
   - "Raíces distintas permanecen aisladas."
 
-### S2 — Coalescer cambios y excluir salidas
+### S2 — Coalescer cambios y excluir salidas (after S1)
 - **Status**: pending
-- **Files**: `packages/core/session/project-session-watcher.service.ts`, `tests/core/project-session-watcher.spec.ts`
+- **Files**: `packages/core/session/session-rescan.service.ts`, `tests/core/session/session-rescan.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Una ráfaga termina con el snapshot de la última fuente sin scans concurrentes."

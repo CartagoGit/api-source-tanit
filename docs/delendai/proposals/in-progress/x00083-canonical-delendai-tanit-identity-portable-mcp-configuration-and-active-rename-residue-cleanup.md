@@ -32,14 +32,22 @@ El nombre MCP y los permisos divergían de la identidad solicitada; el validador
 - global_gate: none
 
 ### S1 — Identidad, permisos y catálogo válidos
-- **Status**: pending
+- **Status**: done
 - **Files**: `.mcp.json`, `.github/agents/`, `scripts/gates/lint-mcp-server-key.script.ts`, `scripts/gates/sync-mcp-config.script.ts`, `tests/scripts-gates/lint-mcp-server-key.spec.ts`, `tests/scripts-gates/lint-mcp-config.spec.ts`, `CONTRIBUTING.md`, `docs/delendai/AGENT-BOOTSTRAP.md`, `scripts/build/api-reference.script.ts`, `docs/API.md`, `docs/delendai/proposals/`
 - **Gate**: e2e
 
 ## acceptance
 
-- Configuración y cinco grants usan DelendAI:Tanit; un grant con dos puntos a otro proyecto falla.
+- La configuración registra DelendAI:Tanit y los cinco grants usan su referencia de host delendai:tanit/*; un grant con dos puntos a otro proyecto falla.
 - El MCP arranca por PATH y responde initialize/tools/list con Tanit cargado.
 - El catálogo vuelve a incluir las 176 propuestas históricas, sin cambios de estado.
 - La documentación activa usa api-source-tanit y no exige un checkout hermano.
 - Los residuos locales quedan inventariados y migrados conservando datos.
+
+## Validation evidence
+
+- MCP stdio initialize/tools/list/overview: Tanit loaded; SIGTERM 143.
+- Restart preserves canonical config and all five normalized grants.
+- 22 focused MCP/frontmatter tests pass; output cleanup passes 109 focused tests.
+- Historical proposal catalog recovered: 172 done + 4 retired.
+- Full project gate runs before publication.

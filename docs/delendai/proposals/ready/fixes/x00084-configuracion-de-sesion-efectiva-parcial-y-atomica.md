@@ -28,7 +28,7 @@ settings.handlers.ts cierra la sesión antes del reemplazo, reconstruye sólo el
 
 ### S1 — Preservar configuración y sesión al aplicar parches
 - **Status**: pending
-- **Files**: `packages/core/application-api/settings.handlers.ts`, `packages/core/session/project-session.service.ts`, `packages/contracts/interfaces/core/project-session.interface.ts`, `tests/application-api/settings.handlers.spec.ts`
+- **Files**: `packages/core/application-api/settings.handlers.ts`, `packages/core/session/project-session.service.ts`, `packages/contracts/interfaces/core/session.interface.ts`, `tests/application-api/settings.handlers.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Cambiar una opción conserva todas las demás."
