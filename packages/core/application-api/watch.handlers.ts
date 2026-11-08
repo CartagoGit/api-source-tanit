@@ -36,6 +36,24 @@ const _sessionCleanups = new Map<string, () => void>();
 const _sinks = new Map<string, LiveEventSink>();
 const _disconnectCleanups = new Map<string, () => void>();
 const _managedWatches = new Map<string, IProjectSession>();
+const _pendingSubscriptions = new Map<string, number>();
+
+function restoreWatchIfUnused(sessionId: string): void {
+  if ((_pendingSubscriptions.get(sessionId) ?? 0) > 0 ||
+      [..._subscriptionSessions.values()].includes(sessionId)) return;
+  const managed = _managedWatches.get(sessionId);
+  if (!managed) return;
+  if (getSession(managed.projectRoot) !== managed) {
+    _managedWatches.delete(sessionId);
+    return;
+  }
+  void managed.configure({ watch: false }).catch(() => undefined).finally(() => {
+    if ((_pendingSubscriptions.get(sessionId) ?? 0) === 0 &&
+        ![..._subscriptionSessions.values()].includes(sessionId) && _managedWatches.get(sessionId) === managed) {
+      _managedWatches.delete(sessionId);
+    }
+  });
+}
 
 function send(subscription: WatchSubscription, event: LiveEvent): void {
   try { _sinks.get(subscription.subscriptionId)?.(event); }
@@ -155,12 +173,7 @@ export function dropSubscriptionById(id: string): boolean {
   if (sessionId && ![..._subscriptionSessions.values()].includes(sessionId)) {
     _sessionCleanups.get(sessionId)?.();
     _sessionCleanups.delete(sessionId);
-    const managed = _managedWatches.get(sessionId);
-    _managedWatches.delete(sessionId);
-    // A closed session rejects configuration; its watcher is already released.
-    if (managed && getSession(managed.projectRoot) === managed) {
-      void managed.configure({ watch: false }).catch(() => undefined);
-    }
+    restoreWatchIfUnused(sessionId);
   }
   return existed;
 }
@@ -170,6 +183,8 @@ export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () =
   const sub = _subscriptions.get(id);
   if (!sub) throw apiError("INVALID_INPUT", "Watch subscription does not exist");
   if (_sinks.has(id)) throw apiError("INVALID_INPUT", "Watch subscription already has a carrier");
+  _disconnectCleanups.get(id)?.();
+  _disconnectCleanups.delete(id);
   _sinks.set(id, sink);
   const session = getSession(sub.projectRoot);
   try { if (session) sink(snapshotEvent(session, sub)); }
@@ -208,19 +223,31 @@ export function createWatchHandlers(): {
           );
         }
         const managesWatch = !session.settings().watch || _managedWatches.has(session.id);
-        // Always queue this behind any cancellation restoring watch=false.
-        await session.configure({ watch: true }, ctx.signal);
         if (managesWatch) _managedWatches.set(session.id, session);
-        const sub = registerSubscription(
-          input.projectRoot,
-          input.onlyPaths ?? null,
-        );
-        if (ctx.emitEvent) _sinks.set(sub.subscriptionId, ctx.emitEvent);
-        if (ctx.onDisconnect) {
-          _disconnectCleanups.set(sub.subscriptionId,
-            ctx.onDisconnect(() => { dropSubscriptionById(sub.subscriptionId); }));
+        _pendingSubscriptions.set(session.id, (_pendingSubscriptions.get(session.id) ?? 0) + 1);
+        try {
+          // Always queue this behind any cancellation restoring watch=false.
+          await session.configure({ watch: true }, ctx.signal);
+          if (ctx.signal?.aborted || getSession(input.projectRoot) !== session) {
+            throw apiError(ctx.signal?.aborted ? "CANCELED" : "SESSION_NOT_FOUND", "Watch session was cancelled");
+          }
+          const sub = registerSubscription(input.projectRoot, input.onlyPaths ?? null);
+          if (ctx.emitEvent) _sinks.set(sub.subscriptionId, ctx.emitEvent);
+          if (ctx.onDisconnect) {
+            const detach = ctx.onDisconnect(() => { dropSubscriptionById(sub.subscriptionId); });
+            if (_subscriptions.has(sub.subscriptionId)) _disconnectCleanups.set(sub.subscriptionId, detach);
+            else detach();
+          }
+          return { subscription: sub };
+        } catch (error) {
+          if (ctx.signal?.aborted) throw apiError("CANCELED", "Watch request cancelled");
+          throw error;
+        } finally {
+          const remaining = (_pendingSubscriptions.get(session.id) ?? 1) - 1;
+          if (remaining > 0) _pendingSubscriptions.set(session.id, remaining);
+          else _pendingSubscriptions.delete(session.id);
+          restoreWatchIfUnused(session.id);
         }
-        return { subscription: sub };
       },
     },
   };

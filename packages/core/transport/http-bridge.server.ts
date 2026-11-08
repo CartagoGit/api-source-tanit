@@ -129,7 +129,11 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
           // Request cancellation and long-lived subscription ownership are separate:
           // event streams observe disconnect and release their own subscription.
           const aborter = new BridgeAbortController();
-          return handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams);
+          const abort = () => aborter.abort();
+          request.signal?.addEventListener("abort", abort, { once: true });
+          if (request.signal?.aborted) abort();
+          try { return await handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams); }
+          finally { request.signal?.removeEventListener("abort", abort); }
         },
       });
       return {
@@ -304,7 +308,7 @@ async function handleFetch(
       );
       continue;
     }
-    frames.push(await dispatchFrame(frame, options, caller, aborter));
+    frames.push(await dispatchFrame(frame, options, caller, aborter, request));
   }
   // One response per request: if the client sent a single envelope
   // (the supported shape), return the single envelope; otherwise
@@ -382,10 +386,16 @@ async function dispatchFrame(
   options: IHttpBridgeOptions,
   caller: "browser" | "desktop" | "cli",
   aborter: BridgeAbortController,
+  request: IServerRequest,
 ): Promise<IJsonRpcResponse> {
   const ctx: IRequestContext = {
     caller,
     signal: aborter.signal,
+    onDisconnect: (dispose) => {
+      request.signal?.addEventListener("abort", dispose, { once: true });
+      if (request.signal?.aborted) dispose();
+      return () => request.signal?.removeEventListener("abort", dispose);
+    },
     ...(options.workspace !== undefined ? { workspace: options.workspace } : {}),
     ...(options.orchestrator !== undefined ? { orchestrator: options.orchestrator } : {}),
   };

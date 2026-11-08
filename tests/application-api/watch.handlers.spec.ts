@@ -8,6 +8,7 @@ import { createCloseHandler } from "../../packages/core/application-api/close.ha
 import { recordHistoryEntry } from "../../packages/core/application-api/history.handlers.js";
 import {
   clearSubscriptions,
+  createWatchHandlers,
   dropSubscriptionById,
   listSubscriptions,
   registerSubscription,
@@ -172,5 +173,29 @@ describe("API controls cancel pending session openings", () => {
     release();
     await expect(opening).rejects.toThrow();
     expect(getSession(root)).toBeNull();
+  });
+});
+
+describe("watch activation ownership", () => {
+  test("cancelling one watch while another is opening preserves the surviving watcher", async () => {
+    const session = await sessionAt();
+    const handler = createWatchHandlers().subscribe;
+    const first = await handler.handle({ projectRoot: root }, { caller: "cli" });
+    const opening = handler.handle({ projectRoot: root }, { caller: "cli" });
+    dropSubscriptionById(first.subscription.subscriptionId);
+    const second = await opening;
+    expect(session.settings().watch).toBe(true);
+    dropSubscriptionById(second.subscription.subscriptionId);
+    await vi.waitFor(() => expect(session.settings().watch).toBe(false));
+  });
+
+  test("an aborted activation leaves no subscription or implicitly enabled watcher", async () => {
+    const session = await sessionAt();
+    const signal = { aborted: false };
+    const opening = createWatchHandlers().subscribe.handle({ projectRoot: root }, { caller: "cli", signal });
+    signal.aborted = true;
+    await expect(opening).rejects.toMatchObject({ code: "CANCELED" });
+    expect(listSubscriptions()).toEqual([]);
+    await vi.waitFor(() => expect(session.settings().watch).toBe(false));
   });
 });
