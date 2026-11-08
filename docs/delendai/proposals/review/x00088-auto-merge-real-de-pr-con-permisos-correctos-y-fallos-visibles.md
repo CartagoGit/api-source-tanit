@@ -2,14 +2,14 @@
 id: x00088
 title: "Auto-merge real de PR con permisos correctos y fallos visibles"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 1e83fb89-9773-4c38-851b-5abc7356363d
-last-correlation-id: 1e83fb89-9773-4c38-851b-5abc7356363d
-last-transition-from: ready
-last-transition-at: 2026-11-08T20:46:51.605Z
+last-transition-id: 1e4d4cad-8aaf-4607-b29f-e924f4425102
+last-correlation-id: 1e4d4cad-8aaf-4607-b29f-e924f4425102
+last-transition-from: in-progress
+last-transition-at: 2026-11-08T20:56:37.602Z
 ---
 
 # x00088 — Auto-merge real de PR con permisos correctos y fallos visibles
@@ -39,6 +39,9 @@ PR116 quedó abierta con todos los checks verdes y autoMergeRequest nulo: el wor
   - "La solicitud usa enablePullRequestAutoMerge con expectedHeadOid y MERGE."
   - "El job falla cuando GitHub rechaza la operación."
   - "Los filtros de autor/borrador y la aprobación posterior a CI se conservan."
+- shipped-in: `75ce8128a77e`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
