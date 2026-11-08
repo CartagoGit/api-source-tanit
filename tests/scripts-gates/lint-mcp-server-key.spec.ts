@@ -64,7 +64,7 @@ describe("el gate ve el drift", () => {
 
   test("dos ficheros que declaran servidores distintos es un problema", () => {
     const problems = serverKeyProblems(
-      [{ file: "x.agent.md", source: "tools: [read, DelendAI:Tanit/*]" }],
+      [{ file: "x.agent.md", source: "tools: [read, delendai:tanit/*]" }],
       ["DelendAI:Tanit"],
       ["delendai"],
     );
@@ -76,7 +76,7 @@ describe("el gate ve el drift", () => {
   test("un grant que sí casa no da problema", () => {
     expect(
       serverKeyProblems(
-        [{ file: "x.agent.md", source: "tools: [read, DelendAI:Tanit/*]" }],
+        [{ file: "x.agent.md", source: "tools: [read, delendai:tanit/*]" }],
         ["DelendAI:Tanit"],
         ["DelendAI:Tanit"],
       ),
@@ -89,6 +89,13 @@ describe("el gate ve el drift", () => {
       ["DelendAI:Tanit"],
       ["DelendAI:Tanit"],
     )).toEqual([]);
+  });
+
+  test("rechaza una etiqueta canónica usada como permiso sin normalizar", () => {
+    expect(serverKeyProblems(
+      [{ file: "x.agent.md", source: "tools: [DelendAI:Tanit/*]" }],
+      ["DelendAI:Tanit"], ["DelendAI:Tanit"],
+    )).toHaveLength(1);
   });
 
   test("un grant con dos puntos a otro proyecto se valida y falla", () => {

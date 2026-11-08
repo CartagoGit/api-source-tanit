@@ -113,7 +113,7 @@ export function serverKeyProblems(
 
   for (const { file, source } of agents) {
     for (const { grant, server } of serverGrants(source)) {
-      if (!known.has(server.toLowerCase().replace(/\s+/g, "-"))) {
+      if (!known.has(server)) {
         problems.push({
           file,
           detail:
