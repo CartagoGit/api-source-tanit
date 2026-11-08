@@ -132,11 +132,11 @@ describe("the dry run does not touch the disk", () => {
   test("planning does not create the output folder", async () => {
     const intacto = join(work, "intacto");
     await copyExampleClean(exampleDir("express"), intacto);
-    await rm(join(intacto, "export-to-postman"), { recursive: true, force: true });
+    await rm(join(intacto, OUTPUT_DIR_NAME), { recursive: true, force: true });
 
     planDryRun({ projectRoot: intacto, result: resultado });
 
-    await expect(readdir(join(intacto, "export-to-postman"))).rejects.toThrow();
+    await expect(readdir(join(intacto, OUTPUT_DIR_NAME))).rejects.toThrow();
   });
 });
 
