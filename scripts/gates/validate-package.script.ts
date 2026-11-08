@@ -192,8 +192,7 @@ async function main(): Promise<number> {
     // 5. Verificar que el tarball trae la documentación.
     //
     // El nombre del paquete se lee del `package.json` raíz. Antes se
-    // hardcodeaba `export-to-postman` y `@export-to-postman/cli` (los
-    // nombres anteriores al rebranding a `api-source-tanit`): el gate
+    // hardcodeaba nombres anteriores al rebranding: el gate
     // empezaba a fallar siempre que se renombraba el proyecto y el
     // mensaje decía `(sin docs/)` aunque el tarball fuese correcto.
     // Auditoría 2026-09-06, sección 2.
