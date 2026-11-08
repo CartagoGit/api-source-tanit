@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "example-django (Postman)",
+    "description": "Colección Postman generada automáticamente para example-django.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "1f2062aa-e93f-51d4-b505-8f7757d953f0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

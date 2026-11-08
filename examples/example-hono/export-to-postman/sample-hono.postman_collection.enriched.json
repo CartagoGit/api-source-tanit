@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-hono (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-hono.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "2cfeaf4a-5357-5913-b251-899550436ed1"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}
