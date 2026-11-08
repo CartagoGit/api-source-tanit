@@ -1,3 +1,4 @@
+import type { IProjectSessionSettings } from "./session.interface.js";
 import type { z, ZodType } from "zod";
 import type {
   BrowseInputSchema,
@@ -203,7 +204,11 @@ export interface ServiceDetailOutput {
 export interface WatchSubscription { readonly subscriptionId: string; readonly projectRoot: string; readonly onlyPaths: ReadonlyArray<string> | null; }
 export interface WatchOutput { readonly subscription: WatchSubscription; }
 export interface CancelOutput { readonly cancelled: number; }
-export interface SettingsOutput { readonly applied: Readonly<Record<string, unknown>>; }
+export interface SettingsOutput {
+  readonly applied: Readonly<Record<string, unknown>>;
+  readonly sessionId: string;
+  readonly settings: IProjectSessionSettings;
+}
 export interface ListProjectsOutput { readonly projects: ReadonlyArray<IProjectEntry>; }
 export interface BrowseOutput { readonly listing: IBrowseListing; }
 export interface CloseOutput { readonly closed: number; }
