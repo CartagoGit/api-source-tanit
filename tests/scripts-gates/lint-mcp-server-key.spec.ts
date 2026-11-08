@@ -83,6 +83,14 @@ describe("el gate ve el drift", () => {
     ).toEqual([]);
   });
 
+  test("VS Code deriva una referencia en minúsculas de la etiqueta canónica", () => {
+    expect(serverKeyProblems(
+      [{ file: "x.agent.md", source: "tools: [read, delendai:tanit/*]" }],
+      ["DelendAI:Tanit"],
+      ["DelendAI:Tanit"],
+    )).toEqual([]);
+  });
+
   test("un grant con dos puntos a otro proyecto se valida y falla", () => {
     const problems = serverKeyProblems(
       [{ file: "x.agent.md", source: 'tools: [read, "DelendAI:Other/*"]' }],

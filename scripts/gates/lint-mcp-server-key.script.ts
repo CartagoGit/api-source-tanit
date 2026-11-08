@@ -109,11 +109,11 @@ export function serverKeyProblems(
   vscodeServers: readonly string[],
 ): IProblem[] {
   const problems: IProblem[] = [];
-  const known = new Set(rootServers);
+  const known = new Set(rootServers.map((name) => name.toLowerCase().replace(/\s+/g, "-")));
 
   for (const { file, source } of agents) {
     for (const { grant, server } of serverGrants(source)) {
-      if (!known.has(server)) {
+      if (!known.has(server.toLowerCase().replace(/\s+/g, "-"))) {
         problems.push({
           file,
           detail:

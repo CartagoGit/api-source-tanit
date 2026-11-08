@@ -291,7 +291,7 @@ y que los dos ficheros de configuración declaran los mismos.
 La identidad de proyecto sigue la convención `DelendAI:{proyecto}`.
 `DelendAI:Tanit` identifica el registro del cliente; el servidor mantiene
 su namespace MCP y sus nombres de herramientas. Los grants incluyen la
-clave completa entre comillas: `"DelendAI:Tanit/*"`. El gate reconoce
+referencia normalizada del host: `delendai:tanit/*`. El gate reconoce
 los dos puntos y comprueba también los grants a otros proyectos.
 
 El comando `delendai` debe estar instalado en el PATH del host. Se usa
@@ -381,7 +381,7 @@ agent does **not** pick up additional permissions at runtime.
 Los permisos efectivos viven en los cinco archivos de `.github/agents/`:
 orchestrator, proposal_guardian, implementation_runner, delivery_verifier y
 technical_investigator. Todos conceden acceso al servidor del proyecto con
-`"DelendAI:Tanit/*"`; las herramientas disponibles se consultan en el
+`delendai:tanit/*`; las herramientas disponibles se consultan en el
 catálogo vivo del servidor. No se mantiene aquí una segunda lista de tools.
 
 ---

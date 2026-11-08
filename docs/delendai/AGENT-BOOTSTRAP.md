@@ -251,8 +251,8 @@ A new field:
 
 The canonical project registration is **`DelendAI:Tanit`**, following
 `DelendAI:{project}`. `.mcp.json` is the source for client configuration;
-`bun run mcp:sync` derives `.vscode/mcp.json`. Agent permission grants use
-`"DelendAI:Tanit/*"`. `bun run lint:mcp-server-key` verifies registration
+`bun run mcp:sync` derives `.vscode/mcp.json`. VS Code derives the lowercase permission reference
+`delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
 and grant agreement, including names containing colons.
 
 The installed `delendai` command launches `__serve` with the workspace and
