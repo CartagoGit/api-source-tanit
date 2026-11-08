@@ -118,7 +118,7 @@ export function serverKeyProblems(
           file,
           detail:
             `concede "${grant}", pero no hay ningún servidor "${server}" registrado ` +
-            `en .mcp.json (hay: ${known.size === 0 ? "ninguno" : [...known].join(", ")}). ` +
+            `en .mcp.json (hay: ${known.size === 0 ? "ninguno" : rootServers.join(", ")}). ` +
             `Un grant que no casa con ninguna clave deja al agente sin sus tools MCP, ` +
             `y nada lo dice.`,
         });

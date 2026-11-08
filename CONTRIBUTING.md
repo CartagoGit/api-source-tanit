@@ -278,7 +278,7 @@ dos ficheros parseen en estricto.
 
 El servidor se registra con la clave **`DelendAI:Tanit`**, y esa clave
 no es decorativa: es la que **cualifica los nombres de las tools**. Un
-`.agent.md` que concede `tools: [read, DelendAI:Tanit/*]` pide las
+`.agent.md` que concede `tools: [read, delendai:tanit/*]` pide las
 tools del servidor llamado `DelendAI:Tanit`.
 
 Por eso los grants y la clave no pueden separarse: si renuevas la
