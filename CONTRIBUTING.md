@@ -54,7 +54,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 feat: orchestrator agent routes requests to 4 bounded subagents
 
 Implements p00005 S0 + p00012. The new agent at
-.github/agents/export-to-postman-orchestrator.agent.md never
+.github/agents/api-source-tanit-orchestrator.agent.md never
 invokes postman_exporter_* tools directly — that lane belongs
 to the bounded subagents. It owns the state machine and the
 memory_save + proposals_close_slice close-out.
@@ -76,7 +76,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin delendai export-to-postman + config local   ← wrong prefix style
+[FEAT] Plugin delendai api-source-tanit + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -274,12 +274,12 @@ intentarlo, en bucle. JSON estricto es un subconjunto de JSONC: un
 fichero sin comentarios lo lee todo el mundo. `lint:mcp` vigila que los
 dos ficheros parseen en estricto.
 
-### El nombre del servidor: `delendai-tanit`
+### El nombre del servidor: `DelendAI:Tanit`
 
-El servidor se registra con la clave **`delendai-tanit`**, y esa clave
+El servidor se registra con la clave **`DelendAI:Tanit`**, y esa clave
 no es decorativa: es la que **cualifica los nombres de las tools**. Un
-`.agent.md` que concede `tools: [read, delendai-tanit/*]` pide las
-tools del servidor llamado `delendai-tanit`.
+`.agent.md` que concede `tools: [read, delendai:tanit/*]` pide las
+tools del servidor llamado `DelendAI:Tanit`.
 
 Por eso los grants y la clave no pueden separarse: si renuevas la
 clave y no los grants, el agente sigue arrancando y lo único que pasa
@@ -288,10 +288,16 @@ es que **se queda sin tools MCP**, sin que nada lo diga. El gate
 comprueba que todo grant nombra un servidor registrado en `.mcp.json`,
 y que los dos ficheros de configuración declaran los mismos.
 
-Un `:` en la clave no vale: el editor compone el identificador de cada
-tool como `mcp_<servidor>_<tool>`, y el nombre de una tool MCP está
-limitado a `^[a-zA-Z0-9_-]{1,64}$`. DelendAI usa `mcp-project-<ns>`
-para sus propios servidores de proyecto; aquí, `delendai-tanit`.
+La identidad de proyecto sigue la convención `DelendAI:{proyecto}`.
+`DelendAI:Tanit` identifica el registro del cliente; el servidor mantiene
+su namespace MCP y sus nombres de herramientas. Los grants incluyen la
+referencia normalizada del host: `delendai:tanit/*`. El gate reconoce
+los dos puntos y comprueba también los grants a otros proyectos.
+
+El comando `delendai` debe estar instalado en el PATH del host. Se usa
+`__serve --workspace=. --config=./delendai.config.json`, sin fijar una
+rama del host ni una ruta a un checkout vecino. La configuración de
+VS Code fija su cwd y expande las rutas desde `${workspaceFolder}`.
 
 ### Dónde escribe la herramienta
 
@@ -372,16 +378,11 @@ The 5 agents in `.github/agents/` each declare **only the tools they
 need** in the `tools:` permission list. The list is exhaustive — the
 agent does **not** pick up additional permissions at runtime.
 
-| Agent | File | Tools |
-| --- | --- | --- |
-| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, delendai/delendai_overview, delendai/delendai_agent_catalog, delendai/delendai_proposals_proposal_board, delendai/delendai_proposals_close_slice, delendai/delendai_memory_save` |
-| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_tanit_summary` |
-| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_generate, delendai/delendai_tanit_summary` |
-| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_tanit_validate` |
-| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_test` |
-
-When adding a new tool a lane needs, **add it to that agent's `tools:`
-list** — do **not** widen to `delendai/*`.
+Los permisos efectivos viven en los cinco archivos de `.github/agents/`:
+orchestrator, proposal_guardian, implementation_runner, delivery_verifier y
+technical_investigator. Todos conceden acceso al servidor del proyecto con
+`delendai:tanit/*`; las herramientas disponibles se consultan en el
+catálogo vivo del servidor. No se mantiene aquí una segunda lista de tools.
 
 ---
 
@@ -536,7 +537,7 @@ title: "<short title>"
 kind: feat | fix | refactor | perf | test | docs | chore
 status: ready | in-progress | review | done | paused | blocked | retired | legacy
 type: proposal
-track: export-to-postman
+track: api-source-tanit
 date: <YYYY-MM-DD>
 related:
     - <sha or proposal id>

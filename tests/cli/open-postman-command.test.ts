@@ -1,128 +1,91 @@
-/**
- * `open-postman.script.ts` — `main()` in-process.
- *
- * `open` opens the generated collection in the Postman desktop app or
- * the web importer. The desktop branch spawns a process (`xdg-open`,
- * `open -a`, `cmd /c start`); we deliberately do **not** exercise
- * that here, because CI has no display and no Postman installed.
- *
- * What we cover is the deterministic surface:
- *
- *   - `--web` opens the web importer and returns 0.
- *   - "No collection": prints an actionable error and returns 1.
- *   - `--file <path>` uses the explicit path even when discovery
- *     fails; this is the contract used by the `writing-commands`
- *     spec for `--open`.
- *
- * The dispatcher branches (`darwin`, `win32`, `linux`) are not
- * exercised individually; their non-determinism (process spawn) does
- * not belong in a unit spec.
- */
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { ChildProcess, spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { main, launchDetached } from "../../packages/cli/commands/open-postman.script";
+import { OPEN_LAUNCH_GRACE_MS } from "../../packages/contracts/constants/cli/open-postman.constant";
 
-import { main } from "../../packages/cli/commands/open-postman.script";
-import { runGenerate } from "../../packages/cli/commands/generate.script";
-import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
-import { copyExampleClean } from "../helpers/fixtures";
-import { exampleDir } from "../../scripts/helpers/root.helper";
+vi.mock("node:child_process", async (importOriginal) => ({
+  ...await importOriginal<typeof import("node:child_process")>(),
+  spawn: vi.fn(),
+}));
 
 let work = "";
-
+let file = "";
 beforeAll(async () => {
-  work = await mkdtemp(join(tmpdir(), "open-cmd-"));
-}, 60_000);
-
-afterAll(async () => {
-  if (work) await rm(work, { recursive: true, force: true });
+  work = await mkdtemp(join(tmpdir(), "tanit-open-cmd-"));
+  file = join(work, "custom collection.json");
+  await writeFile(file, JSON.stringify({ info: { name: "test" } }));
 });
+afterAll(async () => { await rm(work, { recursive: true, force: true }); });
+beforeEach(() => { vi.mocked(spawn).mockReset(); });
+afterEach(() => { vi.useRealTimers(); });
 
-async function generatedProject(name: string): Promise<string> {
-  const root = join(work, name);
-  await copyExampleClean(exampleDir("express"), root);
-  const out = await runGenerate(["--project-root", root]);
-  expect(out.code, "runGenerate must succeed").toBe(0);
-  return root;
-}
+const args = () => ["--project-root", work, "--file", file];
 
-async function withArgv<T>(
-  args: ReadonlyArray<string>,
-  fn: () => Promise<T>,
-): Promise<T> {
-  const saved = [...process.argv];
-  try {
-    process.argv = ["node", "open-postman.script.ts", ...args];
-    return await fn();
-  } finally {
-    process.argv = saved;
-  }
-}
+describe("artifact opening", () => {
+  test("releases a still-running detached application after its launch grace", async () => {
+    vi.useFakeTimers();
+    const child = new ChildProcess();
+    const unref = vi.spyOn(child, "unref").mockImplementation(() => {});
+    vi.mocked(spawn).mockImplementationOnce(() => {
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    });
+    const opening = launchDetached("xdg-open", [file]);
+    await vi.advanceTimersByTimeAsync(OPEN_LAUNCH_GRACE_MS);
+    expect(await opening).toBe(true);
+    expect(spawn).toHaveBeenCalledWith("xdg-open", [file], { detached: true, stdio: "ignore" });
+    expect(unref).toHaveBeenCalledOnce();
 
-describe("open-postman — main()", () => {
-  test("--web returns 0 and prints the web importer URL", async () => {
-    const root = await generatedProject("web");
-    const logs: string[] = [];
-    const saved = console.log;
-    console.log = (...values: ReadonlyArray<unknown>): void => {
-      for (const v of values) logs.push(String(v));
-    };
-    try {
-      const code = await withArgv(
-        ["--project-root", root, "--web"],
-        () => main(),
-      );
-      expect(code).toBe(0);
-    } finally {
-      console.log = saved;
-    }
-    expect(logs.join("\n")).toContain("https://app.postman.com/import");
   });
 
-  test("returns 1 when the collection does not exist", async () => {
-    const root = join(work, "no-collection");
-    await copyExampleClean(exampleDir("express"), root);
-    await rm(join(root, OUTPUT_DIR_NAME), { recursive: true, force: true });
-    const code = await withArgv(["--project-root", root], () => main());
-    expect(code).toBe(1);
+  test("an immediate nonzero launcher exit triggers the real fallback", async () => {
+    vi.mocked(spawn).mockImplementation((command) => {
+      const child = new ChildProcess();
+      vi.spyOn(child, "unref").mockImplementation(() => {});
+      queueMicrotask(() => {
+        child.emit("spawn");
+        child.emit("exit", command === "xdg-open" ? 1 : 0);
+      });
+      return child;
+    });
+    expect(await main(args(), { platform: "linux" })).toBe(0);
+    expect(spawn).toHaveBeenNthCalledWith(2, "gio", ["open", file], { detached: true, stdio: "ignore" });
   });
 
-  test("--file <path> uses the explicit path even without discovery", async () => {
-    const root = join(work, "explicit-file");
-    await copyExampleClean(exampleDir("express"), root);
-    const explicitFile = join(root, "my-collection.json");
-    await writeFile(explicitFile, JSON.stringify({ info: { name: "x" } }));
-    const code = await withArgv(
-      ["--project-root", root, "--web", "--file", explicitFile],
-      () => main(),
-    );
-    expect(code).toBe(0);
+  test("a failed executable falls back to the next Linux launcher", async () => {
+    const launch = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    expect(await main(args(), { platform: "linux", launch })).toBe(0);
+    expect(launch.mock.calls).toEqual([["xdg-open", [file]], ["gio", ["open", file]]]);
   });
 
-  test("non-web branch prints the path being opened", async () => {
-    // The non-`--web` branch in `main()` prints the path it is
-    // about to open and then attempts `xdg-open` / `gio open` /
-    // `open` / the web importer fallback depending on the
-    // platform. We pin the output rather than the exit code
-    // because the CI environment may or may not have a desktop
-    // helper installed.
-    const root = await generatedProject("linux-fallback");
-    const logs: string[] = [];
-    const saved = console.log;
-    console.log = (...values: ReadonlyArray<unknown>): void => {
-      for (const v of values) logs.push(String(v));
-    };
-    try {
-      const code = await withArgv(
-        ["--project-root", root],
-        () => main(),
-      );
-      expect([0, 1]).toContain(code);
-    } finally {
-      console.log = saved;
-    }
-    expect(logs.join("\n")).toContain("Opening Postman with:");
-    expect(logs.join("\n")).toContain("Platform:");
+  test("web mode uses the importer directly", async () => {
+    const launch = vi.fn().mockResolvedValue(true);
+    expect(await main([...args(), "--web"], { platform: "darwin", launch })).toBe(0);
+    expect(launch).toHaveBeenCalledWith("open", ["https://app.postman.com/import"]);
+    expect(launch).toHaveBeenCalledOnce();
+  });
+
+  test.each(["darwin", "win32", "linux"])("%s reports failure after every launcher fails", async (platform) => {
+    const launch = vi.fn().mockResolvedValue(false);
+    expect(await main(args(), { platform, launch })).toBe(1);
+    expect(launch.mock.calls.at(-1)?.[1]).toContain("https://app.postman.com/import");
+  });
+
+  test("an asynchronous spawn error is handled and all failed launches return 1", async () => {
+    vi.mocked(spawn).mockImplementation(() => {
+      const child = new ChildProcess();
+      queueMicrotask(() => child.emit("error", new Error("ENOENT")));
+      return child;
+    });
+    expect(await main([...args(), "--web"], { platform: "linux" })).toBe(1);
+  });
+
+  test("a missing collection does not launch anything", async () => {
+    const launch = vi.fn();
+    expect(await main(["--project-root", work, "--file", join(work, "missing.json")], { launch })).toBe(1);
+    expect(launch).not.toHaveBeenCalled();
   });
 });
