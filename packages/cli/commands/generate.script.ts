@@ -633,7 +633,7 @@ export async function runGenerate(
     // process is the correct version: same exit code, no spawn, no
     // globals.
     humanLog("\n→ --open: launching open-postman…");
-    const exit = await runOpenPostman();
+    const exit = await runOpenPostman([...args, "--file", OUTPUT_PATH], { context: resolvedContext });
     if (exit !== 0) {
       humanErr("✘ open-postman.script.ts falló.");
       return { code: exit, report: null };

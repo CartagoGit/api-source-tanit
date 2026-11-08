@@ -251,10 +251,17 @@ declare module "node:child_process" {
   export interface ChildStream {
     on(event: "data", listener: (chunk: Uint8Array) => void): ChildStream;
   }
-  export interface ChildProcess {
+  export class ChildProcess {
     readonly stdout: ChildStream | null;
     readonly stderr: ChildStream | null;
     kill(signal?: string): boolean;
+    unref(): void;
+    once(event: "spawn", listener: () => void): ChildProcess;
+    once(event: "exit", listener: (code: number | null) => void): ChildProcess;
+    once(event: "error", listener: (error: Error) => void): ChildProcess;
+    emit(event: "spawn"): boolean;
+    emit(event: "exit", code: number | null): boolean;
+    emit(event: "error", error: Error): boolean;
     on(event: "exit", listener: (code: number | null) => void): ChildProcess;
     on(event: "close", listener: (code: number | null) => void): ChildProcess;
     on(event: "error", listener: (error: Error) => void): ChildProcess;
@@ -274,6 +281,7 @@ declare module "node:child_process" {
     options?: {
       /** Global, o por descriptor (`["ignore", "pipe", "pipe"]`). */
       stdio?: "inherit" | "pipe" | "ignore" | Array<"inherit" | "pipe" | "ignore">;
+      detached?: boolean;
       cwd?: string;
       env?: Record<string, string | undefined>;
       shell?: boolean | string;

@@ -100,11 +100,6 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   // pero viven aquí para conveniencia del usuario.
   { path: "integrations", reason: "Integraciones opcionales con hosts MCP (x00041)" },
 
-  // Salida de `validate:examples` sobre `example-app`. Se commitea como
-  // artefacto de referencia para que el usuario vea qué produce el CLI
-  // sin tener que ejecutarlo.
-  { path: "export-to-postman", reason: "Salida de generate sobre example-app" },
-
   // Configuración del host MCP y del repo.
   { path: "delendai.config.json", reason: "Config del host MCP Delendai" },
   // Decisiones de reconciliación del host, versionadas. El runtime las
