@@ -52,7 +52,7 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
 
       const destination = resolveExportDestination(snap, input.outputDirectory, input.outputPath);
       const written = await writeExport(
-        snap, input.target, destination.directory, destination.outputPath,
+        snap, input.target, input.outputDirectory, input.outputPath,
       );
 
       // The export is a point in time, and the history remembers it.
