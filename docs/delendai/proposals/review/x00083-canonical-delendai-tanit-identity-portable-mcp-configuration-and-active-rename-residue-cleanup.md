@@ -6,10 +6,10 @@ status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 8a4c65b2-7e97-4cfd-8929-9c28e55816f2
-last-correlation-id: 8a4c65b2-7e97-4cfd-8929-9c28e55816f2
+last-transition-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
+last-correlation-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
 last-transition-from: in-progress
-last-transition-at: 2026-11-08T13:31:36.080Z
+last-transition-at: 2026-11-08T13:45:30.217Z
 ---
 
 # x00083 — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup

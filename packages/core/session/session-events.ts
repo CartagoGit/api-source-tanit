@@ -10,4 +10,5 @@ export type {
   SessionEventPayload,
   SnapshotReadyEvent,
   SnapshotStaleEvent,
+  SessionClosedEvent,
 } from "../../contracts/interfaces/core/session.interface.js";

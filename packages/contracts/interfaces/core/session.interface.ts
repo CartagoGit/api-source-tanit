@@ -18,9 +18,16 @@ export interface SnapshotStaleEvent {
   readonly changedPaths: ReadonlyArray<string>;
 }
 
+/** Emitted once when the session releases its resources and identity. */
+export interface SessionClosedEvent {
+  readonly sessionId: string;
+  readonly projectRoot: string;
+}
+
 export interface ISessionEventMap {
   "snapshot-ready": SnapshotReadyEvent;
   "snapshot-stale": SnapshotStaleEvent;
+  "session-closed": SessionClosedEvent;
 }
 
 export type SessionEventName = keyof ISessionEventMap;
@@ -37,10 +44,20 @@ export interface IProjectSessionOptions {
   readonly watchDebounceMs?: number;
 }
 
+/** Serializable effective session settings shared by every presentation adapter. */
+export interface IProjectSessionSettings extends
+  Required<Pick<IProjectSessionOptions, "watch" | "watchDebounceMs">>,
+  Pick<IGenerationOptions, "collectionName"> {}
+
 export interface IProjectSession {
   readonly id: string;
   readonly projectRoot: string;
   current(): IProjectSnapshot;
+  settings(): IProjectSessionSettings;
+  configure(
+    patch: Partial<IProjectSessionSettings>,
+    signal?: IProjectSessionOptions["signal"],
+  ): Promise<IProjectSessionSettings>;
   on<K extends SessionEventName>(
     event: K,
     handler: (payload: SessionEventPayload<K>) => void,
