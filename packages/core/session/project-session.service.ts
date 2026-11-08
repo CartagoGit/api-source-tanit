@@ -33,7 +33,7 @@ import type { SessionEventName, SessionEventPayload } from "./session-events.js"
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 export type { IProjectSessionOptions, IProjectSession } from "../../contracts/interfaces/core/session.interface.js";
-import type { IProjectSession, IProjectSessionOptions } from "../../contracts/interfaces/core/session.interface.js";
+import type { IProjectSession, IProjectSessionOptions, IProjectSessionSettings } from "../../contracts/interfaces/core/session.interface.js";
 
 type EventHandler<K extends SessionEventName> = (
   payload: SessionEventPayload<K>,
@@ -59,8 +59,12 @@ class ProjectSessionImpl implements IProjectSession {
     SessionEventName,
     Set<EventHandler<SessionEventName>>
   >();
-  private readonly _genOptions: IGenerationOptions;
-  private readonly _watchDebounceMs: number;
+  private _genOptions: IGenerationOptions;
+  private _watchDebounceMs: number;
+
+  private _watchEnabled: boolean;
+  private _configurationRevision = 0;
+  private _settingsQueue: Promise<void> = Promise.resolve();
 
   constructor(
     id: string,
@@ -75,6 +79,7 @@ class ProjectSessionImpl implements IProjectSession {
     this._snapshot = snapshot;
     this._genOptions = genOptions;
     this._watchDebounceMs = watchDebounceMs;
+    this._watchEnabled = watchEnabled;
 
     if (watchEnabled) {
       this._startWatch();
@@ -84,6 +89,69 @@ class ProjectSessionImpl implements IProjectSession {
   current(): IProjectSnapshot {
     if (this._closed) throw new SessionClosedError(this.id);
     return this._snapshot!;
+  }
+
+  settings(): IProjectSessionSettings {
+    if (this._closed) throw new SessionClosedError(this.id);
+    return Object.freeze({
+      ...(this._genOptions.collectionName === undefined
+        ? {} : { collectionName: this._genOptions.collectionName }),
+      watch: this._watchEnabled,
+      watchDebounceMs: this._watchDebounceMs,
+    });
+  }
+
+  configure(
+    patch: Partial<IProjectSessionSettings>,
+    signal?: IProjectSessionOptions["signal"],
+  ): Promise<IProjectSessionSettings> {
+    const pending = this._settingsQueue.then(() => this._configure(patch, signal));
+    // A failed change must not poison later settings requests.
+    this._settingsQueue = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+
+  private async _configure(
+    patch: Partial<IProjectSessionSettings>,
+    signal: IProjectSessionOptions["signal"],
+  ): Promise<IProjectSessionSettings> {
+    if (this._closed) throw new SessionClosedError(this.id);
+    if (signal?.aborted) throw new SessionAbortedError(this.id);
+    const generationOptions = {
+      ...this._genOptions,
+      ...(patch.collectionName === undefined ? {} : { collectionName: patch.collectionName }),
+    };
+    const generationChanged = patch.collectionName !== undefined &&
+      patch.collectionName !== this._genOptions.collectionName;
+    const nextSnapshot = generationChanged
+      ? makeSnapshot({
+        sessionId: this.id,
+        projectRoot: this.projectRoot,
+        results: await generateCollections(this.projectRoot, generationOptions),
+        diagnostics: [],
+      })
+      : this.current();
+    // Commit only after the candidate is complete and the request is still live.
+    if (this._closed) throw new SessionClosedError(this.id);
+    if (signal?.aborted) throw new SessionAbortedError(this.id);
+    const watchEnabled = patch.watch ?? this._watchEnabled;
+    const watchChanged = watchEnabled !== this._watchEnabled;
+    this._genOptions = generationOptions;
+    this._snapshot = nextSnapshot;
+    this._watchEnabled = watchEnabled;
+    this._watchDebounceMs = patch.watchDebounceMs ?? this._watchDebounceMs;
+    if (generationChanged || (watchChanged && !watchEnabled)) {
+      this._configurationRevision++;
+      if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+    if (watchChanged) {
+      this._watcher?.close();
+      this._watcher = null;
+      if (watchEnabled) this._startWatch();
+    }
+    if (generationChanged) this._emit("snapshot-ready", { snapshot: nextSnapshot });
+    return this.settings();
   }
 
   on<K extends SessionEventName>(event: K, handler: EventHandler<K>): void {
@@ -141,11 +209,13 @@ class ProjectSessionImpl implements IProjectSession {
     this._debounceTimer = setTimeout(async () => {
       this._debounceTimer = null;
       if (this._closed) return;
+      const revision = this._configurationRevision;
       try {
         const results = await generateCollections(
           this.projectRoot,
           this._genOptions,
         );
+        if (this._closed || revision !== this._configurationRevision) return;
         this._snapshot = makeSnapshot({
           sessionId: this.id,
           projectRoot: this.projectRoot,
