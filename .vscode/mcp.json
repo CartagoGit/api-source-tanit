@@ -1,14 +1,14 @@
 {
   "servers": {
-    "delendai-tanit": {
+    "DelendAI:Tanit": {
       "type": "stdio",
-      "command": "bun",
+      "command": "delendai",
       "args": [
-        "../delendai/tools/scripts/host/host-server.script.ts",
+        "__serve",
         "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json",
-        "--branch=main"
-      ]
+        "--config=${workspaceFolder}/delendai.config.json"
+      ],
+      "cwd": "${workspaceFolder}"
     }
   }
 }

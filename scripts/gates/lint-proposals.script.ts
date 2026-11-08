@@ -169,6 +169,19 @@ function parseSliceStatuses(bodyAfter: string): string[] {
   return out;
 }
 
+/** Reject unterminated metadata before the body can masquerade as YAML. */
+export function frontmatterProblem(source: string): string | null {
+  const lines = source.split(/\r?\n/);
+  if (lines[0] !== "---") return "falta el delimitador inicial del frontmatter";
+  for (const line of lines.slice(1)) {
+    if (line === "---") return null;
+    if (/^#{1,6}\s/.test(line)) {
+      return "falta el delimitador de cierre del frontmatter antes del cuerpo";
+    }
+  }
+  return "falta el delimitador de cierre del frontmatter";
+}
+
 async function collectProposals(dir: string): Promise<IProposal[]> {
   const out: IProposal[] = [];
   let entries: Array<{ name: string; isDirectory(): boolean }>;
@@ -364,6 +377,8 @@ export async function main(): Promise<number> {
 
   for (const proposal of proposals) {
     const rel = relative(REPO_ROOT, proposal.path);
+    const metadataProblem = frontmatterProblem(proposal.body);
+    if (metadataProblem !== null) problems.push(`${rel}: ${metadataProblem}`);
 
     if (!proposal.id) {
       problems.push(`${rel}: falta \`id\` en el frontmatter`);

@@ -12,9 +12,9 @@ import {
 const AGENTS_DIR = fromRoot(".github", "agents");
 
 describe("la clave del servidor MCP y los grants de los agentes", () => {
-  test("`.mcp.json` declara el servidor con la clave `delendai-tanit`", async () => {
+  test("`.mcp.json` declara el servidor con la clave `DelendAI:Tanit`", async () => {
     const raw = await readFile(fromRoot(".mcp.json"), "utf8");
-    expect(declaredServers(raw)).toEqual(["delendai-tanit"]);
+    expect(declaredServers(raw)).toEqual(["DelendAI:Tanit"]);
   });
 
   test("`.vscode/mcp.json` declara los mismos servidores que `.mcp.json`", async () => {
@@ -54,33 +54,43 @@ describe("el gate ve el drift", () => {
   test("un grant a un servidor que no existe es un problema, y lo nombra", () => {
     const problems = serverKeyProblems(
       [{ file: "x.agent.md", source: "tools: [read, delendai/*]" }],
-      ["delendai-tanit"],
-      ["delendai-tanit"],
+      ["DelendAI:Tanit"],
+      ["DelendAI:Tanit"],
     );
     expect(problems).toHaveLength(1);
     expect(problems[0]?.detail).toContain("delendai/*");
-    expect(problems[0]?.detail).toContain("delendai-tanit");
+    expect(problems[0]?.detail).toContain("DelendAI:Tanit");
   });
 
   test("dos ficheros que declaran servidores distintos es un problema", () => {
     const problems = serverKeyProblems(
-      [{ file: "x.agent.md", source: "tools: [read, delendai-tanit/*]" }],
-      ["delendai-tanit"],
+      [{ file: "x.agent.md", source: "tools: [read, DelendAI:Tanit/*]" }],
+      ["DelendAI:Tanit"],
       ["delendai"],
     );
     expect(problems).toHaveLength(2);
-    expect(problems[0]?.detail).toContain("delendai-tanit");
+    expect(problems[0]?.detail).toContain("DelendAI:Tanit");
     expect(problems[1]?.detail).toContain("delendai");
   });
 
   test("un grant que sí casa no da problema", () => {
     expect(
       serverKeyProblems(
-        [{ file: "x.agent.md", source: "tools: [read, delendai-tanit/*]" }],
-        ["delendai-tanit"],
-        ["delendai-tanit"],
+        [{ file: "x.agent.md", source: "tools: [read, DelendAI:Tanit/*]" }],
+        ["DelendAI:Tanit"],
+        ["DelendAI:Tanit"],
       ),
     ).toEqual([]);
+  });
+
+  test("un grant con dos puntos a otro proyecto se valida y falla", () => {
+    const problems = serverKeyProblems(
+      [{ file: "x.agent.md", source: 'tools: [read, "DelendAI:Other/*"]' }],
+      ["DelendAI:Tanit"],
+      ["DelendAI:Tanit"],
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.detail).toContain("DelendAI:Other/*");
   });
 
   test("una tool suelta no se confunde con un grant de servidor", () => {
@@ -88,8 +98,8 @@ describe("el gate ve el drift", () => {
   });
 
   test("el grant se lee con o sin comillas", () => {
-    expect(serverGrants('tools: ["delendai-tanit/*"]')).toEqual([
-      { grant: "delendai-tanit/*", server: "delendai-tanit" },
+    expect(serverGrants('tools: ["DelendAI:Tanit/*"]')).toEqual([
+      { grant: "DelendAI:Tanit/*", server: "DelendAI:Tanit" },
     ]);
   });
 });

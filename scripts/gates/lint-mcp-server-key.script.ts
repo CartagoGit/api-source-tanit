@@ -11,7 +11,7 @@
  * que **el agente se queda sin tools MCP**.
  *
  * Eso es exactamente lo que pasó al renombrar el servidor a
- * `delendai-tanit`: los cinco `.agent.md` pedían `delendai/*`, y no
+ * `DelendAI:Tanit`: los cinco `.agent.md` pedían `delendai/*`, y no
  * había ningún gate que lo dijera. El síntoma —un subagente que no
  * encuentra `delendai_proposals_*`— no señala la causa.
  *
@@ -55,7 +55,7 @@ interface IProblem {
  * lleva la barra y el asterisco. El nombre del servidor es lo que va
  * antes de la barra.
  */
-const GRANT_DE_SERVIDOR = /^([A-Za-z0-9_-]+)\/\*$/;
+const GRANT_DE_SERVIDOR = /^([A-Za-z0-9_:-]+)\/\*$/;
 
 /** La línea `tools:` de un `.agent.md`. */
 const LINEA_TOOLS = /^tools:\s*\[(.*)\]\s*$/;
@@ -78,7 +78,7 @@ export function declaredServers(source: string): string[] {
 /**
  * Los grants que nombran un servidor, tal y como están escritos.
  *
- * Se devuelve el grant entero (`delendai-tanit/*`) y el nombre del
+ * Se devuelve el grant entero (`DelendAI:Tanit/*`) y el nombre del
  * servidor, porque el motivo del fallo tiene que decir las dos
  * cosas: qué se pidió y cuál era el bueno.
  */

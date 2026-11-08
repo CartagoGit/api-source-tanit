@@ -1,4 +1,4 @@
-# Project-specific agent bootstrap — `@export-to-postman/core`
+# Project-specific agent bootstrap — `api-source-tanit`
 
 > **This file is the project-specific extension of**
 > [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md)
@@ -7,7 +7,7 @@
 >
 > **Read order**: read the universal bootstrap first, then this file.
 > The universal bootstrap defines the agent contract; this file adds
-> the export-to-postman-specific shapes, naming, and rules.
+> the Tanit-specific shapes, naming, and rules.
 >
 > **Conflict policy**: where this file and the universal bootstrap
 > disagree, **the universal bootstrap wins**, except for the rules
@@ -20,13 +20,10 @@
 > `.claude/agents/*.md`) points here, **not** to the universal
 > bootstrap directly, and **never** to a path outside this repository.
 >
-**Agnostic / portable rule:** do not require a sibling checkout of
-`delendai` for consumers. Local absolute paths under a developer's
-machine are forbidden in committed docs and configs. While the
-`@delendai/cli` package is not published, this repository may use the
-relative sibling host in `.mcp.json` and `.vscode/mcp.json` for local MCP
-development. Once the package is published, the published CLI form can
-replace that local configuration.
+**Agnostic / portable rule:** Tanit runs without DelendAI. Its optional
+integration lives in `integrations/delendai/`; product code must not import
+it. MCP clients launch an installed `delendai` executable from PATH. No
+committed launch configuration requires a sibling checkout or a machine path.
 
 ---
 
@@ -71,7 +68,7 @@ If any of those rules ever feels wrong for this project, edit this
 file (§3 below) and explicitly mark the change as a **project
 override**. Do not edit them silently.
 
-## 3. Project overrides and additions — export-to-postman
+## 3. Project overrides and additions — Tanit
 
 These rules apply **only** in this workspace. They extend or replace
 the corresponding universal rule on purpose. Each override cites the
@@ -179,7 +176,7 @@ The `^3.x` standard API (`~standard`, `~validate`) is required by
 
 ### 3.4 Agents — no bespoke agents, **project override** of universal §6
 
-**Do not add bespoke agents** (e.g. `export-to-postman-builder`)
+**Do not add bespoke agents** (e.g. `tanit-builder`)
 under `.github/agents/` or `.claude/agents/`. The 5 canonical agents
 (orchestrator + proposal_guardian + implementation_runner +
 delivery_verifier + technical_investigator) are the only ones this
@@ -239,8 +236,8 @@ being needed. See [`packages/contracts/README.md`](../../packages/contracts/READ
 ### 3.6 Plugin options
 
 Plugin options live at
-`delendai.config.json#plugins.export-to-postman.options` and are
-parsed by `ExportToPostmanOptionsSchema` in
+`delendai.config.json#plugins.tanit.options` and are
+parsed by `TanitOptionsSchema` in
 `integrations/delendai/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
@@ -250,97 +247,25 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
-### 3.7 MCP server launch — **sibling mientras no haya release**
+### 3.7 MCP server launch and project identity
 
-Mientras `@delendai/cli` no esté publicado en npm (ver `p00007`,
-actualizado a `done` el 2026-09-03), **el flujo oficial** es consumir el
-`@delendai/core` desde el checkout hermano de `delendai` mediante
-enlace `file:` y arrancar el host desde su host-script. Esto no es
-deuda: es la forma soportada hasta que se publique la primera versión
-semver del paquete. Decisión del proyecto.
+The canonical project registration is **`DelendAI:Tanit`**, following
+`DelendAI:{project}`. `.mcp.json` is the source for client configuration;
+`bun run mcp:sync` derives `.vscode/mcp.json`. Agent permission grants use
+`"DelendAI:Tanit/*"`. `bun run lint:mcp-server-key` verifies registration
+and grant agreement, including names containing colons.
 
-**El plugin vive en `integrations/delendai/` y NO es parte del
-producto.** La CI principal (`.github/workflows/validate.yml`) ya no
-lo clona, compila ni enlaza — sólo `integration-delendai.yml` (opt-in,
-manual + semanal) lo valida contra un checkout pinneado de Delendai.
-`x00041` movió la carpeta; `x00045` cerró la CI. La frontera
-producto↔integración se mantiene por reducción, no por configuración
-adicional.
+The installed `delendai` command launches `__serve` with the workspace and
+`delendai.config.json`. It must be available on the host PATH. Contributors
+may install the CLI from a published package or their chosen local checkout;
+this repository does not require a particular checkout location or branch.
 
-**Forma published (referencia futura)** — úsala cuando
-`@delendai/cli` esté en npm:
+The optional integration is private and outside the product dependency graph.
+Only the opt-in integration workflow validates it against DelendAI. The product
+validation and distribution remain independent of it.
 
-```json
-{
-  "servers": {
-    "delendai": {
-      "type": "stdio",
-      "command": "bunx",
-      "args": [
-        "--package",
-        "@delendai/cli",
-        "mcpv",
-        "__serve",
-        "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
-      ]
-    }
-  }
-}
-```
-
-**Forma local actual (mientras `npm view @delendai/core version` siga
-devolviendo 404)** — la práctica oficial y soportada:
-
-```json
-{
-  "servers": {
-    "delendai": {
-      "type": "stdio",
-      "command": "bun",
-      "args": [
-        "run",
-        "../delendai/tools/scripts/host/host-server.script.ts",
-        "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
-      ]
-    }
-  }
-}
-```
-
-Equivalencias:
-
-- `.mcp.json` apunta al `host-server.script.ts` del repo hermano con
-  un path relativo (`../delendai/...`). Nunca absoluto del estilo
-  `/home/<user>/_packages/...`.
-- `.vscode/mcp.json` lo genera `bun run lint:mcp` a partir del
-  anterior y queda en este repo (es `.gitignore`d).
-- El plugin `integrations/delendai/package.json`
-  declara `"@delendai/core": "file:../../../../delendai/packages/core"`.
-  El plugin es `"private": true`, no viaja en el tarball público y
-  por tanto **no rompe la distribución** del CLI aunque el `file:`
-  no resuelva fuera del worktree del desarrollador.
-
-> El path `../delendai/...` se cita dentro de un quote porque vive
-> **fuera de este repositorio** — es el único caso en el que
-> `lint:bootstrap-drift` permite nombrar algo que no existe aquí.
-
-**Migración a la forma published cuando `@delendai/core` se
-publique** (es la reactivación futura de `p00007`):
-
-1. `npm view @delendai/core version` deja de devolver 404.
-2. Cambiar el `file:` por `^<versión>` en
-   `integrations/delendai/package.json`.
-3. `bun install` regenera el lockfile.
-4. Sustituir `.mcp.json` por la forma published.
-5. Archivar la propuesta reabierta como `done`.
-
-Schema reference for `delendai.config.json`: usa el schema que
-embargue el paquete `@delendai/core` instalado (u omite `$schema`
-mientras no exista publicación). No exijas
-`../delendai/packages/core/schema/...`.
-`../delendai/packages/core/schema/...` for third-party clones.
+The identity and active rename audit is tracked in
+[the canonical identity proposal](proposals/in-progress/x00083-canonical-delendai-tanit-identity-portable-mcp-configuration-and-active-rename-residue-cleanup.md).
 
 ### 3.8 Framework scanners — the discovery contract
 
@@ -388,11 +313,19 @@ path. Live tool/skill/proposal catalogs come from the MCP server
 (`delendai_overview` / `delendai_agent_catalog`), never from a
 sibling-repo generated markdown file.
 
+### 3.10 Shared data and follow-up audit
+
+The [2026-11-08 audit](AUDIT-2026-11-08.md) records the current architecture,
+verified rename cleanup, and follow-up proposals for effective settings,
+export destinations, Live subscriptions, shared generation/history and scan
+coalescing. The live proposal catalog tracks their execution; archived states
+remain unchanged when repairing malformed metadata or folder placement.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the
 universal bootstrap does not mention because they are
-export-to-postman-specific:
+Tanit-specific:
 
 - **Workspace root comes from `ctx.workspace.toString()`**, not
   `process.cwd()`. Every tool receives it through the plugin's

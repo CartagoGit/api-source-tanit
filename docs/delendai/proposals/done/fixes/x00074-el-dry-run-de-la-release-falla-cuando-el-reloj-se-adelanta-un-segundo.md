@@ -10,6 +10,9 @@ last-transition-id: 902fa8ea-3d71-4280-9502-2b55455b97c4
 last-correlation-id: 902fa8ea-3d71-4280-9502-2b55455b97c4
 last-transition-from: review
 last-transition-at: 2026-11-03T06:37:22.143Z
+shippedIn: [3dff2e0aef25]
+---
+
 # x00074 — El dry run de la release falla cuando el reloj se adelanta un segundo
 
 ## goal
