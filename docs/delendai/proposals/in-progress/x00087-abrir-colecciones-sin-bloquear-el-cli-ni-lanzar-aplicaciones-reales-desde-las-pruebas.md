@@ -2,10 +2,14 @@
 id: x00087
 title: "Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
+last-transition-id: 4aeb4732-8487-426e-b1d7-0ce248b3679d
+last-correlation-id: 4aeb4732-8487-426e-b1d7-0ce248b3679d
+last-transition-from: ready
+last-transition-at: 2026-11-08T13:26:44.697Z
 ---
 
 # x00087 — Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas
