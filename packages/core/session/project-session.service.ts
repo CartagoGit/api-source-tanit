@@ -267,8 +267,10 @@ class ProjectSessionImpl implements IProjectSession {
 /**
  * Opens (or returns) a session for `projectRoot`.
  *
- * The first call triggers a full scan. Subsequent calls for the same
- * root return the existing session without scanning again.
+ * Concurrent calls share one scan and use the first caller's configuration.
+ * Each caller retains its own abort signal. Roots are normalized lexically,
+ * without resolving relative paths or requiring filesystem existence.
+ * Later calls return the registered session without scanning again.
  */
 export async function openSession(
   projectRoot: string,
@@ -323,13 +325,17 @@ export async function openSession(
   }
   const session = await opening.promise;
   // Cancelling one caller does not discard a shared session another caller needs.
-  if (signal?.aborted) throw new SessionAbortedError(session.id);
+  if (signal?.aborted || _sessions.get(key) !== session) throw new SessionAbortedError(session.id);
   return session;
 }
 
 /** Cancels a pending open without letting its eventual scan resurrect a session. */
 export function cancelSessionOpening(projectRoot: string): boolean {
-  return _openings.delete(normalizeRoot(projectRoot));
+  const key = normalizeRoot(projectRoot);
+  if (!_openings.delete(key)) return false;
+  // The scan may have published just before its promise reaches the caller.
+  _sessions.get(key)?.close();
+  return true;
 }
 
 /**

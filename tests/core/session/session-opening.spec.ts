@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { cancelSessionOpening, closeAllSessions, getSession, openSession } from "../../../packages/core/session/project-session.service.js";
 import { generateCollections } from "../../../packages/core/discovery/generation.pipeline.js";
 import { SessionAbortedError } from "../../../packages/core/session/session-error.js";
+import type { IGenerationResult } from "../../../packages/contracts/interfaces/core/discovery.interface.js";
 import type { IDiscoveryOrchestrator } from "../../../packages/contracts/interfaces/core/scanner.interface.js";
 
 const watch = vi.hoisted(() => vi.fn(() => ({ close: vi.fn() })));
@@ -91,6 +92,24 @@ describe("shared session openings", () => {
     await canceled;
     expect(getSession(root)).toBeNull();
     expect(watch).not.toHaveBeenCalled();
+  });
+
+  test.each(["closeAll", "cancel"])("%s between scan publication and promise delivery never returns a closed session", async (operation) => {
+    let complete = () => {};
+    const completion = new Promise<IGenerationResult[]>((resolve) => { complete = () => resolve([]); });
+    scan.mockReturnValueOnce(completion);
+    const pending = openSession(root, options);
+    const canceled = expect(pending).rejects.toThrow(SessionAbortedError);
+    await Promise.resolve(); // Install the scan's continuation before the closing observer.
+    const closed = completion.then(() => {
+      expect(getSession(root)).not.toBeNull();
+      if (operation === "closeAll") closeAllSessions();
+      else expect(cancelSessionOpening(root)).toBe(true);
+    });
+    complete();
+    await closed;
+    await canceled;
+    expect(getSession(root)).toBeNull();
   });
 
   test("explicit cancellation permits a new opening and old completion cannot replace it", async () => {
