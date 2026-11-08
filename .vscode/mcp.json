@@ -1,6 +1,6 @@
 {
   "servers": {
-    "delendai-tanit": {
+    "DelendAI:-tanit": {
       "type": "stdio",
       "command": "bun",
       "args": [
