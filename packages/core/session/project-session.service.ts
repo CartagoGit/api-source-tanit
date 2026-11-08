@@ -22,6 +22,7 @@
  */
 
 import { watch as fsWatch } from "node:fs";
+import { join, parse, sep } from "node:path";
 import { generateCollections } from "../discovery/generation.pipeline.js";
 import { newSessionId } from "./session-id.js";
 import {
@@ -42,9 +43,20 @@ type EventHandler<K extends SessionEventName> = (
 /** Module-level registry: root → session (one per process). */
 const _sessions = new Map<string, ProjectSessionImpl>();
 
-/** Normalises a root path for use as a registry key. */
+/** Pending scans are shared until they succeed, fail or are explicitly cancelled. */
+const _openings = new Map<string, {
+  readonly promise: Promise<IProjectSession>;
+  readonly signals: Array<IProjectSessionOptions["signal"]>;
+}>();
+
+/** Lexically canonical roots; no filesystem lookup or implicit working directory. */
 function normalizeRoot(root: string): string {
-  return root.replace(/[/\\]+$/, "");
+  let normalized = join(root);
+  const rootLength = parse(normalized).root.length;
+  while (normalized.length > rootLength && normalized.endsWith(sep)) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
 }
 
 class ProjectSessionImpl implements IProjectSession {
@@ -262,48 +274,62 @@ export async function openSession(
   projectRoot: string,
   options: IProjectSessionOptions,
 ): Promise<IProjectSession> {
-  const { signal, generationOptions, watch: watchEnabled = false, watchDebounceMs = 500 } =
-    options;
-
+  const { signal } = options;
   if (signal?.aborted) {
     throw new SessionAbortedError(`(pre-open:${projectRoot})`);
   }
-
   const key = normalizeRoot(projectRoot);
   const existing = _sessions.get(key);
   if (existing) return existing;
 
-  const id = newSessionId(projectRoot);
-
-  // Run the scan.
-  let results;
-  try {
-    results = await generateCollections(projectRoot, generationOptions);
-  } catch (err) {
-    if (signal?.aborted) throw new SessionAbortedError(id);
-    throw err;
+  let opening = _openings.get(key);
+  if (opening) {
+    opening.signals.push(signal);
+  } else {
+    const signals = [signal];
+    const id = newSessionId(key);
+    const { generationOptions, watch: watchEnabled = false, watchDebounceMs = 500 } = options;
+    // Defer the scan until its ownership entry is installed, including for a
+    // synchronously throwing scanner. Initial options follow the first opener.
+    const scan: Promise<IProjectSession> = Promise.resolve().then(async () => {
+      if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+        throw new SessionAbortedError(id);
+      }
+      let results;
+      try {
+        results = await generateCollections(key, generationOptions);
+      } catch (error) {
+        if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+          throw new SessionAbortedError(id);
+        }
+        throw error;
+      }
+      if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+        throw new SessionAbortedError(id);
+      }
+      const snapshot = makeSnapshot({ sessionId: id, projectRoot: key, results, diagnostics: [] });
+      const session = new ProjectSessionImpl(
+        id, key, snapshot, generationOptions, watchEnabled, watchDebounceMs,
+      );
+      _sessions.set(key, session);
+      return session;
+    });
+    const pending = scan.finally(() => {
+      // A cancelled scan may finish after a newer opening has taken its key.
+      if (_openings.get(key)?.promise === pending) _openings.delete(key);
+    });
+    opening = { promise: pending, signals };
+    _openings.set(key, opening);
   }
-
-  if (signal?.aborted) throw new SessionAbortedError(id);
-
-  const snapshot = makeSnapshot({
-    sessionId: id,
-    projectRoot,
-    results,
-    diagnostics: [],
-  });
-
-  const session = new ProjectSessionImpl(
-    id,
-    projectRoot,
-    snapshot,
-    generationOptions,
-    watchEnabled,
-    watchDebounceMs,
-  );
-
-  _sessions.set(key, session);
+  const session = await opening.promise;
+  // Cancelling one caller does not discard a shared session another caller needs.
+  if (signal?.aborted) throw new SessionAbortedError(session.id);
   return session;
+}
+
+/** Cancels a pending open without letting its eventual scan resurrect a session. */
+export function cancelSessionOpening(projectRoot: string): boolean {
+  return _openings.delete(normalizeRoot(projectRoot));
 }
 
 /**
@@ -322,6 +348,7 @@ export function getSession(projectRoot: string): IProjectSession | null {
  * Intended for use in tests.
  */
 export function closeAllSessions(): void {
+  _openings.clear();
   const errors: unknown[] = [];
   for (const session of [..._sessions.values()]) {
     try {
