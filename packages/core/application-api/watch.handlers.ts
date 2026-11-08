@@ -22,6 +22,8 @@ import {
 import type { IProjectSession, SnapshotReadyEvent, SnapshotStaleEvent } from "../../contracts/interfaces/core/session.interface.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
+import type { LiveEvent, LiveEventSink } from "../../contracts/interfaces/core/live.interface.js";
+import { summarizeSnapshot } from "./snapshot-summary.helper.js";
 import { recordHistoryEntry } from "./history.handlers.js";
 
 /** Public metadata about a live subscription. */
@@ -31,6 +33,26 @@ export type { WatchOutput, WatchSubscription } from "../../contracts/interfaces/
 const _subscriptions = new Map<string, WatchSubscription>();
 const _subscriptionSessions = new Map<string, string>();
 const _sessionCleanups = new Map<string, () => void>();
+const _sinks = new Map<string, LiveEventSink>();
+const _disconnectCleanups = new Map<string, () => void>();
+const _managedWatches = new Map<string, IProjectSession>();
+
+function send(subscription: WatchSubscription, event: LiveEvent): void {
+  try { _sinks.get(subscription.subscriptionId)?.(event); }
+  catch { dropSubscriptionById(subscription.subscriptionId); }
+}
+
+function snapshotEvent(session: IProjectSession, subscription: WatchSubscription): LiveEvent {
+  const snapshot = session.current();
+  return {
+    type: "snapshot-ready", subscriptionId: subscription.subscriptionId,
+    sessionId: session.id, projectRoot: session.projectRoot,
+    summary: summarizeSnapshot(snapshot),
+    sourceFileCount: new Set(snapshot.results.flatMap((result) =>
+      result.routes.map((route) => route.sourceFile),
+    )).size,
+  };
+}
 
 /** Attach one history observer per session, shared by its subscribers. */
 function observeSession(session: IProjectSession): void {
@@ -40,6 +62,7 @@ function observeSession(session: IProjectSession): void {
   );
   const ready = ({ snapshot }: SnapshotReadyEvent) => {
     if (activeSubscriptions().length === 0) return;
+    for (const sub of activeSubscriptions()) send(sub, snapshotEvent(session, sub));
     recordHistoryEntry(snapshot.sessionId, {
       kind: "snapshot-ready",
       capturedAt: snapshot.capturedAt.toISOString(),
@@ -47,12 +70,16 @@ function observeSession(session: IProjectSession): void {
     });
   };
   const stale = ({ changedPaths }: SnapshotStaleEvent) => {
-    const matches = activeSubscriptions().some(({ onlyPaths }) =>
+    const matching = activeSubscriptions().filter(({ onlyPaths }) =>
       !onlyPaths?.length || changedPaths.some((path) =>
         onlyPaths.some((needle) => path.includes(needle)),
       ),
     );
-    if (!matches) return;
+    if (matching.length === 0) return;
+    for (const sub of matching) send(sub, {
+      type: "snapshot-stale", subscriptionId: sub.subscriptionId,
+      sessionId: session.id, projectRoot: session.projectRoot, changedPaths,
+    });
     recordHistoryEntry(session.id, {
       kind: "snapshot-stale",
       capturedAt: new Date().toISOString(),
@@ -61,7 +88,12 @@ function observeSession(session: IProjectSession): void {
   };
   const closed = () => {
     for (const [id, sessionId] of _subscriptionSessions) {
-      if (sessionId === session.id) dropSubscriptionById(id);
+      if (sessionId === session.id) {
+        const sub = _subscriptions.get(id);
+        if (sub) send(sub, { type: "session-closed", subscriptionId: id,
+          sessionId: session.id, projectRoot: session.projectRoot });
+        dropSubscriptionById(id);
+      }
     }
   };
   session.on("session-closed", closed);
@@ -100,22 +132,45 @@ export function registerSubscription(
 
 /** Internal: tests + cancel handler clear this map. */
 export function clearSubscriptions(): void {
-  for (const dispose of _sessionCleanups.values()) dispose();
-  _sessionCleanups.clear();
-  _subscriptionSessions.clear();
-  _subscriptions.clear();
+  for (const id of [..._subscriptions.keys()]) dropSubscriptionById(id);
 }
 
 /** Internal: drop a single subscription by id. Returns true if it existed. */
 export function dropSubscriptionById(id: string): boolean {
-  const existed = _subscriptions.delete(id);
+  const sub = _subscriptions.get(id);
   const sessionId = _subscriptionSessions.get(id);
+  const sink = _sinks.get(id);
+  const existed = _subscriptions.delete(id);
+  _sinks.delete(id);
+  if (sub && sessionId && sink) {
+    try { sink({ type: "subscription-closed", subscriptionId: id,
+      sessionId, projectRoot: sub.projectRoot }); } catch { /* Carrier already disconnected. */ }
+  }
+  _disconnectCleanups.get(id)?.();
+  _disconnectCleanups.delete(id);
   _subscriptionSessions.delete(id);
   if (sessionId && ![..._subscriptionSessions.values()].includes(sessionId)) {
     _sessionCleanups.get(sessionId)?.();
     _sessionCleanups.delete(sessionId);
+    const managed = _managedWatches.get(sessionId);
+    _managedWatches.delete(sessionId);
+    // A closed session rejects configuration; its watcher is already released.
+    if (managed && getSession(managed.projectRoot) === managed) {
+      void managed.configure({ watch: false }).catch(() => undefined);
+    }
   }
   return existed;
+}
+
+/** Attach one carrier to an existing subscription; disconnect owns its teardown. */
+export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () => void {
+  const sub = _subscriptions.get(id);
+  if (!sub) throw apiError("INVALID_INPUT", "Watch subscription does not exist");
+  if (_sinks.has(id)) throw apiError("INVALID_INPUT", "Watch subscription already has a carrier");
+  _sinks.set(id, sink);
+  const session = getSession(sub.projectRoot);
+  if (session) sink(snapshotEvent(session, sub));
+  return () => { dropSubscriptionById(id); };
 }
 
 /** Release only this project's subscriptions, preserving other open projects. */
@@ -140,7 +195,7 @@ export function createWatchHandlers(): {
     subscribe: {
       name: "watch",
       input: WatchInputSchema,
-      async handle(input) {
+      async handle(input, ctx) {
         const session = getSession(input.projectRoot);
         if (!session) {
           throw apiError(
@@ -148,10 +203,19 @@ export function createWatchHandlers(): {
             `No open session for projectRoot "${input.projectRoot}"`,
           );
         }
+        const managesWatch = !session.settings().watch || _managedWatches.has(session.id);
+        // Always queue this behind any cancellation restoring watch=false.
+        await session.configure({ watch: true }, ctx.signal);
+        if (managesWatch) _managedWatches.set(session.id, session);
         const sub = registerSubscription(
           input.projectRoot,
           input.onlyPaths ?? null,
         );
+        if (ctx.emitEvent) _sinks.set(sub.subscriptionId, ctx.emitEvent);
+        if (ctx.onDisconnect) {
+          _disconnectCleanups.set(sub.subscriptionId,
+            ctx.onDisconnect(() => { dropSubscriptionById(sub.subscriptionId); }));
+        }
         return { subscription: sub };
       },
     },

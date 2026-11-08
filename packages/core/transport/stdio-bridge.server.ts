@@ -79,7 +79,8 @@ class BridgeAbortController {
     for (const listener of this._listeners) listener();
   }
   get signal(): { readonly aborted: boolean } {
-    return { aborted: this._aborted };
+    const controller = this;
+    return { get aborted() { return controller._aborted; } };
   }
   onAbort(listener: () => void): () => void {
     this._listeners.add(listener);
@@ -129,6 +130,14 @@ export function serveStdio(opts: IStdioBridgeOptions): {
   close(): void;
 } {
   const inFlight = new Map<JsonRpcId, IInFlight>();
+  const disconnects = new Set<() => void>();
+  let stopped = false;
+  const disconnect = () => {
+    if (stopped) return;
+    stopped = true;
+    for (const dispose of [...disconnects]) dispose();
+    disconnects.clear();
+  };
   const caller = opts.caller ?? "desktop";
   let resolveDone!: () => void;
   const closed = new Promise<void>((resolve) => {
@@ -170,11 +179,13 @@ export function serveStdio(opts: IStdioBridgeOptions): {
           handleNotification(frame, inFlight);
           continue;
         }
-        await handleRequest(frame as IJsonRpcRequest, opts, inFlight, caller, emitError);
+        if (stopped) break;
+        await handleRequest(frame as IJsonRpcRequest, opts, inFlight, caller, emitError, disconnects);
       }
     } catch (err) {
       emitError(err);
     } finally {
+      disconnect();
       // Drain in-flight on EOF / error.
       for (const entry of inFlight.values()) entry.controller.abort();
       inFlight.clear();
@@ -187,6 +198,7 @@ export function serveStdio(opts: IStdioBridgeOptions): {
   return {
     closed,
     close(): void {
+      disconnect();
       for (const entry of inFlight.values()) entry.controller.abort();
       inFlight.clear();
       resolveDone();
@@ -227,11 +239,19 @@ async function handleRequest(
   inFlight: Map<JsonRpcId, IInFlight>,
   caller: "desktop",
   emitError: (err: unknown) => void,
+  disconnects: Set<() => void>,
 ): Promise<void> {
   const controller = new BridgeAbortController();
   const ctx: IRequestContext = {
     caller,
-    signal: { aborted: controller.signal.aborted },
+    signal: controller.signal,
+    emitEvent: (event) => opts.output.write(JSON.stringify({
+      jsonrpc: "2.0", method: "tanit/live", params: event,
+    }) + "\n"),
+    onDisconnect: (dispose) => {
+      disconnects.add(dispose);
+      return () => { disconnects.delete(dispose); };
+    },
     ...(opts.workspace !== undefined ? { workspace: opts.workspace } : {}),
     ...(opts.orchestrator !== undefined ? { orchestrator: opts.orchestrator } : {}),
   };

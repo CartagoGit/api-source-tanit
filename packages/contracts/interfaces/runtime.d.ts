@@ -533,6 +533,9 @@ declare const Bun: {
 
 /** What this repo uses from an incoming request. */
 interface IServerRequest {
+  readonly signal?: { readonly aborted: boolean;
+    addEventListener(name: "abort", listener: () => void, options?: { once?: boolean }): void;
+    removeEventListener(name: "abort", listener: () => void): void };
   readonly url: string;
   readonly method: string;
   /**
@@ -688,3 +691,12 @@ declare function setInterval(
   timeout?: number,
 ): { readonly __timer: unique symbol };
 declare function clearInterval(handle: ReturnType<typeof setInterval>): void;
+
+/** Minimal web stream surface used by authenticated live event responses. */
+declare class ReadableStream<T> {
+  constructor(source: {
+    start(controller: { enqueue(value: T): void; close(): void }): void;
+    cancel?(): void;
+  });
+}
+declare class TextEncoder { encode(value: string): Uint8Array; }
