@@ -14,7 +14,7 @@
  * precisely for whoever does not know the flags, so closing it with
  * a command they cannot run leaves them stuck on the last step.
  */
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -22,6 +22,10 @@ import { tmpdir } from "node:os";
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
+import { runGenerate } from "../../packages/cli/commands/generate.script";
+import { main as openPostman } from "../../packages/cli/commands/open-postman.script";
+
+vi.mock("../../packages/cli/commands/open-postman.script", () => ({ main: vi.fn() }));
 
 let work = "";
 
@@ -140,65 +144,31 @@ describe("open", () => {
 });
 
 describe("generate --open", () => {
-  /**
-   * Before, this built a dead path
-   * (`(import.meta as { dir?: string }).dir ?? process.cwd()` +
-   * `/open-postman.script.ts`) and produced `MODULE_NOT_FOUND`. Now
-   * `generate` imports the sibling module's `main` and calls it
-   * in-process. Here the **integration** is verified: the command
-   * actually calls the function, and `open-postman` runs.
-   *
-   * `POSTMAN_FORCE_OPEN=web` is forced so open-postman does not try
-   * to launch the desktop app (which would block the test in CI
-   * without a display) and exits through the deterministic web
-   * branch.
-   *
-   * The timeout is wide on purpose: this test spawns a whole `bun`
-   * process that loads the CLI, scans a project and writes a
-   * collection. How long that takes is a property of the machine, and
-   * under the load of the whole suite it can go past two minutes.
-   * The assertion is about what the command printed, not about how
-   * fast it was.
-   *
-   * The child gets the **same** deadline as the test, minus a margin:
-   * `runProcess` kills the process it spawned after `timeoutMs`, and
-   * with the default (120 s) the child could die while the test still
-   * believed it had time left — a failure that looked like a timeout
-   * of the test and was really a kill of the child. When the machine
-   * is saturated (another suite running on the same cores) the child
-   * needs minutes, not seconds: in isolation this test takes 0.6 s.
-   */
-  test("invokes open-postman in-process (web branch)", { timeout: 600_000 }, async () => {
+  test("opens the generated custom output with injected context after writing", async () => {
     const root = await proyecto("generate-open");
-    const { code, output } = await runProcess(
-      "bun",
-      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
-      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
-    );
-    expect(code, output).toBe(0);
-    expect(output).toContain("--open");
+    const outputPath = join(root, "custom-output.json");
+    const open = vi.mocked(openPostman);
+    open.mockReset();
+    open.mockImplementationOnce(async (args, options) => {
+      const fileIndex = args?.indexOf("--file") ?? -1;
+      const target = args?.[fileIndex + 1];
+      expect(target).toBe(outputPath);
+      expect(options?.context?.projectRoot).toBe(root);
+      const written = JSON.parse(await readFile(outputPath, "utf8"));
+      expect(written.info.name).toBeTruthy();
+      return 0;
+    });
+    const result = await runGenerate(["--project-root", root, "--output", outputPath, "--open"]);
+    expect(result.code).toBe(0);
+    expect(open).toHaveBeenCalledOnce();
   });
 
-  /**
-   * `generate` must generate **first** and open **after**. If the
-   * order is inverted, `--open` opens a file that does not exist
-   * yet and confuses the user.
-   *
-   * The timeout is wide for the same reason as the test above: this
-   * spawns the whole CLI, and the machine decides how long that
-   * takes. The child dies with the test's deadline, minus a margin.
-   */
-  test("generates before opening", { timeout: 600_000 }, async () => {
-    const root = await proyecto("generate-open-orden");
-    const { output } = await runProcess(
-      "bun",
-      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
-      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
-    );
-    const idxGenerate = output.indexOf("✔");
-    const idxOpen = output.indexOf("--open");
-    expect(idxGenerate).toBeGreaterThanOrEqual(0);
-    expect(idxOpen).toBeGreaterThan(idxGenerate);
+  test("propagates a launcher failure after successful generation", async () => {
+    const root = await proyecto("generate-open-failure");
+    vi.mocked(openPostman).mockReset().mockResolvedValueOnce(1);
+    const result = await runGenerate(["--project-root", root, "--open"]);
+    expect(result.code).toBe(1);
+    expect(vi.mocked(openPostman)).toHaveBeenCalledOnce();
   });
 });
 

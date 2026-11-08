@@ -1,13 +1,12 @@
 {
   "mcpServers": {
-    "delendai-tanit": {
+    "DelendAI:Tanit": {
       "type": "stdio",
-      "command": "bun",
+      "command": "delendai",
       "args": [
-        "../delendai/tools/scripts/host/host-server.script.ts",
+        "__serve",
         "--workspace=.",
-        "--config=./delendai.config.json",
-        "--branch=main"
+        "--config=./delendai.config.json"
       ]
     }
   }

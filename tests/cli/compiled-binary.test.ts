@@ -17,7 +17,7 @@ import { existsSync } from "node:fs";
 import { join, } from "node:path";
 import { tmpdir } from "node:os";
 import { runProcess } from "../helpers/run-process";
-import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
+import { BIN_NAME, OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
 const ENTRYPOINT = CLI_ENTRYPOINT;
@@ -28,8 +28,8 @@ let binary = "";
 let project = "";
 
 beforeAll(async () => {
-  workDir = await mkdtemp(join(tmpdir(), "postman-binary-"));
-  binary = join(workDir, "export-to-postman");
+  workDir = await mkdtemp(join(tmpdir(), "apisrc-binary-"));
+  binary = join(workDir, BIN_NAME);
   project = join(workDir, "mi-api");
   await cp(SAMPLE_PROJECT, project, { recursive: true });
 
