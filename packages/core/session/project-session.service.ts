@@ -155,6 +155,7 @@ class ProjectSessionImpl implements IProjectSession {
   }
 
   on<K extends SessionEventName>(event: K, handler: EventHandler<K>): void {
+    if (this._closed) throw new SessionClosedError(this.id);
     if (!this._handlers.has(event)) {
       this._handlers.set(event, new Set());
     }
@@ -166,14 +167,35 @@ class ProjectSessionImpl implements IProjectSession {
   }
 
   close(): void {
+    if (this._closed) return;
     this._closed = true;
-    this._watcher?.close();
-    this._watcher = null;
-    if (this._debounceTimer !== null) {
-      clearTimeout(this._debounceTimer);
-      this._debounceTimer = null;
+    const key = normalizeRoot(this.projectRoot);
+    if (_sessions.get(key) === this) _sessions.delete(key);
+    const errors: unknown[] = [];
+    try {
+      // Notify every owner even when another owner's disposal fails.
+      const closed = [...(this._handlers.get("session-closed") ?? [])];
+      for (const handler of closed) {
+        try {
+          handler({ sessionId: this.id, projectRoot: this.projectRoot });
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+    } finally {
+      try {
+        this._watcher?.close();
+      } catch (error) {
+        errors.push(error);
+      } finally {
+        this._watcher = null;
+        if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
+        this._debounceTimer = null;
+        this._snapshot = null;
+        this._handlers.clear();
+      }
     }
-    _sessions.delete(normalizeRoot(this.projectRoot));
+    if (errors.length > 0) throw new AggregateError(errors, `Session ${this.id} cleanup failed`);
   }
 
   private _emit<K extends SessionEventName>(
@@ -300,8 +322,13 @@ export function getSession(projectRoot: string): IProjectSession | null {
  * Intended for use in tests.
  */
 export function closeAllSessions(): void {
-  for (const session of _sessions.values()) {
-    session.close();
+  const errors: unknown[] = [];
+  for (const session of [..._sessions.values()]) {
+    try {
+      session.close();
+    } catch (error) {
+      errors.push(error);
+    }
   }
-  _sessions.clear();
+  if (errors.length > 0) throw new AggregateError(errors, "Session cleanup failed");
 }

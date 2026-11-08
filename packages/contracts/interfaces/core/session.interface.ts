@@ -18,9 +18,16 @@ export interface SnapshotStaleEvent {
   readonly changedPaths: ReadonlyArray<string>;
 }
 
+/** Emitted once when the session releases its resources and identity. */
+export interface SessionClosedEvent {
+  readonly sessionId: string;
+  readonly projectRoot: string;
+}
+
 export interface ISessionEventMap {
   "snapshot-ready": SnapshotReadyEvent;
   "snapshot-stale": SnapshotStaleEvent;
+  "session-closed": SessionClosedEvent;
 }
 
 export type SessionEventName = keyof ISessionEventMap;
