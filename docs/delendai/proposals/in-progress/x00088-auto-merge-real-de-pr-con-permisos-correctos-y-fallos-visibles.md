@@ -31,7 +31,7 @@ PR116 quedó abierta con todos los checks verdes y autoMergeRequest nulo: el wor
 - global_gate: e2e
 
 ### S1 — Usar la mutación oficial y validar el contrato del workflow
-- **Status**: pending
+- **Status**: done
 - **Files**: `.github/workflows/auto-approve.yml`, `tests/scripts-gates/auto-merge-workflow.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -46,3 +46,9 @@ PR116 quedó abierta con todos los checks verdes y autoMergeRequest nulo: el wor
 - La solicitud usa enablePullRequestAutoMerge con expectedHeadOid y MERGE.
 - El job falla cuando GitHub rechaza la operación.
 - Los filtros de autor/borrador y la aprobación posterior a CI se conservan.
+
+## Validation evidence
+
+- Executed the actual workflow script against fake GitHub responses: guarded MERGE mutation succeeds, API rejection propagates.
+- Owner/draft/green-CI conditions and write permissions asserted; eight workflow tests pass.
+- CLI typecheck and contracts/types gates pass.
