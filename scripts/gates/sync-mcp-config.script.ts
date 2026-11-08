@@ -24,6 +24,7 @@ import { MCP_JSON, VSCODE_DIR, VSCODE_MCP_JSON } from "../helpers/root.helper.js
 interface IServer {
   readonly type?: string;
   readonly command: string;
+  readonly cwd?: string;
   readonly args?: readonly string[];
   readonly env?: Record<string, string>;
 }
@@ -49,6 +50,7 @@ function buildVsCodeConfig(source: { mcpServers: Record<string, IServer> }): str
   for (const [name, server] of Object.entries(source.mcpServers)) {
     servers[name] = {
       ...server,
+      cwd: "${workspaceFolder}",
       ...(server.args ? { args: server.args.map(toVsCodeArg) } : {}),
     };
   }

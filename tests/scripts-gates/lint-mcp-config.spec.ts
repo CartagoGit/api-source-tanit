@@ -41,6 +41,17 @@ describe("la configuración MCP tiene que ser JSON estricto", () => {
     expect(Object.keys(derived.servers)).toEqual(Object.keys(source.mcpServers));
   });
 
+  test("VS Code ejecuta el servidor desde la raíz del workspace", async () => {
+    const derived = JSON.parse(await readFile(VSCODE_MCP_JSON, "utf8")) as {
+      servers: Record<string, { cwd?: string; command: string; args: string[] }>;
+    };
+    for (const server of Object.values(derived.servers)) {
+      expect(server.cwd).toBe("${workspaceFolder}");
+      expect(server.command).toBe("delendai");
+      expect(server.args).toContain("--workspace=${workspaceFolder}");
+    }
+  });
+
   test("un comentario delante se reconoce como el problema que es", () => {
     const problem = strictJsonProblem('// generado\n{ "servers": {} }\n');
     expect(problem).not.toBeNull();
