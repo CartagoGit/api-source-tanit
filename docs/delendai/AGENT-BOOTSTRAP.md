@@ -265,7 +265,7 @@ Only the opt-in integration workflow validates it against DelendAI. The product
 validation and distribution remain independent of it.
 
 The identity and active rename audit is tracked in
-[the canonical identity proposal](proposals/in-progress/x00083-canonical-delendai-tanit-identity-portable-mcp-configuration-and-active-rename-residue-cleanup.md).
+[the canonical identity proposal](proposals/review/x00083-canonical-delendai-tanit-identity-portable-mcp-configuration-and-active-rename-residue-cleanup.md).
 
 ### 3.8 Framework scanners — the discovery contract
 
