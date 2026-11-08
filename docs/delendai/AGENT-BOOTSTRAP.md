@@ -319,7 +319,9 @@ The [2026-11-08 audit](AUDIT-2026-11-08.md) records the current architecture,
 verified rename cleanup, and follow-up proposals for effective settings,
 export destinations, Live subscriptions, shared generation/history and scan
 coalescing. The live proposal catalog tracks their execution; archived states
-remain unchanged when repairing malformed metadata or folder placement.
+remain unchanged when repairing malformed metadata. Terminal storage follows
+the stable ID family used by the runtime reconciler; legacy IDs retain their
+recorded kind. Semantic historical kinds are preserved.
 
 ## 4. Project invariants — local additions
 

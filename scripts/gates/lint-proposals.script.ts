@@ -11,7 +11,7 @@
  * Comprueba las invariantes de x00032 (cierre coherente):
  *   1. El `status` es uno de los estados válidos.
  *   2. La carpeta corresponde a ese estado.
- *   3. Dentro de `done/`, la subcarpeta corresponde al `kind`.
+ *   3. Dentro de `done/`, la subcarpeta corresponde a la familia estable del id (kind para ids legacy).
  *   4. Los `id` no se repiten y coinciden con el prefijo del fichero.
  *   5. El esqueleto de carpetas existe entero y cada una tiene `.gitkeep`.
  *   6. (x00032 S1) Una propuesta `status: done` cuyo `kind` no sea
@@ -220,10 +220,26 @@ async function collectProposals(dir: string): Promise<IProposal[]> {
   return out;
 }
 
-/** Carpeta donde debería vivir una propuesta según su frontmatter. */
+/** Canonical ID families used by DelendAI's proposal reconciler.
+ * Legacy p IDs retain their recorded kind; their family predates this protocol.
+ * Storage follows the stable family, while historical semantic kinds stay intact.
+ */
+const KIND_BY_PREFIX: Readonly<Record<string, string>> = {
+  f: "feat", b: "breaking", x: "fix", r: "refactor", v: "perf",
+  a: "audit", c: "chore", d: "docs", t: "test", i: "infra", s: "spike",
+  q: "plan", n: "resume", e: "repair",
+};
+
+/** Folder used by the runtime for a terminal proposal. */
+export function doneFolderFor(id: string, kind: string): string {
+  const storageKind = KIND_BY_PREFIX[id[0] ?? ""] ?? kind;
+  return join("done", KIND_DIRS[storageKind] ?? "chores");
+}
+
+/** Storage must agree with the runtime that materializes proposal documents. */
 function expectedFolder(proposal: IProposal): string {
   if (proposal.status !== "done") return proposal.status;
-  return join("done", KIND_DIRS[proposal.kind] ?? "chores");
+  return doneFolderFor(proposal.id, proposal.kind);
 }
 
 /** ¿La propuesta usa la subcarpeta opcional correspondiente a su kind? */
