@@ -323,6 +323,10 @@ remain unchanged when repairing malformed metadata. Terminal storage follows
 the stable ID family used by the runtime reconciler; legacy IDs retain their
 recorded kind. Semantic historical kinds are preserved.
 
+The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
+opening fix required by the delivery gate: tests isolate launchers and the CLI
+opens the generated output using its injected context.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the

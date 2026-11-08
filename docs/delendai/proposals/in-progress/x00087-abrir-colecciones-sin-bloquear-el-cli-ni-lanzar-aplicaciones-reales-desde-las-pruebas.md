@@ -31,7 +31,7 @@ La validación completa queda esperando a Chrome: open-postman usa spawnSync y l
 - global_gate: e2e
 
 ### S1 — Apertura asíncrona y pruebas aisladas
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/cli/commands/open-postman.script.ts`, `packages/cli/commands/generate.script.ts`, `packages/contracts/interfaces/cli/open-postman.interface.ts`, `tests/cli/open-postman-command.test.ts`, `tests/cli/writing-commands.test.ts`
 - **Gate**: e2e
 - acceptance:
@@ -46,3 +46,9 @@ La validación completa queda esperando a Chrome: open-postman usa spawnSync y l
 - Fallos al iniciar el launcher prueban fallback sin matar aplicaciones del usuario.
 - Las pruebas no lanzan navegador ni aplicaciones de escritorio reales.
 - generate --open utiliza el archivo y el contexto generados, incluso con opciones inyectadas.
+
+## Validation evidence
+
+- 23 focused CLI tests pass, including detached launcher lifetime, immediate exit failure fallback, custom generated output and atomic init.
+- CLI typecheck passes; no real browser/application is launched by these tests.
+- Full project certification runs with the canonical identity delivery.
