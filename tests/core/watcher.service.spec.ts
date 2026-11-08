@@ -3,7 +3,7 @@
  *
  * The test that matters most in this file is the one for the output
  * folder. The tool **writes inside what it watches**: the collection
- * goes to `<project>/export-to-postman/`, which hangs from the watched
+ * goes to `<project>/tanit/`, which hangs from the watched
  * root. A watcher that does not ignore it sees its own write,
  * regenerates, writes, sees itself again — and never stops. It is the
  * same shape of infinite loop that took down an entire WSL session in

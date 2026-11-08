@@ -9,8 +9,8 @@ Lo que el `exports` del `package.json` deja importar desde fuera del
 paquete. Todo lo demás es interno y puede cambiar sin aviso.
 
 ```ts
-import { generateWithAllFrameworks } from "export-to-postman/frameworks";
-import { buildCollection } from "export-to-postman/core/domain/collection-builder.service";
+import { generateWithAllFrameworks } from "api-source-tanit/frameworks";
+import { buildCollection } from "api-source-tanit/core/domain/collection-builder.service";
 ```
 
 Si lo que buscas es la herramienta de línea de comandos y no la
