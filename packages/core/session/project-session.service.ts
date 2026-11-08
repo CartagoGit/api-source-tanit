@@ -22,6 +22,7 @@
  */
 
 import { watch as fsWatch } from "node:fs";
+import { SESSION_WATCH_IGNORED_DIRECTORY_NAMES } from "../../contracts/constants/core/session.constant.js";
 import { join, parse, sep } from "node:path";
 import { generateCollections } from "../discovery/generation.pipeline.js";
 import { newSessionId } from "./session-id.js";
@@ -31,7 +32,7 @@ import {
 } from "./session-error.js";
 import { makeSnapshot, type IProjectSnapshot } from "./project-snapshot.js";
 import type { SessionEventName, SessionEventPayload } from "./session-events.js";
-import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IGenerationOptions, IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 
 export type { IProjectSessionOptions, IProjectSession } from "../../contracts/interfaces/core/session.interface.js";
 import type { IProjectSession, IProjectSessionOptions, IProjectSessionSettings } from "../../contracts/interfaces/core/session.interface.js";
@@ -77,6 +78,9 @@ class ProjectSessionImpl implements IProjectSession {
   private _watchEnabled: boolean;
   private _configurationRevision = 0;
   private _settingsQueue: Promise<void> = Promise.resolve();
+  private _scanQueue: Promise<void> = Promise.resolve();
+  private _rescanRunning = false;
+  private readonly _pendingPaths = new Set<string>();
 
   constructor(
     id: string,
@@ -94,7 +98,7 @@ class ProjectSessionImpl implements IProjectSession {
     this._watchEnabled = watchEnabled;
 
     if (watchEnabled) {
-      this._startWatch();
+      this._watcher = this._createWatcher();
     }
   }
 
@@ -139,7 +143,7 @@ class ProjectSessionImpl implements IProjectSession {
       ? makeSnapshot({
         sessionId: this.id,
         projectRoot: this.projectRoot,
-        results: await generateCollections(this.projectRoot, generationOptions),
+        results: await this._scan(generationOptions),
         diagnostics: [],
       })
       : this.current();
@@ -148,6 +152,12 @@ class ProjectSessionImpl implements IProjectSession {
     if (signal?.aborted) throw new SessionAbortedError(this.id);
     const watchEnabled = patch.watch ?? this._watchEnabled;
     const watchChanged = watchEnabled !== this._watchEnabled;
+    if (watchChanged) {
+      const nextWatcher = watchEnabled ? this._createWatcher() : null;
+      try { this._watcher?.close(); }
+      catch (error) { nextWatcher?.close(); throw error; }
+      this._watcher = nextWatcher;
+    }
     this._genOptions = generationOptions;
     this._snapshot = nextSnapshot;
     this._watchEnabled = watchEnabled;
@@ -157,11 +167,8 @@ class ProjectSessionImpl implements IProjectSession {
       if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
       this._debounceTimer = null;
     }
-    if (watchChanged) {
-      this._watcher?.close();
-      this._watcher = null;
-      if (watchEnabled) this._startWatch();
-    }
+    if (!watchEnabled) this._pendingPaths.clear();
+    else if (this._pendingPaths.size > 0) this._scheduleRescan([]);
     if (generationChanged) this._emit("snapshot-ready", { snapshot: nextSnapshot });
     return this.settings();
   }
@@ -203,6 +210,7 @@ class ProjectSessionImpl implements IProjectSession {
         this._watcher = null;
         if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
         this._debounceTimer = null;
+        this._pendingPaths.clear();
         this._snapshot = null;
         this._handlers.clear();
       }
@@ -221,47 +229,68 @@ class ProjectSessionImpl implements IProjectSession {
     }
   }
 
-  private _startWatch(): void {
+  private _createWatcher(): ReturnType<typeof fsWatch> {
+    return fsWatch(this.projectRoot, { recursive: true }, (_eventType, filename) => {
+      if (!filename || this._closed || !this._watchEnabled) return;
+      const parts = filename.replace(/\\/g, "/").split("/");
+      if (parts.some((part) => SESSION_WATCH_IGNORED_DIRECTORY_NAMES.includes(part)) || filename.endsWith(".tmp")) return;
+      this._scheduleRescan([filename]);
+      this._emit("snapshot-stale", { changedPaths: [filename] });
+    });
+  }
+
+  /** All rescans and configuration scans share one execution lane. */
+  private _scan(options: IGenerationOptions): Promise<ReadonlyArray<IGenerationResult>> {
+    const pending = this._scanQueue.then(() => {
+      if (this._closed) throw new SessionClosedError(this.id);
+      return generateCollections(this.projectRoot, options);
+    });
+    this._scanQueue = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+
+  private _scheduleRescan(changedPaths: readonly string[]): void {
+    for (const path of changedPaths) this._pendingPaths.add(path);
+    if (this._rescanRunning) return;
+    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      void this._runRescans();
+    }, this._watchDebounceMs);
+  }
+
+  private async _runRescans(): Promise<void> {
+    if (this._rescanRunning) return;
+    this._rescanRunning = true;
     try {
-      this._watcher = fsWatch(
-        this.projectRoot,
-        { recursive: true },
-        (_eventType, filename) => {
-          if (!filename || this._closed) return;
-          const paths = [filename];
-          this._emit("snapshot-stale", { changedPaths: paths });
-          this._scheduleRescan(paths);
-        },
-      );
-    } catch {
-      // Watch not supported on this platform — skip silently.
+      while (!this._closed && this._watchEnabled && this._pendingPaths.size > 0) {
+        const changedPaths = [...this._pendingPaths];
+        this._pendingPaths.clear();
+        const revision = this._configurationRevision;
+        try {
+          const results = await this._scan(this._genOptions);
+          if (this._closed || !this._watchEnabled) return;
+          if (revision !== this._configurationRevision) {
+            for (const path of changedPaths) this._pendingPaths.add(path);
+            continue;
+          }
+          // A newer source event makes this candidate obsolete before publication.
+          if (this._pendingPaths.size > 0) continue;
+          this._snapshot = makeSnapshot({ sessionId: this.id, projectRoot: this.projectRoot, results, diagnostics: [] });
+          this._emit("snapshot-ready", { snapshot: this._snapshot });
+        } catch (error) {
+          if (!this._closed && this._watchEnabled && revision === this._configurationRevision) {
+            this._emit("snapshot-error", {
+              message: error instanceof Error ? error.message : String(error), changedPaths,
+            });
+          }
+        }
+      }
+    } finally {
+      this._rescanRunning = false;
     }
   }
 
-  private _scheduleRescan(_changedPaths: string[]): void {
-    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(async () => {
-      this._debounceTimer = null;
-      if (this._closed) return;
-      const revision = this._configurationRevision;
-      try {
-        const results = await generateCollections(
-          this.projectRoot,
-          this._genOptions,
-        );
-        if (this._closed || revision !== this._configurationRevision) return;
-        this._snapshot = makeSnapshot({
-          sessionId: this.id,
-          projectRoot: this.projectRoot,
-          results,
-          diagnostics: [],
-        });
-        this._emit("snapshot-ready", { snapshot: this._snapshot });
-      } catch {
-        // Re-scan errors are silent; the stale snapshot is kept.
-      }
-    }, this._watchDebounceMs);
-  }
 }
 
 /**

@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 423 símbolos en 170 módulos.
+> 424 símbolos en 170 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -435,7 +435,7 @@ export function createServiceDetailHandler(): IHandler<ServiceDetailInput, Servi
 
 ### `packages/core/application-api/settings.handlers.ts`
 
-`settings.handlers.ts` — get / patch per-session options.
+Session settings are owned and applied atomically by the shared session.
 
 #### `createSettingsHandler`
 
@@ -5010,8 +5010,16 @@ export async function openSession( projectRoot: string, options: IProjectSession
 
 Opens (or returns) a session for `projectRoot`.
 
-The first call triggers a full scan. Subsequent calls for the same
-root return the existing session without scanning again.
+Concurrent calls share one scan and use the first caller's configuration.
+Each caller retains its own abort signal. Roots are normalized lexically,
+without resolving relative paths or requiring filesystem existence.
+Later calls return the registered session without scanning again.
+
+#### `cancelSessionOpening`
+
+```ts
+export function cancelSessionOpening(projectRoot: string): boolean
+```
 
 #### `getSession`
 
