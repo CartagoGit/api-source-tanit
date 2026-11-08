@@ -12,6 +12,7 @@
 import type { IHandler } from "./dispatcher.js";
 import { CloseInputSchema, type CloseInput } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
+import { dropSubscriptionsForProject } from "./watch.handlers.js";
 import { apiError } from "./error.js";
 
 /** Resultado de cerrar sesiones de proyecto. */
@@ -34,6 +35,7 @@ export function createCloseHandler(): IHandler<CloseInput, CloseOutput> {
       if (!session) {
         return { closed: 0 };
       }
+      dropSubscriptionsForProject(input.projectRoot);
       session.close();
       return { closed: 1 };
     },
