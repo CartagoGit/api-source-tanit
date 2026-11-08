@@ -206,6 +206,8 @@ export class HostBridgeClient implements IHostBridge {
       throw new Error(`Live event stream failed (${response.status})`);
     }
     const reader = response.body.getReader();
+    const abortReader = () => { void reader.cancel().catch(() => undefined); };
+    controller.signal.addEventListener("abort", abortReader, { once: true });
     const decoder = new TextDecoder();
     const consume = async () => {
       let pending = "";
@@ -234,6 +236,7 @@ export class HostBridgeClient implements IHostBridge {
           params: { subscriptionId, message: error instanceof Error ? error.message : String(error) } });
       } finally {
         if (this.streams.get(subscriptionId) === controller) this.streams.delete(subscriptionId);
+        controller.signal.removeEventListener("abort", abortReader);
         controller.abort();
         await reader.cancel().catch(() => undefined);
         reader.releaseLock();

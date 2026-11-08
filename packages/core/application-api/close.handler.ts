@@ -11,7 +11,7 @@
 
 import type { IHandler } from "./dispatcher.js";
 import { CloseInputSchema, type CloseInput } from "./zod-schemas.js";
-import { getSession } from "../session/project-session.service.js";
+import { cancelSessionOpening, getSession } from "../session/project-session.service.js";
 import { dropSubscriptionsForProject } from "./watch.handlers.js";
 import { apiError } from "./error.js";
 
@@ -31,9 +31,10 @@ export function createCloseHandler(): IHandler<CloseInput, CloseOutput> {
           "close requires a projectRoot",
         );
       }
+      const cancelledOpening = cancelSessionOpening(input.projectRoot);
       const session = getSession(input.projectRoot);
       if (!session) {
-        return { closed: 0 };
+        return { closed: cancelledOpening ? 1 : 0 };
       }
       dropSubscriptionsForProject(input.projectRoot);
       session.close();

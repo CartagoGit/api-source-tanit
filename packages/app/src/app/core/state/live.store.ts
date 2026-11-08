@@ -2,7 +2,7 @@ import { Injectable, effect, inject, signal } from "@angular/core";
 import { HostBridgeClient } from "../api/host-bridge.client";
 import { ProjectStore } from "./project.store";
 import { ExportsStore } from "./exports.store";
-import { isLiveEvent } from "../../../../../core/helpers/live-event.helper";
+import { isLiveEvent, isLiveOutputChange } from "../../../../../core/helpers/live-event.helper";
 import type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
 
 export type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
@@ -105,7 +105,9 @@ export class LiveStore {
     if (event.type === "snapshot-ready") {
       this.sourceFileCount.set(event.sourceFileCount);
       this.project.applySummary(event.summary);
-      if (this.autoExport()) void this.regenerate();
+      const outputs = this.exports.result()?.files.map((file) => file.path) ?? [];
+      if (this.autoExport() && event.changedPaths.some((path) =>
+        !isLiveOutputChange(path, event.projectRoot, outputs))) void this.regenerate();
     } else if (event.type === "snapshot-stale") {
       this.changes.set(event.changedPaths.map((path) => ({ kind: "modified", path })));
     } else {
@@ -126,7 +128,8 @@ export class LiveStore {
         await this.exports.regenerate();
         if (this.exports.error() !== null) this.error.set(this.exports.error());
       }
-    } finally { this.exporting = false; }
+    } catch (error) { this.error.set(describe(error)); }
+    finally { this.exporting = false; }
   }
 }
 

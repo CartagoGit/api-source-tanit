@@ -42,12 +42,12 @@ function send(subscription: WatchSubscription, event: LiveEvent): void {
   catch { dropSubscriptionById(subscription.subscriptionId); }
 }
 
-function snapshotEvent(session: IProjectSession, subscription: WatchSubscription): LiveEvent {
+function snapshotEvent(session: IProjectSession, subscription: WatchSubscription, changedPaths: readonly string[] = []): LiveEvent {
   const snapshot = session.current();
   return {
     type: "snapshot-ready", subscriptionId: subscription.subscriptionId,
     sessionId: session.id, projectRoot: session.projectRoot,
-    summary: summarizeSnapshot(snapshot),
+    summary: summarizeSnapshot(snapshot), changedPaths,
     sourceFileCount: new Set(snapshot.results.flatMap((result) =>
       result.routes.map((route) => route.sourceFile),
     )).size,
@@ -57,12 +57,14 @@ function snapshotEvent(session: IProjectSession, subscription: WatchSubscription
 /** Attach one history observer per session, shared by its subscribers. */
 function observeSession(session: IProjectSession): void {
   if (_sessionCleanups.has(session.id)) return;
+  const changed = new Set<string>();
   const activeSubscriptions = () => [..._subscriptions.values()].filter(
     (sub) => _subscriptionSessions.get(sub.subscriptionId) === session.id,
   );
   const ready = ({ snapshot }: SnapshotReadyEvent) => {
     if (activeSubscriptions().length === 0) return;
-    for (const sub of activeSubscriptions()) send(sub, snapshotEvent(session, sub));
+    for (const sub of activeSubscriptions()) send(sub, snapshotEvent(session, sub, [...changed]));
+    changed.clear();
     recordHistoryEntry(snapshot.sessionId, {
       kind: "snapshot-ready",
       capturedAt: snapshot.capturedAt.toISOString(),
@@ -70,6 +72,7 @@ function observeSession(session: IProjectSession): void {
     });
   };
   const stale = ({ changedPaths }: SnapshotStaleEvent) => {
+    for (const path of changedPaths) changed.add(path);
     const matching = activeSubscriptions().filter(({ onlyPaths }) =>
       !onlyPaths?.length || changedPaths.some((path) =>
         onlyPaths.some((needle) => path.includes(needle)),
@@ -169,7 +172,8 @@ export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () =
   if (_sinks.has(id)) throw apiError("INVALID_INPUT", "Watch subscription already has a carrier");
   _sinks.set(id, sink);
   const session = getSession(sub.projectRoot);
-  if (session) sink(snapshotEvent(session, sub));
+  try { if (session) sink(snapshotEvent(session, sub)); }
+  catch (error) { dropSubscriptionById(id); throw error; }
   return () => { dropSubscriptionById(id); };
 }
 

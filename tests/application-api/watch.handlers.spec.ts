@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openSession, closeAllSessions } from "../../packages/core/session/project-session.service.js";
+import { openSession, getSession, closeAllSessions } from "../../packages/core/session/project-session.service.js";
 import { createCancelHandler } from "../../packages/core/application-api/cancel.handler.js";
 import { createCloseHandler } from "../../packages/core/application-api/close.handler.js";
 import { recordHistoryEntry } from "../../packages/core/application-api/history.handlers.js";
@@ -151,5 +151,26 @@ describe("watch subscription lifecycle", () => {
     expect(off).toHaveBeenCalledTimes(3);
     expect(otherOff).not.toHaveBeenCalled();
     expect(listSubscriptions()).toEqual([retained]);
+  });
+});
+
+describe("API controls cancel pending session openings", () => {
+  test.each(["cancel", "close"])("%s prevents a late session after navigation", async (action) => {
+    let release!: () => void;
+    let began!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { began = resolve; });
+    const opening = openSession(root, { generationOptions: { orchestrator: {
+      ...orchestrator, detectAll: async () => { began(); await pending; return []; },
+    } } });
+    await started;
+    if (action === "cancel") {
+      expect(await createCancelHandler().handle({ projectRoot: root }, { caller: "cli" })).toEqual({ cancelled: 1 });
+    } else {
+      expect(await createCloseHandler().handle({ projectRoot: root }, { caller: "cli" })).toEqual({ closed: 1 });
+    }
+    release();
+    await expect(opening).rejects.toThrow();
+    expect(getSession(root)).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import { SnapshotSummarySchema } from "../../contracts/constants/core/application-api.constant.js";
 import type { LiveEvent } from "../../contracts/interfaces/core/live.interface.js";
 
 /** Validate the shared event envelope at the browser/IPC boundary. */
@@ -16,13 +17,39 @@ export function isLiveEvent(value: unknown): value is LiveEvent {
       typeof value.summary !== "object" || value.summary === null ||
       !("sourceFileCount" in value) || typeof value.sourceFileCount !== "number" ||
       !Number.isInteger(value.sourceFileCount) || value.sourceFileCount < 0) return false;
-  const summary = value.summary;
-  return "sessionId" in summary && summary.sessionId === value.sessionId &&
-    "projectRoot" in summary && summary.projectRoot === value.projectRoot &&
-    "capturedAt" in summary && typeof summary.capturedAt === "string" &&
-    "endpointCount" in summary && typeof summary.endpointCount === "number" &&
-    "serviceCount" in summary && typeof summary.serviceCount === "number" &&
-    "frameworks" in summary && Array.isArray(summary.frameworks) &&
-    summary.frameworks.every((name) => typeof name === "string") &&
-    "diagnostics" in summary && Array.isArray(summary.diagnostics);
+  if (!("changedPaths" in value) || !Array.isArray(value.changedPaths) ||
+      !value.changedPaths.every((path) => typeof path === "string")) return false;
+  const parsed = SnapshotSummarySchema.safeParse(value.summary);
+  return parsed.success && parsed.data.sessionId === value.sessionId &&
+    parsed.data.projectRoot === value.projectRoot;
+}
+
+/** Identify writes to already generated artifacts without ignoring source changes. */
+export function isLiveOutputChange(path: string, projectRoot: string, outputs: readonly string[]): boolean {
+  const root = normalizePath(projectRoot);
+  const changed = normalizePath(isAbsolute(path) ? path : `${root}/${path}`);
+  if (changed === root) return false;
+  return outputs.some((output) => {
+    const rooted = output.replace(/\\/g, "/").startsWith(`${root}/`);
+    const target = normalizePath(isAbsolute(output) || rooted ? output : `${root}/${output}`);
+    const matches = (candidate: string) => target === candidate || target.startsWith(`${candidate}/`) ||
+      (!isAbsolute(candidate) && (target.endsWith(`/${candidate}`) || target.includes(`/${candidate}/`)));
+    if (matches(changed)) return true;
+    // Atomic writers create transient files beside their destination.
+    const directory = changed.slice(0, changed.lastIndexOf("/"));
+    const targetDirectory = target.slice(0, target.lastIndexOf("/"));
+    return changed.endsWith(".tmp") && (targetDirectory === directory ||
+      (!isAbsolute(directory) && targetDirectory.endsWith(`/${directory}`)));
+  });
+}
+
+function isAbsolute(path: string): boolean { return /^(?:[A-Za-z]:[\\/]|[\\/])/.test(path); }
+function normalizePath(path: string): string {
+  const parts: string[] = [];
+  for (const part of path.replace(/\\/g, "/").split("/")) {
+    if (part === "." || part === "") continue;
+    if (part === "..") parts.pop();
+    else parts.push(part);
+  }
+  return (path.startsWith("/") ? "/" : "") + parts.join("/");
 }

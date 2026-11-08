@@ -514,6 +514,7 @@ declare const Bun: {
   serve(options: {
     port: number;
     hostname?: string;
+    idleTimeout?: number;
     fetch: (request: IServerRequest) => Response | Promise<Response>;
   }): { readonly port: number; stop(closeActiveConnections?: boolean): void };
   /**
@@ -695,7 +696,7 @@ declare function clearInterval(handle: ReturnType<typeof setInterval>): void;
 /** Minimal web stream surface used by authenticated live event responses. */
 declare class ReadableStream<T> {
   constructor(source: {
-    start(controller: { enqueue(value: T): void; close(): void }): void;
+    start(controller: { readonly desiredSize: number | null; enqueue(value: T): void; close(): void }): void;
     cancel?(): void;
   });
 }

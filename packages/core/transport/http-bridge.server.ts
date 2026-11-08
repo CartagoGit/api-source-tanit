@@ -124,14 +124,10 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
       const server = Bun.serve({
         port,
         hostname: HOST,
+        idleTimeout: 0,
         fetch: async (request) => {
-          // One abort controller per request. The bridge fires
-          // it on the response boundary; handlers can poll
-          // `ctx.signal.aborted` to opt into cooperative
-          // cancellation. We do not currently observe the
-          // upstream client disconnect — `IServerRequest` in the
-          // project's ambient `runtime.d.ts` does not expose a
-          // `signal`. Tracking disconnects is a separate slice.
+          // Request cancellation and long-lived subscription ownership are separate:
+          // event streams observe disconnect and release their own subscription.
           const aborter = new BridgeAbortController();
           return handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams);
         },
@@ -349,7 +345,10 @@ function openEventStream(
   };
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      enqueue = (value) => controller.enqueue(value);
+      enqueue = (value) => {
+        if (controller.desiredSize !== null && controller.desiredSize < 0) { end(); return; }
+        controller.enqueue(value);
+      };
       close = () => controller.close();
     },
     cancel: end,
