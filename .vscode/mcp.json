@@ -2,12 +2,12 @@
   "servers": {
     "DelendAI:Tanit": {
       "type": "stdio",
-      "command": "bash",
+      "command": "delendai",
       "args": [
-        "${workspaceFolder}/scripts/integrations/delendai-runtime.sh",
         "__serve",
         "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
+        "--config=${workspaceFolder}/delendai.config.json",
+        "--version=0.3.0"
       ],
       "cwd": "${workspaceFolder}"
     }

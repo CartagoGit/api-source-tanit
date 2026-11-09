@@ -34,12 +34,13 @@ try {
  };
  const unlinked = run('--verify');
  const verified = run('--link', '--verify');
- const launched = run();
+ const launched = run("--version=0.3.0");
+ const unsupported = run("--version=0.4.0");
  await writeFile(join(runtime, 'packages/cli/src/index.ts'), 'throw new Error("MUTATED_CLI_EXECUTED")');
  const dirty = run();
  git('add', '.'); git('commit', '-qm', 'same declared version, different code');
  const moved = run();
- console.log(JSON.stringify({unlinked, verified, launched, dirty, moved, commit}));
+ console.log(JSON.stringify({unlinked, verified, launched, unsupported, dirty, moved, commit}));
 } finally { await rm(root, {recursive:true,force:true}); }
 `;
 
@@ -56,6 +57,8 @@ describe("pinned optional DelendAI runtime", () => {
     expect(data.verified?.out).toContain("DelendAI 0.3.0");
     expect(data.launched?.code).toBe(0);
     expect(data.launched?.out).toContain("PINNED_CLI_EXECUTED");
+    expect(data.unsupported?.code).toBe(1);
+    expect(data.unsupported?.error).toContain("Unsupported DelendAI runtime version");
     expect(data.dirty?.code).toBe(1);
     expect(data.dirty?.error).toContain("tracked changes");
     expect(data.moved?.code).toBe(1);

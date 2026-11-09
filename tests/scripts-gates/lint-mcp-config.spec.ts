@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
 
-import { MCP_JSON, VSCODE_MCP_JSON } from "../../scripts/helpers/root.helper.js";
-import { strictJsonProblem } from "../../scripts/gates/sync-mcp-config.script.js";
+import { MCP_JSON, VSCODE_MCP_JSON, fromRoot } from "../../scripts/helpers/root.helper.js";
+import { strictJsonProblem, buildCodexConfig } from "../../scripts/gates/sync-mcp-config.script.js";
 
 /**
  * Los dos ficheros de configuración MCP, leídos como los lee cualquiera.
@@ -47,8 +47,8 @@ describe("la configuración MCP tiene que ser JSON estricto", () => {
     };
     for (const server of Object.values(derived.servers)) {
       expect(server.cwd).toBe("${workspaceFolder}");
-      expect(server.command).toBe("bash");
-      expect(server.args[0]).toBe("${workspaceFolder}/scripts/integrations/delendai-runtime.sh");
+      expect(server.command).toBe("delendai");
+      expect(server.args).toContain("--version=0.3.0");
       expect(server.args).toContain("--workspace=${workspaceFolder}");
     }
   });
@@ -67,5 +67,20 @@ describe("la configuración MCP tiene que ser JSON estricto", () => {
 
   test("un JSON válido no da problema", () => {
     expect(strictJsonProblem('{ "servers": {} }\n')).toBeNull();
+  });
+});
+
+
+describe("Codex shares the project MCP source", () => {
+  test("the committed Codex configuration is generated from the same server", async () => {
+    const source = JSON.parse(await readFile(MCP_JSON, "utf8"));
+    const config = await readFile(fromRoot(".codex", "config.toml"), "utf8");
+    expect(config).toBe(buildCodexConfig(source));
+    expect(config).toContain('[mcp_servers."DelendAI:Tanit"]');
+    expect(config).toContain('command = "delendai"');
+    expect(config).toContain('"--version=0.3.0"');
+    expect(config).not.toContain("${workspaceFolder}");
+    expect(config).not.toContain("_projects/delendai");
+    expect(config).toContain("[mcp_servers.DelendAI]\nenabled = false");
   });
 });

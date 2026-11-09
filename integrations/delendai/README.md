@@ -27,7 +27,7 @@ importar; no hay paso de build):
 ```
 
 El host se declara una vez en `.mcp.json` (sincronizado a
-`.vscode/mcp.json` con `bun run mcp:sync`).
+`.vscode/mcp.json` y `.codex/config.toml` con `bun run mcp:sync`).
 
 ## Tools expuestos
 
@@ -96,3 +96,31 @@ El producto Tanit no necesita esta instalación. La configuración MCP deriva
 solo de `.mcp.json`; `bun run mcp:sync` actualiza VS Code. Las reglas de
 validación del `develop` de DelendAI son una referencia para scripts de
 Tanit; nunca son una instrucción para actualizar este runtime.
+
+### Mismo servidor en todos los clientes
+
+`.mcp.json` declara `command: "delendai"` y los argumentos `__serve`,
+`--workspace=.`, `--config=./delendai.config.json`, `--version=0.3.0`.
+El sincronizador sustituye las rutas por `${workspaceFolder}` en VS Code;
+Codex utiliza su formato TOML y rutas relativas al checkout. Codex no
+interpreta la variable de VS Code. Su configuración de proyecto desactiva
+el servidor genérico heredado `DelendAI` para evitar cargar otro runtime.
+Los otros proyectos mantienen su configuración global.
+
+El flag de versión lo consume el lanzador, antes de ejecutar el host 0.3.0.
+No basta con añadir el argumento al CLI antiguo: su parser no selecciona
+instalaciones por versión. Este equipo tiene un dispatcher de `delendai`
+que delega al lanzador del proyecto; se guardó el ejecutable anterior en
+la caché de migraciones. En otros equipos, anteponer el shim del checkout
+al PATH **del proceso cliente** antes de abrir VS Code o Codex:
+
+```bash
+export PATH="$PWD/scripts/integrations/bin:$PATH"
+delendai --verify --version=0.3.0
+```
+
+OpenAI documenta la configuración de MCP por proyecto en
+[Model Context Protocol](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+`bun run lint:mcp` comprueba que ambos formatos sigan el origen común.
+Los procesos de cliente ya abiertos conservan su catálogo hasta recargar
+su conexión MCP; las operaciones CLI nuevas ya usan el runtime fijado.

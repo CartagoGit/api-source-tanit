@@ -6,6 +6,14 @@ pin_file="$project_dir/scripts/integrations/delendai-runtime.json"
 pin_commit="$(bun -e 'console.log((await Bun.file(process.argv[1]).json()).commit)' "$pin_file")"
 pin_version="$(bun -e 'console.log((await Bun.file(process.argv[1]).json()).version)' "$pin_file")"
 runtime_dir="${DELENDAI_RUNTIME_DIR:-$HOME/.local/share/tanit/delendai/$pin_version-${pin_commit:0:8}}"
+runtime_args=()
+for runtime_arg in "$@"; do
+  case "$runtime_arg" in
+    --version=*) [[ "${runtime_arg#--version=}" == "$pin_version" ]] || { printf 'Unsupported DelendAI runtime version: %s\n' "$runtime_arg" >&2; exit 1; } ;;
+    *) runtime_args+=("$runtime_arg") ;;
+  esac
+done
+set -- "${runtime_args[@]}"
 fail() { printf 'DelendAI %s: %s\n' "$pin_version" "$1" >&2; exit 1; }
 [[ -f "$runtime_dir/packages/cli/src/index.ts" ]] || fail 'runtime missing; see integrations/delendai/README.md for installation.'
 actual_commit="$(git -C "$runtime_dir" rev-parse HEAD)"

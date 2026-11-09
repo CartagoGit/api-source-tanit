@@ -22,7 +22,8 @@
 >
 **Agnostic / portable rule:** Tanit runs without DelendAI. Its optional
 integration lives in `integrations/delendai/`; product code must not import
-it. MCP clients launch `scripts/integrations/delendai-runtime.sh`, which verifies
+it. MCP clients launch `delendai __serve ... --version=0.3.0`. The installed
+launcher delegates to `scripts/integrations/delendai-runtime.sh`, which verifies
 the immutable DelendAI 0.3.0 commit declared in its adjacent JSON pin.
 Use this launcher for development CLI commands too; never use a moving
 sibling checkout. Installation is documented in `integrations/delendai/README.md`.
