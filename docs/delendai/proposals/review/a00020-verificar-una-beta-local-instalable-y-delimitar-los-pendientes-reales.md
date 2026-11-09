@@ -10,6 +10,8 @@ last-transition-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
 last-correlation-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T15:29:01.057Z
+shipped-in:
+  - "e68c48cef4b942c50ef5b70eeafc22f92e21ea1c"
 ---
 
 # a00020 — Verificar una beta local instalable y delimitar los pendientes reales
@@ -40,8 +42,10 @@ TODO: why this work matters now.
   - "La web compila y responde con su API real autenticada."
   - "Cada pendiente de beta tiene alcance y evidencia concretos."
 - shipped-in: `ade9fced284f`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at e68c48cef4b9, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 4/4: (1) docs/BETA.md records the standalone Linux binary run with PATH=/usr/bin:/bin; the parent smoke record confirms it. (2) docs/BETA.md records Express 9 operations and Laravel 19 operations, resolved local references, with rebuilt final artifacts checked. (3) docs/BETA.md records production build plus visible Chrome shell, real Express project open, and HTTP 403 for unauthenticated API requests. (4) docs/BETA.md scopes representative-repository and desktop installer checks as pending, and explicitly limits what the local smoke validates. — Independent review of the beta evidence in docs/BETA.md and the parent-provided artifact smoke record. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport (4973/4975, two platform skips), journal timestamp 2026-11-09T15:37:21.268Z at the prior worktree path .cache/delendai/results/logs/validate.jsonl. I did not rerun full validation in this fresh unit. Tracked source diff from validated 3e02acdb to current unit is empty outside proposal metadata; fresh lint:docs and lint:proposals pass. Evidence includes standalone Linux binary, Express/Laravel OpenAPI, visible web export/history, auth 403, and filesystem watch.
 
 ## acceptance
 
