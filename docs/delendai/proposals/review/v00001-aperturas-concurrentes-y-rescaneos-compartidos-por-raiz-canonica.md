@@ -57,8 +57,10 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
   - "Escribir artefactos o dependencias no inicia bucles."
   - "Errores de watcher se publican como diagnósticos."
 - shipped-in: `ee2d0ec2e589`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed session rescan coalescing and tests/core/session/session-rescan.spec.ts for latest-source snapshot and serialized rescans. (2) Reviewed output/dependency exclusions in watcher configuration and rescan tests for no recursive watch loops. (3) Reviewed watcher failure handling and rescan diagnostic assertions in tests/core/session/session-rescan.spec.ts. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ## acceptance
 
