@@ -2,14 +2,16 @@
 id: x00095
 title: "Include Bun-owned tests in source proof planning"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: ad392f51-98f5-452c-a447-d9d7bc777862
-last-correlation-id: ad392f51-98f5-452c-a447-d9d7bc777862
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T14:57:41.309Z
+last-transition-id: 6af91ad7-c38f-4a93-a40c-71147520728e
+last-correlation-id: 6af91ad7-c38f-4a93-a40c-71147520728e
+last-transition-from: review
+last-transition-at: 2026-11-09T15:52:02.275Z
+shipped-in:
+  - "8d1a1cf7a3b963ecee9417b5d44554f7d811919f"
 ---
 
 # x00095 — Include Bun-owned tests in source proof planning
@@ -31,12 +33,14 @@ Vitest intentionally excludes the Bun `tests/transport` and `tests/core/state/sq
 - global_gate: none
 
 ### S1 — Route Bun-owned source changes through full proof
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/helpers/proof-plan.helper.ts`, `tests/scripts-gates/proof-plan.spec.ts`
 - **Gate**: test
 - shipped-in: `685723db4a80`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6-luna
+- review-reviewer: openai-gpt-6.1-sol
+- review-log: approved by openai-gpt-6.1-sol — verified at 8d1a1cf7a3b9, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 2/2: (1) Reviewed reachability fallback;17 planner tests and fresh full validation passed, including15 SQLite and41 transport tests. (2) Coverage evaluator remains unchanged; full validation passed fail-closed missing-file and malformed-metric regressions. — Independent source review. Actual full validation journal .cache/delendai/results/logs/validate.jsonl at2026-11-09T15:40:25.691Z exit0:4917Vitest+15SQLite+41transport passed,2skipped. Verified landed8d1 source/tests/config byte-identical to tested review snapshot; only proposal metadata differs.
 
 ## acceptance
 
