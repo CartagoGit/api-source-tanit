@@ -28,7 +28,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 import { buildArtifacts } from "../discovery/generation.pipeline.js";
 import { collectionBasename } from "../discovery/output-paths.helper.js";
@@ -46,6 +46,7 @@ import type {
 } from "../../contracts/interfaces/core/application-api.interface.js";
 import type { IExporterDiagnostic } from "../../contracts/interfaces/core/exporter.interface.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
+import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 
 /** One file, with what would be written in it. */
 interface IPlannedFile {
@@ -114,6 +115,36 @@ function asFormat(target: string): ExportFormatId {
 }
 
 /**
+ * Resolves user destinations against the project being exported.
+ *
+ * An explicit directory takes precedence over the directory in outputPath;
+ * outputPath still supplies the file name. Without either, use the project's
+ * standard output directory. Both preview and write consume this resolution.
+ */
+export function resolveExportDestination(
+  snapshot: IProjectSnapshot,
+  outputDirectory?: string,
+  outputPath?: string,
+): { readonly directory: string; readonly outputPath?: string } {
+  if (outputPath !== undefined &&
+      (/[\\/]$/.test(outputPath) || basename(outputPath) === "." || basename(outputPath) === "..")) {
+    throw apiError("INVALID_INPUT", "outputPath must name a file; use outputDirectory for a directory");
+  }
+  const requested = outputPath === undefined
+    ? undefined
+    : resolve(snapshot.projectRoot, outputPath);
+  const directory = outputDirectory !== undefined
+    ? resolve(snapshot.projectRoot, outputDirectory)
+    : requested !== undefined
+      ? dirname(requested)
+      : resolve(snapshot.projectRoot, OUTPUT_DIR_NAME);
+  return {
+    directory,
+    ...(requested !== undefined ? { outputPath: join(directory, basename(requested)) } : {}),
+  };
+}
+
+/**
  * Builds the artifacts of one format and says where they would go.
  *
  * Nothing is written. The paths are absolute, so the caller can show
@@ -122,9 +153,10 @@ function asFormat(target: string): ExportFormatId {
 export async function planExport(
   snapshot: IProjectSnapshot,
   target: string,
-  outputDirectory: string,
+  outputDirectory?: string,
+  outputPath?: string,
 ): Promise<IExportPlan> {
-  const planned = await buildPlan(snapshot, target, outputDirectory);
+  const planned = await buildPlan(snapshot, target, outputDirectory, outputPath);
   return {
     files: planned.files.map(
       ({ path, change, bytes }): IExportFilePreview => ({ path, change, bytes }),
@@ -144,13 +176,14 @@ export async function planExport(
 export async function writeExport(
   snapshot: IProjectSnapshot,
   target: string,
-  outputDirectory: string,
+  outputDirectory?: string,
+  outputPath?: string,
 ): Promise<{
   readonly outputPath: string;
   readonly bytes: number;
   readonly files: ReadonlyArray<string>;
 }> {
-  const written = await writeExportWithPlan(snapshot, target, outputDirectory);
+  const written = await writeExportWithPlan(snapshot, target, outputDirectory, outputPath);
   return {
     outputPath: written.outputPath,
     bytes: written.bytes,
@@ -170,14 +203,15 @@ export async function writeExport(
 export async function writeExportWithPlan(
   snapshot: IProjectSnapshot,
   target: string,
-  outputDirectory: string,
+  outputDirectory?: string,
+  outputPath?: string,
 ): Promise<{
   readonly outputPath: string;
   readonly bytes: number;
   readonly files: ReadonlyArray<string>;
   readonly plan: IExportPlan;
 }> {
-  const planned = await buildPlan(snapshot, target, outputDirectory);
+  const planned = await buildPlan(snapshot, target, outputDirectory, outputPath);
   let bytes = 0;
   const written: string[] = [];
   for (const file of planned.files) {
@@ -210,7 +244,8 @@ interface IBuiltPlan {
 async function buildPlan(
   snapshot: IProjectSnapshot,
   target: string,
-  outputDirectory: string,
+  outputDirectory?: string,
+  outputPath?: string,
 ): Promise<IBuiltPlan> {
   const exporters = selectExporters([asFormat(target)]);
   const results: IExportResult[] = await buildArtifacts(snapshot, exporters);
@@ -233,7 +268,15 @@ async function buildPlan(
     );
   }
 
-  const directory = resolve(outputDirectory);
+  const destination = resolveExportDestination(snapshot, outputDirectory, outputPath);
+  if (destination.outputPath !== undefined &&
+      results.reduce((count, result) => count + Math.max(1, result.files.length), 0) > 1) {
+    throw apiError(
+      "INVALID_INPUT",
+      `The ${target} exporter produces multiple files; use outputDirectory instead of outputPath to preserve their layout`,
+    );
+  }
+  const directory = destination.directory;
   const files: IPlannedFile[] = [];
 
   for (const result of results) {
@@ -241,13 +284,13 @@ async function buildPlan(
     // files: the writer puts that artifact in the output path the
     // caller chose.
     if (result.files.length === 0) {
-      const path = join(directory, primaryFileName(snapshot, result.format));
+      const path = destination.outputPath ?? join(directory, primaryFileName(snapshot, result.format));
       const content = JSON.stringify(result.artifact ?? {}, null, 2) + "\n";
       files.push(await describeFile(path, content));
       continue;
     }
     for (const artifact of result.files) {
-      const path = join(directory, artifact.path);
+      const path = destination.outputPath ?? join(directory, artifact.path);
       files.push(await describeFile(path, artifact.content));
     }
   }

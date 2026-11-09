@@ -26,8 +26,6 @@
  * Now the history is on disk (`project-history.service.ts`) and these
  * are the five ways to ask it questions.
  */
-import { join } from "node:path";
-
 import type { IHandler } from "./dispatcher.js";
 import {
   HistoryCompareConfigInputSchema,
@@ -145,8 +143,7 @@ export function createPersistedHistoryHandlers(): {
           );
         }
         const target = input.target ?? DEFAULT_FORMAT;
-        const directory = input.outputDirectory ?? join(snapshot.projectRoot, "tanit");
-        const written = await writeExport(snapshot, target, directory);
+        const written = await writeExport(snapshot, target, input.outputDirectory);
         return {
           outputPath: written.outputPath,
           bytes: written.bytes,
