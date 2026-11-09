@@ -1,0 +1,27 @@
+<aside class="sidebar" [attr.aria-label]="i18n.translate('app.navigation')">
+  <div class="brand">
+    <span class="brand-mark">T</span>
+    <div><strong>{{ i18n.translate("app.name") }}</strong><small>{{ i18n.translate("app.subtitle") }}</small></div>
+  </div>
+  <nav>
+    @for (group of groups; track group.id) {
+      <section class="group" [attr.aria-labelledby]="groupId(group)">
+        <h2 class="group-title" [id]="groupId(group)">{{ i18n.translate(group.labelKey) }}</h2>
+        @for (item of group.items; track item.id) {
+          <button
+            type="button"
+            [class.active]="activeId() === item.id"
+            [attr.aria-current]="activeId() === item.id ? 'page' : null"
+            (click)="select.emit(item.id)"
+          >
+            <span aria-hidden="true">{{ iconFor(item.id) }}</span>
+            {{ i18n.translate(item.labelKey) }}
+          </button>
+        }
+      </section>
+    }
+  </nav>
+  <button class="theme" type="button" (click)="theme.emit()" [attr.aria-label]="i18n.translate('theme.toggle')">
+    <span aria-hidden="true">◐</span>{{ themeLabel() }}
+  </button>
+</aside>
