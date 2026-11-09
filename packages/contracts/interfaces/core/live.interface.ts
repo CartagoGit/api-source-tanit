@@ -17,6 +17,7 @@ export type LiveEvent = ILiveEventIdentity & (
       readonly changedPaths: ReadonlyArray<string>;
       /** Distinct source files contributing discovered routes. */
       readonly sourceFileCount: number }
+  | { readonly type: "snapshot-error"; readonly message: string; readonly changedPaths: ReadonlyArray<string> }
   | { readonly type: "snapshot-stale"; readonly changedPaths: ReadonlyArray<string> }
   | { readonly type: "session-closed" | "subscription-closed" }
 );

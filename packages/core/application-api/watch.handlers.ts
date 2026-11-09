@@ -19,7 +19,7 @@ import {
   WatchInputSchema,
   type WatchInput,
 } from "./zod-schemas.js";
-import type { IProjectSession, SnapshotReadyEvent, SnapshotStaleEvent } from "../../contracts/interfaces/core/session.interface.js";
+import type { IProjectSession, SnapshotErrorEvent, SnapshotReadyEvent, SnapshotStaleEvent } from "../../contracts/interfaces/core/session.interface.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 import type { LiveEvent, LiveEventSink } from "../../contracts/interfaces/core/live.interface.js";
@@ -107,6 +107,12 @@ function observeSession(session: IProjectSession): void {
       changedPaths: [...changedPaths],
     });
   };
+  const failed = ({ message, changedPaths }: SnapshotErrorEvent) => {
+    for (const sub of activeSubscriptions()) send(sub, {
+      type: "snapshot-error", subscriptionId: sub.subscriptionId,
+      sessionId: session.id, projectRoot: session.projectRoot, message, changedPaths,
+    });
+  };
   const closed = () => {
     for (const [id, sessionId] of _subscriptionSessions) {
       if (sessionId === session.id) {
@@ -117,10 +123,12 @@ function observeSession(session: IProjectSession): void {
       }
     }
   };
+  session.on("snapshot-error", failed);
   session.on("session-closed", closed);
   session.on("snapshot-ready", ready);
   session.on("snapshot-stale", stale);
   _sessionCleanups.set(session.id, () => {
+    session.off("snapshot-error", failed);
     session.off("session-closed", closed);
     session.off("snapshot-ready", ready);
     session.off("snapshot-stale", stale);

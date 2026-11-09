@@ -2,6 +2,13 @@ import { describe, expect, test } from "vitest";
 import { isLiveEvent, isLiveOutputChange } from "../../packages/core/helpers/live-event.helper.js";
 
 describe("live event boundaries", () => {
+  test("validates rescan failures as the same typed carrier payload", () => {
+    const error = { type: "snapshot-error", projectRoot: "/api", sessionId: "s", subscriptionId: "a",
+      message: "Source read failed", changedPaths: ["src/routes.ts"] };
+    expect(isLiveEvent(error)).toBe(true);
+    expect(isLiveEvent({ ...error, message: 5 })).toBe(false);
+    expect(isLiveEvent({ ...error, changedPaths: [5] })).toBe(false);
+  });
   test("rejects malformed or mismatched summaries", () => {
     expect(isLiveEvent(null)).toBe(false);
     expect(isLiveEvent({ type: "snapshot-stale", projectRoot: "/api", sessionId: "s", subscriptionId: "a", changedPaths: [3] })).toBe(false);

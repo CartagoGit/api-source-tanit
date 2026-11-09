@@ -9,6 +9,11 @@ export function isLiveEvent(value: unknown): value is LiveEvent {
       !("projectRoot" in value) || typeof value.projectRoot !== "string" ||
       !("type" in value)) return false;
   if (value.type === "session-closed" || value.type === "subscription-closed") return true;
+  if (value.type === "snapshot-error") {
+    return "message" in value && typeof value.message === "string" &&
+      "changedPaths" in value && Array.isArray(value.changedPaths) &&
+      value.changedPaths.every((path) => typeof path === "string");
+  }
   if (value.type === "snapshot-stale") {
     return "changedPaths" in value && Array.isArray(value.changedPaths) &&
       value.changedPaths.every((path) => typeof path === "string");

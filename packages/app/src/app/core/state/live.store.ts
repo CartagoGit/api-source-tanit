@@ -103,11 +103,14 @@ export class LiveStore {
         event.sessionId !== this.project.sessionId() ||
         (this.subscriptionId() !== null && event.subscriptionId !== this.subscriptionId())) return;
     if (event.type === "snapshot-ready") {
+      this.error.set(null);
       this.sourceFileCount.set(event.sourceFileCount);
       this.project.applySummary(event.summary);
       const outputs = this.exports.result()?.files.map((file) => file.path) ?? [];
       if (this.autoExport() && event.changedPaths.some((path) =>
         !isLiveOutputChange(path, event.projectRoot, outputs))) void this.regenerate();
+    } else if (event.type === "snapshot-error") {
+      this.error.set(event.message);
     } else if (event.type === "snapshot-stale") {
       this.changes.set(event.changedPaths.map((path) => ({ kind: "modified", path })));
     } else {

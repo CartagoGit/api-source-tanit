@@ -47,6 +47,23 @@ describe("live store common events", () => {
     expect(store.sourceFileCount()).toBe(3);
   });
 
+  test("shows a rescan failure while retaining the last summary and recovers on success", async () => {
+    const { store, project, exports } = setup();
+    await store.setEnabled(true, "/workspace");
+    store.update(ready());
+    const previous = project.summary();
+    store.update({ jsonrpc: "2.0", method: "tanit/live", params: {
+      type: "snapshot-error", projectRoot: "/workspace", sessionId: "session-1", subscriptionId: "sub-1",
+      message: "Source could not be read", changedPaths: ["src/routes.ts"],
+    } });
+    expect(store.error()).toBe("Source could not be read");
+    expect(store.enabled()).toBe(true);
+    expect(project.summary()).toBe(previous);
+    expect(exports.regenerate).not.toHaveBeenCalled();
+    store.update(ready());
+    expect(store.error()).toBeNull();
+  });
+
   test("an enable response arriving after cancellation is immediately released", async () => {
     const { store, request } = setup();
     let resolve!: (value: Awaited<ReturnType<typeof request>>) => void;

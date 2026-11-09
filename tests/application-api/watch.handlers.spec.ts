@@ -8,6 +8,7 @@ import { createCloseHandler } from "../../packages/core/application-api/close.ha
 import { recordHistoryEntry } from "../../packages/core/application-api/history.handlers.js";
 import {
   clearSubscriptions,
+  connectSubscriptionEvents,
   createWatchHandlers,
   dropSubscriptionById,
   listSubscriptions,
@@ -47,7 +48,7 @@ describe("watch subscription lifecycle", () => {
     const off = vi.spyOn(session, "off");
     const first = registerSubscription(root, null);
     const second = registerSubscription(root, null);
-    expect(on).toHaveBeenCalledTimes(3);
+    expect(on).toHaveBeenCalledTimes(4);
     const ready = on.mock.calls.find(([event]) => event === "snapshot-ready")?.[1];
     expect(ready).toBeDefined();
     ready?.({ snapshot: session.current() });
@@ -58,11 +59,25 @@ describe("watch subscription lifecycle", () => {
     ready?.({ snapshot: session.current() });
     expect(recordHistoryEntry).toHaveBeenCalledTimes(2);
     expect(dropSubscriptionById(second.subscriptionId)).toBe(true);
-    expect(off).toHaveBeenCalledTimes(3);
+    expect(off).toHaveBeenCalledTimes(4);
     ready?.({ snapshot: session.current() });
     expect(recordHistoryEntry).toHaveBeenCalledTimes(2);
     expect(dropSubscriptionById(second.subscriptionId)).toBe(false);
     expect(listSubscriptions()).toEqual([]);
+  });
+
+  test("forwards a rescan failure without discarding the last valid session", async () => {
+    const session = await sessionAt();
+    const on = vi.spyOn(session, "on");
+    const sub = registerSubscription(root, null);
+    const sink = vi.fn();
+    connectSubscriptionEvents(sub.subscriptionId, sink);
+    const previous = session.current();
+    on.mock.calls.find(([event]) => event === "snapshot-error")?.[1]({ message: "Broken source", changedPaths: ["routes.ts"] });
+    expect(sink).toHaveBeenLastCalledWith({ type: "snapshot-error", projectRoot: root,
+      sessionId: session.id, subscriptionId: sub.subscriptionId, message: "Broken source", changedPaths: ["routes.ts"] });
+    expect(session.current()).toBe(previous);
+    expect(listSubscriptions()).toEqual([sub]);
   });
 
   test("records a stale event once when any active path filter matches", async () => {
@@ -86,9 +101,9 @@ describe("watch subscription lifecycle", () => {
     const off = vi.spyOn(session, "off");
     registerSubscription(root, null);
     clearSubscriptions();
-    expect(off).toHaveBeenCalledTimes(3);
+    expect(off).toHaveBeenCalledTimes(4);
     registerSubscription(root, null);
-    expect(on).toHaveBeenCalledTimes(6);
+    expect(on).toHaveBeenCalledTimes(8);
     expect(listSubscriptions()).toHaveLength(1);
   });
 
@@ -100,7 +115,7 @@ describe("watch subscription lifecycle", () => {
     const oldReady = on.mock.calls.find(([event]) => event === "snapshot-ready")?.[1];
     session.close();
     session.close();
-    expect(off).toHaveBeenCalledTimes(3);
+    expect(off).toHaveBeenCalledTimes(4);
     expect(listSubscriptions()).toEqual([]);
     const reopened = await sessionAt();
     expect(reopened.id).not.toBe(session.id);
@@ -129,7 +144,7 @@ describe("watch subscription lifecycle", () => {
     await session.configure({ collectionName: "Updated" });
     expect(listSubscriptions()).toEqual([sub]);
     expect(session.current().sessionId).toBe(session.id);
-    expect(on).toHaveBeenCalledTimes(3);
+    expect(on).toHaveBeenCalledTimes(4);
     expect(recordHistoryEntry).toHaveBeenCalledTimes(1);
     session.close();
     expect(listSubscriptions()).toEqual([]);
@@ -149,7 +164,7 @@ describe("watch subscription lifecycle", () => {
     } else {
       expect(await createCloseHandler().handle({ projectRoot: root }, context)).toEqual({ closed: 1 });
     }
-    expect(off).toHaveBeenCalledTimes(3);
+    expect(off).toHaveBeenCalledTimes(4);
     expect(otherOff).not.toHaveBeenCalled();
     expect(listSubscriptions()).toEqual([retained]);
   });
