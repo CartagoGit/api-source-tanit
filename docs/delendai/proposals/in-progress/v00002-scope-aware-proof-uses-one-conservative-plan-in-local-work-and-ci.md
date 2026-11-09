@@ -2,14 +2,14 @@
 id: v00002
 title: "Scope-aware proof uses one conservative plan in local work and CI"
 kind: perf
-status: review
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 12e0cca7-7579-4d01-9838-663558d3ea70
-last-correlation-id: 12e0cca7-7579-4d01-9838-663558d3ea70
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T07:43:21.482Z
+last-transition-id: 8614e446-5c3a-4da7-8ec0-d691499b5bde
+last-correlation-id: 8614e446-5c3a-4da7-8ec0-d691499b5bde
+last-transition-from: review
+last-transition-at: 2026-11-09T07:58:50.281Z
 ---
 
 # v00002 — Scope-aware proof uses one conservative plan in local work and CI
