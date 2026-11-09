@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 424 símbolos en 170 módulos.
+> 425 símbolos en 170 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
