@@ -10,6 +10,8 @@ last-transition-id: 597680ba-12e1-4a3f-9c81-c040462706e5
 last-correlation-id: 597680ba-12e1-4a3f-9c81-c040462706e5
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T08:39:23.522Z
+shipped-in:
+  - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
 
 # v00002 — Scope-aware proof uses one conservative plan in local work and CI
@@ -41,7 +43,7 @@ the full aggregate baseline.
 - global_gate: none
 
 ### S1 — Plan and execute scoped proof
-- **Status**: review
+- **Status**: done
 - **Files**: `package.json`, `delendai.config.json`, `scripts/helpers/proof-plan.helper.ts`, `scripts/gates/prove.script.ts`, `packages/contracts/interfaces/quality/proof-plan.interface.ts`, `packages/contracts/constants/quality/proof-rules.constant.ts`, `tests/scripts-gates/proof-plan.spec.ts`, `.github/workflows/validate.yml`, `scripts/gates/ci-summary.script.ts`
 - **Gate**: e2e
 - acceptance:
@@ -49,8 +51,10 @@ the full aggregate baseline.
   - "Unknown paths and failed analysis widen validation"
   - "Scope-aware skips cannot produce a false green"
 - shipped-in: `88fa0a127496`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed scripts/helpers/proof-plan.helper.ts and prove.script.ts plus CI workflow coverage; local and CI use the same plan generation. (2) Reviewed proof planner fallback behavior and regression cases in tests/scripts-gates/proof-plan.spec.ts. (3) Reviewed ci-summary planned-job enforcement and workflow tests: an omitted planned job or failed scoped analysis cannot yield a successful overall CI result. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ### S2 — Run changed-file coverage on bounded source pull requests
 - **Status**: review
