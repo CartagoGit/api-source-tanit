@@ -6,10 +6,10 @@ status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: af499e53-7cfd-490e-a50c-cc40aa1a6d64
-last-correlation-id: af499e53-7cfd-490e-a50c-cc40aa1a6d64
+last-transition-id: deb6e556-a80a-465a-a887-96bb37f6a808
+last-correlation-id: deb6e556-a80a-465a-a887-96bb37f6a808
 last-transition-from: in-progress
-last-transition-at: 2026-11-09T15:04:45.863Z
+last-transition-at: 2026-11-09T15:12:19.597Z
 ---
 
 # x00092 — Arrancar la web compilada con recursos del mismo origen y navegación válida
