@@ -1,0 +1,19 @@
+orders_list:
+  path: /orders
+  controller: App\Controller\OrderController::list
+  methods: [GET]
+
+orders_create:
+  path: /orders
+  controller: App\Controller\OrderController::create
+  methods: [POST]
+
+orders_show:
+  path: /orders/{id}
+  controller: App\Controller\OrderController::show
+  methods: [GET]
+
+orders_update_status:
+  path: /orders/{id}/status
+  controller: App\Controller\OrderController::updateStatus
+  methods: [PATCH]
