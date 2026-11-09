@@ -4,6 +4,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createProofPlan, executeProof } from "../helpers/proof-plan.helper.js";
+import { executeAggregateFallback, runChangedFileCoverage } from "./changed-file-coverage.script.js";
 import type { IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -57,7 +58,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   for (const reason of plan.reasons) console.log(`Full proof: ${reason}`);
   if (argv.includes("--affected-tests")) {
     if (!plan.specs.length) throw new Error("No affected specs; use the required full proof.");
-    return spawnSync("bunx", ["vitest", "run", ...plan.specs], { cwd: ROOT, stdio: "inherit" }).status ?? 1;
+    if (plan.mode !== "affected" || !plan.jobs["affected-tests"]) throw new Error("Affected test stage is not selected by the proof plan.");
+    const test = spawnSync("bunx", ["vitest", "run", "--coverage", "--coverage.reportOnFailure", "--coverage.thresholds=false", "--passWithNoTests", ...plan.specs], { cwd: ROOT, stdio: "inherit" });
+    if (test.status !== 0) return test.status ?? 1;
+    const coverage = runChangedFileCoverage(plan.changedFiles);
+    for (const failure of coverage.failures) console.error(failure);
+    if (coverage.status === "BELOW_FLOOR") console.log("Changed-file floor not met; running the frozen aggregate coverage gate.");
+    else console.log(`Changed-file coverage: ${coverage.status}`);
+    return executeAggregateFallback(coverage, async () =>
+      spawnSync("bun", ["run", "test:coverage"], { cwd: ROOT, stdio: "inherit" }).status ?? 1,
+    );
   }
   const status = await executeProof(plan, async step => {
     console.log(`\n[proof:${step.id}] ${step.argv.join(" ")}`);
