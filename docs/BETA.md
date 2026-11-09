@@ -11,7 +11,7 @@ this verification does not constitute a public release.
 | Standalone Linux x64 CLI | Compiled executable starts and exports with `PATH=/usr/bin:/bin`, without Bun or DelendAI on PATH. |
 | Express export | OpenAPI 3.1.0: 5 paths, 9 operations; JSON CLI report counts match; local references resolve. |
 | Laravel export | OpenAPI 3.1.0: 11 paths, 19 operations; report counts match; local references resolve. |
-| Production web UI | Angular production build succeeds; HTML and main JavaScript respond with HTTP 200. |
+| Production web UI | Angular production build succeeds. A real isolated Chrome session boots Angular, opens the Express project through the UI, and displays 9 visible / 9 indexed operations in Endpoints Explorer. |
 | Real web backend | Authenticated project open discovers the same 9 Express operations; unauthenticated requests return HTTP 403. |
 | Shared persisted history | A generation recorded by the standalone executable is returned by the web Application API, from the same configured history directory. |
 | Real filesystem watch | Adding an Express route changes the web snapshot from 9 to 10 operations; the observed local rescan completed in about 102 ms. |
@@ -41,6 +41,11 @@ For isolated evaluation, set `TANIT_HISTORY_DIR` and
 read-only legacy migration input. Production writes use the common
 history repository. Full snapshots can be compared or exported again;
 metadata-only history entries explicitly cannot.
+
+Browser checks use a disposable profile and `--password-store=basic`, with
+D-Bus disabled for that child process. They require no desktop keyring and
+make no changes to the user's credential store. Tests of file opening inject
+a launcher instead of opening the system browser.
 
 The verification artifacts for this audit are under
 `/tmp/tanit-beta-artifacts-20261109/`; `SHA256SUMS` records their digests.
