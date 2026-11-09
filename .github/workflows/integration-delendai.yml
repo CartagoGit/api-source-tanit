@@ -20,6 +20,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+      - name: Install Tanit dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Read canonical runtime pin
         id: pin
         run: |
