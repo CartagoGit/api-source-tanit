@@ -2,14 +2,14 @@
 id: x00092
 title: "Arrancar la web compilada con recursos del mismo origen y navegación válida"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 32f76fbc-8fe1-48ac-b267-24ce9546669d
-last-correlation-id: 32f76fbc-8fe1-48ac-b267-24ce9546669d
-last-transition-from: review
-last-transition-at: 2026-11-09T15:09:46.110Z
+last-transition-id: deb6e556-a80a-465a-a887-96bb37f6a808
+last-correlation-id: deb6e556-a80a-465a-a887-96bb37f6a808
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:12:19.597Z
 ---
 
 # x00092 — Arrancar la web compilada con recursos del mismo origen y navegación válida
