@@ -1,7 +1,6 @@
 /**
- * Main script: generates the Postman v2.1.0 collection by automatically
- * discovering endpoints from `routes/*.php` + controller signatures
- * (FormRequest), and enriching with variants.
+ * CLI adapter for framework-independent discovery and shared artifact preparation.
+ * All selected formats are prepared before the common writer touches disk.
  *
  * The host configuration is loaded in a framework-agnostic way via
  * `loadProject()` (`--config`, `POSTMAN_CONFIG`, or
@@ -12,20 +11,16 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
-import { mkdir } from "node:fs/promises";
-import {
-  writeFileAtomic,
-  writeJsonAtomic,
-} from "../../core/helpers/atomic-write.helper.js";
+import { ProjectHistoryService } from "../../core/session/project-history.service.js";
+import { writeJsonAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/argv.helper.js";
-import { dirname, join } from "node:path";
+import { resolve } from "node:path";
 import { exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
-import { selectExporters } from "../../core/exporters/registry.js";
+import { prepareExport, writePreparedExport } from "../../core/exporters/export-files.service.js";
+import type { IPreparedExport } from "../../contracts/interfaces/core/export-files.interface.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
 
-import { enrichCatalogWithFormRequests, LARAVEL_FORM_REQUEST_ENRICHER, enrichValidationSources } from "../../frameworks/laravel/catalog-enricher.service.js";
-import { registerValidationEnricher } from "../../core/validation/validation-enricher.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
@@ -52,24 +47,12 @@ import {
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { ExportFormatId } from "../../contracts/interfaces/core/exporter.interface.js";
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
-import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 import {
-  buildArtifacts,
   MultipleServicesWithoutCombineError,
 } from "../../core/discovery/generation.pipeline.js";
-
-/** Narrows an exporter artifact to the Postman collection shape. */
-function isPostmanCollection(value: unknown): value is PostmanCollection {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "info" in value &&
-    "item" in value
-  );
-}
 
 /**
  * Discovers endpoints and builds the collection using the shared
@@ -213,6 +196,7 @@ export async function runGenerate(
   });
   const bools = readBooleanFlags(args, {
     openAfter: "--open",
+    noHistory: "--no-history",
     inspectMode: "--inspect",
     combineServicesFlag: "--combine-services",
   });
@@ -255,7 +239,6 @@ export async function runGenerate(
   )
     ? requestedFormats
     : [DEFAULT_EXPORT_FORMAT, ...requestedFormats];
-  const exporters = selectExporters(selectedFormats);
   const envsFlag = flags.envs ? readFlagList(args, "--envs") : null;
 
   const pipeline = await runPipeline(
@@ -314,14 +297,6 @@ export async function runGenerate(
     return { code: 0, report: null };
   }
 
-  // method+uri → FormRequest index for the enricher.
-  const frIndex = new Map<string, string>();
-  for (const spec of discoveredSpecs) {
-    if (!spec.formRequest) continue;
-    const key = `${spec.method} ${normalizeForComparison(spec.uri.replace(/^\//, ""))}`;
-    frIndex.set(key, spec.formRequest);
-  }
-
   const collection = pipeline.collection;
   const authFlow = pipeline.authFlow;
   if (authFlow?.login) {
@@ -333,31 +308,6 @@ export async function runGenerate(
     );
   } else {
     humanLog("→ Auth: no login endpoint found (collection has no session flow).");
-  }
-
-  humanLog("→ Enriching with validation-rule variants…");
-  // S5 (a00012): side-effect registration of the Laravel enricher. The
-  // registry is process-global; registering it here guarantees that
-  // any tool/test importing `runValidationEnrichers` after `generate`
-  // starts sees the provider. Phase 2 will move the registration to
-  // the bootstrap, but as long as `core` does not know about Laravel,
-  // this lives in the script that knows both sides.
-  registerValidationEnricher(LARAVEL_FORM_REQUEST_ENRICHER);
-  // S5: dispatches the specs by provider through the registry. Those
-  // without `validationSource` or whose provider is not registered
-  // come back identical (Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER` is
-  // idempotent). The actual variant generation stays in
-  // `enrichCatalogWithFormRequests`, called just below.
-  enrichValidationSources(discoveredSpecs);
-  const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
-  humanLog(`  · Body variants:   ${stats.bodyVariants}`);
-  humanLog(`  · Query variants:  ${stats.queryVariants}`);
-  humanLog(`  · Rules resolved:  ${stats.resolved}`);
-  humanLog(`  · Rules missing:   ${stats.unresolved}`);
-  if (stats.rulesWithUnknown.length > 0) {
-    humanLog(
-      `  · Dynamic rules skipped: ${stats.rulesWithUnknown.length}`,
-    );
   }
 
   // Cobertura bidireccional
@@ -505,19 +455,20 @@ export async function runGenerate(
     diagnostics: [],
     frameworks: pipeline.frameworks,
   };
-  const artifactResults = await buildArtifacts(snapshot, exporters);
-  const exportErrors = artifactResults.flatMap((result) =>
-    result.diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
-  );
-  if (exportErrors.length > 0) {
+  let prepared: ReadonlyArray<IPreparedExport>;
+  try {
+    prepared = await Promise.all(selectedFormats.map((format) =>
+      format === DEFAULT_EXPORT_FORMAT
+        ? prepareExport(snapshot, format, undefined, resolve(OUTPUT_PATH))
+        : prepareExport(snapshot, format, resolvedContext.outputDir),
+    ));
+  } catch (error) {
     humanErr("\n✗ No artifacts were written because an exporter failed:");
-    for (const diagnostic of exportErrors) {
-      humanErr(`  · ${diagnostic.message}`);
-    }
+    humanErr(`  · ${error instanceof Error ? error.message : String(error)}`);
     return { code: 1, report: null };
   }
 
-  const postmanResult = artifactResults.find(
+  const postmanResult = prepared.find(
     (result) => result.format === DEFAULT_EXPORT_FORMAT,
   );
   if (postmanResult === undefined) {
@@ -526,22 +477,7 @@ export async function runGenerate(
     );
     return { code: 1, report: null };
   }
-  const postmanArtifact = postmanResult.artifact;
-  if (!isPostmanCollection(postmanArtifact)) {
-    // Falling back to the legacy collection here would write a file
-    // that nobody asked for and hide the failure: the exporter said it
-    // could not build a collection, so nothing is written.
-    humanErr(
-      "\n✗ The Postman exporter did not produce a collection, so nothing was written:",
-    );
-    for (const diagnostic of postmanResult.diagnostics) {
-      humanErr(`  · ${diagnostic.message}`);
-    }
-    return { code: 1, report: null };
-  }
-  const exportedCollection: PostmanCollection = postmanArtifact;
-  const json = JSON.stringify(exportedCollection, null, 2);
-  await writeFileAtomic(OUTPUT_PATH, json + "\n");
+  await writePreparedExport(postmanResult);
   collectionPath = OUTPUT_PATH;
 
   // Extra formats are serialized from the SAME endpoint catalog as the
@@ -552,16 +488,11 @@ export async function runGenerate(
   );
   let extraFileCount = 0;
   if (extraFormats.length > 0) {
-    const dir = resolvedContext.outputDir;
-    for (const result of artifactResults) {
+    for (const result of prepared) {
       if (result.format === DEFAULT_EXPORT_FORMAT) continue;
-      for (const artifact of result.files) {
-        const target = join(dir, artifact.path);
-        await mkdir(dirname(target), { recursive: true });
-        await writeFileAtomic(target, artifact.content);
-        extraPaths.push(target);
-        extraFileCount += 1;
-      }
+      const written = await writePreparedExport(result);
+      extraPaths.push(...written.files);
+      extraFileCount += written.files.length;
     }
     humanLog(`  · ${extraFileCount} file(s) in ${extraFormats.join(", ")}`);
     // A format that does not represent everything says so: the file
@@ -580,7 +511,7 @@ export async function runGenerate(
     }
   }
 
-  const sizeKb = (json.length / 1024).toFixed(1);
+  const sizeKb = (postmanResult.files.reduce((bytes, file) => bytes + file.bytes, 0) / 1024).toFixed(1);
   humanLog(`\n✔ Collection written to ${OUTPUT_PATH}`);
   humanLog(
     `  · ${requests} requests in ${folders} folders (${sizeKb} KB).`,
@@ -667,6 +598,15 @@ export async function runGenerate(
     durationMs: Date.now() - startedAt,
   };
   if (jsonMode) sink.writeJson(JSON.stringify(report, null, 2));
+  if (!bools.noHistory) {
+    try {
+      await new ProjectHistoryService().record(snapshot.projectRoot, snapshot, {
+        source: "export", formats: selectedFormats, output: OUTPUT_PATH,
+      });
+    } catch (error) {
+      console.warn(`Could not record generation history: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   return { code: 0, report };
 }
 

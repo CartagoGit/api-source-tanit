@@ -7,14 +7,14 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { main as summaryMain } from "../../packages/cli/commands/summary.script";
 import { summarizeWithAllFrameworks } from "../../packages/frameworks/index.js";
-import { appendHistory } from "../../packages/ui/server/history.service.js";
+import { appendHistory } from "../../packages/core/session/history-run.service.js";
 import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface.js";
 
 vi.mock("../../packages/frameworks/index.js", () => ({
   summarizeWithAllFrameworks: vi.fn(),
 }));
 
-vi.mock("../../packages/ui/server/history.service.js", () => ({
+vi.mock("../../packages/core/session/history-run.service.js", () => ({
   appendHistory: vi.fn(),
 }));
 

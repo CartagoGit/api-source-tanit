@@ -3,6 +3,10 @@ import { mkdir, readFile, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { projectHistoryDirectory as projectDirectory } from "./history-paths.helper.js";
+import { migrateLegacyHistory, storedHistoryRuns } from "./history-run.repository.js";
+import { summarizeGenerationResults } from "../discovery/generation-summary.helper.js";
+import type { IHistoryEntry as IHistoryRun } from "../../contracts/interfaces/cli/history.interface.js";
 import { toCanonicalSnapshot } from "./canonical-snapshot.service.js";
 import { diffSnapshots } from "./history-diff.helper.js";
 import { decodeSnapshot, encodeSnapshot } from "./snapshot-codec.helper.js";
@@ -94,11 +98,6 @@ export function resolveHistoryDirectory(
  * slashes, and it can be longer than a file name allows), and the
  * hash keeps the name short and stable.
  */
-function projectDirectory(root: string, base: string): string {
-  const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
-  return join(base, key);
-}
-
 /** An id is safe to be a file name. */
 function safeId(id: string): string {
   return id.replace(UNSAFE_ID, "_");
@@ -180,8 +179,10 @@ export class ProjectHistoryService {
     const canonical = toCanonicalSnapshot(snapshot);
     const sha256 = snapshotSha256(canonical);
     const timestamp = snapshot.capturedAt.toISOString();
+    const operationHash = createHash("sha256").update(JSON.stringify({ formats: [...(options.formats ?? [])].sort(),
+      output: options.output ?? "", source: options.source ?? "scan", parentId: options.parentId, configuration: options.configuration ?? {} })).digest("hex").slice(0, 12);
     const record: IHistoryRecord = {
-      id: `${timestamp}-${sha256.slice(0, 12)}`,
+      id: `${timestamp}-${sha256.slice(0, 12)}-${operationHash}`,
       timestamp,
       formats: [...(options.formats ?? [])].sort(),
       count: canonical.services.reduce(
@@ -237,8 +238,10 @@ export class ProjectHistoryService {
    * @returns The revisions, newest first.
    */
   async summaries(projectRoot: string): Promise<ReadonlyArray<IHistorySummary>> {
+    await migrateLegacyHistory(this.base);
     const records = await this.list(projectRoot);
-    return records.map((record) => ({
+    const runs = await storedHistoryRuns(this.base, projectRoot);
+    return [...records.map((record) => ({
       id: record.id,
       timestamp: record.timestamp,
       formats: record.formats,
@@ -246,7 +249,29 @@ export class ProjectHistoryService {
       output: record.output,
       sha256: record.sha256,
       source: record.provenance.source,
-    }));
+      snapshotAvailable: true,
+    })), ...runs.map(({ id, entry, legacy }) => ({
+      id, timestamp: entry.timestamp, formats: [], count: entry.endpoints, output: entry.collectionPath ?? "",
+      sha256: null, source: legacy ? "legacy" as const : entry.kind === "summary" ? "scan" as const : "export" as const, snapshotAvailable: false,
+    }))].sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+  }
+
+  /** Run projection used by the CLI and legacy dashboard, from the same revisions as the app. */
+  async runs(projectRoot?: string): Promise<ReadonlyArray<IHistoryRun>> {
+    const folders = projectRoot ? [projectDirectory(projectRoot, this.base)] : (await readdir(this.base).catch((error: { code?: string }) => { if (error.code === "ENOENT") return []; throw error; })).map(name => join(this.base, name));
+    const entries: IHistoryRun[] = [];
+    for (const folder of folders) for (const name of await this.fileNames(folder)) {
+      const document = await this.readPersisted(folder, name);
+      if (!document) continue;
+      const snapshot = document.snapshot as IProjectSnapshot;
+      if (!Array.isArray(snapshot.results) || typeof snapshot.projectRoot !== "string") continue;
+      const summary = summarizeGenerationResults(snapshot.results, snapshot.frameworks);
+      entries.push({ timestamp: document.record.timestamp, kind: document.record.provenance.source === "scan" ? "summary" : "generate",
+        projectRoot: snapshot.projectRoot, projectName: summary.projectName, framework: summary.framework,
+        endpoints: document.record.count, collectionPath: document.record.output || null, summary });
+    }
+    entries.push(...(await storedHistoryRuns(this.base, projectRoot)).map(run => run.entry));
+    return entries.sort((left, right) => right.timestamp.localeCompare(left.timestamp));
   }
 
   /**

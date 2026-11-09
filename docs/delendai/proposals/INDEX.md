@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `r00021` | `refactor` | [`ready/refactors/r00021-generacion-e-historial-compartidos-entre-cli-web-y-app.md`](ready/refactors/r00021-generacion-e-historial-compartidos-entre-cli-web-y-app.md) |
 
 ## Bloqueadas
 

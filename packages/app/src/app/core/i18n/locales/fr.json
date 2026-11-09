@@ -241,5 +241,6 @@
   "validate.start": "Valider le projet",
   "validate.title": "Valider",
   "validate.variables": "Variables",
-  "validate.warnings": "Avertissements"
+  "validate.warnings": "Avertissements",
+  "history.snapshotUnavailable": "Aucun instantané du code source n’a été enregistré pour cette entrée."
 }

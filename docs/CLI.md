@@ -188,3 +188,18 @@ were omitted. An absent or unavailable database does not change scan behavior.
 `sync` is a carrier over the existing generation handler. It does not scan or
 export through a second pipeline. GUI dry-run, retry, cancellation and native
 secure storage are host concerns around the same operation contract.
+
+### One persisted history for all clients
+
+CLI generation and summary runs, the web application and desktop use the
+same core repository at `~/.tanit/history/` (`TANIT_HISTORY_DIR` can override
+it). The CLI projects these records into its text/JSONL output; the app
+projects them into revision summaries. No rescan is needed to read history.
+
+The old `history.jsonl` is a read-only migration input. Import is idempotent,
+preserves duplicates and reports malformed lines without discarding valid
+records. New writes never append to that file. Historical run metadata
+without a source snapshot has no invented snapshot hash and cannot be
+compared, restored or exported again. The UI labels that limitation.
+`history --clear` explicitly clears the shared repository and legacy input,
+so cleared legacy data is not silently imported again.

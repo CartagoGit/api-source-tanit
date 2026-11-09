@@ -11,7 +11,7 @@
  *
  * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` or cwd.
  * Default format: `text` (human output). `json` dumps IProjectSummary.
- * `--no-history` disables the append to `~/.tanit/history.jsonl`,
+ * `--no-history` disables the write to the common `~/.tanit/history/` store,
  * for tests and for anyone who does not want history.
  */
 
@@ -19,7 +19,7 @@
 import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
 import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import { hasFlag } from "../../core/helpers/argv.helper.js";
-import { appendHistory } from "../../ui/server/history.service.js";
+import { appendHistory } from "../../core/session/history-run.service.js";
 
 interface ParsedArgs {
   projectRoot: string;
@@ -92,7 +92,7 @@ export async function main(): Promise<number> {
       console.log(asText(summary));
     }
     // f00010 S4: leave a trace of the inspection in
-    // `~/.tanit/history.jsonl`. The append is **best-effort**: if it
+    // the common `~/.tanit/history/` store. The write is **best-effort**: if it
     // fails (disk full, permissions), `summary` already printed its
     // result and the trace that could not be written is not a reason
     // to return code 1. `--no-history` disables the trace for repeated

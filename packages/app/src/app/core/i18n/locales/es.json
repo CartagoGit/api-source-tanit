@@ -241,5 +241,6 @@
   "validate.start": "Validar el proyecto",
   "validate.title": "Validar",
   "validate.variables": "Variables",
-  "validate.warnings": "Avisos"
+  "validate.warnings": "Avisos",
+  "history.snapshotUnavailable": "Esta entrada no tiene una instantánea del código guardada."
 }

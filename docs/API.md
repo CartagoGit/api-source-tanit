@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 429 símbolos en 171 módulos.
+> 450 símbolos en 177 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -212,56 +212,31 @@ their envelope; everything else becomes `EXECUTION_FAILED`.
 
 ### `packages/core/application-api/export-artifacts.helper.ts`
 
-Turning a snapshot into files on disk.
-
-#### `resolveExportDestination`
-
-```ts
-export function resolveExportDestination( snapshot: IProjectSnapshot, outputDirectory?: string, outputPath?: string, ):
-```
-
-Resolves user destinations against the project being exported.
-
-An explicit directory takes precedence over the directory in outputPath;
-outputPath still supplies the file name. Without either, use the project's
-standard output directory. Both preview and write consume this resolution.
+Application API adapters for the shared export preparation and writer.
 
 #### `planExport`
 
 ```ts
-export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
+export async function planExport(...args: Parameters<typeof files.planExport>): ReturnType<typeof files.planExport>
 ```
-
-Builds the artifacts of one format and says where they would go.
-
-Nothing is written. The paths are absolute, so the caller can show
-them and the user can see where the tool is about to write.
 
 #### `writeExport`
 
 ```ts
-export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+export async function writeExport(...args: Parameters<typeof files.writeExport>): ReturnType<typeof files.writeExport>
 ```
-
-Builds the artifacts once, says what each file would change, and
-**writes** them.
-
-The write is atomic: a file that is half-written is worse than no
-file, because the user cannot tell which half is the truth.
 
 #### `writeExportWithPlan`
 
 ```ts
-export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+export async function writeExportWithPlan(...args: Parameters<typeof files.writeExportWithPlan>): ReturnType<typeof files.writeExportWithPlan>
 ```
 
-Writes the artifacts and tells what was written, **and** what would
-have been written.
+#### `resolveExportDestination`
 
-The build happens **once**: a preview that built the artifacts
-again could promise a file the write would not produce, and a
-`sync` that builds them twice spends twice the time on the most
-expensive step of the pipeline.
+```ts
+export function resolveExportDestination(...args: Parameters<typeof files.resolveExportDestination>): ReturnType<typeof files.resolveExportDestination>
+```
 
 ### `packages/core/application-api/export.handler.ts`
 
@@ -822,6 +797,14 @@ mutable copy for that reason; we preserve that contract.
 @param discoverySpecs The global catalog produced by `discoverSpecs()`.
 @param service        The descriptor for one service in the graph.
 @returns              Specs that belong to this service.
+
+### `packages/core/discovery/generation-summary.helper.ts`
+
+#### `summarizeGenerationResults`
+
+```ts
+export function summarizeGenerationResults(results: ReadonlyArray<IGenerationResult>, frameworks: ReadonlyArray<string>, evidence: ReadonlyArray<IProjectDetectionEvidence> = []): IProjectSummary
+```
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
@@ -2040,6 +2023,77 @@ Bruno exporter.
 
 ```ts
 export class BrunoExporter implements IExportTarget
+```
+
+### `packages/core/exporters/export-files.service.ts`
+
+Shared preparation and atomic writing of export artifacts. A prepared plan holds the exact content used by previews and every host's writer. Building all plans before writing lets callers reject exporter failures without replacing any previous output.
+
+#### `ExportPreparationError`
+
+```ts
+export class ExportPreparationError extends Error
+```
+
+#### `resolveExportDestination`
+
+```ts
+export function resolveExportDestination( snapshot: IProjectSnapshot, outputDirectory?: string, outputPath?: string, ):
+```
+
+Resolves user destinations against the project being exported.
+
+An explicit directory takes precedence over the directory in outputPath;
+outputPath still supplies the file name. Without either, use the project's
+standard output directory. Both preview and write consume this resolution.
+
+#### `planExport`
+
+```ts
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
+```
+
+Builds the artifacts of one format and says where they would go.
+
+Nothing is written. The paths are absolute, so the caller can show
+them and the user can see where the tool is about to write.
+
+#### `writeExport`
+
+```ts
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+```
+
+Builds the artifacts once, says what each file would change, and
+**writes** them.
+
+The write is atomic: a file that is half-written is worse than no
+file, because the user cannot tell which half is the truth.
+
+#### `writeExportWithPlan`
+
+```ts
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+```
+
+Writes the artifacts and tells what was written, **and** what would
+have been written.
+
+The build happens **once**: a preview that built the artifacts
+again could promise a file the write would not produce, and a
+`sync` that builds them twice spends twice the time on the most
+expensive step of the pipeline.
+
+#### `writePreparedExport`
+
+```ts
+export async function writePreparedExport(planned: IPreparedExport): Promise<
+```
+
+#### `prepareExport`
+
+```ts
+export async function prepareExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IPreparedExport>
 ```
 
 ### `packages/core/exporters/export-registry.service.ts`
@@ -5016,6 +5070,117 @@ What changed between two revisions of a project.
 ```ts
 export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
 ```
+
+### `packages/core/session/history-paths.helper.ts`
+
+Dónde vive el historial de generaciones.
+
+#### `userHistoryDir`
+
+```ts
+export function userHistoryDir( env: Readonly<Record<string, string | undefined>> = process.env, platform: string = process.platform, home: string = homedir(), ): string
+```
+
+La carpeta del historial de generaciones, dentro del `homedir` de
+quien usa la aplicación.
+
+Se inyectan `env`, `platform` y `home` para poder probar las tres
+convenciones sin cambiar de sistema operativo. Es el mismo patrón
+que `userConfigDir`: la única forma de tener un test que valga algo
+es no depender del sistema que lo corre.
+
+#### `historyPath`
+
+```ts
+export function historyPath( env?: Readonly<Record<string, string | undefined>>, platform?: string, home?: string, ): string
+```
+
+#### `projectHistoryDirectory`
+
+```ts
+export function projectHistoryDirectory(root: string, base: string): string
+```
+
+### `packages/core/session/history-run.repository.ts`
+
+#### `writeHistoryRun`
+
+```ts
+export async function writeHistoryRun(entry: IHistoryEntry, directory: string, identity?: string, legacy = false): Promise<string>
+```
+
+#### `storedHistoryRuns`
+
+```ts
+export async function storedHistoryRuns(directory: string, projectRoot?: string): Promise<ReadonlyArray<
+```
+
+#### `migrateLegacyHistory`
+
+```ts
+export async function migrateLegacyHistory(directory: string, path = historyPath()): Promise<Awaited<ReturnType<typeof readLegacyHistory>>>
+```
+
+### `packages/core/session/history-run.service.ts`
+
+The shared history authority; JSONL is a read-only migration input.
+
+#### `historyDirectoryFor`
+
+```ts
+export function historyDirectoryFor(path?: string): string
+```
+
+#### `appendHistory`
+
+```ts
+export async function appendHistory(input: IHistoryEntryInput, path?: string, now = new Date()): Promise<IHistoryAppendResult>
+```
+
+#### `readHistory`
+
+```ts
+export async function readHistory(options: IHistoryReadOptions =
+```
+
+#### `clearHistory`
+
+```ts
+export async function clearHistory(path?: string): Promise<boolean>
+```
+
+#### `formatHistoryJsonl`
+
+```ts
+export function formatHistoryJsonl(entries: ReadonlyArray<IHistoryEntry>): string
+```
+
+### `packages/core/session/legacy-history.helper.ts`
+
+Read-only compatibility importer. New writes use the common history store.
+
+#### `isHistoryEntry`
+
+```ts
+export function isHistoryEntry(value: unknown): value is IHistoryEntry
+```
+
+#### `readLegacyHistory`
+
+```ts
+export async function readLegacyHistory( options: IHistoryReadOptions =
+```
+
+Reads the history and returns the requested entries.
+
+`limit` trims from the tail (the most recent), not from the head:
+a history that already passed N entries would always show the same
+first ones, which is the opposite of what a dashboard wants.
+
+Lines that fail to parse or to pass `isHistoryEntry` are returned
+in `rejected` with their 1-indexed line number (which is what an
+editor shows). The file can be legitimate and still have one bad
+line; that does not prevent returning the rest.
 
 ### `packages/core/session/project-history.service.ts`
 

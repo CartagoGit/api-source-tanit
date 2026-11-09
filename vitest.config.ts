@@ -72,7 +72,7 @@ export default defineConfig({
           // only test the pieces that need no injection — and the
           // pieces that need it are the ones that talk to the
           // backend.
-          ...(section.name === "app" ? { setupFiles: ["tests/app/setup.ts"] } : {}),
+          setupFiles: ["tests/helpers/history-isolation.setup.ts", ...(section.name === "app" ? ["tests/app/setup.ts"] : [])],
           globals: false,
           // Los e2e generan colecciones enteras desde fixtures en
           // disco; 30 s cubre el peor caso medido (~4 s) con margen

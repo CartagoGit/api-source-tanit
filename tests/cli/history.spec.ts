@@ -301,8 +301,8 @@ describe("runHistory — the command itself", () => {
       historyFile,
       new Date(),
     );
-    const antes = await readFile(historyFile, "utf8");
-    expect(antes.length).toBeGreaterThan(0);
+    const beforeClear = await readHistory({}, historyFile);
+    expect(beforeClear.totalEntries).toBeGreaterThan(0);
 
     const r = await runHistory(["--clear"], { historyPath: historyFile });
     expect(r.code).toBe(0);
@@ -360,7 +360,8 @@ describe("the real CLI path", () => {
       historyFile,
     );
     expect(out.ok).toBe(true);
-    expect(out.path).toBe(historyFile);
+    expect(out.path).toContain(`${historyFile}.records`);
+    expect(JSON.parse(await readFile(out.path, "utf8")).version).toBe(2);
 
     const read = await readHistory({}, out.path);
     expect(read.totalEntries).toBe(1);
