@@ -57,7 +57,7 @@ the full aggregate baseline.
 - review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed scripts/helpers/proof-plan.helper.ts and prove.script.ts plus CI workflow coverage; local and CI use the same plan generation. (2) Reviewed proof planner fallback behavior and regression cases in tests/scripts-gates/proof-plan.spec.ts. (3) Reviewed ci-summary planned-job enforcement and workflow tests: an omitted planned job or failed scoped analysis cannot yield a successful overall CI result. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ### S2 — Run changed-file coverage on bounded source pull requests
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/helpers/proof-plan.helper.ts`, `scripts/gates/prove.script.ts`, `scripts/gates/changed-file-coverage.script.ts`, `packages/contracts/interfaces/quality/changed-file-coverage.interface.ts`, `tests/scripts-gates/proof-plan.spec.ts`, `tests/scripts-gates/changed-file-coverage.spec.ts`, `scripts/gates/branch-protection.script.ts`, `tests/scripts-gates/branch-protection.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -68,8 +68,10 @@ the full aggregate baseline.
   - "Docs and proposal additions, removals, and moves remain eligible for the verified no-coverage path"
   - "Integration branch protection follows the integration profile; release and promotion branches keep strict status checks"
 - shipped-in: `328c85ed167d`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 6/6: (1) Reviewed changed-file-coverage.script.ts, proof-plan helper and tests/scripts-gates/changed-file-coverage.spec.ts for dependency-reached specs and per-file thr… (2) Reviewed changed-file coverage regression cases for missing reports, absent file entries, and malformed metrics failing the affected-job proof. (3) Reviewed coverage planner fallback behavior and tests for complete measurable-file floor shortfalls selecting the frozen aggregate gate. (4) Reviewed proof planner uncertainty and structural path classification plus tests/scripts-gates/proof-plan.spec.ts conservative full-validation cases. (5) Reviewed docs/proposal path classification and no-coverage proof path; changed-file planner tests cover metadata-only edits. (6) Reviewed branch-protection.script.ts and tests/scripts-gates/branch-protection.spec.ts for integration-profile rules and strict release/promotion status checks. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ## acceptance
 
