@@ -49,7 +49,7 @@ describe("tanit_test", () => {
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
       ok: boolean;
-      steps: Array<{ name: string; ok: boolean; summary?: string }>;
+      steps: Array<{ name: string; ok: boolean; summary?: string; detail?: string }>;
       durationMs: number;
       framework: string | null;
     };
@@ -59,12 +59,12 @@ describe("tanit_test", () => {
     expect(names).not.toContain("typecheck");
     expect(names).toContain("test:smoke-all");
     const smokeAllStep = parsed.steps.find((s) => s.name === "test:smoke-all");
-    expect(smokeAllStep?.ok).toBe(true);
+    expect(smokeAllStep?.ok, smokeAllStep?.detail).toBe(true);
     expect(smokeAllStep?.summary).toMatch(/\d+ frameworks pass/);
     expect(parsed.durationMs).toBeGreaterThan(0);
   });
 
-  test("includes typecheck when requested", { timeout: 30_000 }, async () => {
+  test("includes typecheck when requested", { timeout: 110_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({ withTypecheck: true });

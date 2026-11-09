@@ -7,6 +7,7 @@
  * factory so the double cannot drift from the contract.
  */
 import { describe, expect, test } from "vitest";
+import { join } from "node:path";
 
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
@@ -84,10 +85,10 @@ describe("tanit_summary", () => {
     const reg = buildSummaryToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const r1 = await handler({
-      projectRoot: process.cwd() + "/tests/smoke-fixtures/django-mini",
+      projectRoot: join(TANIT_EXPORTER_ROOT, "tests/smoke-fixtures/django-mini"),
     });
     const r2 = await handler({
-      projectRoot: process.cwd() + "/tests/smoke-fixtures/express-mini",
+      projectRoot: join(TANIT_EXPORTER_ROOT, "tests/smoke-fixtures/express-mini"),
     });
     const p1 = JSON.parse(r1.content[0]?.text ?? "{}") as { framework: string };
     const p2 = JSON.parse(r2.content[0]?.text ?? "{}") as { framework: string };
