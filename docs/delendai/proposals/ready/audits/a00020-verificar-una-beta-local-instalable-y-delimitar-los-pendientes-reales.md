@@ -46,5 +46,7 @@ TODO: why this work matters now.
 ## evidence
 
 - Binary, web production build, real authenticated Application API, binary-to-web history visibility, real filesystem watch and isolated packed installation verified; evidence and remaining acceptance are in docs/BETA.md.
-- Independent review identified same-millisecond run collision; it is tracked and being fixed in x00090.
-- Optional integration workflow still followed moving develop; x00091 fixes it against the same immutable runtime pin and common branch policy.
+- The rebuilt final Linux artifact exports9 Express and19 Laravel operations without Bun/DelendAI in PATH; OpenAPI local references resolve and all artifact checksums pass.
+- A real browser opens the project, shows9 indexed operations, generates a real file and displays its persisted revision; temporary profiles require no desktop keyring.
+- The same-millisecond run collision identified by independent review is fixed and merged through x00090 (PR126).
+- The optional integration uses the immutable runtime pin and common branch policy (PR127), with clean-runner root dependency installation (PR130). The real GitHub integration run42640433383 passed.

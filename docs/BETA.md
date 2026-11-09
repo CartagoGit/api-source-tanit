@@ -49,7 +49,10 @@ make no changes to the user's credential store. Tests of file opening inject
 a launcher instead of opening the system browser.
 
 The verification artifacts for this audit are under
-`/tmp/tanit-beta-artifacts-20261109/`; `SHA256SUMS` records their digests.
+`/tmp/tanit-beta-artifacts-20261109/`; `SHA256SUMS` records their digests
+and `SOURCE_COMMIT.txt` records the exact source revision. The rebuilt final
+artifacts were checked again: Express 9 operations / 3 resolved local references,
+Laravel 19 operations / no unresolved local references.
 These local paths are not runtime dependencies or committed machine paths.
 
 ## Scope of the first closed beta
