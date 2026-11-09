@@ -20,14 +20,14 @@ TODO: why this work matters now.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Publicar una versión o certificar plataformas que no se han ejecutado en esta máquina.
 
 ## slices
 
 - global_gate: none
 
 ### S1 — Evidencia reproducible y contrato de beta cerrada
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/BETA.md`
 - **Gate**: e2e
 - acceptance:
@@ -42,3 +42,9 @@ TODO: why this work matters now.
 - Express y Laravel exportan OpenAPI verificable desde el artefacto.
 - La web compila y responde con su API real autenticada.
 - Cada pendiente de beta tiene alcance y evidencia concretos.
+
+## evidence
+
+- Binary, web production build, real authenticated Application API, binary-to-web history visibility, real filesystem watch and isolated packed installation verified; evidence and remaining acceptance are in docs/BETA.md.
+- Independent review identified same-millisecond run collision; it is tracked and being fixed in x00090.
+- Optional integration workflow still followed moving develop; x00091 fixes it against the same immutable runtime pin and common branch policy.

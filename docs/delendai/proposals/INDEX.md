@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `a00020` | `audit` | [`ready/audits/a00020-verificar-una-beta-local-instalable-y-delimitar-los-pendientes-reales.md`](ready/audits/a00020-verificar-una-beta-local-instalable-y-delimitar-los-pendientes-reales.md) |
 
 ## Bloqueadas
 
