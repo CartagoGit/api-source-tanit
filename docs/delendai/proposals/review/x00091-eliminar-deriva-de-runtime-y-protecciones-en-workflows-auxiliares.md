@@ -10,6 +10,8 @@ last-transition-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
 last-correlation-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T14:24:35.521Z
+shipped-in:
+  - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
 
 # x00091 — Eliminar deriva de runtime y protecciones en workflows auxiliares
@@ -45,10 +47,10 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "The pinned plugin test suite passes after a frozen install."
 - shipped-in: `7d62d54b`
 - review-state: in_review
-- review-implementer: openai-gpt-6-luna
+- review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Compatibilidad real del plugin contra el core fijado
-- **Status**: review
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `integrations/delendai`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`, `tests/smoke-fixtures/asyncapi-mini/expected.json`, `tests/smoke-fixtures/grpc-mini/expected.json`, `tests/smoke-fixtures/sse-mini/expected.json`, `tests/smoke-fixtures/websocket-mini/expected.json`
 - **Gate**: e2e
@@ -57,8 +59,10 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "Las salidas y duraciones cumplen contratos; el test tool informa fielmente del smoke y typecheck."
 - "Every registered smoke fixture has an expected baseline, including the asyncapi, grpc, sse, and websocket mini projects."
 - shipped-in: `98bb120f09aa`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6-luna
+- review-reviewer: openai-gpt-6.1-sol
+- review-log: approved by openai-gpt-6.1-sol — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Frozen clean archive install against immutable core0.3: both tsc checks and150/150 private plugin tests passed; GitHub integration42640433383 passed with isola… (2) Reviewed monotonic timing and actual smoke/typecheck reporting;150 private tests passed. (3) Four expected.json fixture baselines are tracked and the real smoke suite passed. — Independent Sol source review. Reused actual full validation /tmp/tanit-parent-final-validation.log timestamp2026-11-09T15:40:25.691Z:4973/4975,2skipped. Source/tests/config verified byte-identical to tested2d3 snapshot; no full rerun claimed in this fresh unit.
 
 ## acceptance
 
