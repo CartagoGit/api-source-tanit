@@ -214,10 +214,22 @@ their envelope; everything else becomes `EXECUTION_FAILED`.
 
 Turning a snapshot into files on disk.
 
+#### `resolveExportDestination`
+
+```ts
+export function resolveExportDestination( snapshot: IProjectSnapshot, outputDirectory?: string, outputPath?: string, ):
+```
+
+Resolves user destinations against the project being exported.
+
+An explicit directory takes precedence over the directory in outputPath;
+outputPath still supplies the file name. Without either, use the project's
+standard output directory. Both preview and write consume this resolution.
+
 #### `planExport`
 
 ```ts
-export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<IExportPlan>
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
 ```
 
 Builds the artifacts of one format and says where they would go.
@@ -228,7 +240,7 @@ them and the user can see where the tool is about to write.
 #### `writeExport`
 
 ```ts
-export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
 ```
 
 Builds the artifacts once, says what each file would change, and
@@ -240,7 +252,7 @@ file, because the user cannot tell which half is the truth.
 #### `writeExportWithPlan`
 
 ```ts
-export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
 ```
 
 Writes the artifacts and tells what was written, **and** what would

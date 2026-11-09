@@ -12,8 +12,6 @@
  * write — and reports what would happen to each file. Nothing is
  * written.
  */
-import { join } from "node:path";
-
 import type { IHandler } from "./dispatcher.js";
 import {
   DryRunInputSchema,
@@ -51,8 +49,7 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
 
       const started = Date.now();
       const target = input.target ?? "postman";
-      const directory = input.outputDirectory ?? join(snap.projectRoot, "tanit");
-      const plan = await planExport(snap, target, directory);
+      const plan = await planExport(snap, target, input.outputDirectory, input.outputPath);
 
       const frameworks = new Set<string>();
       const warnings = new Set<string>();
