@@ -67,6 +67,15 @@ tools deben seguir siendo compatibles con ese runtime concreto.
 - review-reviewer: openai-gpt-6.1-sol
 - review-log: approved by openai-gpt-6.1-sol — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Frozen clean archive install against immutable core0.3: both tsc checks and150/150 private plugin tests passed; GitHub integration42640433383 passed with isola… (2) Reviewed monotonic timing and actual smoke/typecheck reporting;150 private tests passed. (3) Four expected.json fixture baselines are tracked and the real smoke suite passed. — Independent Sol source review. Reused actual full validation /tmp/tanit-parent-final-validation.log timestamp2026-11-09T15:40:25.691Z:4973/4975,2skipped. Source/tests/config verified byte-identical to tested2d3 snapshot; no full rerun claimed in this fresh unit.
 
+## Clarification of the S1 review note
+
+For clarity, S1 was implemented by `openai-gpt-6.1-sol` and peer-reviewed by
+`openai-gpt-6-luna`. S2 was implemented by `openai-gpt-6-luna` and
+peer-reviewed by `openai-gpt-6.1-sol`; I did not review S2. My earlier phrase
+“S2 remains Sol-owned” was inaccurate wording that referred to the Sol review
+of S2, not its implementer. The recorded implementation and reviewer fields
+for both slices are correct.
+
 ## acceptance
 
 - CI lee el pin JSON y verifica su commit, sin checkout develop ni sibling obligatorio.
