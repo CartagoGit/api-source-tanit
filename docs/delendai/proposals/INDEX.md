@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00092` | `fix` | [`ready/fixes/x00092-arrancar-la-web-compilada-con-recursos-del-mismo-origen-y-navegacion-valida.md`](ready/fixes/x00092-arrancar-la-web-compilada-con-recursos-del-mismo-origen-y-navegacion-valida.md) |
 
 ## Bloqueadas
 

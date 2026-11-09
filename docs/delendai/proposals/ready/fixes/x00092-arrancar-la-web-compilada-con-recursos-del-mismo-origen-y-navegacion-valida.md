@@ -20,15 +20,15 @@ TODO: why this work matters now.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Cambios de autenticación o permisos de la Application API.
 
 ## slices
 
 - global_gate: none
 
 ### S1 — Web compilada visible y protegida
-- **Status**: pending
-- **Files**: `packages/core/transport/http-bridge.server.ts`, `tests/transport/ui-web-bridge.spec.ts`, `packages/app/src/index.html`
+- **Status**: done
+- **Files**: `packages/core/transport/http-bridge.server.ts`, `tests/transport/ui-web-bridge.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "El navegador carga CSS y JavaScript del mismo origen sin bloqueo CSP."
@@ -40,3 +40,11 @@ TODO: why this work matters now.
 - El navegador carga CSS y JavaScript del mismo origen sin bloqueo CSP.
 - La aplicación renderiza su shell y no sólo devuelve HTTP 200.
 - Origen y token siguen protegiendo la Application API.
+
+## evidence
+
+- Real production build returned HTTP 200 but Chrome rendered a blank page. Browser console reported CSP rejecting its own main/polyfills JavaScript and stylesheet.
+- Same-origin script/style permissions now allow the compiled app to bootstrap; Chrome DOM reports Angular 20.3.30 and the shell renders. Screenshot verified locally.
+- Browser verification uses a temporary profile, `--password-store=basic` and isolated D-Bus environment to avoid desktop keyring prompts on WSL.
+- CSP regression checks retain default-src none, same-origin API connections, token/origin checks, and prohibit wildcard scripts/unsafe-eval.
+- Same-origin source expressions follow https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src .
