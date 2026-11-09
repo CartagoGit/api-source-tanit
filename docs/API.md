@@ -5068,8 +5068,16 @@ export async function openSession( projectRoot: string, options: IProjectSession
 
 Opens (or returns) a session for `projectRoot`.
 
-The first call triggers a full scan. Subsequent calls for the same
-root return the existing session without scanning again.
+Concurrent calls share one scan and use the first caller's configuration.
+Each caller retains its own abort signal. Roots are normalized lexically,
+without resolving relative paths or requiring filesystem existence.
+Later calls return the registered session without scanning again.
+
+#### `cancelSessionOpening`
+
+```ts
+export function cancelSessionOpening(projectRoot: string): boolean
+```
 
 #### `getSession`
 
