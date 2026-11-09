@@ -2,14 +2,14 @@
 id: x00095
 title: "Include Bun-owned tests in source proof planning"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: ad392f51-98f5-452c-a447-d9d7bc777862
-last-correlation-id: ad392f51-98f5-452c-a447-d9d7bc777862
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T14:57:41.309Z
+last-transition-id: 35745c79-84c3-48a5-8099-9a467062990a
+last-correlation-id: 35745c79-84c3-48a5-8099-9a467062990a
+last-transition-from: review
+last-transition-at: 2026-11-09T21:18:11.431Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
