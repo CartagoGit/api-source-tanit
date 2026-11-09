@@ -2,10 +2,14 @@
 id: x00094
 title: "Instalar las dependencias de Tanit antes de validar el plugin opcional en CI"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
+last-transition-id: e9b6f2a7-f21e-4e5f-b40d-479f47a78ad5
+last-correlation-id: e9b6f2a7-f21e-4e5f-b40d-479f47a78ad5
+last-transition-from: ready
+last-transition-at: 2026-11-09T14:58:23.836Z
 ---
 
 # x00094 — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI
