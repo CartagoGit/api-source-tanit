@@ -2,14 +2,14 @@
 id: x00086
 title: "Actualizaciones Live comunes y cancelación sin listeners retenidos"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 0e79216e-2233-41c8-826a-d1ac7943facb
-last-correlation-id: 0e79216e-2233-41c8-826a-d1ac7943facb
-last-transition-from: ready
-last-transition-at: 2026-11-09T01:37:53.025Z
+last-transition-id: 4ce0e06d-4eed-47e3-af25-87222334b11a
+last-correlation-id: 4ce0e06d-4eed-47e3-af25-87222334b11a
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T01:40:46.816Z
 ---
 
 # x00086 — Actualizaciones Live comunes y cancelación sin listeners retenidos
@@ -38,6 +38,9 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
 - acceptance:
   - "Cancelar elimina listeners y no añade historial posterior."
   - "Suscripciones repetidas no duplican callbacks."
+- shipped-in: `6de02a85e708`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Eventos comunes desde sesión a clientes
 - **DependsOn**: [S1]
@@ -48,6 +51,9 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
   - "Editar una fuente actualiza snapshot y UI por HTTP y stdio."
   - "Fallo de rescan conserva snapshot válido y publica diagnóstico."
   - "Autoexport usa el mismo servicio de exportación."
+- shipped-in: `6de02a85e708`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
