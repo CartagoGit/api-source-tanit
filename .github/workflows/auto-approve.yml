@@ -76,6 +76,10 @@ jobs:
     if: >-
       github.event.pull_request.user.login == (vars.OWNER || 'CartagoGit') &&
       github.event.pull_request.draft == false
+    permissions:
+      pull-requests: write
+      contents: write
+      checks: read
     runs-on: ubuntu-latest
 
     steps:
@@ -136,45 +140,21 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // `github.rest.pulls.enableAutoMerge` **no existe** en la
-            // versión de Octokit que trae `github-script@v7`: la
-            // llamada falla con "enableAutoMerge is not a function",
-            // que no es un error de GitHub sino de la librería. El
-            // endpoint REST sí funciona, y es el mismo:
-            // `PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge`.
-            //
-            // Se llama por `github.request` —el cliente HTTP que SÍ
-            // conoce todos los endpoints— y no por un método de
-            // Octokit que puede faltar.
-            const base = context.payload.pull_request.base.ref;
-            // Ni `main` ni `develop` usan squash. La política
-            // declarada en `delendai.config.json` es `mergeMethod:
-            // "merge"`, y `main` ya no exige historia lineal: un
-            // squash aplana la historia y deja fuera del árbol los
-            // commits que `lint:proposals` audita, que es exactamente
-            // lo que dejó a `main` en rojo.
-            const method = "merge";
-            try {
-              // El auto-merge se activa por el endpoint de
-              // **fusión** con `enable_auto_merge`, no por un
-              // `/auto-merge` aparte: ese endpoint **no existe** en
-              // la API REST, y llamarlo devolvía un 404 —que el
-              // `catch` convertía en un aviso, y el PR se quedaba
-              // esperando a que alguien lo mergeara a mano—.
-              await github.request(
-                "PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge",
-                {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.issue.number,
-                  merge_method: method,
-                  enable_auto_merge: true,
-                },
-              );
-              core.info(`auto-merge activado (${method}) sobre ${base}`);
-            } catch (error) {
-              // Que el auto-merge no se pueda activar no invalida la
-              // aprobación: el PR queda aprobado y se puede mergear a
-              // mano. Es un aviso, no un fallo.
-              core.warning(`no se pudo activar el auto-merge: ${error.message}`);
-            }
+            // GitHub exposes auto-merge through GraphQL, not a REST merge flag.
+            // https://docs.github.com/en/graphql/reference/pulls#enablepullrequestautomerge
+            const pullRequest = context.payload.pull_request;
+            await github.graphql(`
+              mutation EnableAutoMerge($id: ID!, $head: GitObjectID!) {
+                enablePullRequestAutoMerge(input: {
+                  pullRequestId: $id,
+                  expectedHeadOid: $head,
+                  mergeMethod: MERGE
+                }) {
+                  pullRequest { autoMergeRequest { enabledAt } }
+                }
+              }
+            `, {
+              id: pullRequest.node_id,
+              head: pullRequest.head.sha,
+            });
+            core.info(`Auto-merge habilitado con merge commit para ${pullRequest.html_url}`);
