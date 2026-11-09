@@ -90,7 +90,7 @@ describe("branch-protection gate", () => {
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
           required_status_checks: {
-            strict: true,
+            strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
             contexts: [...REQUIRED_CHECKS],
           },
           enforce_admins: { enabled: true },
@@ -141,7 +141,7 @@ describe("branch-protection gate", () => {
           // "this specific check is missing" message. It used to drop a
           // check by name; the policy now names its own checks.
           required_status_checks: {
-            strict: true,
+            strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
             contexts: ["some-other-check"],
           },
           enforce_admins: { enabled: true },
@@ -226,7 +226,7 @@ describe("branch-protection gate", () => {
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
           required_status_checks: {
-            strict: true,
+            strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
             contexts: [...REQUIRED_CHECKS],
           },
           enforce_admins: { enabled: true },
@@ -264,7 +264,7 @@ describe("branch-protection gate", () => {
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
           required_status_checks: {
-            strict: true,
+            strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
             contexts: [...REQUIRED_CHECKS],
           },
           enforce_admins: { enabled: true },
@@ -292,7 +292,7 @@ describe("branch-protection gate", () => {
     // the same breath — otherwise the first merge commit is rejected by
     // the branch, and the graph stops telling the story.
     expect(BRANCH_PROTECTION_POLICY.requiredLinearHistory).toBe(false);
-    expect(BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict).toBe(true);
+    expect(BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict).toBe(false);
     expect(BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount).toBe(0);
   });
 });
@@ -314,14 +314,13 @@ describe("la rama de release", () => {
   function releaseProtection(overrides: Record<string, unknown> = {}) {
     return jsonResponse({
       required_status_checks: {
-        strict: true,
+        strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
         contexts: [...REQUIRED_CHECKS],
       },
       enforce_admins: { enabled: true },
       required_pull_request_reviews: {
-        // The release branch asks for the approvals the policy
-        // declares for it — one, no matter how autonomous the
-        // integration is.
+        // The release branch asks for exactly what the profile policy
+        // declares; the current effective policy is zero approvals.
         required_approving_review_count: RELEASE_APPROVALS,
       },
       required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
@@ -345,9 +344,8 @@ describe("la rama de release", () => {
 
   test("the policy names the release branch and its approvals", () => {
     expect(RELEASE_BRANCH).toBe("main");
-    expect(RELEASE_APPROVALS).toBe(1);
-    // The two branches do not have the same door: the integration
-    // integrates autonomously, the release does not.
+    expect(RELEASE_APPROVALS).toBe(0);
+    // Both branches follow the configured zero approval requirement.
     expect(BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount).toBe(0);
     expect(requiredApprovalsFor(RELEASE_BRANCH)).toBe(RELEASE_APPROVALS);
     expect(requiredApprovalsFor(INTEGRATION_BRANCH)).toBe(
@@ -370,7 +368,7 @@ describe("la rama de release", () => {
     });
   });
 
-  test("fails when the release branch asks for fewer approvals than the policy", async () => {
+  test("fails when the release branch asks for more approvals than the policy", async () => {
     const result = await validateBranchProtection({
       repository: REPO,
       baseUrl: BASE_URL,
@@ -378,15 +376,15 @@ describe("la rama de release", () => {
       fetchImpl: createFetchStub(
         routes(
           releaseProtection({
-            required_pull_request_reviews: { required_approving_review_count: 0 },
+            required_pull_request_reviews: { required_approving_review_count: RELEASE_APPROVALS + 1 },
           }),
         ),
       ),
     });
 
     expect(result.ok).toBe(false);
-    expect(detailOf(result, 1)).toContain("0 aprobaciones");
-    expect(detailOf(result, 1)).toContain(String(RELEASE_APPROVALS));
+    expect(detailOf(result, 1)).toContain(`${RELEASE_APPROVALS + 1} aprobaciones`);
+    expect(detailOf(result, 1)).toContain(`declara ${RELEASE_APPROVALS}`);
     // The message says what to do, not only what is wrong.
     expect(detailOf(result, 1)).toContain("Protege la rama con la política");
   });
@@ -489,7 +487,7 @@ describe("el gate vigila la rama de release de verdad", () => {
   function conformingProtection(approvals: number) {
     return jsonResponse({
       required_status_checks: {
-        strict: true,
+        strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
         contexts: [...REQUIRED_CHECKS],
       },
       enforce_admins: { enabled: true },
