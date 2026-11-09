@@ -58,6 +58,28 @@ describe("one persisted history across clients", () => {
     await expect(dispatch(buildRegistry(), "history-re-export", { projectRoot: root, historyId: metadata[0]!.id }, { caller: "browser", orchestrator: defaultOrchestrator() })).resolves.toMatchObject({ ok: false, error: { code: "HISTORY_SNAPSHOT_UNAVAILABLE" } });
   });
 
+  test("concurrent identical appends in the same millisecond remain separate occurrences", async () => {
+    const root = await generate();
+    const entry = (await readHistory({ projectRoot: root })).entries[0]!;
+    const legacyPath = join(work, "same-millisecond.jsonl");
+    const now = new Date("2026-11-09T10:00:00.123Z");
+    const input = { kind: "summary" as const, projectRoot: root, summary: entry.summary };
+
+    const writes = await Promise.all([
+      appendHistory(input, legacyPath, now),
+      appendHistory(input, legacyPath, now),
+    ]);
+
+    expect(writes.every(write => write.ok)).toBe(true);
+    expect(writes[0]?.path).not.toBe(writes[1]?.path);
+    const read = await readHistory({ projectRoot: root }, legacyPath);
+    expect(read.entries).toHaveLength(2);
+    expect(read.entries.every(item => item.timestamp === now.toISOString())).toBe(true);
+    const records = await new ProjectHistoryService({ directory: `${legacyPath}.records` }).summaries(root);
+    expect(records).toHaveLength(2);
+    expect(records.every(record => record.snapshotAvailable === false)).toBe(true);
+  });
+
   test("summary writes and explicit clear are shared by CLI and application", async () => {
     const root = await generate();
     const entry = (await readHistory({ projectRoot: root })).entries[0]!;
