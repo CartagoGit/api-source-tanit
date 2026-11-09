@@ -10,6 +10,8 @@ last-transition-id: b4a49cc5-b455-4815-a669-0f6ba6fd166e
 last-correlation-id: b4a49cc5-b455-4815-a669-0f6ba6fd166e
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T15:44:34.100Z
+shipped-in:
+  - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
 
 # x00096 — Lint canonical shipped-in proposal metadata
@@ -31,12 +33,14 @@ DelendAI 0.3 writes the canonical `shipped-in` field when it archives a proposal
 - global_gate: none
 
 ### S1 — Parse canonical and legacy shipped-in metadata without relaxing SHA validation
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/gates/lint-proposals.script.ts`, `tests/scripts-gates/proposal-frontmatter.spec.ts`, `docs/delendai/proposals/INDEX.md`
 - **Gate**: test
 - shipped-in: `a6126caeaa0d`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6-luna
+- review-reviewer: openai-gpt-6.1-sol
+- review-log: approved by openai-gpt-6.1-sol — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 2/2: (1) Reviewed canonical/legacy shared parser and quoted block support;8 frontmatter tests and actual canonical archive lint passed. (2) Malformed tokens remain subject to unchanged SHA reachability validation; missing/invalid and real archive checks passed. — Independent Sol source review. Reused actual full validation /tmp/tanit-parent-final-validation.log timestamp2026-11-09T15:40:25.691Z:4973/4975,2skipped. Source/tests/config verified byte-identical to tested2d3 snapshot; no full rerun claimed in this fresh unit.
 
 ## acceptance
 
