@@ -47,6 +47,12 @@ describe("CLI and Application API share prepared artifacts", () => {
     const cliDirectory = join(work, "cli");
     const apiDirectory = join(work, "api");
     await copyExampleClean(exampleDir(framework), root);
+    if (framework === "laravel") {
+      // Exercise genuinely different examples, not a duplicate of the base body.
+      const request = join(root, "app/Http/Requests/UpdateAddressRequest.php");
+      const rules = await readFile(request, "utf8");
+      await writeFile(request, rules.replace("required|string|size:2", "required|in:ES,FR,US"));
+    }
     const generated = await runGenerate([
       "--project-root", root, "--output-dir", cliDirectory,
       "--formats", EXPORT_FORMATS.join(","), "--envs", "local",
