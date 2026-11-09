@@ -34,9 +34,11 @@ export interface IHistorySummary {
   /** Where it was written. */
   readonly output: string;
   /** The hash of what it held. */
-  readonly sha256: string;
+  readonly sha256: string | null;
+  /** False for historical run metadata whose source snapshot was never recorded. */
+  readonly snapshotAvailable?: boolean;
   /** What made it. */
-  readonly source: "scan" | "import" | "restore" | "export";
+  readonly source: "scan" | "import" | "restore" | "export" | "legacy";
 }
 
 /**

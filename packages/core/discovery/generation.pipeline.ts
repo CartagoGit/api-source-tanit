@@ -589,7 +589,7 @@ async function buildForService(
     collection.variable = localConfig.variables;
   }
 
-  return {
+  const result: IGenerationResult = {
     collection,
     specs,
     routes: service.endpoints,
@@ -638,6 +638,7 @@ async function buildForService(
       responsesInferred: responseResult.enrichedCount,
     },
   };
+  return options.orchestrator.prepareResult?.(result) ?? result;
 }
 
 /**

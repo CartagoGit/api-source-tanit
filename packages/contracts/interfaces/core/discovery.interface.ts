@@ -30,6 +30,8 @@ export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;
   readonly routeScanners: ReadonlyArray<IRouteScanner>;
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
+  /** Framework-owned preparation, injected before a generated result becomes a snapshot. */
+  readonly prepareResult?: (result: IGenerationResult) => Promise<IGenerationResult>;
 }
 
 /** Discovery metrics, for reports and tests. */

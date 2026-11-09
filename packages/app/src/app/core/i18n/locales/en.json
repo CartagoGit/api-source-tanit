@@ -241,5 +241,6 @@
   "validate.start": "Validate project",
   "validate.title": "Validate",
   "validate.variables": "Variables",
-  "validate.warnings": "Warnings"
+  "validate.warnings": "Warnings",
+  "history.snapshotUnavailable": "No source snapshot was recorded for this entry."
 }

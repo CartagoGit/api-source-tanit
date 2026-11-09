@@ -25,7 +25,8 @@
           <li>
             <span>{{ label(revision) }}</span>
             <small>{{ revision.formats.join(", ") }}</small>
-            <code>{{ revision.sha256.slice(0, 12) }}</code>
+            <code>{{ revision.sha256?.slice(0, 12) ?? "—" }}</code>
+            @if (revision.snapshotAvailable === false) { <small>{{ i18n.translate("history.snapshotUnavailable") }}</small> }
           </li>
         }
       </ul>
@@ -33,14 +34,14 @@
         <label>{{ i18n.translate("history.left") }}
           <select [value]="left()" (change)="left.set(selected($event))">
             @for (revision of history.revisions(); track revision.id) {
-              <option [value]="revision.id">{{ label(revision) }}</option>
+              <option [value]="revision.id" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
             }
           </select>
         </label>
         <label>{{ i18n.translate("history.right") }}
           <select [value]="right()" (change)="right.set(selected($event))">
             @for (revision of history.revisions(); track revision.id) {
-              <option [value]="revision.id">{{ label(revision) }}</option>
+              <option [value]="revision.id" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
             }
           </select>
         </label>
