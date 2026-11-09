@@ -12,6 +12,7 @@ last-transition-from: in-progress
 last-transition-at: 2026-11-09T14:24:35.521Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
+  - "fa48eeec5015a9c4853d4812f5e39d4948a3fb05"
 ---
 
 # x00091 — Eliminar deriva de runtime y protecciones en workflows auxiliares
@@ -46,8 +47,10 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "La validación local del plugin usa el core fijado."
   - "The pinned plugin test suite passes after a frozen install."
 - shipped-in: `7d62d54b`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at fa48eeec5015, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 5/5: (1) Reviewed integrations/delendai-runtime.json and .github/workflows/integration-delendai.yml plus the workflow regression test; the job verifies the immutable pi… (2) Reviewed the optional integration workflow and branch protection workflow tests; the integration job does not write branch protection settings. (3) Reviewed branch-protection-payload.script.ts and tests/scripts-gates/branch-protection.spec.ts for shared policy functions and explicit false preservation. (4) Reviewed integrations/delendai validation scripts/config for the same immutable 0.3.0 pin used by the workflow. (5) Parent-provided CI evidence: frozen private plugin install completed; both TypeScript checks and all 150/150 plugin tests passed; GitHub integration workflow r… — Independent review of x00091 S1 after landed ownership correction: implementer is openai-gpt-6.1-sol; S2 remains Sol-owned and is not reviewed here. Source snapshot fa48eeec is on develop. Reused actual governed validation from prior unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975 (2 platform skips), journal timestamp 2026-11-09T15:37:21.268Z; not rerun in G4. Tracked source diff from validated 3e02acdb to G4 is empty outside proposal metadata. Fresh docs and proposal lints pass.
 
 ### S2 — Compatibilidad real del plugin contra el core fijado
 - **Status**: done
