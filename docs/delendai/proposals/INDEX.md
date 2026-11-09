@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00093` | `fix` | [`ready/fixes/x00093-make-the-linux-signing-fixture-deterministic-and-headless.md`](ready/fixes/x00093-make-the-linux-signing-fixture-deterministic-and-headless.md) |
 
 ## Bloqueadas
 

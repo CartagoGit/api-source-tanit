@@ -20,11 +20,12 @@ Make the disposable GPG key fixture wait for its private setup and run without d
 
 ## why
 
-TODO: why this work matters now.
+The signing tests generated a default RSA key synchronously after starting directory creation without awaiting it, then returned `null` on GPG errors. That hid useful diagnostics and made the local proof less reliable. The fixture should create its key in an isolated home using the existing noninteractive GPG policy.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Changing the production release-signing policy or script.
+- Accessing a user's keyring, desktop keyring, or real signing credentials.
 
 ## slices
 
