@@ -24,7 +24,7 @@ export.handler.ts toma dirname(outputPath) para escribir con un nombre generado 
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No cambiar el contenido ni los formatos de los artefactos; este trabajo centraliza la resolución del destino y verifica que el resultado corresponda a archivos escritos.
 
 ## slices
 
@@ -32,7 +32,7 @@ export.handler.ts toma dirname(outputPath) para escribir con un nombre generado 
 
 ### S1 — Resolver y devolver el destino real
 - **Status**: done
-- **Files**: `packages/core/application-api/export.handler.ts`, `packages/core/application-api/export-artifacts.helper.ts`, `packages/core/application-api/dry-run.handler.ts`, `packages/core/application-api/sync.handler.ts`, `packages/core/application-api/history-persisted.handlers.ts`, `packages/contracts/constants/core/application-api.constant.ts`, `tests/application-api/export.handler.spec.ts`, `tests/application-api/persisted-history.spec.ts`
+- **Files**: `packages/core/application-api/export.handler.ts`, `packages/core/application-api/export-artifacts.helper.ts`, `packages/core/application-api/dry-run.handler.ts`, `packages/core/application-api/sync.handler.ts`, `packages/core/application-api/history-persisted.handlers.ts`, `packages/contracts/constants/core/application-api.constant.ts`, `tests/core/export-destination.spec.ts`, `tests/e2e/export-destination-handler.spec.ts`, `tests/application-api/persisted-history.spec.ts`, `docs/API.md`
 - **Gate**: e2e
 - acceptance:
   - "Nombre y directorio personalizados coinciden con el archivo escrito."
