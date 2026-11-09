@@ -30,10 +30,10 @@ DelendAI 0.3 writes the canonical `shipped-in` field when it archives a proposal
 
 - global_gate: none
 
-### S1 — TODO
-- **Status**: pending
-- **Files**: `TODO`
-- **Gate**: none
+### S1 — Parse canonical and legacy shipped-in metadata without relaxing SHA validation
+- **Status**: in-progress
+- **Files**: `scripts/gates/lint-proposals.script.ts`, `tests/scripts-gates/proposal-frontmatter.spec.ts`, `docs/delendai/proposals/INDEX.md`
+- **Gate**: test
 
 ## acceptance
 
