@@ -2,10 +2,14 @@
 id: v00001
 title: "Aperturas concurrentes y rescaneos compartidos por raíz canónica"
 kind: perf
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
+last-transition-id: b6f3feb6-19f5-4286-adb4-72bb3f58abc2
+last-correlation-id: b6f3feb6-19f5-4286-adb4-72bb3f58abc2
+last-transition-from: ready
+last-transition-at: 2026-11-09T01:30:44.689Z
 ---
 
 # v00001 — Aperturas concurrentes y rescaneos compartidos por raíz canónica
