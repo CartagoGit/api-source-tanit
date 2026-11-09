@@ -32,10 +32,11 @@ describe("proposal shipped-in frontmatter", () => {
   });
 
   test("reads canonical block lists with comments and legacy camelCase block and inline lists", () => {
-    const canonical = ["---", "shipped-in:", "  - abcdef012345 # first", "  - 0123456789ab", "---"].join("\n");
+    const quotedSha = "b8c3410123456789012345678901234567890123";
+    const canonical = ["---", "shipped-in:", "  - abcdef012345 # first", "  - 0123456789ab", `  - "${quotedSha}"`, "---"].join("\n");
     const legacyInline = ["---", "shippedIn: [abcdef012345, 0123456789ab]", "---"].join("\n");
     const legacyBlock = ["---", "shippedIn:", "  - abcdef012345", "  - 0123456789ab", "---"].join("\n");
-    expect(parseShippedIn(canonical)).toEqual(["abcdef012345", "0123456789ab"]);
+    expect(parseShippedIn(canonical)).toEqual(["abcdef012345", "0123456789ab", quotedSha]);
     expect(parseShippedIn(legacyInline)).toEqual(["abcdef012345", "0123456789ab"]);
     expect(parseShippedIn(legacyBlock)).toEqual(["abcdef012345", "0123456789ab"]);
   });
