@@ -2,14 +2,14 @@
 id: r00021
 title: "Generación e historial compartidos entre CLI, web y app"
 kind: refactor
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 45a7b241-543b-4693-ba3e-f0fcf52021b9
-last-correlation-id: 45a7b241-543b-4693-ba3e-f0fcf52021b9
-last-transition-from: ready
-last-transition-at: 2026-11-09T01:38:37.947Z
+last-transition-id: fedc6a2a-9376-4a99-ad20-1499d209de39
+last-correlation-id: fedc6a2a-9376-4a99-ad20-1499d209de39
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T08:16:21.652Z
 ---
 
 # r00021 — Generación e historial compartidos entre CLI, web y app
@@ -38,6 +38,9 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
 - acceptance:
   - "Mismas opciones producen los mismos artefactos por CLI y Application API."
   - "Enriquecimiento y selección viven en un servicio común."
+- shipped-in: `d5ec9484c46f`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Historial persistente común
 - **Status**: done
@@ -47,6 +50,9 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
   - "La misma ejecución aparece en CLI y app con identidad común."
   - "La lectura del historial no requiere reescanear."
   - "La migración de history.jsonl conserva registros y evita duplicados."
+- shipped-in: `8565c136c69c`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
