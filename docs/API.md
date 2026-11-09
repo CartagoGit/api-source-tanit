@@ -422,7 +422,7 @@ export function createServiceDetailHandler(): IHandler<ServiceDetailInput, Servi
 
 ### `packages/core/application-api/settings.handlers.ts`
 
-`settings.handlers.ts` — get / patch per-session options.
+Session settings are owned and applied atomically by the shared session.
 
 #### `createSettingsHandler`
 
