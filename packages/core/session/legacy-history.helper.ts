@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { parseJson } from "../helpers/parse-json.helper.js";
 import { historyPath } from "./history-paths.helper.js";
 import type { IHistoryEntry, IHistoryReadOptions, IHistoryReadResult } from "../../contracts/interfaces/cli/history.interface.js";
+/** Validate legacy run metadata without treating it as a recorded source snapshot. */
 export function isHistoryEntry(value: unknown): value is IHistoryEntry {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;

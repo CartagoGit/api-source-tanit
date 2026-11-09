@@ -13,6 +13,7 @@ export function historyDirectoryFor(path?: string): string {
   return path === undefined || path === historyPath() ? resolveHistoryDirectory() : `${path}.records`;
 }
 
+/** Persist completed run metadata; full snapshot revisions use ProjectHistoryService.record. */
 export async function appendHistory(input: IHistoryEntryInput, path?: string, now = new Date()): Promise<IHistoryAppendResult> {
   const directory = historyDirectoryFor(path);
   try {
@@ -23,6 +24,7 @@ export async function appendHistory(input: IHistoryEntryInput, path?: string, no
   } catch (error) { return { ok: false, path: directory, reason: error instanceof Error ? error.message : String(error) }; }
 }
 
+/** Read the shared history newest first, migrating legacy entries idempotently. */
 export async function readHistory(options: IHistoryReadOptions = {}, path?: string): Promise<IHistoryReadResult> {
   const directory = historyDirectoryFor(path);
   const legacy = path && /(?:^|[\\/])run-[a-f0-9]+\.json$/.test(path)
@@ -56,6 +58,7 @@ export async function clearHistory(path?: string): Promise<boolean> {
   return removed;
 }
 
+/** Produce legacy-compatible JSONL output from the shared record projection. */
 export function formatHistoryJsonl(entries: ReadonlyArray<IHistoryEntry>): string {
   return entries.map(entry => JSON.stringify({ version: HISTORY_ENTRY_VERSION, ...entry })).join("\n");
 }
