@@ -1,0 +1,35 @@
+@use "./styles/tokens";
+@use "./styles/typography";
+@use "./styles/motion";
+
+:root {
+  color-scheme: light;
+  font-family: var(--font-ui);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: var(--color-surface);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
