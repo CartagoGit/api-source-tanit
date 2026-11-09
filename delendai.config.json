@@ -4,14 +4,19 @@
     "guard": {
       "unknownActor": "person"
     },
-    "branches": { "integration": "develop", "release": "main" },
+    "branches": {
+      "integration": "develop",
+      "release": "main"
+    },
     "integration": {
-      "requiredChecks": ["ci-summary"],
-      "requireLatestIntegration": true,
+      "requiredChecks": [
+        "ci-summary"
+      ],
+      "requireLatestIntegration": false,
       "requiredApprovals": 0,
-      "releaseRequiredApprovals": 1,
+      "releaseRequiredApprovals": 0,
       "mergeMethod": "merge",
-      "deleteMergedWorkRef": true,
+      "deleteMergedWorkRef": false,
       "linearHistory": false
     }
   },
@@ -47,9 +52,30 @@
     },
     "search": {
       "options": {
-        "roots": ["packages", "scripts", "tests", "docs", "examples"],
-        "extensions": ["ts", "tsx", "js", "mjs", "cjs", "md", "mdx", "json"],
-        "ignoreDirs": ["node_modules", ".cache", "dist", "build", ".git"]
+        "roots": [
+          "packages",
+          "scripts",
+          "tests",
+          "docs",
+          "examples"
+        ],
+        "extensions": [
+          "ts",
+          "tsx",
+          "js",
+          "mjs",
+          "cjs",
+          "md",
+          "mdx",
+          "json"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist",
+          "build",
+          ".git"
+        ]
       }
     },
     "memory": {
@@ -62,9 +88,20 @@
     },
     "docs": {
       "options": {
-        "roots": ["docs/delendai", "README.md", "integrations/delendai/README.md"],
-        "extensions": ["md", "mdx"],
-        "ignoreDirs": ["node_modules", ".cache", "dist"]
+        "roots": [
+          "docs/delendai",
+          "README.md",
+          "integrations/delendai/README.md"
+        ],
+        "extensions": [
+          "md",
+          "mdx"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist"
+        ]
       }
     },
     "rules": {
@@ -75,13 +112,25 @@
     },
     "conventions": {
       "options": {
-        "roots": ["packages", "scripts", "tests", "docs", "examples"]
+        "roots": [
+          "packages",
+          "scripts",
+          "tests",
+          "docs",
+          "examples"
+        ]
       }
     },
     "proposals": {
       "options": {
         "validationCommand": "bun run validate",
-        "namePool": ["falcon", "owl", "crow", "sparrow", "finch"],
+        "namePool": [
+          "falcon",
+          "owl",
+          "crow",
+          "sparrow",
+          "finch"
+        ],
         "orchestration": {
           "delegateAfterToolCalls": 3
         }
@@ -235,7 +284,11 @@
         "push": {
           "enabled": true,
           "force": "with-lease",
-          "protectedBranches": ["main", "master", "develop"],
+          "protectedBranches": [
+            "main",
+            "master",
+            "develop"
+          ],
           "remote": "origin"
         },
         "cadence": {
@@ -248,8 +301,8 @@
               "minutes": 5
             }
           ],
-          "sliceScoping": false,
-          "allowForeignChanges": true
+          "sliceScoping": true,
+          "allowForeignChanges": false
         },
         "identity": {
           "mode": "explicit",

@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/app"
   ],
-  "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
+  "description": "Tanit \u2014 API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
     "tanit",
     "api-source",
@@ -152,7 +152,7 @@
     "bench:scan": "bun run scripts/gates/bench-scan.script.ts",
     "bench:check": "bun run scripts/gates/bench-scan.script.ts --check",
     "bench:module-resolution": "bun run tests/core/module-resolution.bench.ts --check",
-    "ci:summary": "bun run scripts/build/ci-summary.script.ts",
+    "ci:summary": "bun run scripts/gates/ci-summary.script.ts",
     "lint:secrets": "bun run scripts/gates/lint-secrets.script.ts",
     "lint:sast": "bun run scripts/gates/lint-sast.script.ts",
     "security:audit": "bun audit --audit-level=high",
@@ -161,7 +161,10 @@
     "docs:api": "bun run scripts/build/api-reference.script.ts",
     "lint:api": "bun run scripts/build/api-reference.script.ts --check",
     "docs:frameworks": "bun run scripts/build/frameworks-table.script.ts",
-    "lint:frameworks-table": "bun run scripts/build/frameworks-table.script.ts --check"
+    "lint:frameworks-table": "bun run scripts/build/frameworks-table.script.ts --check",
+    "prove": "bun run scripts/gates/prove.script.ts",
+    "prove:plan": "bun run scripts/gates/prove.script.ts --plan",
+    "test:affected": "bun run scripts/gates/prove.script.ts --affected-tests"
   },
   "dependencies": {
     "@angular/cdk": "^20.2.0",
