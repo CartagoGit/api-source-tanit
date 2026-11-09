@@ -2,14 +2,14 @@
 id: x00093
 title: "Make the Linux signing fixture deterministic and headless"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 0d5fda69-6cf0-4ea9-b34d-be3c0d8eb867
-last-correlation-id: 0d5fda69-6cf0-4ea9-b34d-be3c0d8eb867
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T14:48:51.620Z
+last-transition-id: 49647899-be67-43f8-bc2b-505171a60f2a
+last-correlation-id: 49647899-be67-43f8-bc2b-505171a60f2a
+last-transition-from: review
+last-transition-at: 2026-11-09T21:18:00.600Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
