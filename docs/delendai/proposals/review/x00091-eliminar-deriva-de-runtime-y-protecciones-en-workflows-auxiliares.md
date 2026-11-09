@@ -2,14 +2,14 @@
 id: x00091
 title: "Eliminar deriva de runtime y protecciones en workflows auxiliares"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 014ee437-084a-4df9-b0c7-f33a83a337dc
-last-correlation-id: 014ee437-084a-4df9-b0c7-f33a83a337dc
-last-transition-from: ready
-last-transition-at: 2026-11-09T09:22:09.737Z
+last-transition-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
+last-correlation-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T14:24:35.521Z
 ---
 
 # x00091 — Eliminar deriva de runtime y protecciones en workflows auxiliares
@@ -44,9 +44,11 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "La validación local del plugin usa el core fijado."
   - "The pinned plugin test suite passes after a frozen install."
 - shipped-in: `7d62d54b`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ### S2 — Compatibilidad real del plugin contra el core fijado
-- **Status**: in-progress
+- **Status**: review
 - **DependsOn**: [S1]
 - **Files**: `integrations/delendai`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`, `tests/smoke-fixtures/asyncapi-mini/expected.json`, `tests/smoke-fixtures/grpc-mini/expected.json`, `tests/smoke-fixtures/sse-mini/expected.json`, `tests/smoke-fixtures/websocket-mini/expected.json`
 - **Gate**: e2e
@@ -54,6 +56,9 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "Los 150 tests del plugin pasan usando el mismo core 0.3.0 y sin tocar historiales reales."
   - "Las salidas y duraciones cumplen contratos; el test tool informa fielmente del smoke y typecheck."
 - "Every registered smoke fixture has an expected baseline, including the asyncapi, grpc, sse, and websocket mini projects."
+- shipped-in: `98bb120f09aa`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
