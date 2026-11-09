@@ -52,6 +52,38 @@ describe("scope-aware proof plan", () => {
     expect(plan.specs).toContain("tests/core/other.spec.ts");
   });
 
+  test.each([
+    {
+      changed: "packages/core/transport/http-bridge.server.ts",
+      spec: "tests/transport/ui-web-bridge.spec.ts",
+      imported: "../../packages/core/transport/http-bridge.server.js",
+      suite: "transport",
+    },
+    {
+      changed: "packages/core/state/sqlite/sqlite-connection.adapter.ts",
+      spec: "tests/core/state/sqlite/connection.spec.ts",
+      imported: "../../../../packages/core/state/sqlite/sqlite-connection.adapter.js",
+      suite: "sqlite",
+    },
+  ])("routes $suite-owned source changes through the full Bun proof", ({ changed, spec, imported, suite }) => {
+    const plan = createProofPlan({
+      ...baseInput,
+      changes: [{ path: changed, status: "M" }],
+      files: {
+        [changed]: "export const changed = true;",
+        [spec]: `import { changed } from "${imported}"; expect(changed).toBe(true);`,
+        "tests/core/example.spec.ts": "expect(true).toBe(true);",
+      },
+    });
+    expect(plan.mode).toBe("full");
+    expect(plan.reasons.some((reason) => reason.includes("Bun-owned specs require full proof"))).toBe(true);
+    expect(plan.jobs["affected-tests"]).toBe(false);
+    expect(plan.jobs["test-coverage"]).toBe(true);
+    expect(plan.steps.some((step) => step.id === "coverage")).toBe(true);
+    expect(plan.steps.some((step) => step.id === "sqlite")).toBe(true);
+    expect(plan.steps.some((step) => step.id === "transport")).toBe(true);
+  });
+
   test("unresolved relative and framework resource imports fall back to full proof", () => {
     const plan = createProofPlan({
       ...baseInput,
