@@ -65,7 +65,7 @@ describe("scope-aware proof plan", () => {
       imported: "../../../../packages/core/state/sqlite/sqlite-connection.adapter.js",
       suite: "sqlite",
     },
-  ])("routes $suite-owned source changes through the full Bun proof", ({ changed, spec, imported, suite }) => {
+  ])("routes $suite-owned source changes through the full Bun proof", ({ changed, spec, imported }) => {
     const plan = createProofPlan({
       ...baseInput,
       changes: [{ path: changed, status: "M" }],
