@@ -2,14 +2,14 @@
 id: v00001
 title: "Aperturas concurrentes y rescaneos compartidos por raíz canónica"
 kind: perf
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: b6f3feb6-19f5-4286-adb4-72bb3f58abc2
-last-correlation-id: b6f3feb6-19f5-4286-adb4-72bb3f58abc2
-last-transition-from: ready
-last-transition-at: 2026-11-09T01:30:44.689Z
+last-transition-id: 66ba0f8d-f43e-4f46-a9fb-e378773cc592
+last-correlation-id: 66ba0f8d-f43e-4f46-a9fb-e378773cc592
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T01:33:49.142Z
 ---
 
 # v00001 — Aperturas concurrentes y rescaneos compartidos por raíz canónica
@@ -39,6 +39,9 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
   - "Dos aperturas simultáneas de la misma raíz comparten sesión y un scan."
   - "Los fallos liberan la apertura en curso y permiten reintentar."
   - "Raíces distintas permanecen aisladas."
+- shipped-in: `ee2d0ec2e589`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Coalescer cambios y excluir salidas
 - **DependsOn**: [S1]
@@ -49,6 +52,9 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
   - "Una ráfaga termina con el snapshot de la última fuente sin scans concurrentes."
   - "Escribir artefactos o dependencias no inicia bucles."
   - "Errores de watcher se publican como diagnósticos."
+- shipped-in: `ee2d0ec2e589`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
