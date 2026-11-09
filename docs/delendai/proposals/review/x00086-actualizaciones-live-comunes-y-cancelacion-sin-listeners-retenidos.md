@@ -56,8 +56,10 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
   - "Fallo de rescan conserva snapshot válido y publica diagnóstico."
   - "Autoexport usa el mismo servicio de exportación."
 - shipped-in: `6de02a85e708`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 44a9237b01db, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed both HTTP and stdio transport event paths, host bridge, live store, and transport/app regression tests. (2) Reviewed live event helper and rescan failure tests asserting the valid snapshot is retained while diagnostics are emitted. (3) Reviewed exports store and shared export service path used by live autoexport. — Independent review at landed develop source 44a9237b01db93db8f15bc57e734c4ae2b9de684. Reused actual governed validation from the prior review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in this unit. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals both pass. Independent source review; no changes requested.
 
 ## acceptance
 
