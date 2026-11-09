@@ -64,7 +64,7 @@ export function historyPath(
   platform?: string,
   home?: string,
 ): string {
-  return (env ?? process.env)["TANIT_LEGACY_HISTORY_FILE"] ?? join(userHistoryDir(env, platform, home), HISTORY_FILE_NAME);
+  return (env ?? (platform === undefined && home === undefined ? process.env : {}))["TANIT_LEGACY_HISTORY_FILE"] ?? join(userHistoryDir(env, platform, home), HISTORY_FILE_NAME);
 }
 
 

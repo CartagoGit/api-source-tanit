@@ -40,8 +40,8 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
   - "Enriquecimiento y selección viven en un servicio común."
 
 ### S2 — Historial persistente común
-- **Status**: pending
-- **Files**: `packages/core/session/project-history.service.ts`, `packages/cli/commands/history.script.ts`, `packages/ui/server/history.service.ts`, `packages/contracts/interfaces/core/history.interface.ts`
+- **Status**: done
+- **Files**: `packages/core/session/project-history.service.ts`, `packages/core/session/history-run.repository.ts`, `packages/core/session/history-run.service.ts`, `packages/core/session/history-paths.helper.ts`, `packages/core/session/legacy-history.helper.ts`, `packages/core/discovery/generation-summary.helper.ts`, `packages/core/discovery/summary.service.ts`, `packages/core/application-api/history-persisted.handlers.ts`, `packages/contracts/interfaces/core/history.interface.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/ui/server/history.service.ts`, `packages/ui/history-paths.helper.ts`, `packages/cli/commands/generate.script.ts`, `packages/cli/commands/summary.script.ts`, `packages/cli/commands/history.script.ts`, `packages/cli/commands/ui.script.ts`, `packages/app/src/app/features/history/history-list.component.html`, `packages/app/src/app/core/i18n/locales`, `tests/e2e/history-authority.spec.ts`, `tests/cli/history.spec.ts`, `tests/helpers/history-isolation.setup.ts`, `vitest.config.ts`, `docs/CLI.md`, `docs/API.md`
 - **Gate**: e2e
 - acceptance:
   - "La misma ejecución aparece en CLI y app con identidad común."
@@ -67,3 +67,13 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
 - Focused validation: 30 tests passed across shared prepared files, CLI/API export parity, destination handler/helper regressions and the generation pipeline. Proposal and generated API-reference gates passed.
 
 - Full-gate regression: shared Laravel preparation exposed duplicate body examples identical to the existing request. The enricher now retains only distinct bodies; all 21 comprehensive Laravel contract cases and CLI/API parity with actual enum variants pass without weakening collection invariants.
+
+## Shared history delivery evidence
+
+- CLI generation now records the actual exported snapshot in the same per-project repository that Application API and app read. Summary commands persist honest metadata-only runs there.
+- Old JSONL remains unchanged as a read-only migration input; stable import identities preserve duplicates, malformed-line reporting and repeated reads. A receipt avoids reimport work when the source is unchanged.
+- No historical snapshot or hash is fabricated. Metadata-only entries are labeled in EN/ES/FR and disabled for comparison; direct unsupported restore/re-export requests return HISTORY_SNAPSHOT_UNAVAILABLE.
+- Two exports from the same snapshot with different destinations/configuration retain distinct record IDs while sharing the canonical source hash.
+- Legacy UI facades delegate to core; CLI reads core directly. Pure generation-summary projection is shared, without rescanning on history reads.
+- Meaningful integration coverage includes CLI -> API visibility, idempotent migration with duplicates/corruption, shared clear, snapshot absence, and multiple outputs. Ten related suites (101 cases) and six independent typecheck sections pass.
+- Tests isolate both current history and legacy migration paths from real user records.

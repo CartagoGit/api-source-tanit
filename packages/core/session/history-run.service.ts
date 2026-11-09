@@ -1,6 +1,6 @@
 /** The shared history authority; JSONL is a read-only migration input. */
-import { dirname } from "node:path";
-import { rm, stat, unlink } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { readdir, unlink } from "node:fs/promises";
 import { historyPath, userHistoryDir } from "./history-paths.helper.js";
 import { ProjectHistoryService, resolveHistoryDirectory } from "./project-history.service.js";
 import { migrateLegacyHistory, writeHistoryRun } from "./history-run.repository.js";
@@ -32,16 +32,27 @@ export async function readHistory(options: IHistoryReadOptions = {}, path?: stri
     rejected: legacy.rejected, totalEntries: entries.length };
 }
 
-/** Explicit user clear removes the common repository and its legacy migration input. */
+/** Explicit user clear removes only repository-owned records and legacy input. */
 export async function clearHistory(path?: string): Promise<boolean> {
   const directory = historyDirectoryFor(path);
   let removed = false;
-  for (const target of [directory, path ?? historyPath()]) {
-    try { await stat(target); }
-    catch (error) { if ((error as { code?: string }).code === "ENOENT") continue; throw error; }
-    if (target === directory) await rm(target, { recursive: true, force: true }); else await unlink(target);
-    removed = true;
+  const remove = async (target: string): Promise<void> => {
+    try { await unlink(target); removed = true; }
+    catch (error) { if ((error as { code?: string }).code !== "ENOENT") throw error; }
+  };
+  const entries = await readdir(directory, { withFileTypes: true }).catch((error: { code?: string }) => {
+    if (error.code === "ENOENT") return []; throw error;
+  });
+  for (const entry of entries) {
+    if (entry.isFile() && /^legacy-import-[a-f0-9]{64}\.json$/.test(entry.name)) await remove(join(directory, entry.name));
+    if (!entry.isDirectory() || !/^[a-f0-9]{16}$/.test(entry.name)) continue;
+    const folder = join(directory, entry.name);
+    for (const record of await readdir(folder, { withFileTypes: true })) {
+      const owned = /^run-[a-f0-9]{64}\.json$/.test(record.name) || /^\d{4}-\d{2}-\d{2}T[\d._-]+Z-[a-f0-9]{12}(?:-[a-f0-9]{12})?\.json$/.test(record.name);
+      if (record.isFile() && owned) await remove(join(folder, record.name));
+    }
   }
+  await remove(path ?? historyPath());
   return removed;
 }
 
