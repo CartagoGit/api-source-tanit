@@ -126,6 +126,23 @@ export class ExportsStore {
     }
   }
 
+  /** Regenerate previously approved artifacts through the normal preview/write path. */
+  async regenerate(): Promise<void> {
+    const root = this.project.projectRoot();
+    const directory = this.outputDirectory();
+    const formats = this.formats().join(",");
+    const previous = new Set(this.result()?.files.map((file) => file.path) ?? []);
+    await this.refresh();
+    if (this.error() !== null || root !== this.project.projectRoot() ||
+        directory !== this.outputDirectory() || formats !== this.formats().join(",")) return;
+    const files = this.preview().files;
+    if (files.length > 0 && files.every((file) => previous.has(file.path))) {
+      this.confirmOverwrite(true);
+      this.confirmOutsideWorkspace(true);
+    }
+    await this.generate();
+  }
+
   /**
    * Writes the files.
    *

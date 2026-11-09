@@ -6,7 +6,8 @@
       "args": [
         "__serve",
         "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
+        "--config=${workspaceFolder}/delendai.config.json",
+        "--version=0.3.0"
       ],
       "cwd": "${workspaceFolder}"
     }

@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 423 símbolos en 170 módulos.
+> 429 símbolos en 171 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -214,10 +214,22 @@ their envelope; everything else becomes `EXECUTION_FAILED`.
 
 Turning a snapshot into files on disk.
 
+#### `resolveExportDestination`
+
+```ts
+export function resolveExportDestination( snapshot: IProjectSnapshot, outputDirectory?: string, outputPath?: string, ):
+```
+
+Resolves user destinations against the project being exported.
+
+An explicit directory takes precedence over the directory in outputPath;
+outputPath still supplies the file name. Without either, use the project's
+standard output directory. Both preview and write consume this resolution.
+
 #### `planExport`
 
 ```ts
-export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<IExportPlan>
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
 ```
 
 Builds the artifacts of one format and says where they would go.
@@ -228,7 +240,7 @@ them and the user can see where the tool is about to write.
 #### `writeExport`
 
 ```ts
-export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
 ```
 
 Builds the artifacts once, says what each file would change, and
@@ -240,7 +252,7 @@ file, because the user cannot tell which half is the truth.
 #### `writeExportWithPlan`
 
 ```ts
-export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
 ```
 
 Writes the artifacts and tells what was written, **and** what would
@@ -519,6 +531,18 @@ export function clearSubscriptions(): void
 
 ```ts
 export function dropSubscriptionById(id: string): boolean
+```
+
+#### `connectSubscriptionEvents`
+
+```ts
+export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () => void
+```
+
+#### `dropSubscriptionsForProject`
+
+```ts
+export function dropSubscriptionsForProject(projectRoot: string): void
 ```
 
 #### `listSubscriptions`
@@ -2459,6 +2483,20 @@ skipping those that don't exist.
 
 ```ts
 export function isSourceJsTsFile(name: string): boolean
+```
+
+### `packages/core/helpers/live-event.helper.ts`
+
+#### `isLiveEvent`
+
+```ts
+export function isLiveEvent(value: unknown): value is LiveEvent
+```
+
+#### `isLiveOutputChange`
+
+```ts
+export function isLiveOutputChange(path: string, projectRoot: string, outputs: readonly string[]): boolean
 ```
 
 ### `packages/core/helpers/module-path.helper.ts`
@@ -5010,8 +5048,16 @@ export async function openSession( projectRoot: string, options: IProjectSession
 
 Opens (or returns) a session for `projectRoot`.
 
-The first call triggers a full scan. Subsequent calls for the same
-root return the existing session without scanning again.
+Concurrent calls share one scan and use the first caller's configuration.
+Each caller retains its own abort signal. Roots are normalized lexically,
+without resolving relative paths or requiring filesystem existence.
+Later calls return the registered session without scanning again.
+
+#### `cancelSessionOpening`
+
+```ts
+export function cancelSessionOpening(projectRoot: string): boolean
+```
 
 #### `getSession`
 
