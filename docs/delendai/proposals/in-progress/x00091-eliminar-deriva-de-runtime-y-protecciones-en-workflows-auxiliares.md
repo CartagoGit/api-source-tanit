@@ -35,7 +35,7 @@ tools deben seguir siendo compatibles con ese runtime concreto.
 
 ### S1 — Runtime inmutable y protecciones derivadas de la política
 - **Status**: done
-- **Files**: `.github/workflows/integration-delendai.yml`, `.github/workflows/protect-develop.yml`, `scripts/gates/branch-protection-payload.script.ts`, `tests/scripts-gates/integration-delendai-workflow.spec.ts`, `tests/scripts-gates/branch-protection.spec.ts`, `integrations/delendai/bun.lock`, `integrations/delendai/src/lib/contracts/plugin.interface.ts`, `integrations/delendai/src/lib/tools/check.tool.ts`, `integrations/delendai/tests/integration/check.tool.spec.ts`, `integrations/delendai/vitest.config.ts`
+- **Files**: `.github/workflows/integration-delendai.yml`, `.github/workflows/protect-develop.yml`, `scripts/gates/branch-protection-payload.script.ts`, `tests/scripts-gates/integration-delendai-workflow.spec.ts`, `tests/scripts-gates/branch-protection.spec.ts`, `integrations/delendai/bun.lock`, `integrations/delendai`, `integrations/delendai/tests/integration/check.tool.spec.ts`, `integrations/delendai/vitest.config.ts`
 - **Gate**: e2e
 - acceptance:
   - "CI lee el pin JSON y verifica su commit, sin checkout develop ni sibling obligatorio."
@@ -48,7 +48,7 @@ tools deben seguir siendo compatibles con ese runtime concreto.
 ### S2 — Compatibilidad real del plugin contra el core fijado
 - **Status**: in-progress
 - **DependsOn**: [S1]
-- **Files**: `integrations/delendai/src/lib/tools/scan.tool.ts`, `integrations/delendai/src/lib/tools/test.tool.ts`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`, `tests/smoke-fixtures/asyncapi-mini/expected.json`, `tests/smoke-fixtures/grpc-mini/expected.json`, `tests/smoke-fixtures/sse-mini/expected.json`, `tests/smoke-fixtures/websocket-mini/expected.json`
+- **Files**: `integrations/delendai`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`, `tests/smoke-fixtures/asyncapi-mini/expected.json`, `tests/smoke-fixtures/grpc-mini/expected.json`, `tests/smoke-fixtures/sse-mini/expected.json`, `tests/smoke-fixtures/websocket-mini/expected.json`
 - **Gate**: e2e
 - acceptance:
   - "Los 150 tests del plugin pasan usando el mismo core 0.3.0 y sin tocar historiales reales."
