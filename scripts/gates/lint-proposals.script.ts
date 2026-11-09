@@ -21,7 +21,8 @@
  *      esta regla porque sus slices son recomendaciones aspiracionales
  *      que abren OTROS `kind: fix|chore|feat` — no trabajo de la propia
  *      auditoría.
- *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shippedIn:`
+ *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shipped-in:`
+ *      (o el alias histórico `shippedIn:`)
  *      con al menos un SHA. Y cada SHA debe ser alcanzable en git,
  *      lo que exige DOS comprobaciones:
  *        - `git cat-file -e <sha>`                         → el objeto existe.
@@ -113,36 +114,61 @@ function readField(frontmatter: string, name: string): string {
 }
 
 /**
- * Parsea el frontmatter YAML-like y devuelve los `shippedIn: [...]` SHAs.
+ * Parsea el frontmatter YAML-like y devuelve los SHAs `shipped-in` o
+ * `shippedIn`.
  *
  * Acepta dos formas (lo que aparece en el repo):
  *
- *   shippedIn:
+ *   shipped-in:
  *     - cc134ce  # comentario
  *     - 3f6b533
  *
- *   shippedIn: [cc134ce, 3f6b533]
+ *   shipped-in: [cc134ce, 3f6b533]
+ *   shippedIn: [cc134ce, 3f6b533]  (legacy)
  *
- * Si el campo no existe o está vacío, devuelve `[]`.
+ * Los valores malformados se conservan para que la comprobación de SHA
+ * alcanzable los rechace; nunca se filtran junto a otro SHA válido.
  */
-function parseShippedIn(body: string): string[] {
-  const block = body.match(/^shippedIn:\s*\n((?:\s*-\s*\S+\s*(?:#.*)?\s*\n?)+)/m);
-  if (block && block[1] !== undefined) {
-    const out: string[] = [];
-    for (const line of block[1].split("\n")) {
-      const sha = line.match(/-\s*([0-9a-f]{7,40})\b/i)?.[1];
-      if (sha) out.push(sha);
+export function parseShippedIn(frontmatter: string): string[] {
+  const lines = frontmatter.split(/\r?\n/);
+  const out: string[] = [];
+  const cleanValue = (value: string): string =>
+    value.replace(/\s+#.*$/, "").trim().replace(/^["'`]|["'`]$/g, "").trim();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = /^(?:shipped-in|shippedIn):[ \t]*(.*)$/.exec(lines[index] ?? "");
+    if (!match) continue;
+    const value = cleanValue(match[1] ?? "");
+    if (value.startsWith("[")) {
+      const inline = /^\[([^\]]*)\]$/.exec(value);
+      if (!inline) {
+        out.push(value);
+        continue;
+      }
+      const entries = (inline[1] ?? "").trim();
+      if (entries) out.push(...entries.split(",").map(cleanValue).filter(Boolean));
+      continue;
     }
-    return out;
+    if (value) {
+      out.push(value);
+      continue;
+    }
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const line = lines[next] ?? "";
+      if (!line.trim()) continue;
+      if (!/^\s+/.test(line)) break;
+      const item = /^\s+-\s*(.*?)\s*$/.exec(line);
+      if (!item) {
+        const malformed = cleanValue(line);
+        if (malformed) out.push(malformed);
+        continue;
+      }
+      const itemValue = cleanValue(item[1] ?? "");
+      if (itemValue) out.push(itemValue);
+    }
   }
-  const inline = body.match(/^shippedIn:\s*\[([^\]]+)\]/m);
-  if (inline) {
-    return (inline[1] ?? "")
-      .split(",")
-      .map((s) => s.trim().match(/([0-9a-f]{7,40})/i)?.[1] ?? "")
-      .filter(Boolean);
-  }
-  return [];
+  return out;
 }
 
 /**
@@ -438,11 +464,11 @@ export async function main(): Promise<number> {
         );
       }
 
-      // Regla 2: `shippedIn` no vacío y SHAs alcanzables.
+      // Regla 2: `shipped-in` no vacío y SHAs alcanzables.
       const shas = parseShippedIn(proposal.body);
       if (shas.length === 0) {
         problems.push(
-          `${rel}: status "done" pero \`shippedIn:\` está vacío — x00032 S1 (regla 2)`,
+          `${rel}: status "done" pero \`shipped-in:\` (o \`shippedIn:\`) está vacío — x00032 S1 (regla 2)`,
         );
       } else {
         for (const sha of shas) {
