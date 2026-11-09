@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { writeJsonAtomic } from "../helpers/atomic-write.helper.js";
@@ -8,7 +8,7 @@ import type { IHistoryEntry } from "../../contracts/interfaces/cli/history.inter
 
 /** Persist metadata honestly when no restorable source snapshot was recorded. */
 export async function writeHistoryRun(entry: IHistoryEntry, directory: string, identity?: string, legacy = false): Promise<string> {
-  const digest = createHash("sha256").update(identity ?? JSON.stringify(entry)).digest("hex");
+  const digest = createHash("sha256").update(identity ?? randomUUID()).digest("hex");
   const folder = projectHistoryDirectory(entry.projectRoot, directory);
   await mkdir(folder, { recursive: true });
   const path = join(folder, `run-${digest}.json`);
