@@ -2,14 +2,14 @@
 id: x00085
 title: "La exportación devuelve el destino real que se ha escrito"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 3e5b7330-9d72-44a3-9f22-2762c26fe67c
-last-correlation-id: 3e5b7330-9d72-44a3-9f22-2762c26fe67c
-last-transition-from: ready
-last-transition-at: 2026-11-08T13:36:21.193Z
+last-transition-id: de8a7cc7-44df-4cef-95f1-2233da6b4d77
+last-correlation-id: de8a7cc7-44df-4cef-95f1-2233da6b4d77
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T01:32:19.823Z
 ---
 
 # x00085 — La exportación devuelve el destino real que se ha escrito
@@ -39,6 +39,9 @@ export.handler.ts toma dirname(outputPath) para escribir con un nombre generado 
   - "Las rutas relativas se resuelven explícitamente."
   - "El resultado sólo enumera archivos existentes."
   - "Preview y export usan la misma selección de artefactos."
+- shipped-in: `f1c436e8fbe2`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
