@@ -2,14 +2,14 @@
 id: v00002
 title: "Scope-aware proof uses one conservative plan in local work and CI"
 kind: perf
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: ff7c100d-4d71-4acd-a8d4-d7f5c2a95155
-last-correlation-id: ff7c100d-4d71-4acd-a8d4-d7f5c2a95155
-last-transition-from: review
-last-transition-at: 2026-11-09T08:35:54.065Z
+last-transition-id: 597680ba-12e1-4a3f-9c81-c040462706e5
+last-correlation-id: 597680ba-12e1-4a3f-9c81-c040462706e5
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T08:39:23.522Z
 ---
 
 # v00002 — Scope-aware proof uses one conservative plan in local work and CI
@@ -53,7 +53,7 @@ the full aggregate baseline.
 - review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Run changed-file coverage on bounded source pull requests
-- **Status**: in-progress
+- **Status**: review
 - **Files**: `scripts/helpers/proof-plan.helper.ts`, `scripts/gates/prove.script.ts`, `scripts/gates/changed-file-coverage.script.ts`, `packages/contracts/interfaces/quality/changed-file-coverage.interface.ts`, `tests/scripts-gates/proof-plan.spec.ts`, `tests/scripts-gates/changed-file-coverage.spec.ts`, `scripts/gates/branch-protection.script.ts`, `tests/scripts-gates/branch-protection.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -63,6 +63,9 @@ the full aggregate baseline.
   - "Resource/import uncertainty, unsupported source paths, configuration changes, and structural source changes select full validation"
   - "Docs and proposal additions, removals, and moves remain eligible for the verified no-coverage path"
   - "Integration branch protection follows the integration profile; release and promotion branches keep strict status checks"
+- shipped-in: `328c85ed167d`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
