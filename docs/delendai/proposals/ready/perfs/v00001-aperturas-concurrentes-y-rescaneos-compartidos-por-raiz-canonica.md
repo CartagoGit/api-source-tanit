@@ -20,24 +20,26 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Cambios de presentación o transporte Live; esta propuesta mantiene los servicios de sesión compartidos.
+- Canonicalización mediante realpath o cwd implícito; la normalización conserva raíces léxicas portables.
 
 ## slices
 
 - global_gate: e2e
 
 ### S1 — Apertura en curso compartida
-- **Status**: pending
-- **Files**: `packages/core/session/project-session.service.ts`, `tests/core/session/project-session.spec.ts`
+- **Status**: done
+- **Files**: `packages/core/session/project-session.service.ts`, `tests/core/session/session-opening.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Dos aperturas simultáneas de la misma raíz comparten sesión y un scan."
   - "Los fallos liberan la apertura en curso y permiten reintentar."
   - "Raíces distintas permanecen aisladas."
 
-### S2 — Coalescer cambios y excluir salidas (after S1)
-- **Status**: pending
-- **Files**: `packages/core/session/session-rescan.service.ts`, `tests/core/session/session-rescan.spec.ts`
+### S2 — Coalescer cambios y excluir salidas
+- **DependsOn**: [S1]
+- **Status**: done
+- **Files**: `packages/core/session/project-session.service.ts`, `packages/contracts/constants/core/session.constant.ts`, `packages/contracts/interfaces/core/session.interface.ts`, `packages/core/session/session-events.ts`, `tests/core/session/session-rescan.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Una ráfaga termina con el snapshot de la última fuente sin scans concurrentes."
@@ -52,3 +54,10 @@ openSession registra la sesión después de esperar el scan; dos aperturas crean
 - Una ráfaga termina con el snapshot de la última fuente sin scans concurrentes.
 - Escribir artefactos o dependencias no inicia bucles.
 - Errores de watcher se publican como diagnósticos.
+
+## Implementation evidence
+
+- S1 shares in-flight openings by normalized root, removes failed openings for retry and prevents cancelled scans from publishing a late session. Different roots remain isolated.
+- S2 serializes configuration scans and watcher rescans in one execution lane, consolidates pending paths, excludes output/dependency noise and discards obsolete candidates.
+- Watcher failures emit typed `snapshot-error` events and preserve the previous valid snapshot; observation can recover on a later change.
+- Implementation commits: `ed6f7fe3` (S1) and `ee2d0ec2` (S2). The full delivery gate certifies their combined candidate before publication.
