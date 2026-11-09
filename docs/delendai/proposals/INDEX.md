@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00094` | `fix` | [`ready/fixes/x00094-instalar-las-dependencias-de-tanit-antes-de-validar-el-plugin-opcional-en-ci.md`](ready/fixes/x00094-instalar-las-dependencias-de-tanit-antes-de-validar-el-plugin-opcional-en-ci.md) |
 
 ## Bloqueadas
 
