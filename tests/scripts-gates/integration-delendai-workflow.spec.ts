@@ -16,6 +16,14 @@ describe("optional DelendAI integration uses the project pin", () => {
     const file = ".github/workflows/integration-delendai.yml";
     const workflow = parseWorkflow(file);
     const steps = workflow.jobs.integration.steps;
+    const rootInstall = steps.findIndex((step: { name?: string }) => step.name === "Install Tanit dependencies");
+    const pluginInstall = steps.findIndex((step: { name?: string }) => step.name === "Install plugin dependencies");
+    const validation = steps.findIndex((step: { name?: string }) => step.name === "Validate plugin");
+    expect(rootInstall).toBeGreaterThan(-1);
+    expect(steps[rootInstall].run).toBe("bun install --frozen-lockfile --ignore-scripts");
+    expect(steps[rootInstall]["working-directory"]).toBeUndefined();
+    expect(pluginInstall).toBeGreaterThan(rootInstall);
+    expect(validation).toBeGreaterThan(pluginInstall);
     const pin = steps.find((step: { id?: string }) => step.id === "pin");
     expect(pin.run).toContain("scripts/integrations/delendai-runtime.json");
     const checkout = steps.find((step: { name?: string }) => step.name === "Checkout immutable DelendAI runtime");
