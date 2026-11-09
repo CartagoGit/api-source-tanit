@@ -16,11 +16,20 @@ Validate changed source and its consumers with one auditable plan while retainin
 
 ## why
 
-TODO: why this work matters now.
+The parallel CI workflow currently repeats a fixed job list for local proof and
+CI, so a fast scope check can silently drift from the jobs that protect the
+branch. One deterministic plan makes uncertainty widen validation and gives
+the required `ci-summary` enough information to reject a skipped planned job.
+Source changes keep the frozen aggregate coverage baseline; the affected test
+stage provides an earlier, narrower signal while changed-file coverage is
+measured as a follow-up.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Replacing the repository-wide coverage baseline with partial coverage.
+- Skipping tests for product source changes based only on import reachability.
+- Running Bun-only SQLite or transport suites for documentation and proposal
+  edits that cannot affect those suites.
 
 ## slices
 

@@ -1,180 +1,155 @@
 #!/usr/bin/env bun
 /**
- * `bun run ci:summary` — aggregate per-job CI results into a single
- * Markdown report on `$GITHUB_STEP_SUMMARY`.
- *
- * x00071 S1: each CI job now runs in parallel and writes a small
- * machine-readable result file (`$GITHUB_ENV` or a marker file in
- * `ci-results/<job>.txt`). The `ci-summary` job (which depends on
- * all of them and runs `if: always()`) calls this script to fold
- * the lot into one table the reviewer sees on the run page.
- *
- * Inputs come from three sources, in order of priority:
- *
- *   1. `$GITHUB_STEP_SUMMARY` (always available in CI; no-op
- *      locally) — drives the actual summary block.
- *   2. A job-results directory the orchestrator workflow populates
- *      with `<job>.json` files containing `{ name, status, durationMs,
- *      summary }`. The directory defaults to `./ci-results`; pass
- *      another path via `CI_RESULTS_DIR`.
- *   3. If the directory is empty, the script emits a single row
- *      describing itself and exits 0. That makes it safe to run
- *      locally as a dry-run.
- *
- * The script never fails the build. A missing or unreadable
- * results directory produces a polite notice, not an exit code.
+ * Render the required CI check and make its result follow the shared proof plan.
+ * Locally, the script still accepts `ci-results/*.json` for a dry-run report.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { PROOF_JOBS } from "../../packages/contracts/constants/quality/proof-rules.constant.js";
+import type { IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 
-interface IJobResult {
+export type TCiStatus = "success" | "failure" | "skipped" | "cancelled";
+
+export interface ICiJobResult {
   readonly name: string;
-  readonly status: "success" | "failure" | "skipped" | "cancelled";
+  readonly status: TCiStatus;
   readonly durationMs?: number;
   readonly summary?: string;
 }
 
-const ANSI_GREEN = "\x1b[32m";
-const ANSI_RED = "\x1b[31m";
-const ANSI_YELLOW = "\x1b[33m";
-const ANSI_RESET = "\x1b[0m";
+export interface ICiVerdict {
+  readonly results: readonly ICiJobResult[];
+  readonly failures: readonly string[];
+}
 
-const STATUS_GLYPH: Record<IJobResult["status"], string> = {
+const STATUS_GLYPH: Record<TCiStatus, string> = {
   success: "OK",
   failure: "FAIL",
   skipped: "SKIP",
   cancelled: "CANCEL",
 };
 
-const STATUS_COLOR: Record<IJobResult["status"], string> = {
-  success: ANSI_GREEN,
-  failure: ANSI_RED,
-  skipped: ANSI_YELLOW,
-  cancelled: ANSI_YELLOW,
+const STATUS_COLOR: Record<TCiStatus, string> = {
+  success: "\x1b[32m",
+  failure: "\x1b[31m",
+  skipped: "\x1b[33m",
+  cancelled: "\x1b[33m",
 };
 
-function readResults(dir: string): IJobResult[] {
+const ANSI_RESET = "\x1b[0m";
+const isStatus = (value: unknown): value is TCiStatus =>
+  value === "success" || value === "failure" || value === "skipped" || value === "cancelled";
+
+function readResults(dir: string): ICiJobResult[] {
   if (!existsSync(dir)) return [];
-  const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
-  const out: IJobResult[] = [];
-  for (const f of files) {
-    const path = join(dir, f);
+  const results: ICiJobResult[] = [];
+  for (const file of readdirSync(dir).filter((name) => name.endsWith(".json"))) {
     try {
-      const raw = readFileSync(path, "utf8");
-      const parsed = JSON.parse(raw) as Partial<IJobResult>;
-      if (typeof parsed.name !== "string") continue;
-      out.push({
+      const parsed = JSON.parse(readFileSync(join(dir, file), "utf8")) as Record<string, unknown>;
+      if (typeof parsed.name !== "string" || !isStatus(parsed.status)) throw new Error("invalid result shape");
+      results.push({
         name: parsed.name,
-        status: (parsed.status ?? "skipped") as IJobResult["status"],
-        durationMs:
-          typeof parsed.durationMs === "number" ? parsed.durationMs : undefined,
-        summary: typeof parsed.summary === "string" ? parsed.summary : undefined,
+        status: parsed.status,
+        ...(typeof parsed.durationMs === "number" ? { durationMs: parsed.durationMs } : {}),
+        ...(typeof parsed.summary === "string" ? { summary: parsed.summary } : {}),
       });
     } catch {
-      // A malformed file is not a reason to fail the summary job;
-      // we surface it as a `skipped` row instead.
-      out.push({
-        name: f.replace(/\.json$/, ""),
-        status: "skipped",
-        summary: "could not parse result file",
-      });
+      results.push({ name: file.replace(/\.json$/, ""), status: "failure", summary: "missing or invalid result" });
     }
   }
-  return out;
+  return results;
 }
 
-function formatDuration(ms: number | undefined): string {
-  if (ms === undefined) return "—";
-  if (ms < 1000) return `${ms} ms`;
-  const s = ms / 1000;
-  if (s < 60) return `${s.toFixed(1)} s`;
-  const m = Math.floor(s / 60);
-  const rest = (s - m * 60).toFixed(0);
-  return `${m}m ${rest}s`;
-}
-
-function renderMarkdown(results: ReadonlyArray<IJobResult>): string {
-  if (results.length === 0) {
-    return [
-      "## CI summary",
-      "",
-      "_No `ci-results/*.json` files were found. This is expected on",
-      "local dry-runs; in CI, each parallel job must drop its",
-      "result file before the summary step runs._",
-      "",
-    ].join("\n");
+function parsePlan(raw: string): IProofPlan | undefined {
+  try {
+    const plan = JSON.parse(raw) as Partial<IProofPlan>;
+    if (
+      plan.version !== 1 || typeof plan.head !== "string" || typeof plan.base !== "string" ||
+      (plan.mode !== "full" && plan.mode !== "affected") || plan.jobs === null || typeof plan.jobs !== "object"
+    ) return undefined;
+    for (const job of PROOF_JOBS) if (typeof plan.jobs[job] !== "boolean") return undefined;
+    return plan as IProofPlan;
+  } catch {
+    return undefined;
   }
-  const ordered = [...results].sort((a, b) => a.name.localeCompare(b.name));
-  const header = [
-    "## CI summary",
-    "",
-    "| Job | Status | Duration | Notes |",
-    "|-----|--------|----------|-------|",
-  ];
-  const rows = ordered.map((r) => {
-    const safeSummary = (r.summary ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
-    return `| \`${r.name}\` | ${STATUS_GLYPH[r.status]} | ${formatDuration(r.durationMs)} | ${safeSummary} |`;
+}
+
+/** CI fails on an invalid plan, a planned job skipped by Actions, or any failed job. */
+export function evaluateCiVerdict(input: {
+  readonly planResult: string;
+  readonly planJson: string;
+  readonly expectedHead?: string;
+  readonly statuses: Readonly<Record<string, string | undefined>>;
+}): ICiVerdict {
+  const failures: string[] = [];
+  const plan = parsePlan(input.planJson);
+  if (input.planResult !== "success") failures.push(`proof-plan finished with ${input.planResult || "no result"}`);
+  if (!plan) failures.push("proof-plan output is missing or invalid");
+  if (plan && input.expectedHead && plan.head !== input.expectedHead) failures.push("proof-plan HEAD does not match this workflow run");
+
+  const results = PROOF_JOBS.map((name): ICiJobResult => {
+    const raw = input.statuses[name];
+    const status = isStatus(raw) ? raw : "failure";
+    if (!raw || !isStatus(raw)) failures.push(`${name} has no valid Actions result`);
+    else if (plan?.jobs[name] && status !== "success") failures.push(`${name} was planned but finished ${status}`);
+    else if (status === "failure" || status === "cancelled") failures.push(`${name} finished ${status}`);
+    return { name, status, ...(raw && !isStatus(raw) ? { summary: `invalid Actions result: ${raw}` } : {}) };
   });
-  const totals = ordered.reduce(
-    (acc, r) => {
-      acc[r.status]++;
-      acc.total++;
-      return acc;
-    },
-    { success: 0, failure: 0, skipped: 0, cancelled: 0, total: 0 },
-  );
-  const verdict =
-    totals.failure === 0
-      ? `${ANSI_GREEN}all green${ANSI_RESET}`
-      : `${ANSI_RED}${totals.failure} job(s) failed${ANSI_RESET}`;
-  const totalsLine = `\n_Total: ${totals.success} ok, ${totals.failure} failed, ${totals.skipped} skipped, ${totals.cancelled} cancelled — ${verdict}_\n`;
-  return [...header, ...rows, totalsLine].join("\n");
+  return { results, failures: [...new Set(failures)] };
 }
 
-function renderStdout(results: ReadonlyArray<IJobResult>): string {
-  if (results.length === 0) {
-    console.log("→ ci-summary: no result files found (dry-run?).");
-    return "";
-  }
-  console.log("→ CI summary:\n");
+export function renderMarkdown(results: readonly ICiJobResult[], failures: readonly string[] = []): string {
+  if (!results.length) return ["## CI summary", "", "_No job results were available._", ""].join("\n");
   const ordered = [...results].sort((a, b) => a.name.localeCompare(b.name));
-  const nameWidth = Math.max(...ordered.map((r) => r.name.length), 12);
-  for (const r of ordered) {
-    const color = STATUS_COLOR[r.status];
-    const glyph = STATUS_GLYPH[r.status].padEnd(5);
-    const name = r.name.padEnd(nameWidth);
-    const dur = formatDuration(r.durationMs).padStart(8);
-    console.log(`  ${color}${glyph}${ANSI_RESET}  ${name}  ${dur}  ${r.summary ?? ""}`);
-  }
-  const failed = ordered.filter((r) => r.status === "failure").length;
-  if (failed === 0) {
-    console.log(`\n  ${ANSI_GREEN}✓ all jobs passed${ANSI_RESET}`);
-  } else {
-    console.log(`\n  ${ANSI_RED}✗ ${failed} job(s) failed${ANSI_RESET}`);
-  }
-  return "";
+  const rows = ordered.map((result) => {
+    const note = (result.summary ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+    return `| \`${result.name}\` | ${STATUS_GLYPH[result.status]} | ${result.durationMs === undefined ? "—" : `${result.durationMs} ms`} | ${note} |`;
+  });
+  const verdict = failures.length === 0 ? "PASS" : `FAIL: ${failures.join("; ")}`;
+  return ["## CI summary", "", "| Job | Status | Duration | Notes |", "|-----|--------|----------|-------|", ...rows, "", `**Verdict:** ${verdict}`, ""].join("\n");
 }
 
-function main(): number {
-  const dir = resolve(process.env["CI_RESULTS_DIR"] ?? "./ci-results");
-  const results = readResults(dir);
-  const markdown = renderMarkdown(results);
-  renderStdout(results);
-  const summaryPath = process.env["GITHUB_STEP_SUMMARY"];
-  if (summaryPath) {
-    try {
-      const { appendFileSync } = require("node:fs");
-      appendFileSync(summaryPath, markdown);
-    } catch (err) {
-      console.warn(`→ could not write $GITHUB_STEP_SUMMARY: ${err}`);
-    }
+function renderStdout(verdict: ICiVerdict): void {
+  if (!verdict.results.length) {
+    console.log("→ ci-summary: no result files found (local dry-run).");
+    return;
+  }
+  console.log("→ CI summary:");
+  for (const result of verdict.results) {
+    console.log(`  ${STATUS_COLOR[result.status]}${STATUS_GLYPH[result.status].padEnd(5)}${ANSI_RESET}  ${result.name}`);
+  }
+  if (verdict.failures.length) {
+    for (const failure of verdict.failures) console.error(`  ✗ ${failure}`);
+  } else console.log("  ✓ all planned jobs passed");
+}
+
+export function main(env: NodeJS.ProcessEnv = process.env): number {
+  const hasWorkflowInputs = env.GITHUB_ACTIONS === "true" || env.PROOF_PLAN_RESULT !== undefined;
+  let results: readonly ICiJobResult[];
+  let failures: readonly string[];
+  if (hasWorkflowInputs) {
+    const verdict = evaluateCiVerdict({
+      planResult: env.PROOF_PLAN_RESULT ?? "",
+      planJson: env.TANIT_PROOF_PLAN ?? "",
+      expectedHead: env.TANIT_PROOF_HEAD,
+      statuses: Object.fromEntries(PROOF_JOBS.map((job) => [job, env[`${job.toUpperCase().replaceAll("-", "_")}_RESULT`]])),
+    });
+    ({ results, failures } = verdict);
   } else {
-    // Local run: dump to stdout so the operator sees the markdown.
-    console.log("\n--- Markdown summary (no $GITHUB_STEP_SUMMARY in env) ---");
+    results = readResults(resolve(env.CI_RESULTS_DIR ?? "./ci-results"));
+    failures = results.filter((result) => result.status === "failure" || result.status === "cancelled").map((result) => `${result.name} finished ${result.status}`);
+  }
+  const verdict = { results, failures };
+  renderStdout(verdict);
+  const markdown = renderMarkdown(results, failures);
+  if (env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(env.GITHUB_STEP_SUMMARY, markdown);
+  } else {
+    console.log("\n--- Markdown summary ---");
     console.log(markdown);
   }
-  return 0;
+  return failures.length === 0 ? 0 : 1;
 }
 
-main();
+if (import.meta.main) process.exit(main());

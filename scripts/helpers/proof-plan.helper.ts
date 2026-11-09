@@ -90,10 +90,15 @@ export function createProofPlan(input: IProofInput): IProofPlan {
   const full = reasons.length > 0;
   if (full) sections = [...SECTIONS];
   const specs = (full ? allSpecs : [...selectedSpecs]).filter(file => !isBunSpec(file)).sort();
-  // Coverage remains full: the repository freezes aggregate baselines. A partial
-  // report cannot prove those floors. Narrow tests are an additional local fast
-  // path, while the required coverage job always measures the complete baseline.
-  const jobs = Object.fromEntries(PROOF_JOBS.map(job => [job, full || ["lint", "test-coverage", "integration-verifier"].includes(job)]));
+  // Source changes retain full coverage because the repository freezes aggregate
+  // baselines. Documentation-only changes cannot affect those measurements, so
+  // they keep the proposal and integration checks without running unrelated tests.
+  const docsOnly = changedFiles.length > 0 && changedFiles.every(file => file.startsWith("docs/") || file.endsWith(".md"));
+  const jobs = Object.fromEntries(PROOF_JOBS.map(job => {
+    if (job === "affected-tests") return [job, !full && specs.length > 0];
+    if (job === "test-coverage" && !full && docsOnly) return [job, false];
+    return [job, full || ["lint", "test-coverage", "integration-verifier"].includes(job)];
+  }));
   if (!full) {
     jobs.typecheck = sections.length > 0;
     jobs["validate-examples"] = sections.some(section => ["contracts", "core", "frameworks", "cli", "e2e"].includes(section.name));
@@ -105,6 +110,7 @@ export function createProofPlan(input: IProofInput): IProofPlan {
   const step = (id: string, job: string, argv: readonly string[]): void => { if (jobs[job]) steps.push({ id, job, argv }); };
   step("typecheck", "typecheck", ["bun", "run", "typecheck", ...(!full ? sections.map(section => section.name) : [])]);
   step("lint", "lint", ["bun", "run", "lint"]);
+  step("affected-tests", "affected-tests", ["bun", "run", "scripts/gates/prove.script.ts", "--affected-tests"]);
   step("coverage", "test-coverage", ["bun", "run", "test:coverage"]);
   // Bun-owned surfaces cannot be omitted from the Vitest coverage job.
   step("sqlite", "test-coverage", ["bun", "run", "test:core:sqlite"]);
@@ -121,6 +127,7 @@ export function createProofPlan(input: IProofInput): IProofPlan {
 /** Execute exact planned argv; fail immediately and preserve the failing status. */
 export async function executeProof(plan: IProofPlan, run: (step: IProofStep) => Promise<number>, job?: string): Promise<number> {
   if (job && !(job in plan.jobs)) throw new Error(`Unknown proof job: ${job}`);
+  if (job && !plan.jobs[job]) throw new Error(`Proof job is not selected by this plan: ${job}`);
   if (job === "desktop-tests") throw new Error("Desktop proof requires the platform CI executor.");
   for (const step of plan.steps) {
     if (job && step.job !== job) continue;

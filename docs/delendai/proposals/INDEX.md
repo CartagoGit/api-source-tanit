@@ -9,6 +9,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | --- | --- | --- |
 | `r00021` | `refactor` | [`ready/refactors/r00021-generacion-e-historial-compartidos-entre-cli-web-y-app.md`](ready/refactors/r00021-generacion-e-historial-compartidos-entre-cli-web-y-app.md) |
 | `v00001` | `perf` | [`ready/perfs/v00001-aperturas-concurrentes-y-rescaneos-compartidos-por-raiz-canonica.md`](ready/perfs/v00001-aperturas-concurrentes-y-rescaneos-compartidos-por-raiz-canonica.md) |
+| `v00002` | `perf` | [`ready/perfs/v00002-scope-aware-proof-uses-one-conservative-plan-in-local-work-and-ci.md`](ready/perfs/v00002-scope-aware-proof-uses-one-conservative-plan-in-local-work-and-ci.md) |
 | `x00085` | `fix` | [`ready/fixes/x00085-la-exportacion-devuelve-el-destino-real-que-se-ha-escrito.md`](ready/fixes/x00085-la-exportacion-devuelve-el-destino-real-que-se-ha-escrito.md) |
 | `x00086` | `fix` | [`ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md`](ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md) |
 

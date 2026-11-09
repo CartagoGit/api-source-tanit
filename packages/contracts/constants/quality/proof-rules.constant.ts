@@ -1,6 +1,6 @@
 /** Required product jobs. CI and local proof share these identifiers. */
 export const PROOF_JOBS = [
-  "typecheck", "lint", "test-coverage", "validate-examples", "bench-check",
+  "typecheck", "lint", "affected-tests", "test-coverage", "validate-examples", "bench-check",
   "desktop-tests", "security-audit", "validate-package", "integration-verifier",
 ] as const;
 
