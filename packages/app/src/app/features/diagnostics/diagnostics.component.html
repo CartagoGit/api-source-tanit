@@ -1,0 +1,16 @@
+<section class="diagnostics" aria-labelledby="diagnostics-title">
+  <header><h2 id="diagnostics-title">{{ i18n.translate("diagnostics.title") }}</h2><span>{{ diagnostics().length }}</span></header>
+  @if (diagnostics().length === 0) {
+    <p class="empty">{{ i18n.translate("diagnostics.empty") }}</p>
+  } @else {
+    <ul>
+      @for (diagnostic of diagnostics(); track diagnostic.message) {
+        <li [class.error]="diagnostic.severity === 'error'">
+          <strong>{{ diagnostic.severity === 'error' ? 'i18n.translate("diagnostics.error")' : 'i18n.translate("diagnostics.warning")' }}</strong>
+          <span>{{ diagnostic.message }}</span>
+          @if (diagnostic.source) { <small>{{ diagnostic.source }}</small> }
+        </li>
+      }
+    </ul>
+  }
+</section>

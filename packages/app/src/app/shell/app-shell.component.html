@@ -1,0 +1,30 @@
+<div class="shell" [class.dark]="theme() === 'dark'">
+  <tanit-sidebar [activeId]="activeSection()" (theme)="toggleTheme()" (select)="go($event)" />
+  <main class="content reveal">
+    <header>
+      <div>
+        <span class="eyebrow">{{ project.projectName() }}</span>
+        <h1>{{ i18n.translate('home.title') }}</h1>
+      </div>
+      <tanit-button primary (click)="paletteOpen.set(true)">⌘K <span class="sr-only">{{ i18n.translate('palette.placeholder') }}</span></tanit-button>
+    </header>
+    @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+    @switch (activeSection()) {
+      @case ('overview') { <tanit-home /> }
+      @case ('endpoints') { @if (project.isOpen()) { <tanit-endpoints-list /> } @else { <tanit-empty-state><h2>{{ i18n.translate('home.title') }}</h2><p>{{ i18n.translate('home.empty') }}</p><tanit-button primary (click)="go('overview')">{{ i18n.translate('home.open') }}</tanit-button></tanit-empty-state> } }
+      @case ('exports') { @if (project.isOpen()) { <tanit-export-center /> } @else { <tanit-empty-state><h2>{{ i18n.translate("export.eyebrow") }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
+      @case ('services') { @if (project.isOpen()) { <tanit-services-list /> } @else { <tanit-empty-state><h2>{{ i18n.translate("nav.services") }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
+      @case ('history') { @if (project.isOpen()) { <tanit-history-list /> } @else { <tanit-empty-state><h2>{{ i18n.translate("nav.history") }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
+      @case ('live') { <tanit-live-toggle /> }
+      @case ('check') { <tanit-check /> }
+      @case ('sync') { <tanit-sync /> }
+      @case ('validate') { <tanit-validate /> }
+      @case ('push') { <tanit-push-to-postman /> }
+      @case ('stats') { <tanit-stats /> }
+      @case ('diagnostics') { <tanit-diagnostics /> }
+      @case ('settings') { <tanit-settings /> }
+      @default { <tanit-empty-state><h2>{{ sectionLabel() }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> }
+    }
+  </main>
+  <tanit-command-palette [open]="paletteOpen()" (close)="paletteOpen.set(false)" (chosen)="runCommand($event)" />
+</div>
