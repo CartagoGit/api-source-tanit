@@ -2,14 +2,16 @@
 id: x00084
 title: "Configuración de sesión efectiva, parcial y atómica"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 8d21d0ac-8829-4c12-8d44-cefd6fc66c95
-last-correlation-id: 8d21d0ac-8829-4c12-8d44-cefd6fc66c95
-last-transition-from: in-progress
-last-transition-at: 2026-11-08T20:46:01.120Z
+last-transition-id: 6ec4c0d9-dea9-4460-b358-39fae61ff2e8
+last-correlation-id: 6ec4c0d9-dea9-4460-b358-39fae61ff2e8
+last-transition-from: review
+last-transition-at: 2026-11-09T15:43:43.594Z
+shipped-in:
+  - "e68c48cef4b942c50ef5b70eeafc22f92e21ea1c"
 ---
 
 # x00084 — Configuración de sesión efectiva, parcial y atómica
@@ -31,7 +33,7 @@ settings.handlers.ts cierra la sesión antes del reemplazo, reconstruye sólo el
 - global_gate: e2e
 
 ### S1 — Preservar configuración y sesión al aplicar parches
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/application-api/settings.handlers.ts`, `packages/core/session/project-session.service.ts`, `packages/core/session/session-events.ts`, `packages/contracts/interfaces/core/session.interface.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `tests/application-api/settings.handlers.spec.ts`, `tests/core/session/session-lifecycle.spec.ts`, `docs/API.md`
 - **Gate**: e2e
 - acceptance:
@@ -44,8 +46,10 @@ settings.handlers.ts cierra la sesión antes del reemplazo, reconstruye sólo el
 - evidence: 69 focused tests passed across settings, shared handler, session and lifecycle specs; all six typecheck sections passed for settings, and core typecheck passed after lifecycle changes. Contracts, naming, boundary and type-escape gates passed. The existing session identity and listeners survive configuration changes; watch-only changes avoid rescanning; failed or aborted candidate scans preserve the previous snapshot/options. Direct/global close emits typed lifecycle notification once and releases resources even when an observer fails.
 - proof: governed full validation initially detected stale generated API documentation after session API changes; regenerated docs/API.md from source and committed it before repeating proof.
 - shipped-in: `ea20040ca507`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at e68c48cef4b9, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 4/4: (1) Reviewed the shipped implementation and its focused regression checks for this criterion in the merged source snapshot; current full governed validation passed… (2) Reviewed the shipped implementation and its focused regression checks for this criterion in the merged source snapshot; current full governed validation passed… (3) Reviewed the shipped implementation and its focused regression checks for this criterion in the merged source snapshot; current full governed validation passed… (4) Reviewed the shipped implementation and its focused regression checks for this criterion in the merged source snapshot; current full governed validation passed… — Independent review of merged develop snapshot e68c48cef4b9; fresh validate in review worktree passed at 2026-11-09T15:37:21.268Z (exit 0), 4917 Vitest + 15 SQLite + 41 transport; 2 platform skips. Journal: .cache/delendai/results/logs/validate.jsonl.
 
 ## acceptance
 
