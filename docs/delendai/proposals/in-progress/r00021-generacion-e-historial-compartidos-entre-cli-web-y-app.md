@@ -2,10 +2,14 @@
 id: r00021
 title: "Generación e historial compartidos entre CLI, web y app"
 kind: refactor
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
+last-transition-id: 45a7b241-543b-4693-ba3e-f0fcf52021b9
+last-correlation-id: 45a7b241-543b-4693-ba3e-f0fcf52021b9
+last-transition-from: ready
+last-transition-at: 2026-11-09T01:38:37.947Z
 ---
 
 # r00021 — Generación e historial compartidos entre CLI, web y app
