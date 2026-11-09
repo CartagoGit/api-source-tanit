@@ -23,7 +23,8 @@ export function createProofPlan(input: IProofInput): IProofPlan {
   if (input.uncertainty) reasons.push(input.uncertainty);
   if (!changedFiles.length) reasons.push("No reliable changed-file scope.");
   for (const change of input.changes) {
-    if (change.status !== "M") reasons.push(`Structural change: ${change.path}`);
+    const isDocumentation = change.path.startsWith("docs/") || change.path.endsWith(".md");
+    if (change.status !== "M" && !isDocumentation) reasons.push(`Structural change: ${change.path}`);
     if (GLOBAL_PATHS.some(prefix => change.path.startsWith(prefix)) || PROOF_GLOBAL_PREFIXES.some(prefix => change.path.startsWith(prefix))) reasons.push(`Global or measured disk reader: ${change.path}`);
     if (!sectionOf(change.path) && !change.path.startsWith("docs/") && !change.path.endsWith(".md")) reasons.push(`Unclassified path: ${change.path}`);
   }

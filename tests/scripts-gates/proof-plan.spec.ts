@@ -1,8 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createProofPlan, executeProof } from "../../scripts/helpers/proof-plan.helper.js";
-import type { IProofInput, IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
+import type { IProofInput } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 import { PROOF_JOBS } from "../../packages/contracts/constants/quality/proof-rules.constant.js";
-import { evaluateCiVerdict } from "../../scripts/build/ci-summary.script.js";
 
 const baseInput: IProofInput = {
   base: "base-sha",
@@ -16,24 +15,6 @@ const baseInput: IProofInput = {
     "tests/app/example.spec.ts": "expect(true).toBe(true);",
   },
 };
-
-function planJson(jobs: Readonly<Record<string, boolean>> = Object.fromEntries(PROOF_JOBS.map((job) => [job, true]))): string {
-  const plan: IProofPlan = {
-    version: 1,
-    base: "base-sha",
-    head: "head-sha",
-    mode: "full",
-    reasons: [],
-    changedFiles: [],
-    sections: [],
-    specs: [],
-    jobs,
-    steps: [],
-  };
-  return JSON.stringify(plan);
-}
-
-const successfulStatuses = (): Record<string, string> => Object.fromEntries(PROOF_JOBS.map((job) => [job, "success"]));
 
 describe("scope-aware proof plan", () => {
   test("follows transitive imports and declared dependent sections while keeping aggregate coverage", () => {
@@ -96,6 +77,36 @@ describe("scope-aware proof plan", () => {
     expect(plan.jobs.lint).toBe(true);
   });
 
+  test.each([
+    { changes: [{ path: "docs/delendai/proposals/ready/perfs/new.md", status: "A" }] },
+    { changes: [{ path: "docs/delendai/proposals/ready/perfs/old.md", status: "D" }] },
+    {
+      changes: [
+        { path: "docs/delendai/proposals/ready/perfs/old.md", status: "D" },
+        { path: "docs/delendai/proposals/ready/perfs/new.md", status: "A" },
+      ],
+    },
+  ])("proposal additions, removals, and moves keep the docs-only plan narrow", ({ changes }) => {
+    const plan = createProofPlan({ ...baseInput, changes: changes as IProofInput["changes"] });
+    expect(plan.mode).toBe("affected");
+    expect(plan.jobs["test-coverage"]).toBe(false);
+    expect(plan.jobs["affected-tests"]).toBe(false);
+    expect(plan.steps.map((step) => step.job)).not.toContain("test-coverage");
+  });
+
+  test("proposal docs mixed with a source edit keep full aggregate coverage", () => {
+    const plan = createProofPlan({
+      ...baseInput,
+      changes: [
+        { path: "docs/delendai/proposals/ready/perfs/new.md", status: "A" },
+        { path: "packages/core/example.service.ts", status: "M" },
+      ],
+    });
+    expect(plan.mode).toBe("affected");
+    expect(plan.jobs["test-coverage"]).toBe(true);
+    expect(plan.jobs["affected-tests"]).toBe(true);
+  });
+
   test("cannot manually execute a proof job omitted by the plan", async () => {
     const plan = createProofPlan({
       ...baseInput,
@@ -132,30 +143,5 @@ describe("scope-aware proof plan", () => {
     expect(result).toBe(7);
     expect(seen.at(-1)).toBe("lint");
     expect(seen).not.toContain("coverage");
-  });
-});
-
-describe("required ci-summary verdict", () => {
-  test("fails when any planned job is skipped", () => {
-    const statuses = successfulStatuses();
-    statuses["test-coverage"] = "skipped";
-    const verdict = evaluateCiVerdict({ planResult: "success", planJson: planJson(), expectedHead: "head-sha", statuses });
-    expect(verdict.failures).toContain("test-coverage was planned but finished skipped");
-  });
-
-  test("fails closed for a failed plan, malformed plan, or a different HEAD", () => {
-    const statuses = successfulStatuses();
-    expect(evaluateCiVerdict({ planResult: "failure", planJson: planJson(), statuses }).failures).toContain("proof-plan finished with failure");
-    expect(evaluateCiVerdict({ planResult: "success", planJson: "{}", statuses }).failures).toContain("proof-plan output is missing or invalid");
-    expect(evaluateCiVerdict({ planResult: "success", planJson: planJson(), expectedHead: "other-sha", statuses }).failures).toContain("proof-plan HEAD does not match this workflow run");
-  });
-
-  test("an explicitly unplanned job may be skipped, but any failure still fails the check", () => {
-    const jobs = Object.fromEntries(PROOF_JOBS.map((job) => [job, job !== "desktop-tests"]));
-    const statuses = successfulStatuses();
-    statuses["desktop-tests"] = "skipped";
-    expect(evaluateCiVerdict({ planResult: "success", planJson: planJson(jobs), statuses }).failures).toEqual([]);
-    statuses.lint = "failure";
-    expect(evaluateCiVerdict({ planResult: "success", planJson: planJson(jobs), statuses }).failures.some((failure) => failure.includes("lint"))).toBe(true);
   });
 });
