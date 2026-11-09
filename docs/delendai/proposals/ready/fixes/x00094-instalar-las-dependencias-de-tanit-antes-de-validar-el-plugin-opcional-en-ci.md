@@ -36,3 +36,8 @@ The first clean GitHub run (42636714514) failed TypeScript resolution for zod an
 - A clean runner installs the frozen root lockfile before installing and validating the optional plugin.
 - The immutable 0.3.0 pin, private plugin lockfile and read-only workflow permissions remain enforced.
 - The workflow regression test checks installation scope and dependency order.
+
+## evidence
+
+- Fresh source archive under a temporary directory, without inherited node_modules: frozen root install, frozen private plugin install, verified 0.3.0 runtime link, both TypeScript checks and 150/150 plugin tests passed.
+- Workflow regression: 3/3 tests passed, including root install scope, dependency order and preservation of immutable runtime checkout.
