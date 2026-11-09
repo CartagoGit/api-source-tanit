@@ -109,6 +109,7 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   // tomó deja a todo el resto degradado y sin registro de por qué.
   { path: "config", reason: "Decisiones de reconciliación del host (Delendai)" },
   { path: ".mcp.json", reason: "Servidores MCP locales para desarrollo" },
+  { path: ".codex", reason: "Config MCP de Codex derivada de .mcp.json" },
   { path: ".vscode", reason: "Config local de VS Code (regenerada por lint:mcp)" },
   { path: ".github", reason: "Workflows y agents del repo" },
   { path: ".docker", reason: "Compose + scripts Docker (release)" },

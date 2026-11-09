@@ -6,7 +6,8 @@
       "args": [
         "__serve",
         "--workspace=.",
-        "--config=./delendai.config.json"
+        "--config=./delendai.config.json",
+        "--version=0.3.0"
       ]
     }
   }
