@@ -9,6 +9,7 @@ import {
   RELEASE_BRANCH,
   REQUIRED_CHECKS,
   requiredApprovalsFor,
+  requiredStrictChecksFor,
   resolveBranches,
   validateBranchProtection,
   type FetchLike,
@@ -314,7 +315,7 @@ describe("la rama de release", () => {
   function releaseProtection(overrides: Record<string, unknown> = {}) {
     return jsonResponse({
       required_status_checks: {
-        strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
+        strict: requiredStrictChecksFor(RELEASE_BRANCH),
         contexts: [...REQUIRED_CHECKS],
       },
       enforce_admins: { enabled: true },
@@ -351,6 +352,9 @@ describe("la rama de release", () => {
     expect(requiredApprovalsFor(INTEGRATION_BRANCH)).toBe(
       BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount,
     );
+    expect(requiredStrictChecksFor(INTEGRATION_BRANCH)).toBe(false);
+    expect(requiredStrictChecksFor(RELEASE_BRANCH)).toBe(true);
+    expect(requiredStrictChecksFor("release/1.0.0")).toBe(true);
   });
 
   test("passes when the release branch is protected as the policy says", async () => {
@@ -366,6 +370,23 @@ describe("la rama de release", () => {
       branch: RELEASE_BRANCH,
       ok: true,
     });
+  });
+
+  test("does not apply the integration strict-check setting to a release branch", async () => {
+    const result = await validateBranchProtection({
+      repository: REPO,
+      baseUrl: BASE_URL,
+      branches: [RELEASE_BRANCH],
+      fetchImpl: createFetchStub(routes(releaseProtection({
+        required_status_checks: {
+          strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
+          contexts: [...REQUIRED_CHECKS],
+        },
+      }))),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(detailOf(result, 1)).toContain("strict o enforce_admins divergen");
   });
 
   test("fails when the release branch asks for more approvals than the policy", async () => {
@@ -484,10 +505,10 @@ describe("el gate vigila la rama de release de verdad", () => {
     }) as FetchLike;
   }
 
-  function conformingProtection(approvals: number) {
+  function conformingProtection(branch: string, approvals: number) {
     return jsonResponse({
       required_status_checks: {
-        strict: BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict,
+        strict: requiredStrictChecksFor(branch),
         contexts: [...REQUIRED_CHECKS],
       },
       enforce_admins: { enabled: true },
@@ -534,19 +555,19 @@ describe("el gate vigila la rama de release de verdad", () => {
             name: "develop",
             protected: true,
           }),
-          [`${BASE_URL}/repos/${REPO}/branches/develop/protection`]: conformingProtection(
+          [`${BASE_URL}/repos/${REPO}/branches/develop/protection`]: conformingProtection("develop",
             BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount,
           ),
           [`${BASE_URL}/repos/${REPO}/branches/main`]: jsonResponse({
             name: "main",
             protected: true,
           }),
-          [`${BASE_URL}/repos/${REPO}/branches/main/protection`]: conformingProtection(RELEASE_APPROVALS),
+          [`${BASE_URL}/repos/${REPO}/branches/main/protection`]: conformingProtection("main", RELEASE_APPROVALS),
           [`${BASE_URL}/repos/${REPO}/branches/release%2F1.0.0`]: jsonResponse({
             name: "release/1.0.0",
             protected: true,
           }),
-          [`${BASE_URL}/repos/${REPO}/branches/release%2F1.0.0/protection`]: conformingProtection(0),
+          [`${BASE_URL}/repos/${REPO}/branches/release%2F1.0.0/protection`]: conformingProtection("release/1.0.0", 0),
         },
         requested,
       ),
