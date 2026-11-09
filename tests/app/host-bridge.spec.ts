@@ -17,6 +17,7 @@
  *     envelope instead of the value.
  */
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { ReadableStream as NodeReadableStream } from "node:stream/web";
 
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 
@@ -155,5 +156,61 @@ describe("the connector", () => {
         params: { projectRoot: "/workspace" },
       }),
     });
+  });
+});
+
+describe("browser live carrier", () => {
+  test("opens an authenticated stream after watch and cancels it with the subscription", async () => {
+    delete globals.__TAURI__;
+    document.documentElement.dataset.tanitToken = "local-token";
+    const cancelled = vi.fn();
+    vi.stubGlobal("ReadableStream", NodeReadableStream);
+    let writer!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({ start(controller) { writer = controller; }, cancel: cancelled });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (url === "/api/events") return new Response(stream, { headers: { "content-type": "application/x-ndjson" } });
+      return Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: {
+        subscription: { subscriptionId: "sub-live", projectRoot: "/workspace", onlyPaths: null }, cancelled: 1,
+      } } });
+    });
+    const client = new HostBridgeClient();
+    const observed: unknown[] = [];
+    const unsubscribe = client.subscribe((event) => observed.push(event));
+    try {
+      await client.request("watch", { projectRoot: "/workspace" });
+      expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+        headers: { "x-tanit-token": "local-token" }, body: JSON.stringify({ subscriptionId: "sub-live" }),
+      });
+      const event = { jsonrpc: "2.0", method: "tanit/live", params: {
+        type: "snapshot-stale", subscriptionId: "sub-live", sessionId: "session-1", projectRoot: "/workspace",
+        changedPaths: ["routes.ts"],
+      } };
+      // Exercise a frame split over arbitrary network chunks.
+      const encoded = JSON.stringify(event) + "\n";
+      writer.enqueue(new TextEncoder().encode(encoded.slice(0, 20)));
+      writer.enqueue(new TextEncoder().encode(encoded.slice(20)));
+      await vi.waitFor(() => expect(observed).toContainEqual(event));
+      await client.request("cancel", { subscriptionId: "sub-live" });
+      await vi.waitFor(() => expect(cancelled).toHaveBeenCalledTimes(1));
+    } finally {
+      unsubscribe(); fetchMock.mockRestore(); vi.unstubAllGlobals();
+      delete document.documentElement.dataset.tanitToken;
+    }
+  });
+
+  test("failed stream setup cancels the backend watch", async () => {
+    delete globals.__TAURI__;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (url === "/api/events") return new Response("forbidden", { status: 403 });
+      return Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: {
+        subscription: { subscriptionId: "sub-failed", projectRoot: "/workspace", onlyPaths: null }, cancelled: 1,
+      } } });
+    });
+    const client = new HostBridgeClient();
+    try {
+      await expect(client.request("watch", { projectRoot: "/workspace" })).rejects.toThrow("403");
+      const cancelFrame = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+      expect(cancelFrame).toMatchObject({ method: "cancel", params: { subscriptionId: "sub-failed" } });
+    } finally { fetchMock.mockRestore(); }
   });
 });

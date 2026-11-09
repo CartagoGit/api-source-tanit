@@ -144,6 +144,13 @@ export class ProjectStore {
     }
   }
 
+  /** Apply a live summary only to the session that is still open. */
+  applySummary(summary: ISnapshotSummary): void {
+    if (summary.projectRoot !== this.projectRoot() || summary.sessionId !== this.sessionId()) return;
+    this.summary.set(summary);
+    this.error.set(null);
+  }
+
   private closeLocally(): void {
     this.projectRoot.set(null);
     this.sessionId.set(null);

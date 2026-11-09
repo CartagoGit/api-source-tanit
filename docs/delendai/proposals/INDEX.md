@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00086` | `fix` | [`ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md`](ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md) |
 
 ## Bloqueadas
 

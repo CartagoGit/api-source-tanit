@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 446 símbolos en 176 módulos.
+> 450 símbolos en 177 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -506,6 +506,18 @@ export function clearSubscriptions(): void
 
 ```ts
 export function dropSubscriptionById(id: string): boolean
+```
+
+#### `connectSubscriptionEvents`
+
+```ts
+export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () => void
+```
+
+#### `dropSubscriptionsForProject`
+
+```ts
+export function dropSubscriptionsForProject(projectRoot: string): void
 ```
 
 #### `listSubscriptions`
@@ -2525,6 +2537,20 @@ skipping those that don't exist.
 
 ```ts
 export function isSourceJsTsFile(name: string): boolean
+```
+
+### `packages/core/helpers/live-event.helper.ts`
+
+#### `isLiveEvent`
+
+```ts
+export function isLiveEvent(value: unknown): value is LiveEvent
+```
+
+#### `isLiveOutputChange`
+
+```ts
+export function isLiveOutputChange(path: string, projectRoot: string, outputs: readonly string[]): boolean
 ```
 
 ### `packages/core/helpers/module-path.helper.ts`
