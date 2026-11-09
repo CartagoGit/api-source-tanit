@@ -2,14 +2,14 @@
 id: x00097
 title: "La validación de desarrollos comparte el plan conservador y deja evidencia journaled"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: quality
 date: 2026-11-09
-last-transition-id: 9e8b2f9d-66a6-4893-b8f9-b1df2cbf2b53
-last-correlation-id: 9e8b2f9d-66a6-4893-b8f9-b1df2cbf2b53
-last-transition-from: ready
-last-transition-at: 2026-11-09T21:23:31.471Z
+last-transition-id: 011f325e-5a22-4072-add9-1481c350d19a
+last-correlation-id: 011f325e-5a22-4072-add9-1481c350d19a
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T21:30:25.318Z
 ---
 
 # x00097 — La validación de desarrollos comparte el plan conservador y deja evidencia journaled
@@ -49,6 +49,9 @@ must reuse the same conservative plan and produce that authentic evidence.
   `docs/delendai/AGENT-BOOTSTRAP.md`,
   `docs/delendai/proposals/ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md`
 - **Gate**: `bunx vitest run tests/scripts-gates/validate-proof.spec.ts tests/scripts-gates/proof-plan.spec.ts`, `bun run typecheck:cli`, and `bun run lint:proposals`
+- shipped-in: `f7d7bf4a8b4a`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
