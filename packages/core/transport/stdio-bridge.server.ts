@@ -79,7 +79,8 @@ class BridgeAbortController {
     for (const listener of this._listeners) listener();
   }
   get signal(): { readonly aborted: boolean } {
-    return { aborted: this._aborted };
+    const controller = this;
+    return { get aborted() { return controller._aborted; } };
   }
   onAbort(listener: () => void): () => void {
     this._listeners.add(listener);
@@ -129,6 +130,14 @@ export function serveStdio(opts: IStdioBridgeOptions): {
   close(): void;
 } {
   const inFlight = new Map<JsonRpcId, IInFlight>();
+  const disconnects = new Set<() => void>();
+  let stopped = false;
+  const disconnect = () => {
+    if (stopped) return;
+    stopped = true;
+    for (const dispose of [...disconnects]) dispose();
+    disconnects.clear();
+  };
   const caller = opts.caller ?? "desktop";
   let resolveDone!: () => void;
   const closed = new Promise<void>((resolve) => {
@@ -141,6 +150,7 @@ export function serveStdio(opts: IStdioBridgeOptions): {
   // Pump frames asynchronously. We use an async generator so
   // `await` between frames works (cancellation, huge payloads).
   const drive = async (): Promise<void> => {
+    let pendingRequests = Promise.resolve();
     try {
       const source = opts.input as AsyncIterable<string>;
       for await (const event of parseFrames(source)) {
@@ -170,11 +180,22 @@ export function serveStdio(opts: IStdioBridgeOptions): {
           handleNotification(frame, inFlight);
           continue;
         }
-        await handleRequest(frame as IJsonRpcRequest, opts, inFlight, caller, emitError);
+        if (stopped) break;
+        const request = frame as IJsonRpcRequest;
+        if (request.method === "cancel" || request.method === "close" || request.method === "$/cancelRequest") {
+          // Control frames must reach an opening scan before that scan completes.
+          await handleRequest(request, opts, inFlight, caller, emitError, disconnects);
+        } else {
+          // Preserve dependent request order while continuing to read control frames.
+          pendingRequests = pendingRequests.then(() => stopped ? undefined :
+            handleRequest(request, opts, inFlight, caller, emitError, disconnects));
+        }
       }
     } catch (err) {
       emitError(err);
     } finally {
+      await pendingRequests.catch(emitError);
+      disconnect();
       // Drain in-flight on EOF / error.
       for (const entry of inFlight.values()) entry.controller.abort();
       inFlight.clear();
@@ -187,6 +208,7 @@ export function serveStdio(opts: IStdioBridgeOptions): {
   return {
     closed,
     close(): void {
+      disconnect();
       for (const entry of inFlight.values()) entry.controller.abort();
       inFlight.clear();
       resolveDone();
@@ -227,11 +249,19 @@ async function handleRequest(
   inFlight: Map<JsonRpcId, IInFlight>,
   caller: "desktop",
   emitError: (err: unknown) => void,
+  disconnects: Set<() => void>,
 ): Promise<void> {
   const controller = new BridgeAbortController();
   const ctx: IRequestContext = {
     caller,
-    signal: { aborted: controller.signal.aborted },
+    signal: controller.signal,
+    emitEvent: (event) => opts.output.write(JSON.stringify({
+      jsonrpc: "2.0", method: "tanit/live", params: event,
+    }) + "\n"),
+    onDisconnect: (dispose) => {
+      disconnects.add(dispose);
+      return () => { disconnects.delete(dispose); };
+    },
     ...(opts.workspace !== undefined ? { workspace: opts.workspace } : {}),
     ...(opts.orchestrator !== undefined ? { orchestrator: opts.orchestrator } : {}),
   };

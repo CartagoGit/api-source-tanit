@@ -40,6 +40,7 @@ import type {
   IHttpBridge,
   IHttpBridgeOptions,
 } from "../../contracts/interfaces/core/bridge.interface.js";
+import { connectSubscriptionEvents } from "../application-api/watch.handlers.js";
 import { dispatch } from "../application-api/dispatcher.js";
 import type {
   IJsonRpcRequest,
@@ -89,7 +90,8 @@ class BridgeAbortController {
     for (const listener of this._listeners) listener();
   }
   get signal(): { readonly aborted: boolean } {
-    return { aborted: this._aborted };
+    const controller = this;
+    return { get aborted() { return controller._aborted; } };
   }
   /** Subscribe to abort; useful for handlers that want to react. */
   onAbort(listener: () => void): () => void {
@@ -114,6 +116,7 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
   const token = newToken();
   const caller = options.caller ?? "browser";
   const skipSecurity = options.skipSecurity === true;
+  const liveStreams = new Set<() => void>();
 
   for (let intento = 0; intento < INTENTOS; intento++) {
     const port = portInicial === 0 ? pickPort() : portInicial + intento;
@@ -121,23 +124,26 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
       const server = Bun.serve({
         port,
         hostname: HOST,
+        idleTimeout: 0,
         fetch: async (request) => {
-          // One abort controller per request. The bridge fires
-          // it on the response boundary; handlers can poll
-          // `ctx.signal.aborted` to opt into cooperative
-          // cancellation. We do not currently observe the
-          // upstream client disconnect — `IServerRequest` in the
-          // project's ambient `runtime.d.ts` does not expose a
-          // `signal`. Tracking disconnects is a separate slice.
+          // Request cancellation and long-lived subscription ownership are separate:
+          // event streams observe disconnect and release their own subscription.
           const aborter = new BridgeAbortController();
-          return handleFetch(request, options, token, caller, skipSecurity, aborter);
+          const abort = () => aborter.abort();
+          request.signal?.addEventListener("abort", abort, { once: true });
+          if (request.signal?.aborted) abort();
+          try { return await handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams); }
+          finally { request.signal?.removeEventListener("abort", abort); }
         },
       });
       return {
         url: `http://${HOST}:${server.port}`,
         port: server.port,
         token,
-        stop: () => server.stop(true),
+        stop: () => {
+          for (const close of [...liveStreams]) close();
+          server.stop(true);
+        },
       };
     } catch (err) {
       if (isEAddrInUse(err)) continue;
@@ -160,6 +166,7 @@ async function handleFetch(
   caller: IHttpBridgeOptions["caller"] & string,
   skipSecurity: boolean,
   aborter: BridgeAbortController,
+  liveStreams: Set<() => void>,
 ): Promise<IFetchResponse> {
   // Alias for the ambient `IFetchResponse` declared in
   // `runtime.d.ts`. Avoids re-importing a non-module file.
@@ -253,6 +260,15 @@ async function handleFetch(
       );
     }
   }
+  if (pathname === "/api/events") {
+    if (typeof parsed !== "object" || parsed === null ||
+        !("subscriptionId" in parsed) || typeof parsed.subscriptionId !== "string") {
+      return Response.json(wrapApiError(null, {
+        code: "INVALID_INPUT", message: "subscriptionId is required",
+      }), { status: 400 });
+    }
+    return openEventStream(request, parsed.subscriptionId, liveStreams);
+  }
   if (!isJsonRpcRequestLike(parsed)) {
     return Response.json(
       jsonRpcError(
@@ -292,7 +308,7 @@ async function handleFetch(
       );
       continue;
     }
-    frames.push(await dispatchFrame(frame, options, caller, aborter));
+    frames.push(await dispatchFrame(frame, options, caller, aborter, request));
   }
   // One response per request: if the client sent a single envelope
   // (the supported shape), return the single envelope; otherwise
@@ -313,15 +329,73 @@ async function handleFetch(
   });
 }
 
+/** Authenticated, subscription-scoped NDJSON stream; disconnect releases ownership. */
+function openEventStream(
+  request: IServerRequest,
+  subscriptionId: string,
+  liveStreams: Set<() => void>,
+): IFetchResponse {
+  let enqueue: (value: Uint8Array) => void = () => undefined;
+  let close: () => void = () => undefined;
+  let release: () => void = () => undefined;
+  let ended = false;
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    request.signal?.removeEventListener("abort", end);
+    liveStreams.delete(end);
+    release();
+    try { close(); } catch { /* The reader may have cancelled first. */ }
+  };
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      enqueue = (value) => {
+        if (controller.desiredSize !== null && controller.desiredSize < 0) { end(); return; }
+        controller.enqueue(value);
+      };
+      close = () => controller.close();
+    },
+    cancel: end,
+  });
+  const encoder = new TextEncoder();
+  try {
+    release = connectSubscriptionEvents(subscriptionId, (event) => {
+      if (ended) return;
+      enqueue(encoder.encode(JSON.stringify({
+        jsonrpc: "2.0", method: "tanit/live", params: event,
+      }) + "\n"));
+      if (event.type === "session-closed" || event.type === "subscription-closed") end();
+    });
+  } catch (error) {
+    end();
+    return Response.json(wrapApiError(null, {
+      code: "INVALID_INPUT", message: error instanceof Error ? error.message : String(error),
+    }), { status: 400 });
+  }
+  liveStreams.add(end);
+  request.signal?.addEventListener("abort", end, { once: true });
+  if (request.signal?.aborted) end();
+  return new Response(stream, {
+    status: 200,
+    headers: { "content-type": "application/x-ndjson", "cache-control": "no-store" },
+  });
+}
+
 async function dispatchFrame(
   frame: IJsonRpcRequest,
   options: IHttpBridgeOptions,
   caller: "browser" | "desktop" | "cli",
   aborter: BridgeAbortController,
+  request: IServerRequest,
 ): Promise<IJsonRpcResponse> {
   const ctx: IRequestContext = {
     caller,
-    signal: { aborted: aborter.signal.aborted },
+    signal: aborter.signal,
+    onDisconnect: (dispose) => {
+      request.signal?.addEventListener("abort", dispose, { once: true });
+      if (request.signal?.aborted) dispose();
+      return () => request.signal?.removeEventListener("abort", dispose);
+    },
     ...(options.workspace !== undefined ? { workspace: options.workspace } : {}),
     ...(options.orchestrator !== undefined ? { orchestrator: options.orchestrator } : {}),
   };

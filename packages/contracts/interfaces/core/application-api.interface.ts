@@ -1,3 +1,4 @@
+import type { LiveEventSink } from "./live.interface.js";
 import type { IProjectSessionSettings } from "./session.interface.js";
 import type { z, ZodType } from "zod";
 import type {
@@ -44,6 +45,10 @@ import type {
 
 export interface IAbortSignalLike { readonly aborted: boolean; }
 export interface IRequestContext {
+  /** A carrier's notification output, when it supports server events. */
+  readonly emitEvent?: LiveEventSink;
+  /** Register teardown for resources that outlive a single request. */
+  readonly onDisconnect?: (dispose: () => void) => () => void;
   readonly sessionId?: string;
   readonly signal?: IAbortSignalLike;
   readonly caller: "desktop" | "browser" | "cli";
