@@ -93,6 +93,7 @@ export function buildCheckToolRegistration(ctx: IMcpPluginContext): IToolRegistr
           const out: ICheckOutput = {
             ok: true,
             inSync: report.inSync,
+            collectionPath: report.collectionPath,
             routesInSource: report.routesInSource,
             requestsInCollection: report.requestsInCollection,
             missingInCollection: report.missingInCollection.map((e) => ({

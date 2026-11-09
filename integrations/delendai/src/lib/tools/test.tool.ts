@@ -212,7 +212,7 @@ export function buildTestToolRegistration(
           if (withTypecheck) {
             const r = runBunCommand(["run", "typecheck"], {
               cwd: workspaceRoot,
-              timeoutMs: 60_000,
+              timeoutMs: 90_000,
               ctx: {
                 cwd: workspaceRoot,
                 bunBin: ctx.options["delendaiBunBin"] as string | undefined,

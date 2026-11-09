@@ -118,6 +118,13 @@ async function tempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), `${prefix}-`));
 }
 
+/** Stop only the gpg-agent bound to a fixture-owned temporary home before removing it. */
+async function removeGpgHome(home: string): Promise<void> {
+  const stopped = run("gpgconf", ["--kill", "gpg-agent"], { GNUPGHOME: home });
+  expect(stopped.status, `could not stop the fixture gpg-agent for ${home}: ${stopped.output}`).toBe(0);
+  await rm(home, { recursive: true, force: true });
+}
+
 /** ¿Hay `gpg` en esta máquina? */
 const HAS_GPG = spawnSync("gpg", ["--version"], { encoding: "utf8" }).status === 0;
 
@@ -178,62 +185,91 @@ interface IManifestJson {
 async function createThrowawayKeyring(
   home: string,
   passphrase = "",
-): Promise<{ fingerprint: string; keyFile: string } | null> {
-  mkdir(home, { recursive: true });
-  const generated = runGpg(
-    [
-      "--batch",
-      "--yes",
-      "--no-tty",
-      "--pinentry-mode",
-      "loopback",
-      "--passphrase-fd",
-      "0",
-      "--quick-generate-key",
-      "Tanit Release Fixture <release@example.invalid>",
-      "default",
-      "default",
-      "never",
-    ],
-    home,
-    passphrase,
-  );
-  if (generated.status !== 0) return null;
-
-  const listed = run("gpg", ["--list-keys", "--with-colons"], { GNUPGHOME: home });
-  let fingerprint = "";
-  for (const line of listed.stdout.split("\n")) {
-    if (line.startsWith("fpr:")) {
-      fingerprint = line.split(":")[9] ?? "";
-      break;
+): Promise<{ fingerprint: string; keyFile: string }> {
+  await mkdir(home, { recursive: true, mode: 0o700 });
+  try {
+    const generated = runGpg(
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        "--quick-generate-key",
+        "Tanit Release Fixture <release@example.invalid>",
+        "ed25519",
+        "sign",
+        "never",
+      ],
+      home,
+      passphrase,
+    );
+    if (generated.status !== 0) {
+      throw gpgFixtureError("generate the throwaway Ed25519 signing key", generated);
     }
+
+    const listed = run("gpg", ["--batch", "--no-tty", "--list-keys", "--with-colons"], {
+      GNUPGHOME: home,
+    });
+    if (listed.status !== 0) throw gpgFixtureError("list the throwaway signing key", listed);
+    const fingerprint = listed.stdout
+      .split("\n")
+      .find((line) => line.startsWith("fpr:"))
+      ?.split(":")[9];
+    if (!fingerprint) {
+      throw new Error(
+        `GPG listed no fingerprint for the throwaway key.\n${diagnosticTail(listed.output)}`,
+      );
+    }
+
+    // La clave se exporta **blindada**: es un fichero de texto, y un
+    // fichero de texto se puede comparar, leer y comprobar sin andarse
+    // con bytes binarios.
+    const exported = runGpg(
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        "--armor",
+        "--export-secret-keys",
+        fingerprint,
+      ],
+      home,
+      passphrase,
+    );
+    if (exported.status !== 0 || exported.stdout === "") {
+      throw gpgFixtureError("export the throwaway signing key", exported);
+    }
+
+    const keyFile = join(home, "release-keyring.gpg");
+    await writeFile(keyFile, exported.stdout, "utf8");
+    return { fingerprint, keyFile };
+  } catch (error) {
+    const stopped = run("gpgconf", ["--kill", "gpg-agent"], { GNUPGHOME: home });
+    await rm(home, { recursive: true, force: true });
+    if (stopped.status !== 0) {
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n` +
+          `Could not stop fixture gpg-agent: ${diagnosticTail(stopped.output)}`,
+      );
+    }
+    throw error;
   }
-  if (fingerprint === "") return null;
+}
 
-  // La clave se exporta **blindada**: es un fichero de texto, y un
-  // fichero de texto se puede comparar, leer y comprobar sin andarse
-  // con bytes binarios.
-  const exported = runGpg(
-    [
-      "--batch",
-      "--yes",
-      "--no-tty",
-      "--pinentry-mode",
-      "loopback",
-      "--passphrase-fd",
-      "0",
-      "--armor",
-      "--export-secret-keys",
-      fingerprint,
-    ],
-    home,
-    passphrase,
-  );
-  if (exported.status !== 0 || exported.stdout === "") return null;
+/** Keep failure output actionable without flooding the test report. */
+function gpgFixtureError(operation: string, result: IResult): Error {
+  return new Error(`Could not ${operation} (exit ${result.status}).\n${diagnosticTail(result.output)}`);
+}
 
-  const keyFile = join(home, "release-keyring.gpg");
-  await writeFile(keyFile, exported.stdout, "utf8");
-  return { fingerprint, keyFile };
+function diagnosticTail(output: string): string {
+  return output.trim().split("\n").slice(-20).join("\n") || "GPG produced no diagnostic output.";
 }
 
 /** El staging del dry-run: los ocho artefactos de la matriz. */
@@ -657,7 +693,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
 
     await rm(stage, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
   });
 
   test("it signs with a key that is not in the runner's default keyring", async () => {
@@ -665,8 +701,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const home = await tempDir("tanit-release-gnupg");
     const empty = await tempDir("tanit-release-gnupg-empty");
     const key = await createThrowawayKeyring(home);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // El keyring por defecto del runner está **vacío**: la clave sólo
     // existe en el fichero que se importa. Si el script volviera a
@@ -687,8 +721,8 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(existsSync(join(stage, "linux", "x64", "keyring", "tanit-release-keyring.gpg"))).toBe(true);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
-    await rm(empty, { recursive: true, force: true });
+    await removeGpgHome(home);
+    await removeGpgHome(empty);
   });
 
   test("it signs the installers and nothing else, and the published keyring keeps its digest", async () => {
@@ -696,8 +730,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const version = await releaseVersion();
     const home = await tempDir("tanit-release-gnupg-scope");
     const key = await createThrowawayKeyring(home);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // El staging mínimo: los instaladores de Linux x64, colocados
     // donde los coloca la release.
@@ -778,7 +810,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(await sha256(publishedChecksums)).toBe(checksumsAfterFirst);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
   });
 
   test("it refuses to sign when the keyring it is told to import does not exist", async () => {
@@ -807,8 +839,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const home = await tempDir("tanit-release-gnupg-protected");
     const passphrase = "valor de prueba para la passphrase";
     const key = await createThrowawayKeyring(home, passphrase);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // Un `gpg` de mentira que anota sus argumentos: lo que se pasa por
     // la línea de órdenes se ve en `ps` y en `/proc/<pid>/cmdline`.
@@ -840,7 +870,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(argv, "the passphrase is visible in the process arguments").not.toContain(passphrase);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
     await rm(shim, { recursive: true, force: true });
   });
 
