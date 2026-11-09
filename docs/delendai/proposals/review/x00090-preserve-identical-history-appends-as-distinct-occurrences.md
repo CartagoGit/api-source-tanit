@@ -2,14 +2,14 @@
 id: x00090
 title: "Preserve identical history appends as distinct occurrences"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: cb7b4266-54a9-4575-9b20-e25b6cdd96fc
-last-correlation-id: cb7b4266-54a9-4575-9b20-e25b6cdd96fc
-last-transition-from: ready
-last-transition-at: 2026-11-09T08:57:21.147Z
+last-transition-id: 566caca4-5dcb-457b-a9a0-9bf39433d138
+last-correlation-id: 566caca4-5dcb-457b-a9a0-9bf39433d138
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T09:02:25.749Z
 ---
 
 # x00090 — Preserve identical history appends as distinct occurrences
@@ -34,13 +34,16 @@ preserve both events while legacy import remains deterministic and idempotent.
 - global_gate: none
 
 ### S1 — Preserve every run append
-- **Status**: in-progress
+- **Status**: review
 - **Files**: `packages/core/session/history-run.repository.ts`, `tests/e2e/history-authority.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Concurrent identical appends with the same timestamp produce distinct stored runs"
   - "Legacy duplicate migration remains stable across repeated reads"
   - "Run metadata remains marked as having no source snapshot"
+- shipped-in: `5dd434bb2f74`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
