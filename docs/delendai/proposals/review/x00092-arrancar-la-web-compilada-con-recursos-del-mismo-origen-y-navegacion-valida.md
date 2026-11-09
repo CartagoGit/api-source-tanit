@@ -2,14 +2,14 @@
 id: x00092
 title: "Arrancar la web compilada con recursos del mismo origen y navegación válida"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: aef92982-f918-4e54-b1c8-2a76bf5e3bb0
-last-correlation-id: aef92982-f918-4e54-b1c8-2a76bf5e3bb0
-last-transition-from: ready
-last-transition-at: 2026-11-09T14:34:22.701Z
+last-transition-id: af499e53-7cfd-490e-a50c-cc40aa1a6d64
+last-correlation-id: af499e53-7cfd-490e-a50c-cc40aa1a6d64
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:04:45.863Z
 ---
 
 # x00092 — Arrancar la web compilada con recursos del mismo origen y navegación válida
@@ -38,6 +38,9 @@ TODO: why this work matters now.
   - "El navegador carga CSS y JavaScript del mismo origen sin bloqueo CSP."
   - "La aplicación renderiza su shell y no sólo devuelve HTTP 200."
   - "Origen y token siguen protegiendo la Application API."
+- shipped-in: `f6c2d1bd9ccc`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
