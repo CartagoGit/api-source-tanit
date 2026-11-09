@@ -2,14 +2,14 @@
 id: v00002
 title: "Scope-aware proof uses one conservative plan in local work and CI"
 kind: perf
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 1eda492b-f59a-42e5-ab92-e5e8a60ba001
-last-correlation-id: 1eda492b-f59a-42e5-ab92-e5e8a60ba001
-last-transition-from: ready
-last-transition-at: 2026-11-09T07:40:51.629Z
+last-transition-id: 12e0cca7-7579-4d01-9838-663558d3ea70
+last-correlation-id: 12e0cca7-7579-4d01-9838-663558d3ea70
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T07:43:21.482Z
 ---
 
 # v00002 — Scope-aware proof uses one conservative plan in local work and CI
@@ -40,13 +40,16 @@ measured as a follow-up.
 - global_gate: none
 
 ### S1 — Plan and execute scoped proof
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`, `delendai.config.json`, `scripts/helpers/proof-plan.helper.ts`, `scripts/gates/prove.script.ts`, `packages/contracts/interfaces/quality/proof-plan.interface.ts`, `packages/contracts/constants/quality/proof-rules.constant.ts`, `tests/scripts-gates/proof-plan.spec.ts`, `.github/workflows/validate.yml`, `scripts/build/ci-summary.script.ts`
 - **Gate**: e2e
 - acceptance:
   - "Local and CI consume the same conservative plan"
   - "Unknown paths and failed analysis widen validation"
   - "Scope-aware skips cannot produce a false green"
+- shipped-in: `88fa0a127496`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
