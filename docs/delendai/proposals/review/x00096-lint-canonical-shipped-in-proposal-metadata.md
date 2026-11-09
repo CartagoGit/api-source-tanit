@@ -2,14 +2,14 @@
 id: x00096
 title: "Lint canonical shipped-in proposal metadata"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 7a53c4b7-5d39-42f5-a9bb-97bc2d6918d4
-last-correlation-id: 7a53c4b7-5d39-42f5-a9bb-97bc2d6918d4
-last-transition-from: ready
-last-transition-at: 2026-11-09T15:20:54.638Z
+last-transition-id: f9283512-fa2b-46e7-856a-e42844331614
+last-correlation-id: f9283512-fa2b-46e7-856a-e42844331614
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:31:46.476Z
 ---
 
 # x00096 — Lint canonical shipped-in proposal metadata
@@ -31,9 +31,12 @@ DelendAI 0.3 writes the canonical `shipped-in` field when it archives a proposal
 - global_gate: none
 
 ### S1 — Parse canonical and legacy shipped-in metadata without relaxing SHA validation
-- **Status**: in-progress
+- **Status**: review
 - **Files**: `scripts/gates/lint-proposals.script.ts`, `tests/scripts-gates/proposal-frontmatter.spec.ts`, `docs/delendai/proposals/INDEX.md`
 - **Gate**: test
+- shipped-in: `a6126caeaa0d`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
