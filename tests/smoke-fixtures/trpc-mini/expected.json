@@ -1,0 +1,6 @@
+{
+  "framework": "trpc",
+  "routes": [
+    { "method": "GET", "uri": "/trpc/ping" }
+  ]
+}
