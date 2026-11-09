@@ -4,7 +4,7 @@ title: "Instalar las dependencias de Tanit antes de validar el plugin opcional e
 kind: fix
 status: ready
 type: proposal
-track: general
+track: api-source-tanit
 date: 2026-11-09
 ---
 
@@ -16,21 +16,23 @@ Reproducir la integración opcional en un runner limpio con dependencias raíz y
 
 ## why
 
-TODO: why this work matters now.
+The first clean GitHub run (42636714514) failed TypeScript resolution for zod and Babel because the optional plugin imports Tanit source outside its private package. Local root dependencies concealed this missing workflow step.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No runtime upgrade, product dependency on DelendAI, or permission expansion.
 
 ## slices
 
 - global_gate: none
 
-### S1 — TODO
-- **Status**: pending
-- **Files**: `TODO`
-- **Gate**: none
+### S1 — Install the host product dependencies before plugin validation
+- **Status**: done
+- **Files**: `.github/workflows/integration-delendai.yml`, `tests/scripts-gates/integration-delendai-workflow.spec.ts`
+- **Gate**: cli
 
 ## acceptance
 
-- TODO: observable acceptance criteria.
+- A clean runner installs the frozen root lockfile before installing and validating the optional plugin.
+- The immutable 0.3.0 pin, private plugin lockfile and read-only workflow permissions remain enforced.
+- The workflow regression test checks installation scope and dependency order.
