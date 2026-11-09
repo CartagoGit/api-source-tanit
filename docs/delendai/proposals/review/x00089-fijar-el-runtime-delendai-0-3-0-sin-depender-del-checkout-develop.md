@@ -2,14 +2,14 @@
 id: x00089
 title: "Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: c96454ec-e1db-4634-bead-87dc5f36ef60
-last-correlation-id: c96454ec-e1db-4634-bead-87dc5f36ef60
-last-transition-from: ready
-last-transition-at: 2026-11-09T01:38:18.516Z
+last-transition-id: b557ceaa-57ba-4987-a519-fa2b92357003
+last-correlation-id: b557ceaa-57ba-4987-a519-fa2b92357003
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T07:28:29.065Z
 ---
 
 # x00089 — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop
@@ -39,6 +39,9 @@ El ejecutable global delendai usa un checkout móvil develop; server.version no 
   - "El lanzador rechaza un checkout cuyo HEAD difiera del commit v0.3.0."
   - "El MCP no ejecuta un sibling develop ni descarga silenciosamente versiones distintas."
   - "Tanit funciona sin DelendAI; la integración es optativa."
+- shipped-in: `ec9d1c9bf570`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
