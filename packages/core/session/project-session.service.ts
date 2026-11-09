@@ -22,6 +22,8 @@
  */
 
 import { watch as fsWatch } from "node:fs";
+import { SESSION_WATCH_IGNORED_DIRECTORY_NAMES } from "../../contracts/constants/core/session.constant.js";
+import { join, parse, sep } from "node:path";
 import { generateCollections } from "../discovery/generation.pipeline.js";
 import { newSessionId } from "./session-id.js";
 import {
@@ -30,7 +32,7 @@ import {
 } from "./session-error.js";
 import { makeSnapshot, type IProjectSnapshot } from "./project-snapshot.js";
 import type { SessionEventName, SessionEventPayload } from "./session-events.js";
-import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IGenerationOptions, IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 
 export type { IProjectSessionOptions, IProjectSession } from "../../contracts/interfaces/core/session.interface.js";
 import type { IProjectSession, IProjectSessionOptions, IProjectSessionSettings } from "../../contracts/interfaces/core/session.interface.js";
@@ -42,9 +44,20 @@ type EventHandler<K extends SessionEventName> = (
 /** Module-level registry: root → session (one per process). */
 const _sessions = new Map<string, ProjectSessionImpl>();
 
-/** Normalises a root path for use as a registry key. */
+/** Pending scans are shared until they succeed, fail or are explicitly cancelled. */
+const _openings = new Map<string, {
+  readonly promise: Promise<IProjectSession>;
+  readonly signals: Array<IProjectSessionOptions["signal"]>;
+}>();
+
+/** Lexically canonical roots; no filesystem lookup or implicit working directory. */
 function normalizeRoot(root: string): string {
-  return root.replace(/[/\\]+$/, "");
+  let normalized = join(root);
+  const rootLength = parse(normalized).root.length;
+  while (normalized.length > rootLength && normalized.endsWith(sep)) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
 }
 
 class ProjectSessionImpl implements IProjectSession {
@@ -65,6 +78,9 @@ class ProjectSessionImpl implements IProjectSession {
   private _watchEnabled: boolean;
   private _configurationRevision = 0;
   private _settingsQueue: Promise<void> = Promise.resolve();
+  private _scanQueue: Promise<void> = Promise.resolve();
+  private _rescanRunning = false;
+  private readonly _pendingPaths = new Set<string>();
 
   constructor(
     id: string,
@@ -82,7 +98,7 @@ class ProjectSessionImpl implements IProjectSession {
     this._watchEnabled = watchEnabled;
 
     if (watchEnabled) {
-      this._startWatch();
+      this._watcher = this._createWatcher();
     }
   }
 
@@ -127,7 +143,7 @@ class ProjectSessionImpl implements IProjectSession {
       ? makeSnapshot({
         sessionId: this.id,
         projectRoot: this.projectRoot,
-        results: await generateCollections(this.projectRoot, generationOptions),
+        results: await this._scan(generationOptions),
         diagnostics: [],
       })
       : this.current();
@@ -136,6 +152,12 @@ class ProjectSessionImpl implements IProjectSession {
     if (signal?.aborted) throw new SessionAbortedError(this.id);
     const watchEnabled = patch.watch ?? this._watchEnabled;
     const watchChanged = watchEnabled !== this._watchEnabled;
+    if (watchChanged) {
+      const nextWatcher = watchEnabled ? this._createWatcher() : null;
+      try { this._watcher?.close(); }
+      catch (error) { nextWatcher?.close(); throw error; }
+      this._watcher = nextWatcher;
+    }
     this._genOptions = generationOptions;
     this._snapshot = nextSnapshot;
     this._watchEnabled = watchEnabled;
@@ -145,11 +167,8 @@ class ProjectSessionImpl implements IProjectSession {
       if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
       this._debounceTimer = null;
     }
-    if (watchChanged) {
-      this._watcher?.close();
-      this._watcher = null;
-      if (watchEnabled) this._startWatch();
-    }
+    if (!watchEnabled) this._pendingPaths.clear();
+    else if (this._pendingPaths.size > 0) this._scheduleRescan([]);
     if (generationChanged) this._emit("snapshot-ready", { snapshot: nextSnapshot });
     return this.settings();
   }
@@ -191,6 +210,7 @@ class ProjectSessionImpl implements IProjectSession {
         this._watcher = null;
         if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
         this._debounceTimer = null;
+        this._pendingPaths.clear();
         this._snapshot = null;
         this._handlers.clear();
       }
@@ -209,101 +229,142 @@ class ProjectSessionImpl implements IProjectSession {
     }
   }
 
-  private _startWatch(): void {
+  private _createWatcher(): ReturnType<typeof fsWatch> {
+    return fsWatch(this.projectRoot, { recursive: true }, (_eventType, filename) => {
+      if (!filename || this._closed || !this._watchEnabled) return;
+      const parts = filename.replace(/\\/g, "/").split("/");
+      if (parts.some((part) => SESSION_WATCH_IGNORED_DIRECTORY_NAMES.includes(part)) || filename.endsWith(".tmp")) return;
+      this._scheduleRescan([filename]);
+      this._emit("snapshot-stale", { changedPaths: [filename] });
+    });
+  }
+
+  /** All rescans and configuration scans share one execution lane. */
+  private _scan(options: IGenerationOptions): Promise<ReadonlyArray<IGenerationResult>> {
+    const pending = this._scanQueue.then(() => {
+      if (this._closed) throw new SessionClosedError(this.id);
+      return generateCollections(this.projectRoot, options);
+    });
+    this._scanQueue = pending.then(() => undefined, () => undefined);
+    return pending;
+  }
+
+  private _scheduleRescan(changedPaths: readonly string[]): void {
+    for (const path of changedPaths) this._pendingPaths.add(path);
+    if (this._rescanRunning) return;
+    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      void this._runRescans();
+    }, this._watchDebounceMs);
+  }
+
+  private async _runRescans(): Promise<void> {
+    if (this._rescanRunning) return;
+    this._rescanRunning = true;
     try {
-      this._watcher = fsWatch(
-        this.projectRoot,
-        { recursive: true },
-        (_eventType, filename) => {
-          if (!filename || this._closed) return;
-          const paths = [filename];
-          this._emit("snapshot-stale", { changedPaths: paths });
-          this._scheduleRescan(paths);
-        },
-      );
-    } catch {
-      // Watch not supported on this platform — skip silently.
+      while (!this._closed && this._watchEnabled && this._pendingPaths.size > 0) {
+        const changedPaths = [...this._pendingPaths];
+        this._pendingPaths.clear();
+        const revision = this._configurationRevision;
+        try {
+          const results = await this._scan(this._genOptions);
+          if (this._closed || !this._watchEnabled) return;
+          if (revision !== this._configurationRevision) {
+            for (const path of changedPaths) this._pendingPaths.add(path);
+            continue;
+          }
+          // A newer source event makes this candidate obsolete before publication.
+          if (this._pendingPaths.size > 0) continue;
+          this._snapshot = makeSnapshot({ sessionId: this.id, projectRoot: this.projectRoot, results, diagnostics: [] });
+          this._emit("snapshot-ready", { snapshot: this._snapshot });
+        } catch (error) {
+          if (!this._closed && this._watchEnabled && revision === this._configurationRevision) {
+            this._emit("snapshot-error", {
+              message: error instanceof Error ? error.message : String(error), changedPaths,
+            });
+          }
+        }
+      }
+    } finally {
+      this._rescanRunning = false;
     }
   }
 
-  private _scheduleRescan(_changedPaths: string[]): void {
-    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(async () => {
-      this._debounceTimer = null;
-      if (this._closed) return;
-      const revision = this._configurationRevision;
-      try {
-        const results = await generateCollections(
-          this.projectRoot,
-          this._genOptions,
-        );
-        if (this._closed || revision !== this._configurationRevision) return;
-        this._snapshot = makeSnapshot({
-          sessionId: this.id,
-          projectRoot: this.projectRoot,
-          results,
-          diagnostics: [],
-        });
-        this._emit("snapshot-ready", { snapshot: this._snapshot });
-      } catch {
-        // Re-scan errors are silent; the stale snapshot is kept.
-      }
-    }, this._watchDebounceMs);
-  }
 }
 
 /**
  * Opens (or returns) a session for `projectRoot`.
  *
- * The first call triggers a full scan. Subsequent calls for the same
- * root return the existing session without scanning again.
+ * Concurrent calls share one scan and use the first caller's configuration.
+ * Each caller retains its own abort signal. Roots are normalized lexically,
+ * without resolving relative paths or requiring filesystem existence.
+ * Later calls return the registered session without scanning again.
  */
 export async function openSession(
   projectRoot: string,
   options: IProjectSessionOptions,
 ): Promise<IProjectSession> {
-  const { signal, generationOptions, watch: watchEnabled = false, watchDebounceMs = 500 } =
-    options;
-
+  const { signal } = options;
   if (signal?.aborted) {
     throw new SessionAbortedError(`(pre-open:${projectRoot})`);
   }
-
   const key = normalizeRoot(projectRoot);
   const existing = _sessions.get(key);
   if (existing) return existing;
 
-  const id = newSessionId(projectRoot);
-
-  // Run the scan.
-  let results;
-  try {
-    results = await generateCollections(projectRoot, generationOptions);
-  } catch (err) {
-    if (signal?.aborted) throw new SessionAbortedError(id);
-    throw err;
+  let opening = _openings.get(key);
+  if (opening) {
+    opening.signals.push(signal);
+  } else {
+    const signals = [signal];
+    const id = newSessionId(key);
+    const { generationOptions, watch: watchEnabled = false, watchDebounceMs = 500 } = options;
+    // Defer the scan until its ownership entry is installed, including for a
+    // synchronously throwing scanner. Initial options follow the first opener.
+    const scan: Promise<IProjectSession> = Promise.resolve().then(async () => {
+      if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+        throw new SessionAbortedError(id);
+      }
+      let results;
+      try {
+        results = await generateCollections(key, generationOptions);
+      } catch (error) {
+        if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+          throw new SessionAbortedError(id);
+        }
+        throw error;
+      }
+      if (_openings.get(key)?.promise !== pending || signals.every((value) => value?.aborted)) {
+        throw new SessionAbortedError(id);
+      }
+      const snapshot = makeSnapshot({ sessionId: id, projectRoot: key, results, diagnostics: [] });
+      const session = new ProjectSessionImpl(
+        id, key, snapshot, generationOptions, watchEnabled, watchDebounceMs,
+      );
+      _sessions.set(key, session);
+      return session;
+    });
+    const pending = scan.finally(() => {
+      // A cancelled scan may finish after a newer opening has taken its key.
+      if (_openings.get(key)?.promise === pending) _openings.delete(key);
+    });
+    opening = { promise: pending, signals };
+    _openings.set(key, opening);
   }
-
-  if (signal?.aborted) throw new SessionAbortedError(id);
-
-  const snapshot = makeSnapshot({
-    sessionId: id,
-    projectRoot,
-    results,
-    diagnostics: [],
-  });
-
-  const session = new ProjectSessionImpl(
-    id,
-    projectRoot,
-    snapshot,
-    generationOptions,
-    watchEnabled,
-    watchDebounceMs,
-  );
-
-  _sessions.set(key, session);
+  const session = await opening.promise;
+  // Cancelling one caller does not discard a shared session another caller needs.
+  if (signal?.aborted || _sessions.get(key) !== session) throw new SessionAbortedError(session.id);
   return session;
+}
+
+/** Cancels a pending open without letting its eventual scan resurrect a session. */
+export function cancelSessionOpening(projectRoot: string): boolean {
+  const key = normalizeRoot(projectRoot);
+  if (!_openings.delete(key)) return false;
+  // The scan may have published just before its promise reaches the caller.
+  _sessions.get(key)?.close();
+  return true;
 }
 
 /**
@@ -322,6 +383,7 @@ export function getSession(projectRoot: string): IProjectSession | null {
  * Intended for use in tests.
  */
 export function closeAllSessions(): void {
+  _openings.clear();
   const errors: unknown[] = [];
   for (const session of [..._sessions.values()]) {
     try {

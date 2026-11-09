@@ -24,9 +24,16 @@ export interface SessionClosedEvent {
   readonly projectRoot: string;
 }
 
+/** A rescan failed; the previous valid snapshot remains available. */
+export interface SnapshotErrorEvent {
+  readonly message: string;
+  readonly changedPaths: ReadonlyArray<string>;
+}
+
 export interface ISessionEventMap {
   "snapshot-ready": SnapshotReadyEvent;
   "snapshot-stale": SnapshotStaleEvent;
+  "snapshot-error": SnapshotErrorEvent;
   "session-closed": SessionClosedEvent;
 }
 
