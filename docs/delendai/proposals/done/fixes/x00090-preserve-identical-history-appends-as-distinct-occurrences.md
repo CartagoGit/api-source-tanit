@@ -2,14 +2,14 @@
 id: x00090
 title: "Preserve identical history appends as distinct occurrences"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 566caca4-5dcb-457b-a9a0-9bf39433d138
-last-correlation-id: 566caca4-5dcb-457b-a9a0-9bf39433d138
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T09:02:25.749Z
+last-transition-id: a00d3eaf-2c7c-415c-b5b2-ae24bf3f5091
+last-correlation-id: a00d3eaf-2c7c-415c-b5b2-ae24bf3f5091
+last-transition-from: review
+last-transition-at: 2026-11-09T21:17:51.982Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
