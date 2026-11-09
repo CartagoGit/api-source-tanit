@@ -52,13 +52,15 @@ export const DryRunInputSchema = z.object({
   collectionName: z.string().min(1).optional(),
   /** The format to preview. `postman` when nobody says. */
   target: z.string().min(1).optional(),
-  /** Where the files would go. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
+  outputPath: z.string().min(1).optional(),
+  /** Where the files would go. Relative directories are resolved against projectRoot. */
   outputDirectory: z.string().min(1).optional(),
 });
 export const ExportInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   target: z.string().min(1),
-  /** The file to write. Its folder is the output directory. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
   outputPath: z.string().min(1).optional(),
   /** Where the files go. The project's `tanit` folder when nobody says. */
   outputDirectory: z.string().min(1).optional(),
@@ -197,7 +199,9 @@ export const SyncInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   /** The format to write. `postman` when nobody says. */
   target: z.string().min(1).optional(),
-  /** Where the files go. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
+  outputPath: z.string().min(1).optional(),
+  /** Where the files go. Relative directories are resolved against projectRoot. */
   outputDirectory: z.string().min(1).optional(),
   /** Say what would happen without writing anything. */
   dryRun: z.boolean().optional(),
