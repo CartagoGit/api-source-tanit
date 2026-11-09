@@ -2,14 +2,14 @@
 id: x00094
 title: "Instalar las dependencias de Tanit antes de validar el plugin opcional en CI"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: e9b6f2a7-f21e-4e5f-b40d-479f47a78ad5
-last-correlation-id: e9b6f2a7-f21e-4e5f-b40d-479f47a78ad5
-last-transition-from: ready
-last-transition-at: 2026-11-09T14:58:23.836Z
+last-transition-id: 3cab2cd5-365a-42d1-9653-774dcad62aa5
+last-correlation-id: 3cab2cd5-365a-42d1-9653-774dcad62aa5
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:00:53.250Z
 ---
 
 # x00094 — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI
@@ -34,6 +34,9 @@ The first clean GitHub run (42636714514) failed TypeScript resolution for zod an
 - **Status**: done
 - **Files**: `.github/workflows/integration-delendai.yml`, `tests/scripts-gates/integration-delendai-workflow.spec.ts`
 - **Gate**: cli
+- shipped-in: `d2bb6e1d9e43`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
