@@ -45,7 +45,7 @@ tools deben seguir siendo compatibles con ese runtime concreto.
   - "The pinned plugin test suite passes after a frozen install."
 - shipped-in: `7d62d54b`
 - review-state: in_review
-- review-implementer: openai-gpt-6-luna
+- review-implementer: openai-gpt-6.1-sol
 
 ### S2 — Compatibilidad real del plugin contra el core fijado
 - **Status**: review
