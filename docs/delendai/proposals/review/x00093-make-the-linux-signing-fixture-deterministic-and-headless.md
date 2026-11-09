@@ -2,14 +2,14 @@
 id: x00093
 title: "Make the Linux signing fixture deterministic and headless"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: a71e512d-4409-42b7-b2ff-a604aad14d04
-last-correlation-id: a71e512d-4409-42b7-b2ff-a604aad14d04
-last-transition-from: ready
-last-transition-at: 2026-11-09T14:43:15.131Z
+last-transition-id: 0d5fda69-6cf0-4ea9-b34d-be3c0d8eb867
+last-correlation-id: 0d5fda69-6cf0-4ea9-b34d-be3c0d8eb867
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T14:48:51.620Z
 ---
 
 # x00093 — Make the Linux signing fixture deterministic and headless
@@ -32,13 +32,16 @@ The signing tests generated a default RSA key synchronously after starting direc
 - global_gate: none
 
 ### S1 — S1
-- **Status**: pending
+- **Status**: review
 - **Files**: `tests/release/signing.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "The fixture awaits private GPG home setup and uses batch plus loopback pinentry."
   - "The fixture uses a fast signing-capable key supported by the runner and retains real sign/verify assertions."
   - "Failures include bounded GPG diagnostics and cleanup stops only the fixture-owned agent."
+- shipped-in: `55b74ac8452a`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
