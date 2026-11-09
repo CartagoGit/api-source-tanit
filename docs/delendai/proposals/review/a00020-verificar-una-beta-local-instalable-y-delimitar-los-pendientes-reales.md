@@ -2,14 +2,14 @@
 id: a00020
 title: "Verificar una beta local instalable y delimitar los pendientes reales"
 kind: audit
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 5b23f522-0ad0-4f31-be28-c8785ba8dc45
-last-correlation-id: 5b23f522-0ad0-4f31-be28-c8785ba8dc45
-last-transition-from: ready
-last-transition-at: 2026-11-09T15:21:13.149Z
+last-transition-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
+last-correlation-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:29:01.057Z
 ---
 
 # a00020 — Verificar una beta local instalable y delimitar los pendientes reales
@@ -39,6 +39,9 @@ TODO: why this work matters now.
   - "Express y Laravel exportan OpenAPI verificable desde el artefacto."
   - "La web compila y responde con su API real autenticada."
   - "Cada pendiente de beta tiene alcance y evidencia concretos."
+- shipped-in: `ade9fced284f`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
