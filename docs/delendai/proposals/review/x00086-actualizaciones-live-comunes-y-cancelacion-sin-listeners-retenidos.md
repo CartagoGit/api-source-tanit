@@ -2,14 +2,14 @@
 id: x00086
 title: "Actualizaciones Live comunes y cancelación sin listeners retenidos"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 2c7ff4af-2f5d-4a96-991c-28922caa3f18
-last-correlation-id: 2c7ff4af-2f5d-4a96-991c-28922caa3f18
-last-transition-from: review
-last-transition-at: 2026-11-09T07:23:45.981Z
+last-transition-id: cbedbc87-2785-496a-89f6-d0784755c427
+last-correlation-id: cbedbc87-2785-496a-89f6-d0784755c427
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T07:26:20.926Z
 ---
 
 # x00086 — Actualizaciones Live comunes y cancelación sin listeners retenidos
