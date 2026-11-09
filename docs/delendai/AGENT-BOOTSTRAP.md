@@ -327,6 +327,10 @@ The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
 opening fix required by the delivery gate: tests isolate launchers and the CLI
 opens the generated output using its injected context.
 
+The [proposal index](proposals/INDEX.md) tracks the PR auto-merge repair:
+GitHub's official GraphQL mutation, an expected-head guard, scoped write
+permissions, and failures that remain visible to the delivery workflow.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the
