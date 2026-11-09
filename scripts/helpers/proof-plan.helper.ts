@@ -26,6 +26,8 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     const isDocumentation = change.path.startsWith("docs/") || change.path.endsWith(".md");
     if (change.status !== "M" && !isDocumentation) reasons.push(`Structural change: ${change.path}`);
     if (GLOBAL_PATHS.some(prefix => change.path.startsWith(prefix)) || PROOF_GLOBAL_PREFIXES.some(prefix => change.path.startsWith(prefix))) reasons.push(`Global or measured disk reader: ${change.path}`);
+    const measurableSource = /^(?:packages\/(?:core|frameworks|cli|ui)\/).+\.[cm]?[jt]sx?$/.test(change.path);
+    if (change.path.startsWith("packages/") && !isDocumentation && !measurableSource) reasons.push(`Unsupported changed source coverage path: ${change.path}`);
     if (!sectionOf(change.path) && !change.path.startsWith("docs/") && !change.path.endsWith(".md")) reasons.push(`Unclassified path: ${change.path}`);
   }
   const reverse = new Map<string, Set<string>>();
@@ -50,8 +52,6 @@ export function createProofPlan(input: IProofInput): IProofPlan {
           if (arg && ts.isStringLiteral(arg)) reference = arg.text;
           else uncertainReaders.add(file);
         }
-        // Filesystem/process readers can consume resources without import edges.
-        if (/(?:readFile|readdir|glob|spawn|exec|Bun\.file)/.test(callee)) uncertainReaders.add(file);
       }
       if (reference?.startsWith(".")) {
         const dependency = resolve(file, reference);
@@ -76,28 +76,28 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     if (!reached.has(reader)) { reached.add(reader); queue.push(reader); }
   }
   let sections = withDependents(sectionsForFiles(changedFiles));
-  const selectedNames = new Set(sections.map(section => section.name));
-  // Unmeasured readers within a consuming section force all its specs; all
-  // downstream sections already appear through the declared section graph.
-  const wideSections = new Set([...uncertainReaders].map(sectionOf).filter((name): name is string => !!name && selectedNames.has(name)));
-  if (reached.has("tests/app/setup.ts")) wideSections.add("app");
+  // Unknown import/resource edges prevent proving the consumer closure. Widen
+  // to full validation instead of guessing which tests can observe the change.
+  const uncertainInScope = [...uncertainReaders].filter(file => reached.has(file));
+  if (uncertainInScope.length > 0) reasons.push(`Unresolved import or resource graph: ${uncertainInScope.sort().join(", ")}`);
+  if (reached.has("tests/app/setup.ts")) reasons.push("Application test setup has broad shared effects.");
   const allSpecs = Object.keys(input.files).filter(isSpec);
-  const selectedSpecs = new Set(allSpecs.filter(file => reached.has(file) || wideSections.has(sectionOf(file) ?? "")));
+  const selectedSpecs = new Set(allSpecs.filter(file => reached.has(file)));
   for (const section of sections) {
     if (!allSpecs.some(file => sectionOf(file) === section.name && selectedSpecs.has(file))) {
       for (const file of allSpecs) if (sectionOf(file) === section.name) selectedSpecs.add(file);
     }
   }
+  const hasMeasurableSourceChange = changedFiles.some(path => /^(?:packages\/(?:core|frameworks|cli|ui)\/).+\.[cm]?[jt]sx?$/.test(path));
+  if (hasMeasurableSourceChange && selectedSpecs.size === 0) reasons.push("No reachable specs for changed measurable source.");
   const full = reasons.length > 0;
   if (full) sections = [...SECTIONS];
   const specs = (full ? allSpecs : [...selectedSpecs]).filter(file => !isBunSpec(file)).sort();
-  // Source changes retain full coverage because the repository freezes aggregate
-  // baselines. Documentation-only changes cannot affect those measurements, so
-  // they keep the proposal and integration checks without running unrelated tests.
-  const docsOnly = changedFiles.length > 0 && changedFiles.every(file => file.startsWith("docs/") || file.endsWith(".md"));
+  // Scoped source PRs replace the aggregate baseline with per-changed-file
+  // floors. Integration and promotion plans retain full aggregate coverage.
   const jobs = Object.fromEntries(PROOF_JOBS.map(job => {
     if (job === "affected-tests") return [job, !full && specs.length > 0];
-    if (job === "test-coverage" && !full && docsOnly) return [job, false];
+    if (job === "test-coverage" && !full) return [job, false];
     return [job, full || ["lint", "test-coverage", "integration-verifier"].includes(job)];
   }));
   if (!full) {

@@ -9,7 +9,7 @@ const baseInput: IProofInput = {
   changes: [{ path: "packages/core/example.service.ts", status: "M" }],
   files: {
     "packages/core/example.service.ts": "export const value = 1;",
-    "tests/core/example.spec.ts": 'import { value } from "../../packages/core/example.js"; expect(value).toBe(1);',
+    "tests/core/example.spec.ts": 'import { value } from "../../packages/core/example.service.js"; expect(value).toBe(1);',
     "tests/core/other.spec.ts": "expect(true).toBe(true);",
     "tests/frameworks/example.scanner.spec.ts": "expect(true).toBe(true);",
     "tests/app/example.spec.ts": "expect(true).toBe(true);",
@@ -17,12 +17,12 @@ const baseInput: IProofInput = {
 };
 
 describe("scope-aware proof plan", () => {
-  test("follows transitive imports and declared dependent sections while keeping aggregate coverage", () => {
+  test("follows transitive imports and declared dependent sections and scopes coverage to changed files", () => {
     const plan = createProofPlan({
       ...baseInput,
       files: {
         ...baseInput.files,
-        "packages/core/barrel.ts": 'export { value } from "./example.js";',
+        "packages/core/barrel.ts": 'export { value } from "./example.service.js";',
         "tests/frameworks/uses-core.spec.ts": 'import { value } from "../../packages/core/barrel.js"; expect(value).toBe(1);',
       },
     });
@@ -31,13 +31,14 @@ describe("scope-aware proof plan", () => {
     expect(plan.specs).toContain("tests/frameworks/uses-core.spec.ts");
     expect(plan.specs).toContain("tests/app/example.spec.ts");
     expect(plan.sections).toContain("frameworks");
-    expect(plan.jobs["test-coverage"]).toBe(true);
+    expect(plan.jobs["test-coverage"]).toBe(false);
     expect(plan.jobs["affected-tests"]).toBe(true);
     expect(plan.steps.some((step) => step.job === "affected-tests")).toBe(true);
-    expect(plan.steps.some((step) => step.id === "coverage")).toBe(true);
+    expect(plan.steps.some((step) => step.id === "coverage")).toBe(false);
+    expect(plan.steps.find((step) => step.id === "affected-tests")?.argv).toContain("--affected-tests");
   });
 
-  test("unknown dynamic readers widen to all specs in their selected section", () => {
+  test("unknown dynamic imports fall back to full proof", () => {
     const plan = createProofPlan({
       ...baseInput,
       files: {
@@ -45,12 +46,13 @@ describe("scope-aware proof plan", () => {
         "packages/core/example.service.ts": "const loaded = await import(moduleName);",
       },
     });
-    expect(plan.mode).toBe("affected");
+    expect(plan.mode).toBe("full");
+    expect(plan.jobs["test-coverage"]).toBe(true);
     expect(plan.specs).toContain("tests/core/example.spec.ts");
     expect(plan.specs).toContain("tests/core/other.spec.ts");
   });
 
-  test("unresolved relative and framework resource imports widen their consuming section", () => {
+  test("unresolved relative and framework resource imports fall back to full proof", () => {
     const plan = createProofPlan({
       ...baseInput,
       changes: [{ path: "packages/frameworks/example.scanner.ts", status: "M" }],
@@ -59,7 +61,7 @@ describe("scope-aware proof plan", () => {
         "packages/frameworks/example.scanner.ts": 'export const view = { templateUrl: "./missing.html" }; import("./missing.js");',
       },
     });
-    expect(plan.mode).toBe("affected");
+    expect(plan.mode).toBe("full");
     expect(plan.sections).toContain("frameworks");
     expect(plan.specs).toContain("tests/frameworks/example.scanner.spec.ts");
   });
@@ -94,7 +96,7 @@ describe("scope-aware proof plan", () => {
     expect(plan.steps.map((step) => step.job)).not.toContain("test-coverage");
   });
 
-  test("proposal docs mixed with a source edit keep full aggregate coverage", () => {
+  test("proposal docs mixed with a source edit retain changed-file coverage", () => {
     const plan = createProofPlan({
       ...baseInput,
       changes: [
@@ -103,8 +105,20 @@ describe("scope-aware proof plan", () => {
       ],
     });
     expect(plan.mode).toBe("affected");
-    expect(plan.jobs["test-coverage"]).toBe(true);
+    expect(plan.jobs["test-coverage"]).toBe(false);
     expect(plan.jobs["affected-tests"]).toBe(true);
+  });
+
+  test("unsupported source and structural source changes retain full aggregate validation", () => {
+    for (const change of [
+      { path: "packages/contracts/example.interface.ts", status: "M" },
+      { path: "packages/core/example.service.ts", status: "A" },
+    ]) {
+      const plan = createProofPlan({ ...baseInput, changes: [change] });
+      expect(plan.mode).toBe("full");
+      expect(plan.jobs["test-coverage"]).toBe(true);
+      expect(plan.jobs["affected-tests"]).toBe(false);
+    }
   });
 
   test("cannot manually execute a proof job omitted by the plan", async () => {
