@@ -33,7 +33,7 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
 
 ### S1 — Unificar preparación y escritura
 - **Status**: done
-- **Files**: `packages/cli/commands/generate.script.ts`, `packages/core/application-api/export-artifacts.helper.ts`, `packages/core/exporters/export-files.service.ts`, `packages/core/discovery/discovery.orchestrator.ts`, `packages/core/discovery/generation.pipeline.ts`, `packages/contracts/interfaces/core/discovery.interface.ts`, `packages/contracts/interfaces/core/scanner.interface.ts`, `packages/contracts/interfaces/core/export-files.interface.ts`, `packages/frameworks/framework.registry.ts`, `packages/frameworks/generation-preparation.service.ts`, `tests/core/export-files.service.spec.ts`, `tests/e2e/cli-api-export-parity.spec.ts`, `docs/API.md`
+- **Files**: `packages/cli/commands/generate.script.ts`, `packages/core/application-api/export-artifacts.helper.ts`, `packages/core/exporters/export-files.service.ts`, `packages/core/discovery/discovery.orchestrator.ts`, `packages/core/discovery/generation.pipeline.ts`, `packages/contracts/interfaces/core/discovery.interface.ts`, `packages/contracts/interfaces/core/scanner.interface.ts`, `packages/contracts/interfaces/core/export-files.interface.ts`, `packages/frameworks/framework.registry.ts`, `packages/frameworks/generation-preparation.service.ts`, `packages/frameworks/laravel/catalog-enricher.service.ts`, `tests/core/export-files.service.spec.ts`, `tests/e2e/cli-api-export-parity.spec.ts`, `docs/API.md`
 - **Gate**: e2e
 - acceptance:
   - "Mismas opciones producen los mismos artefactos por CLI y Application API."
@@ -65,3 +65,5 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
 - S2 remains pending and no history migration is included in S1.
 
 - Focused validation: 30 tests passed across shared prepared files, CLI/API export parity, destination handler/helper regressions and the generation pipeline. Proposal and generated API-reference gates passed.
+
+- Full-gate regression: shared Laravel preparation exposed duplicate body examples identical to the existing request. The enricher now retains only distinct bodies; all 21 comprehensive Laravel contract cases and CLI/API parity with actual enum variants pass without weakening collection invariants.

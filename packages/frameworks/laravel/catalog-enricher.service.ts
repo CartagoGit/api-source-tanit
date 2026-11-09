@@ -250,7 +250,11 @@ export async function enrichCatalogWithFormRequests(
     }
 
     if (method === "POST" || method === "PUT" || method === "PATCH") {
-      const variants = generateBodyVariants(rules);
+      // The shared pipeline may already have inferred exactly this body.
+      // Keep the original request and only add distinct payload examples.
+      const variants = generateBodyVariants(rules).filter(variant =>
+        req.body?.mode !== "raw" || req.body.raw !== JSON.stringify(variant.body, null, 2),
+      );
       if (variants.length === 0) {
         if (hasManualBody) stats.skippedManualBody += 1;
         return;
