@@ -21,7 +21,7 @@ import {
   clearHistory,
   formatHistoryJsonl,
   readHistory,
-} from "../../ui/server/history.service.js";
+} from "../../core/session/history-run.service.js";
 import { historyPath } from "../../ui/history-paths.helper.js";
 import type {
   IHistoryEntry,

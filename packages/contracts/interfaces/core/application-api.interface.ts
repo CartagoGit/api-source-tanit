@@ -57,7 +57,7 @@ export interface IHandler<TIn, TOut> {
 }
 export type HandlerRegistry = Readonly<Record<string, IHandler<unknown, unknown>>>;
 
-export type ApiErrorCode = "INVALID_INPUT" | "UNKNOWN_HANDLER" | "SESSION_NOT_FOUND" | "OPERATION_NOT_FOUND" | "SERVICE_NOT_FOUND" | "CANCELED" | "EXECUTION_FAILED" | "EXPORT_FAILED";
+export type ApiErrorCode = "INVALID_INPUT" | "UNKNOWN_HANDLER" | "SESSION_NOT_FOUND" | "OPERATION_NOT_FOUND" | "SERVICE_NOT_FOUND" | "CANCELED" | "EXECUTION_FAILED" | "EXPORT_FAILED" | "HISTORY_SNAPSHOT_UNAVAILABLE";
 export interface IApiError {
   readonly code: ApiErrorCode;
   readonly message: string;

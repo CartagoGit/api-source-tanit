@@ -86,6 +86,8 @@ async function requireRecord(
 ): Promise<NonNullable<Awaited<ReturnType<ProjectHistoryService["get"]>>>> {
   const record = await history.get(projectRoot, id);
   if (record === undefined) {
+    const metadata = (await history.summaries(projectRoot)).find(entry => entry.id === id);
+    if (metadata?.snapshotAvailable === false) throw apiError("HISTORY_SNAPSHOT_UNAVAILABLE", "This history entry has no recorded source snapshot; it cannot be compared, restored or re-exported.");
     throw apiError(
       "OPERATION_NOT_FOUND",
       `No history revision "${id}" for projectRoot "${projectRoot}"`,

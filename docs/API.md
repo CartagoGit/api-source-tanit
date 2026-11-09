@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 432 símbolos en 171 módulos.
+> 446 símbolos en 176 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -785,6 +785,14 @@ mutable copy for that reason; we preserve that contract.
 @param discoverySpecs The global catalog produced by `discoverSpecs()`.
 @param service        The descriptor for one service in the graph.
 @returns              Specs that belong to this service.
+
+### `packages/core/discovery/generation-summary.helper.ts`
+
+#### `summarizeGenerationResults`
+
+```ts
+export function summarizeGenerationResults(results: ReadonlyArray<IGenerationResult>, frameworks: ReadonlyArray<string>, evidence: ReadonlyArray<IProjectDetectionEvidence> = []): IProjectSummary
+```
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
@@ -5036,6 +5044,117 @@ What changed between two revisions of a project.
 ```ts
 export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
 ```
+
+### `packages/core/session/history-paths.helper.ts`
+
+Dónde vive el historial de generaciones.
+
+#### `userHistoryDir`
+
+```ts
+export function userHistoryDir( env: Readonly<Record<string, string | undefined>> = process.env, platform: string = process.platform, home: string = homedir(), ): string
+```
+
+La carpeta del historial de generaciones, dentro del `homedir` de
+quien usa la aplicación.
+
+Se inyectan `env`, `platform` y `home` para poder probar las tres
+convenciones sin cambiar de sistema operativo. Es el mismo patrón
+que `userConfigDir`: la única forma de tener un test que valga algo
+es no depender del sistema que lo corre.
+
+#### `historyPath`
+
+```ts
+export function historyPath( env?: Readonly<Record<string, string | undefined>>, platform?: string, home?: string, ): string
+```
+
+#### `projectHistoryDirectory`
+
+```ts
+export function projectHistoryDirectory(root: string, base: string): string
+```
+
+### `packages/core/session/history-run.repository.ts`
+
+#### `writeHistoryRun`
+
+```ts
+export async function writeHistoryRun(entry: IHistoryEntry, directory: string, identity?: string, legacy = false): Promise<string>
+```
+
+#### `storedHistoryRuns`
+
+```ts
+export async function storedHistoryRuns(directory: string, projectRoot?: string): Promise<ReadonlyArray<
+```
+
+#### `migrateLegacyHistory`
+
+```ts
+export async function migrateLegacyHistory(directory: string, path = historyPath()): Promise<Awaited<ReturnType<typeof readLegacyHistory>>>
+```
+
+### `packages/core/session/history-run.service.ts`
+
+The shared history authority; JSONL is a read-only migration input.
+
+#### `historyDirectoryFor`
+
+```ts
+export function historyDirectoryFor(path?: string): string
+```
+
+#### `appendHistory`
+
+```ts
+export async function appendHistory(input: IHistoryEntryInput, path?: string, now = new Date()): Promise<IHistoryAppendResult>
+```
+
+#### `readHistory`
+
+```ts
+export async function readHistory(options: IHistoryReadOptions =
+```
+
+#### `clearHistory`
+
+```ts
+export async function clearHistory(path?: string): Promise<boolean>
+```
+
+#### `formatHistoryJsonl`
+
+```ts
+export function formatHistoryJsonl(entries: ReadonlyArray<IHistoryEntry>): string
+```
+
+### `packages/core/session/legacy-history.helper.ts`
+
+Read-only compatibility importer. New writes use the common history store.
+
+#### `isHistoryEntry`
+
+```ts
+export function isHistoryEntry(value: unknown): value is IHistoryEntry
+```
+
+#### `readLegacyHistory`
+
+```ts
+export async function readLegacyHistory( options: IHistoryReadOptions =
+```
+
+Reads the history and returns the requested entries.
+
+`limit` trims from the tail (the most recent), not from the head:
+a history that already passed N entries would always show the same
+first ones, which is the opposite of what a dashboard wants.
+
+Lines that fail to parse or to pass `isHistoryEntry` are returned
+in `rejected` with their 1-indexed line number (which is what an
+editor shows). The file can be legitimate and still have one bad
+line; that does not prevent returning the rest.
 
 ### `packages/core/session/project-history.service.ts`
 

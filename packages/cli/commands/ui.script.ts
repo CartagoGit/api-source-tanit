@@ -45,7 +45,7 @@ import { userLocalesDir } from "../../ui/config-dir.helper.js";
 import { patchSettings, readSettings } from "../../ui/settings/settings.service.js";
 import { browseDirectory } from "../../core/application-api/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
-import { readHistory } from "../../ui/server/history.service.js";
+import { readHistory } from "../../core/session/history-run.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 import { fromRoot } from "../../../scripts/helpers/root.helper.js";
 

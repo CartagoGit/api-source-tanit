@@ -11,6 +11,7 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
+import { ProjectHistoryService } from "../../core/session/project-history.service.js";
 import { writeJsonAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/argv.helper.js";
 import { resolve } from "node:path";
@@ -195,6 +196,7 @@ export async function runGenerate(
   });
   const bools = readBooleanFlags(args, {
     openAfter: "--open",
+    noHistory: "--no-history",
     inspectMode: "--inspect",
     combineServicesFlag: "--combine-services",
   });
@@ -596,6 +598,15 @@ export async function runGenerate(
     durationMs: Date.now() - startedAt,
   };
   if (jsonMode) sink.writeJson(JSON.stringify(report, null, 2));
+  if (!bools.noHistory) {
+    try {
+      await new ProjectHistoryService().record(snapshot.projectRoot, snapshot, {
+        source: "export", formats: selectedFormats, output: OUTPUT_PATH,
+      });
+    } catch (error) {
+      console.warn(`Could not record generation history: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   return { code: 0, report };
 }
 
