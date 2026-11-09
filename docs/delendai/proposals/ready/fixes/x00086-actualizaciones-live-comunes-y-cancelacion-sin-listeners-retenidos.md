@@ -20,23 +20,25 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Nuevos exporters o scanners; Live consume los servicios compartidos existentes.
+- Diálogos de consentimiento adicionales: autoexport conserva el flujo del Export Center y sólo reutiliza destinos ya aprobados.
 
 ## slices
 
 - global_gate: e2e
 
 ### S1 — Propiedad y liberación de suscripciones
-- **Status**: pending
-- **Files**: `packages/core/application-api/watch.handlers.ts`, `tests/application-api/watch.handlers.spec.ts`
+- **Status**: done
+- **Files**: `packages/core/application-api/watch.handlers.ts`, `packages/core/application-api/cancel.handler.ts`, `packages/core/application-api/close.handler.ts`, `tests/application-api/watch.handlers.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Cancelar elimina listeners y no añade historial posterior."
   - "Suscripciones repetidas no duplican callbacks."
 
 ### S2 — Eventos comunes desde sesión a clientes
-- **Status**: pending
-- **Files**: `packages/core/transport`, `packages/app/src/app/core`, `packages/contracts/interfaces/core/application-api.interface.ts`, `tests/transport`
+- **DependsOn**: [S1]
+- **Status**: done
+- **Files**: `packages/core/application-api/watch.handlers.ts`, `packages/core/application-api/cancel.handler.ts`, `packages/core/application-api/close.handler.ts`, `packages/core/transport/http-bridge.server.ts`, `packages/core/transport/stdio-bridge.server.ts`, `packages/core/helpers/live-event.helper.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/core/live.interface.ts`, `packages/contracts/interfaces/runtime.d.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/state/live.store.ts`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/state/exports.store.ts`, `tests/transport/live-events.spec.ts`, `tests/app/live-store.spec.ts`, `tests/app/host-bridge.spec.ts`, `tests/app/cli-parity.spec.ts`, `tests/app/sections-load.spec.ts`, `tests/core/live-event.helper.spec.ts`, `tests/application-api/watch.handlers.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Editar una fuente actualiza snapshot y UI por HTTP y stdio."
@@ -50,3 +52,11 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
 - Editar una fuente actualiza snapshot y UI por HTTP y stdio.
 - Fallo de rescan conserva snapshot válido y publica diagnóstico.
 - Autoexport usa el mismo servicio de exportación.
+
+## Implementation evidence
+
+- The session observer is shared by subscribers; cancellation, direct close, close-all and transport disconnect dispose callbacks and implicitly enabled watch leases.
+- Both carriers emit the same typed Live payload. HTTP streams validate token, origin and subscription ownership; stdio continues reading cancellation controls during an in-flight request.
+- The app updates only its current session, rejects obsolete activation responses, reports rescan failures without losing the valid snapshot and clears errors on recovery.
+- Autoexport uses the Export Center preview/write path, retains original overwrite/outside-workspace consent and filters generated artifacts/atomic temporary writes to prevent feedback loops.
+- Focused verification after refreshing develop: 51 Vitest cases and 35 native HTTP/stdio cases pass. The full delivery gate certifies this complete candidate before publication.
