@@ -2,14 +2,14 @@
 id: x00096
 title: "Lint canonical shipped-in proposal metadata"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 8f689c84-8a98-447d-9725-469995f14824
-last-correlation-id: 8f689c84-8a98-447d-9725-469995f14824
-last-transition-from: review
-last-transition-at: 2026-11-09T15:42:01.033Z
+last-transition-id: b4a49cc5-b455-4815-a669-0f6ba6fd166e
+last-correlation-id: b4a49cc5-b455-4815-a669-0f6ba6fd166e
+last-transition-from: in-progress
+last-transition-at: 2026-11-09T15:44:34.100Z
 ---
 
 # x00096 — Lint canonical shipped-in proposal metadata
