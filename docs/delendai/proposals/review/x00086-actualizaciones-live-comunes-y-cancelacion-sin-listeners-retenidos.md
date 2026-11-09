@@ -10,6 +10,8 @@ last-transition-id: cbedbc87-2785-496a-89f6-d0784755c427
 last-correlation-id: cbedbc87-2785-496a-89f6-d0784755c427
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T07:26:20.926Z
+shipped-in:
+  - "44a9237b01db93db8f15bc57e734c4ae2b9de684"
 ---
 
 # x00086 — Actualizaciones Live comunes y cancelación sin listeners retenidos
@@ -39,8 +41,10 @@ watch.handlers.ts retiene callbacks tras cancelar; la app abre sin watch, navega
   - "Cancelar elimina listeners y no añade historial posterior."
   - "Suscripciones repetidas no duplican callbacks."
 - shipped-in: `6de02a85e708`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 44a9237b01db, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 2/2: (1) Reviewed watch/cancel/close handlers and tests/application-api/watch.handlers.spec.ts for cleanup and no post-cancel history. (2) Reviewed the same watch handler tests for idempotent subscription ownership and callback counts. — Independent review at landed develop source 44a9237b01db93db8f15bc57e734c4ae2b9de684. Reused actual governed validation from the prior review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in this unit. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals both pass. Independent source review; no changes requested.
 
 ### S2 — Eventos comunes desde sesión a clientes
 - **DependsOn**: [S1]
