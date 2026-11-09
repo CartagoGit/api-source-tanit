@@ -12,8 +12,9 @@ this verification does not constitute a public release.
 | Express export | OpenAPI 3.1.0: 5 paths, 9 operations; JSON CLI report counts match; local references resolve. |
 | Laravel export | OpenAPI 3.1.0: 11 paths, 19 operations; report counts match; local references resolve. |
 | Production web UI | Angular production build succeeds. A real isolated Chrome session boots Angular, opens the Express project through the UI, and displays 9 visible / 9 indexed operations in Endpoints Explorer. |
+| Browser export | The UI previews the destination, generates a real Postman file in the temporary project, and shows completion plus the persisted history revision. |
 | Real web backend | Authenticated project open discovers the same 9 Express operations; unauthenticated requests return HTTP 403. |
-| Shared persisted history | A generation recorded by the standalone executable is returned by the web Application API, from the same configured history directory. |
+| Shared persisted history | A generation recorded by the standalone executable is returned by the web Application API, from the same configured history directory. Browser export also creates a persisted revision showing the same 9 operations in History. |
 | Real filesystem watch | Adding an Express route changes the web snapshot from 9 to 10 operations; the observed local rescan completed in about 102 ms. |
 | Packed source installation | The generated npm archive installs its production dependencies in an isolated directory; its CLI exports and its prebuilt web UI serves HTTP 200. |
 
