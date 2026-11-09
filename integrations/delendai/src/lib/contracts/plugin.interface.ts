@@ -551,6 +551,7 @@ export const CheckOutputSchema = z.object({
   missingInSource: z
     .array(DriftedEndpointSchema)
     .describe("Estan en la coleccion y no en el codigo: se borraron o renombraron."),
+  collectionPath: z.string().describe("Destino real de la colección comprobada."),
   durationMs: z.number().nonnegative(),
 });
 

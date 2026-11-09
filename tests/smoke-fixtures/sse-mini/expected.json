@@ -1,0 +1,7 @@
+{
+  "framework": "sse",
+  "routes": [
+    { "method": "GET", "uri": "/events" },
+    { "method": "GET", "uri": "/stream" }
+  ]
+}

@@ -205,7 +205,7 @@ async function handleFetch(
           ...(asset.isPage
             ? {
                 "content-security-policy":
-                  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+                  "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; " +
                   "connect-src 'self'; img-src 'self' data:; font-src 'self' data:",
               }
             : {}),

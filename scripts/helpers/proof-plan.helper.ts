@@ -83,6 +83,14 @@ export function createProofPlan(input: IProofInput): IProofPlan {
   if (reached.has("tests/app/setup.ts")) reasons.push("Application test setup has broad shared effects.");
   const allSpecs = Object.keys(input.files).filter(isSpec);
   const selectedSpecs = new Set(allSpecs.filter(file => reached.has(file)));
+  // Bun owns the transport and SQLite suites, which Vitest intentionally
+  // excludes. A scoped Vitest run cannot measure those source files and
+  // the scoped plan skips the Bun jobs, so keep these changes on the full
+  // proof path where both Bun suites and aggregate coverage run.
+  const reachedBunSpecs = [...selectedSpecs].filter(isBunSpec).sort();
+  if (reachedBunSpecs.length > 0) {
+    reasons.push(`Bun-owned specs require full proof: ${reachedBunSpecs.join(", ")}`);
+  }
   for (const section of sections) {
     if (!allSpecs.some(file => sectionOf(file) === section.name && selectedSpecs.has(file))) {
       for (const file of allSpecs) if (sectionOf(file) === section.name) selectedSpecs.add(file);
