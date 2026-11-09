@@ -4,7 +4,6 @@
  * Building all plans before writing lets callers reject exporter failures without
  * replacing any previous output.
  */
-import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
@@ -290,7 +289,6 @@ export async function prepareExport(
 /** What would happen to one file. */
 async function describeFile(path: string, content: string): Promise<IPreparedExportFile> {
   const bytes = utf8Length(content);
-  if (!existsSync(path)) return { path, change: "NEW", bytes, content };
   try {
     const previous = await readFile(path, "utf8");
     return {
@@ -299,10 +297,11 @@ async function describeFile(path: string, content: string): Promise<IPreparedExp
       bytes,
       content,
     };
-  } catch {
-    // An unreadable file is not "unchanged": the write would replace
-    // it, and the user should hear about it.
-    return { path, change: "UPDATE", bytes, content };
+  } catch (error) {
+    const missing = typeof error === "object" && error !== null &&
+      "code" in error && error.code === "ENOENT";
+    // Read directly: avoid a blocking existence probe and its race with reading.
+    return { path, change: missing ? "NEW" : "UPDATE", bytes, content };
   }
 }
 

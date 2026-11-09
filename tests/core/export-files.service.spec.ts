@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -47,6 +47,26 @@ describe("prepared export files", () => {
     expect(content).toBe(plan.files[0]?.content);
     expect(written.bytes).toBe(Buffer.from(content).length);
     expect(written.plan.files.map((file) => file.path)).toEqual(written.files);
+  });
+
+  test("classifies new, unchanged and externally changed output from the shared reader", async () => {
+    const build = vi.fn().mockResolvedValue({
+      format: "postman", artifact: { info: { name: "Shared" }, item: [] }, files: [], diagnostics: [],
+    });
+    vi.mocked(selectExporters).mockReturnValue([{
+      id: "postman", build,
+      capabilities: { transports: ["http"], schemas: "full", responses: "full", auth: "full", examples: true, multiService: true },
+    }]);
+    const snapshot: IProjectSnapshot = {
+      sessionId: "output-changes", projectRoot: root, capturedAt: new Date(),
+      results: [], diagnostics: [], frameworks: [],
+    };
+    const fresh = await prepareExport(snapshot, "postman", undefined, "shared.json");
+    expect(fresh.files[0]?.change).toBe("NEW");
+    await writePreparedExport(fresh);
+    expect((await prepareExport(snapshot, "postman", undefined, "shared.json")).files[0]?.change).toBe("UNCHANGED");
+    await writeFile(fresh.outputPath, "external edit");
+    expect((await prepareExport(snapshot, "postman", undefined, "shared.json")).files[0]?.change).toBe("UPDATE");
   });
 
   test("core invokes an injected preparation hook before exposing the result", async () => {
