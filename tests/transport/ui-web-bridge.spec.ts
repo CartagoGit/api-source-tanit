@@ -89,6 +89,22 @@ describe("the app served in the browser", () => {
     expect(html).toContain("<tanit-root>");
   });
 
+  test("page policy permits its own bundles while restricting external sources", async () => {
+    const { url } = await servedApp();
+    const page = await fetch(`${url}/`);
+    const policy = page.headers.get("content-security-policy") ?? "";
+    const directives = Object.fromEntries(policy.split(";").map(part => {
+      const [name, ...sources] = part.trim().split(/\s+/);
+      return [name, sources];
+    }));
+    expect(directives["script-src"]).toContain("'self'");
+    expect(directives["style-src"]).toContain("'self'");
+    expect(directives["default-src"]).toEqual(["'none'"]);
+    expect(directives["connect-src"]).toEqual(["'self'"]);
+    expect(directives["script-src"]).not.toContain("*");
+    expect(directives["script-src"]).not.toContain("'unsafe-eval'");
+  });
+
   test("serves the assets the page asks for", async () => {
     const { url } = await servedApp();
 
