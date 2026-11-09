@@ -20,15 +20,16 @@ El ejecutable global delendai usa un checkout móvil develop; server.version no 
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No actualizar el runtime a develop ni cambiar la instalación global de otros proyectos.
+- No incorporar DelendAI al runtime del producto Tanit.
 
 ## slices
 
 - global_gate: e2e
 
 ### S1 — Runtime fijado y configuración MCP derivada
-- **Status**: pending
-- **Files**: `.mcp.json`, `.vscode/mcp.json`, `scripts/`, `tests/scripts-gates/`, `docs/delendai/AGENT-BOOTSTRAP.md`, `integrations/delendai/README.md`
+- **Status**: done
+- **Files**: `.mcp.json`, `.vscode/mcp.json`, `scripts/integrations/delendai-runtime.json`, `scripts/integrations/delendai-runtime.sh`, `scripts/integrations/bin/delendai`, `tests/scripts-gates/delendai-runtime.spec.ts`, `tests/scripts-gates/lint-mcp-config.spec.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`, `integrations/delendai/README.md`, `integrations/delendai/package.json`
 - **Gate**: e2e
 - acceptance:
   - "El lanzador rechaza un checkout cuyo HEAD difiera del commit v0.3.0."
@@ -40,3 +41,9 @@ El ejecutable global delendai usa un checkout móvil develop; server.version no 
 - El lanzador rechaza un checkout cuyo HEAD difiera del commit v0.3.0.
 - El MCP no ejecuta un sibling develop ni descarga silenciosamente versiones distintas.
 - Tanit funciona sin DelendAI; la integración es optativa.
+
+## validation evidence
+
+- Nine targeted tests pass, including a real isolated Git installation, same-version commit drift, dirty code and dependency resolution rejection.
+- Real MCP initialize handshake succeeds against the exact v0.3.0 commit; startup loads the Tanit plugin. The upstream tag still reports serverInfo/CLI version 0.1.0; the immutable SHA and core manifest are authoritative.
+- Host git guard and ignored core dependency now resolve to the pinned installation, preserving enforcement.

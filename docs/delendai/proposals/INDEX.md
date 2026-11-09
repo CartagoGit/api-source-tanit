@@ -11,6 +11,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `v00001` | `perf` | [`ready/perfs/v00001-aperturas-concurrentes-y-rescaneos-compartidos-por-raiz-canonica.md`](ready/perfs/v00001-aperturas-concurrentes-y-rescaneos-compartidos-por-raiz-canonica.md) |
 | `x00085` | `fix` | [`ready/fixes/x00085-la-exportacion-devuelve-el-destino-real-que-se-ha-escrito.md`](ready/fixes/x00085-la-exportacion-devuelve-el-destino-real-que-se-ha-escrito.md) |
 | `x00086` | `fix` | [`ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md`](ready/fixes/x00086-actualizaciones-live-comunes-y-cancelacion-sin-listeners-retenidos.md) |
+| `x00089` | `fix` | [`ready/fixes/x00089-fijar-el-runtime-delendai-0-3-0-sin-depender-del-checkout-develop.md`](ready/fixes/x00089-fijar-el-runtime-delendai-0-3-0-sin-depender-del-checkout-develop.md) |
 
 ## Bloqueadas
 

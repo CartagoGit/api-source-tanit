@@ -47,7 +47,8 @@ describe("la configuración MCP tiene que ser JSON estricto", () => {
     };
     for (const server of Object.values(derived.servers)) {
       expect(server.cwd).toBe("${workspaceFolder}");
-      expect(server.command).toBe("delendai");
+      expect(server.command).toBe("bash");
+      expect(server.args[0]).toBe("${workspaceFolder}/scripts/integrations/delendai-runtime.sh");
       expect(server.args).toContain("--workspace=${workspaceFolder}");
     }
   });
