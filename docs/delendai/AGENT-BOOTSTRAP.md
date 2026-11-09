@@ -58,7 +58,8 @@ the single source of truth and re-stating them invites drift:
 - No `process.cwd()` in engines (universal §6 invariant; mirrored
   by `scripts/gates/lint-tool-no-process.script.ts` per p00011).
 - Conventional Commits; `bun run validate` is the DoD gate
-  (universal §5).
+  (universal §5). The scoped-validation exception for work units is
+  defined in §5 below.
 - One atomic slice per turn; minimal validation; trust the MCP
   payload over local re-derivation (universal §4).
 - Every public tool declares an `outputSchema` (universal §6).
@@ -385,7 +386,18 @@ marked `"complete"`.
 
 ## 5. Definition of done — local deltas
 
-The universal bootstrap §5 DoD applies. Project-specific additions:
+For an implementation or review work unit, the local DoD is the
+plan-aware `bun run validate` entrypoint: it runs the shared conservative
+proof plan, exercises affected specs and changed-file coverage for a
+known source scope, and writes the result to the validation journal when
+invoked through `delendai validate`. Documentation-only changes still
+run lint; uncertain scope, source graph gaps, structural changes,
+detached worktrees, integration/release branches, and promotion CI run
+the full gate. Use `bun run validate:full` for an explicit full run. This
+is a project-specific exception to universal §5's full-validation DoD
+for work units; integration, release, and promotion checks remain full.
+
+Project-specific additions:
 
 - **Commit y push al cerrar una tarea**: cuando una tarea o slice termina con
   sus gates verdes, el agente debe crear un commit Conventional Commits y

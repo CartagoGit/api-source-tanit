@@ -50,7 +50,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       # El gate completo antes de publicar nada.
-      - run: bun run validate
+      - run: bun run validate:full
 
       - name: Compilar los 4 binarios
         run: bun run build:binary --all
