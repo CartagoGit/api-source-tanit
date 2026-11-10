@@ -2,14 +2,14 @@
 id: x00100
 title: "Parse legacy Laravel resource and match routes"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-10
-last-transition-id: 5fe5acaf-4a71-4494-b608-4cce9fdc97d4
-last-correlation-id: 5fe5acaf-4a71-4494-b608-4cce9fdc97d4
-last-transition-from: ready
-last-transition-at: 2026-11-10T18:37:42.559Z
+last-transition-id: 2b83071b-f40f-433f-bc90-47574e0e4d92
+last-correlation-id: 2b83071b-f40f-433f-bc90-47574e0e4d92
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T18:42:06.570Z
 ---
 
 # x00100 — Parse legacy Laravel resource and match routes
@@ -39,10 +39,13 @@ corpus.
 - global_gate: none
 
 ### S1 — Parse legacy resource and match declarations
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/frameworks/laravel/laravel.scanner.ts`, `tests/frameworks/laravel-scanner.spec.ts`, this proposal.
 - **Gate**: targeted Laravel scanner spec.
 - **Acceptance**: legacy `Route::match(['put', 'patch'], ...)` emits both declared methods; legacy `Route::resource` honors its third-argument `only` / `except` options and nested resource paths; existing modern resource tests still pass.
+- shipped-in: `f77abd2ff1ad`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
