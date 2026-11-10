@@ -2,10 +2,14 @@
 id: x00102
 title: "Keep response coverage diagnostics off JSON stdout"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-10
+last-transition-id: 03c0fff6-302f-438e-acf7-f1f8359a9c05
+last-correlation-id: 03c0fff6-302f-438e-acf7-f1f8359a9c05
+last-transition-from: ready
+last-transition-at: 2026-11-10T18:52:57.643Z
 ---
 
 # x00102 — Keep response coverage diagnostics off JSON stdout
