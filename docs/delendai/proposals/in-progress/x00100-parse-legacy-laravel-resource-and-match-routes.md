@@ -38,7 +38,7 @@ corpus.
 
 - global_gate: none
 
-### S1 — TODO
+### S1 — Parse legacy resource and match declarations
 - **Status**: pending
 - **Files**: `packages/frameworks/laravel/laravel.scanner.ts`, `tests/frameworks/laravel-scanner.spec.ts`, this proposal.
 - **Gate**: targeted Laravel scanner spec.

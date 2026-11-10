@@ -10,7 +10,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `f00020` | `feat` | [`ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md`](ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md) |
 | `f00021` | `feat` | [`ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md`](ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md) |
 | `t00005` | `test` | [`ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md`](ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md) |
-| `x00100` | `fix` | [`ready/fixes/x00100-parse-legacy-laravel-resource-and-match-routes.md`](ready/fixes/x00100-parse-legacy-laravel-resource-and-match-routes.md) |
 
 ## Bloqueadas
 
