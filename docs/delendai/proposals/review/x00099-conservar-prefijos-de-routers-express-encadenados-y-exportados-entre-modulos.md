@@ -10,6 +10,8 @@ last-transition-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
 last-correlation-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
 last-transition-from: in-progress
 last-transition-at: 2026-11-10T07:46:02.070Z
+shipped-in:
+  - "e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d"
 ---
 
 # x00099 — Conservar prefijos de routers Express encadenados y exportados entre módulos
@@ -31,7 +33,7 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
 - global_gate: none
 
 ### S1 — Composición de montajes por identidad de router
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/express-router-mounts.helper.ts`, `tests/frameworks/express-chained-mounts.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -40,8 +42,10 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
   - "Preservar montajes simples existentes, aliases, routers homónimos y diagnóstico honesto de receptores no resolubles."
   - "Repetir corpus externo fijado y comparar pares método/ruta completos con baseline revisado; contar coincidencias sin afirmar corrección de schemas/respuestas no medida."
 - shipped-in: `7d22c23829aa`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at e1653ac68c18, validate exit 0 and tests 65/65 claimed, no recorded run cited; acceptance 4/4: (1) Reviewed the four regression tests in tests/frameworks/express-chained-mounts.spec.ts for anonymous default export/import chain, isolated same-name routers, re… (2) Reviewed router identity keys, per-module import/export resolution, bounded cycle traversal, prefix normalization, and diagnostics in express-router-mounts.hel… (3) Reviewed chained-mount regression cases and existing Express scanner, multi-router, multi-style, and symbol-table suites; 65/65 passed, including aliases, repe… (4) Inspected /tmp/tanit-corpus-express-20261110.json and CLI/API reports for gothinkster/node-express-realworld-example-app revision 30b68e1e881462b2f4164ea09ab4c… — Independent review of x00099 S1 at landed develop e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d. Focused check: bunx vitest run on five Express framework test files, 65 passed/65, exit 0. External route evidence from the immutable corpus JSON confirms CLI and API 20/20 method/path parity; no claim is made about full response/schema accuracy.
 
 ## acceptance
 
