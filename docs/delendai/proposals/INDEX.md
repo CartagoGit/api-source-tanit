@@ -178,7 +178,14 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
 - `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
+- `x00083` — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup — `—`
+- `x00084` — Configuración de sesión efectiva, parcial y atómica — `—`
+- `x00085` — La exportación devuelve el destino real que se ha escrito — `—`
+- `x00086` — Actualizaciones Live comunes y cancelación sin listeners retenidos — `—`
+- `x00088` — Auto-merge real de PR con permisos correctos y fallos visibles — `—`
+- `x00089` — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop — `—`
 - `x00090` — Preserve identical history appends as distinct occurrences — `—`
+- `x00091` — Eliminar deriva de runtime y protecciones en workflows auxiliares — `—`
 - `x00093` — Make the Linux signing fixture deterministic and headless — `—`
 - `x00095` — Include Bun-owned tests in source proof planning — `—`
 - `x00096` — Lint canonical shipped-in proposal metadata — `—`
@@ -188,6 +195,11 @@ propuesta con sus SHAs (`shippedIn`).
 
 - `i00001` — Contenedores con las herramientas: desbloquear Tauri y hacer el gate reproducible — `2419399`
 - `i00003` — Release industrial — desktop CI por plataforma, signing + notarization, secure updater firmado, SBOM CycloneDX, checksums firmados — `11038eaee9adc85b01408c2e587ee4dc16c172c7, 27e27258742e4ee9f54fe78e3dda1e0b35534a09, 03aaef88ea4e7230b008ec17405bae3cc743d6ad`
+
+### perf
+
+- `v00001` — Aperturas concurrentes y rescaneos compartidos por raíz canónica — `—`
+- `v00002` — Scope-aware proof uses one conservative plan in local work and CI — `—`
 
 ### refactor
 
@@ -214,6 +226,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00018` — Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4 — `e00a395`
 - `r00019` — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más — `51b95717de9a1cee10e78db5d0d9265150777173, b27ffebaf3e754cd4651a062f13e70e186039e8c, 73ec169e4a7c0c969511ef913b144d2c967fd731`
 - `r00020` — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers) — `d30b85ef49c592f9201924462e4cef39f2153189, 0e932f0308afea2ab64efc3957e24d54def17d57, 3d7496f9fe51fa98f47c0b1f3cd71eb72a466715, d61a0b9d95560bfb53b5a70a92cba2bc40a273c8`
+- `r00021` — Generación e historial compartidos entre CLI, web y app — `—`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 - `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`

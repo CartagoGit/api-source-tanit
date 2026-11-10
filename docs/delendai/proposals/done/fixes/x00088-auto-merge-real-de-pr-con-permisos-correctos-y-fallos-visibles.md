@@ -2,14 +2,14 @@
 id: x00088
 title: "Auto-merge real de PR con permisos correctos y fallos visibles"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: ba4aedc4-9b3e-43e3-910a-3f050318b559
-last-correlation-id: ba4aedc4-9b3e-43e3-910a-3f050318b559
-last-transition-from: in-progress
-last-transition-at: 2026-11-08T21:05:20.054Z
+last-transition-id: a47cde7f-865f-4e76-a999-88ae4e7fbaa7
+last-correlation-id: a47cde7f-865f-4e76-a999-88ae4e7fbaa7
+last-transition-from: review
+last-transition-at: 2026-11-10T18:23:56.189Z
 shipped-in:
   - "44a9237b01db93db8f15bc57e734c4ae2b9de684"
 ---

@@ -2,14 +2,14 @@
 id: x00083
 title: "Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
-last-correlation-id: e16ce739-ffa0-48cc-a150-06935e0aaae9
-last-transition-from: in-progress
-last-transition-at: 2026-11-08T13:45:30.217Z
+last-transition-id: 57be1774-72eb-41f6-9499-2653010e9118
+last-correlation-id: 57be1774-72eb-41f6-9499-2653010e9118
+last-transition-from: review
+last-transition-at: 2026-11-10T18:23:14.181Z
 shipped-in:
   - "44a9237b01db93db8f15bc57e734c4ae2b9de684"
 ---
