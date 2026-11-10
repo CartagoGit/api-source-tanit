@@ -2,14 +2,14 @@
 id: x00101
 title: "Fail CI when the canonical proposal index is stale"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-10
-last-transition-id: d8146224-be34-46d1-ae81-3cc12d1ce97e
-last-correlation-id: d8146224-be34-46d1-ae81-3cc12d1ce97e
-last-transition-from: ready
-last-transition-at: 2026-11-10T18:44:12.117Z
+last-transition-id: 46dbac9d-faa6-450f-85d8-5af59737ce29
+last-correlation-id: 46dbac9d-faa6-450f-85d8-5af59737ce29
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T18:49:02.179Z
 ---
 
 # x00101 — Fail CI when the canonical proposal index is stale
@@ -31,9 +31,12 @@ TODO: why this work matters now.
 - global_gate: none
 
 ### S1 — Wire canonical INDEX drift check into proposal lint
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`
 - **Gate**: lint
+- shipped-in: `ae83443ddaab`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
