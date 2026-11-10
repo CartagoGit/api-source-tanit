@@ -2,14 +2,14 @@
 id: x00098
 title: "Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: language-ir
 date: 2026-11-10
-last-transition-id: dd318c50-df31-41c6-8bd3-66aa54e21f5c
-last-correlation-id: dd318c50-df31-41c6-8bd3-66aa54e21f5c
-last-transition-from: ready
-last-transition-at: 2026-11-10T07:13:04.356Z
+last-transition-id: b7bf0500-654e-4eae-97ed-0649de1972d9
+last-correlation-id: b7bf0500-654e-4eae-97ed-0649de1972d9
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T07:40:43.599Z
 ---
 
 # x00098 — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript
@@ -31,13 +31,16 @@ Aceptación externa 2026-11-10: binario Linux aborta en unwrapTSAsExpression al 
 - global_gate: none
 
 ### S1 — Respetar nulabilidad de VariableDeclarator.init
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/core/language-ir/collect-constants.helper.ts`, `tests/frameworks/collect-constants.spec.ts`, `tests/frameworks/build-language-ir.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Declaraciones declare const/export declare const sin init no provocan TypeError ni generan constantes inventadas."
   - "Mantener constantes literales y rutas que siguen a declaraciones ambientales; cubrir tanto entrada source como Program AST."
   - "Repetir análisis estático del repositorio externo fijado sin instalar dependencias ni ejecutar su código y registrar limitaciones por separado."
+- shipped-in: `e34de9650e4f`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
