@@ -328,6 +328,10 @@ remain unchanged when repairing malformed metadata. Terminal storage follows
 the stable ID family used by the runtime reconciler; legacy IDs retain their
 recorded kind. Semantic historical kinds are preserved.
 
+The [proposal index](proposals/INDEX.md) tracks the external TypeScript
+acceptance fix: ambient declarations have null initializers and must not
+abort shared LanguageIR analysis or invent constant values.
+
 The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
 opening fix required by the delivery gate: tests isolate launchers and the CLI
 opens the generated output using its injected context.
