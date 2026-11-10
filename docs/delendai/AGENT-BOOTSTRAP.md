@@ -260,6 +260,11 @@ The canonical project registration is **`DelendAI:Tanit`**, following
 `delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
 and grant agreement, including names containing colons.
 
+`bun run gen:all` delegates to the existing client-config, proposal-index
+and framework-table generators. `bun run gen:all:check` verifies those same
+artifacts without writing them. These commands satisfy the pinned runtime
+hooks while retaining each existing canonical input.
+
 The installed `delendai` command launches `__serve` with the workspace and
 `delendai.config.json`. It must be available on the host PATH. Contributors
 may install the CLI from a published package or their chosen local checkout;
