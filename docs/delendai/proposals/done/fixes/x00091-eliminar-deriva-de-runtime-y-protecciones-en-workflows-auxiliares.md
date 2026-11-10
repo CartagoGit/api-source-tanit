@@ -2,14 +2,14 @@
 id: x00091
 title: "Eliminar deriva de runtime y protecciones en workflows auxiliares"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
-last-correlation-id: 02d0207f-5ed9-4be4-9087-3b86bbdcf49b
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T14:24:35.521Z
+last-transition-id: 7b9df65e-063f-49fc-ac05-a30671291b98
+last-correlation-id: 7b9df65e-063f-49fc-ac05-a30671291b98
+last-transition-from: review
+last-transition-at: 2026-11-10T18:10:39.211Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
   - "fa48eeec5015a9c4853d4812f5e39d4948a3fb05"
