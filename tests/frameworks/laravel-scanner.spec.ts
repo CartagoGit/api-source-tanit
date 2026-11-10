@@ -50,6 +50,52 @@ async function withRoutesFile(
   };
 }
 
+describe("Laravel scanner — legacy resource options and Route::match", () => {
+  test("expands legacy declarations with their declared verbs and paths", async () => {
+    const { routes, cleanup } = await withRoutesFile(
+      `<?php
+Route::match(['put', 'patch'], 'user', 'UserController@update');
+Route::resource('articles', 'ArticleController', [
+    'except' => [
+        'create', 'edit'
+    ]
+]);
+Route::resource('articles/{article}/comments', 'CommentController', [
+    'only' => [
+        'index', 'store', 'destroy'
+    ]
+]);
+`,
+    );
+    try {
+      const pairs = routes.map(({ method, uri }) => `${method} ${uri}`).sort();
+      expect(pairs).toEqual(
+        [
+          "DELETE /api/articles/{article}",
+          "DELETE /api/articles/{article}/comments/{comment}",
+          "GET /api/articles",
+          "GET /api/articles/{article}",
+          "GET /api/articles/{article}/comments",
+          "PATCH /api/articles/{article}",
+          "PATCH /api/user",
+          "POST /api/articles",
+          "POST /api/articles/{article}/comments",
+          "PUT /api/articles/{article}",
+          "PUT /api/user",
+        ].sort(),
+      );
+      expect(routes.find((route) => route.uri === "/api/user")?.controllerClass).toBe(
+        "App\\Http\\Controllers\\UserController",
+      );
+      expect(routes.find((route) => route.uri === "/api/user")?.actionName).toBe(
+        "update",
+      );
+    } finally {
+      cleanup();
+    }
+  });
+});
+
 describe("Laravel scanner — Route::resource + where()", () => {
   test("Route::resource expands to 7 RESTful routes (+ PATCH for update)", async () => {
     const { routes, cleanup } = await withRoutesFile(
