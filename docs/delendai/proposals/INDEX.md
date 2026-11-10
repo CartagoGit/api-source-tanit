@@ -178,6 +178,11 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
 - `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
+- `x00083` — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup — `—`
+- `x00084` — Configuración de sesión efectiva, parcial y atómica — `—`
+- `x00085` — La exportación devuelve el destino real que se ha escrito — `—`
+- `x00086` — Actualizaciones Live comunes y cancelación sin listeners retenidos — `—`
+- `x00088` — Auto-merge real de PR con permisos correctos y fallos visibles — `—`
 - `x00089` — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop — `—`
 - `x00090` — Preserve identical history appends as distinct occurrences — `—`
 - `x00091` — Eliminar deriva de runtime y protecciones en workflows auxiliares — `—`
