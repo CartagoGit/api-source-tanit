@@ -32,7 +32,7 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
 
 ### S1 — Composición de montajes por identidad de router
 - **Status**: pending
-- **Files**: `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/express-symbol-table.helper.ts`, `tests/frameworks/express-chained-mounts.spec.ts`
+- **Files**: `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/express-router-mounts.helper.ts`, `tests/frameworks/express-chained-mounts.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Regresión sintética original para Router().use con export default, imports y cadena de routers: rutas de controladores bajo /api; GET / independiente."
@@ -46,3 +46,19 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
 - Resolver por instancia/módulo y componer prefijos anidados sin colisiones de nombres, doble prefijo, bucles ni asociar middleware arbitrario como router.
 - Preservar montajes simples existentes, aliases, routers homónimos y diagnóstico honesto de receptores no resolubles.
 - Repetir corpus externo fijado y comparar pares método/ruta completos con baseline revisado; contar coincidencias sin afirmar corrección de schemas/respuestas no medida.
+
+
+## Acceptance evidence — 2026-11-10
+
+The immutable external source recorded in this proposal was analyzed without
+installing dependencies or executing project code. The reviewed baseline is
+20 explicit method/path pairs: GET / and 19 controller operations under /api.
+Before the mount fix only GET / matched; after it all 20 match, with no missing
+or unexpected pairs. This is one corpus sample, not a framework-wide accuracy
+claim. Response/schema accuracy and Application API parity are separate gates.
+
+Regression cases cover anonymous default exports, chained .use calls,
+module-local same-name routers, named import aliases, nested and repeated
+mounts, literal prefix constants, CommonJS default exports, unrelated middleware
+factories, cycles and unresolved parent factories. Prefix resolution is cached
+per router for each scan; the AST is reused from the existing single-parse flow.

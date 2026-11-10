@@ -1,3 +1,4 @@
+import { collectRouterMounts, routerMountPrefixes } from "./express-router-mounts.helper.js";
 /**
  * `ExpressRouteScanner` — implementation of `IProjectScanner` + `IRouteScanner`
  * for Node.js frameworks: Express, Fastify, Koa-router, and Hapi.
@@ -221,6 +222,7 @@ function expressSearchRoot(match: IProjectMatch): string {
 
 interface ParsedModule {
   file: string;
+  routerMounts: ReturnType<typeof collectRouterMounts>;
   routes: Array<{ method: string; path: string; line: number; routerName?: string }>;
   routerPrefixes: Map<string, string>; // varName → prefix
   appUsePrefixes: Map<string, string>; // varName → prefix
@@ -283,6 +285,7 @@ function parseModuleSafe(
       appUsePrefixes: new Map(),
       importBindings: [],
       routerDeclarations: [],
+      routerMounts: collectRouterMounts(undefined, file),
     };
   }
   const ast = parsed.tsFile;
@@ -430,6 +433,7 @@ function parseModuleSafe(
     appUsePrefixes,
     importBindings,
     routerDeclarations,
+    routerMounts: collectRouterMounts(parsed.program, file, ir.bindings),
   };
 }
 
@@ -564,6 +568,16 @@ export class ExpressRouteScanner implements IRouteScanner {
     }
     const modulesByFile = new Map(modules.map((m) => [m.file, m]));
     const knownFiles = new Set(modules.map((m) => m.file));
+    const mountWarnings = new Map<string, Set<string>>();
+    const composedPrefixes = routerMountPrefixes(
+      modules.map((module) => module.routerMounts),
+      (file, source) => resolveImportedModuleFile(file, source, knownFiles),
+      (file, reason) => {
+        const reasons = mountWarnings.get(file) ?? new Set<string>();
+        reasons.add(reason);
+        mountWarnings.set(file, reasons);
+      },
+    );
     const mountedPrefixesBySymbol = new Map<string, string>();
     for (const m of modules) {
       for (const [varName, prefix] of m.appUsePrefixes) {
@@ -647,28 +661,34 @@ export class ExpressRouteScanner implements IRouteScanner {
             }
           }
         }
-        // Normalise double slashes and trailing slash.
-        const fullPath = (prefix + r.path)
-          .replace(/\/+/g, "/")
-          .replace(/\/+$/, "");
-        // `m.file` comes from `collectJsFiles(searchRoot)` so it's
-        // absolute from searchRoot (not from match.projectRoot).
-        // We use `searchRoot` to derive `sourceFile` so the path
-        // matches the scanner's effective workspace.
-        const relFile = m.file
-          .replace(rawProjectRoot(match), "")
-          .replace(/^[\\/]/, "")
-          .split(sep)
-          .join("/");
-        out.push({
-          method: r.method.toUpperCase(),
-          uri: fullPath,
-          rawUri: r.path,
-          sourceFile: relFile,
-          lineNumber: r.line,
-          prefixChain: prefix ? [prefix.replace(/^\/|\/$/g, "")] : [],
-        });
+        const resolvedPrefixes = r.routerName ? composedPrefixes(m.file, r.routerName) : undefined;
+        for (const effectivePrefix of resolvedPrefixes ?? [prefix]) {
+          // Normalise double slashes and trailing slash.
+          const fullPath = (effectivePrefix + r.path)
+            .replace(/\/+/g, "/")
+            .replace(/\/+$/, "");
+          // `m.file` comes from `collectJsFiles(searchRoot)` so it's
+          // absolute from searchRoot (not from match.projectRoot).
+          // We use `searchRoot` to derive `sourceFile` so the path
+          // matches the scanner's effective workspace.
+          const relFile = m.file
+            .replace(rawProjectRoot(match), "")
+            .replace(/^[\\/]/, "")
+            .split(sep)
+            .join("/");
+          out.push({
+            method: r.method.toUpperCase(),
+            uri: fullPath,
+            rawUri: r.path,
+            sourceFile: relFile,
+            lineNumber: r.line,
+            prefixChain: effectivePrefix ? [effectivePrefix.replace(/^\/|\/$/g, "")] : [],
+          });
+        }
       }
+    }
+    for (const [file, reasons] of mountWarnings) {
+      for (const reason of reasons) diagnostics.push({ file, severity: "warning", reason });
     }
     // Files the frontend couldn't parse don't abort the scan, but
     // they don't disappear without a trace either: they go up as

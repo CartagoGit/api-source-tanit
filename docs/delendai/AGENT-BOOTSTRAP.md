@@ -332,6 +332,10 @@ The [proposal index](proposals/INDEX.md) tracks the external TypeScript
 acceptance fix: ambient declarations have null initializers and must not
 abort shared LanguageIR analysis or invent constant values.
 
+The [proposal index](proposals/INDEX.md) tracks Express chained/default-export
+router mounts, module-scoped identity and unresolved/cyclic mount diagnostics,
+verified against the explicit method/path baseline of an external sample.
+
 The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
 opening fix required by the delivery gate: tests isolate launchers and the CLI
 opens the generated output using its injected context.
