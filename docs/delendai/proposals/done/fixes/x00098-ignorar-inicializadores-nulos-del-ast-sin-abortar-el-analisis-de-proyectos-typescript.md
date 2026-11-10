@@ -2,14 +2,14 @@
 id: x00098
 title: "Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript"
 kind: fix
-status: review
+status: done
 type: proposal
 track: language-ir
 date: 2026-11-10
-last-transition-id: b7bf0500-654e-4eae-97ed-0649de1972d9
-last-correlation-id: b7bf0500-654e-4eae-97ed-0649de1972d9
-last-transition-from: in-progress
-last-transition-at: 2026-11-10T07:40:43.599Z
+last-transition-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-correlation-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-transition-from: review
+last-transition-at: 2026-11-10T18:50:35.711Z
 shipped-in:
   - "e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d"
 ---
