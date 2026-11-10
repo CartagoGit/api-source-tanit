@@ -7,7 +7,10 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00097` | `fix` | [`ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md`](ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md) |
+| `f00020` | `feat` | [`ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md`](ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md) |
+| `f00021` | `feat` | [`ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md`](ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md) |
+| `s00001` | `spike` | [`ready/spikes/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md`](ready/spikes/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md) |
+| `t00005` | `test` | [`ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md`](ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md) |
 
 ## Bloqueadas
 
@@ -174,6 +177,10 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
 - `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
+- `x00090` — Preserve identical history appends as distinct occurrences — `—`
+- `x00093` — Make the Linux signing fixture deterministic and headless — `—`
+- `x00095` — Include Bun-owned tests in source proof planning — `—`
+- `x00096` — Lint canonical shipped-in proposal metadata — `—`
 
 ### infra
 
