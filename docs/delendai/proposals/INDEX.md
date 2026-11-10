@@ -181,6 +181,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00093` — Make the Linux signing fixture deterministic and headless — `—`
 - `x00095` — Include Bun-owned tests in source proof planning — `—`
 - `x00096` — Lint canonical shipped-in proposal metadata — `—`
+- `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
 
 ### infra
 
