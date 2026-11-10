@@ -72,12 +72,32 @@ system tools on PATH, and Application API handlers in browser context all
 match those 20 pairs, with no missing or unexpected pairs. Comparison normalizes
 path-parameter representation between Postman-style placeholders and contract
 paths. This checks method/path identity on one sample; response and schema
-accuracy and a broader multi-repository corpus remain separate acceptance work.
+accuracy remain separate acceptance work; the next section records the reproducible
+Express/Laravel corpus that followed this initial check.
 
 Local reports are `tanit-external-realworld-mounts-binary-acceptance-20261110.json`
 and `tanit-external-realworld-api-parity-20261110.json` under the temporary
 verification directory. They are audit artifacts, not runtime dependencies.
 The standalone verification binary is under `/tmp/tanit-x99-binary-20261110/`.
+
+## Reproducible external corpus
+
+The [committed corpus and runner](../tests/acceptance/external-corpus/README.md)
+replace the temporary one-off route comparison with pinned manifests and
+independently reviewed expectations for Express (20 operations) and Laravel
+(21 operations). The runner needs a local copy of the specified revision;
+it copies only verified inputs, runs no upstream scripts and keeps outputs
+and history in temporary directories.
+
+Reports separate endpoint precision/recall, semantic CLI/API parity, generated
+OpenAPI parity and response/schema claim coverage. Missing inference remains
+unknown, and full response/schema accuracy is explicitly unmeasured. A matching
+exporter fallback `200` cannot count as independently inferred evidence.
+The initial Laravel run found 10/21 operations in both carriers, despite their
+exports agreeing. Correcting legacy resource/match declarations raised the
+verified result to 21/21, with matching semantic and OpenAPI exports; the oracle
+was retained. Express also passes 20/20 with the standalone binary against the
+source API. Broader repositories and full schema accuracy remain acceptance work.
 
 ## Scope of the first closed beta
 
@@ -134,7 +154,7 @@ implementation depends on it.
 
 The canonical proposal documents define the remaining work:
 
-- [External repository corpus](delendai/proposals/ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
+- [External repository corpus](delendai/proposals/INDEX.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
 - [Swagger discovery and reconciliation](delendai/proposals/ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
 - [Optional anonymous enrichment](delendai/proposals/ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior.
 - [Linux desktop dependency gate](delendai/proposals/blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md): blocked on a supported upstream resolution, followed by dependency audit and actual installer acceptance. As verified on 2026-11-10, the Tauri/Wry migration PRs linked in that proposal remain open.

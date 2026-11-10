@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "id": "realworld-express",
+  "framework": "express",
+  "repository": "https://github.com/gothinkster/node-express-realworld-example-app",
+  "revision": "30b68e1e881462b2f4164ea09ab4c4f5699c7b0b",
+  "license": {
+    "spdx": "MIT",
+    "source": "package.json",
+    "note": "Declared in package.json; no separate LICENSE at this revision. No upstream source is redistributed."
+  },
+  "inputScope": "All PHP/JS/TS/JSON/YAML source files, plus license and artisan where present; no dependencies or generated artifacts. Only these verified inputs are copied for analysis.",
+  "sourceFiles": {
+    ".eslintrc.json": "5f539f1d6c1238531f0f3ba870178340fa11e33b941dccd21211657f550cf717",
+    ".vscode/extensions.json": "2515afa760c6a00dc47a29bef99753ba70ec5565ee05be25fe26cc97d3356c96",
+    "e2e/.eslintrc.json": "440b10ff4025f5624b6031c3ea6b3c7b2bead3390366fb95d8946fa08538b5de",
+    "e2e/jest.config.ts": "ca82e1f93d824daa54433b2d538e9d5db26cf6f166cddb9def189b65d8a9d1d0",
+    "e2e/project.json": "620287bc354189313e9f6000fd7941aef416d07db7c20bc175c97c9bb5ddbf5d",
+    "e2e/src/server/server.spec.ts": "97e4758c6fef8f63e24a6b5d3b9152474778a6f1dd321198ae1a124136b99e44",
+    "e2e/src/support/global-setup.ts": "5cbad1fb1cdf710b5e010e067e924d0c66be354253f006f55fe001dfc8a6b3a1",
+    "e2e/src/support/global-teardown.ts": "f0e01d9ad1d8d46a15ba35b6792a020db42c0b08f80c169ce5e6b9dbe9550b93",
+    "e2e/src/support/test-setup.ts": "3d000bc38220cbdd316f2c9f9f15d353fa52b9176a9494601f715b3e765efe0d",
+    "e2e/tsconfig.json": "d3686d3d997ffd23171f5db879b677a442e8b2d14b98678587e9458c1f1a746b",
+    "e2e/tsconfig.spec.json": "56c347983ca8171ff2a5da71b7ff38a17b3ef4c4bd1a9d3b0ce8fb07bc1de402",
+    "jest.config.ts": "a7d9e17fbbae6f0bdabdb09b0513be2221beb3c6fbb13f3515d33c0cd1e5db28",
+    "jest.preset.js": "2a1bad0e8ed09f34acbf5391bb4f96467dba5c533a927bacb7075c3ed04d73c2",
+    "nx.json": "89fa4809453b4552b95121d6a4518e23bc4f7914c9afc8920c339dfc90d5986f",
+    "package-lock.json": "1fbe3ed3b932a4bc6daba7eed3a5648622f801e8cf33b65eefa654a42c1054da",
+    "package.json": "637ace6c4d4fe31c18b00953da294e8952da236a94e70955632f7aa90a508e40",
+    "project.json": "1beee2350cb546699f94c26b5181b1f18947145c85c01feb8877396810c315ca",
+    "src/app/models/http-exception.model.ts": "a698e28ed834bcd6783fccbb0c283c3e214bc628f8ba48ce8c6a58830839f2b4",
+    "src/app/routes/article/article.controller.ts": "332973e18130e552b0b359e92eaaf94e8df207a96ce61eee59f64a62d42286ae",
+    "src/app/routes/article/article.mapper.ts": "1c7545e5ae4d08d6589b9dbb6c212c3f7277cb7571f978a52740276811ce1f73",
+    "src/app/routes/article/article.model.ts": "37f7eb33757899955defc0d4c066b8efb4166effd364dd1238c35468262a7030",
+    "src/app/routes/article/article.service.ts": "0d0952c277fe13a6ac59edec35c33e1702895a8608194fa910e821886bf23a8e",
+    "src/app/routes/article/author.mapper.ts": "d7ff1cbdebe5a579a3a69634f9e6defd6b5c42243ce2634ae072bfa7852610c3",
+    "src/app/routes/article/comment.model.ts": "319de9274fddbef1be10d4cc615a9f5bd490074f2d3b107c9a3c724ac50fca40",
+    "src/app/routes/auth/auth.controller.ts": "6703723e11a3df204a2b1287fc38d0675167862ab4ecbcf8e55e785f26242e30",
+    "src/app/routes/auth/auth.service.ts": "fc0a76a70beddf10454758d73639e9346ac1331d37e16fbed0204cff67592b38",
+    "src/app/routes/auth/auth.ts": "1d9d65f1d98f8136f1467539cdf926f27a67051b6699622c78b7b1bfad4d8342",
+    "src/app/routes/auth/register-input.model.ts": "d9a7de7bec5551cf46625088677c4f51f9f878fc982d682960362bcf8ebe8549",
+    "src/app/routes/auth/registered-user.model.ts": "5148cbe905acac31eb71cbe5f0607f302f23de909c5c5759eb0bb6d17654b77e",
+    "src/app/routes/auth/token.utils.ts": "62742734885fc6449a555ea6cb2b24971f9f983891c1cc9b9c06c4df7c4a30a8",
+    "src/app/routes/auth/user-request.d.ts": "c101416675d56e2a1589d0bc722d5ae1f2d8737f412cc5cad64210bfa7c24a45",
+    "src/app/routes/auth/user.model.ts": "ce0752022e7941d0901e1efdbf62126336bbead70c968c6318a390aaa3629b95",
+    "src/app/routes/profile/profile.controller.ts": "ea7edf7c8c3f528e435c6d4d3af91d39c6d9621c4e7b8d2c599cb9b08a015794",
+    "src/app/routes/profile/profile.model.ts": "30287b64f2033fddaa8635c4ab6d70cf8385d396ec9fdf964261064c607ce385",
+    "src/app/routes/profile/profile.service.ts": "6fe7a285347cb17b24d087a5b53092917830845bfe44bed185740354c718fa53",
+    "src/app/routes/profile/profile.utils.ts": "24dde647f5f369dbff097c31fab8b7e846af53419bbd024a0e4e38e8bbdb0f44",
+    "src/app/routes/routes.ts": "480843c442e522af62479eb716705af546cbd65675e356ca8a35134f39bc4ec8",
+    "src/app/routes/tag/tag.controller.ts": "4216049b6ef91c95e1e89de74205f146196c9764c2edbad3be9c8a956dd541b5",
+    "src/app/routes/tag/tag.model.ts": "c7114131025fa083f599e033a6268a2bef593396dc98ec891292a2331bc343f2",
+    "src/app/routes/tag/tag.service.ts": "cdb34ea1176127b37a87b61c0367bcd0d8a31550a5641d2e4bbab54ff04b68f9",
+    "src/main.ts": "61bd12b5b278695a96d2207a684b3e2067ebf4b0ff11910654628329ea64f825",
+    "src/prisma/prisma-client.ts": "67c2767890191f1e6438a9eb0722f6f5243c5f0b7d704acf671d90de2491b7c0",
+    "src/prisma/seed.ts": "44c6b5fa38fa4f5f6930f6bb11a5678e3dd93441b8eef1719cffe9b9c8886a77",
+    "src/tests/prisma-mock.ts": "5b9531bf60305b9c9e9109fe2f14c3c852f902ec5eb5221babc09eee039d069a",
+    "src/tests/services/article.service.test.ts": "b939bac1b927c2334cdf8f376970f92f9ad2ded621511e35ba41e09b31a8299e",
+    "src/tests/services/auth.service.test.ts": "1218789793ff34aecba0a32673cc96edfb3f85eccec2b064cc17a31f9c42cc79",
+    "src/tests/services/profile.service.test.ts": "2114055321cb7d34330898ce8855bf182bd50780b7fa9d0c80c5210374808053",
+    "src/tests/services/tag.service.test.ts": "3fd34b95b3489d71e90b20df622c7d7a265357ed759bac74f9eafa4c55780082",
+    "src/tests/utils/profile.utils.test.ts": "4e63e6f0daec369ae0006e757344b115d23bf25cc459b3f42ee02749ae58239e",
+    "tsconfig.app.json": "7406f627d5136a91989bcaa690e9682ed68583fbee653191009950b0f9df2b15",
+    "tsconfig.json": "fdc991b91bf9717be07aa92dad9ab51f9243a51ccad7da28d9d41f518fdc8013",
+    "tsconfig.spec.json": "acb0333b8fad3d0e9babf8ac4dfb092ffef35a79bd7a3c55290477b23db1d994"
+  },
+  "endpoints": [
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{slug}",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{slug}/comments/{id}",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{slug}/favorite",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/profiles/{username}/follow",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/profile/profile.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "evidence": [
+        "src/main.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/feed",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/{slug}",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/{slug}/comments",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/profiles/{username}",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/profile/profile.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/tag/tag.controller.ts"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/user",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/auth/auth.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/{slug}/comments",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/{slug}/favorite",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/profiles/{username}/follow",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/profile/profile.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/auth/auth.controller.ts"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/login",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/auth/auth.controller.ts"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/articles/{slug}",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/article/article.controller.ts"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/user",
+      "evidence": [
+        "src/main.ts",
+        "src/app/routes/routes.ts",
+        "src/app/routes/auth/auth.controller.ts"
+      ]
+    }
+  ],
+  "responses": [
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "evidence": [
+        "src/main.ts"
+      ]
+    }
+  ],
+  "schemaClaims": [
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "properties": [
+        "status"
+      ],
+      "types": {
+        "status": "string"
+      },
+      "evidence": [
+        "src/main.ts"
+      ]
+    }
+  ]
+}
