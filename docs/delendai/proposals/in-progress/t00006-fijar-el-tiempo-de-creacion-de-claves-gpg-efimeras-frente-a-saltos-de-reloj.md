@@ -2,10 +2,14 @@
 id: t00006
 title: "Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj"
 kind: test
-status: ready
+status: in-progress
 type: proposal
 track: quality
 date: 2026-11-10
+last-transition-id: 263f8ffe-09f5-4c31-80aa-bc3981027b64
+last-correlation-id: 263f8ffe-09f5-4c31-80aa-bc3981027b64
+last-transition-from: ready
+last-transition-at: 2026-11-10T07:26:56.969Z
 ---
 
 # t00006 — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj
