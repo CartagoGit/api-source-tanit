@@ -20,11 +20,12 @@ Fail the proposal lint gate when docs/delendai/proposals/INDEX.md differs from c
 
 ## why
 
-TODO: why this work matters now.
+Recent delivery packs updated proposal states without adding their generated Done rows. The existing structural lint accepted that stale index, so contributors and agents could read inconsistent status information.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Do not introduce a second proposal index renderer or change proposal state semantics.
+- Do not alter frozen archived proposals.
 
 ## slices
 
@@ -40,4 +41,6 @@ TODO: why this work matters now.
 
 ## acceptance
 
-- TODO: observable acceptance criteria.
+- `bun run lint:proposals` invokes the existing canonical index generator in check mode.
+- Removing a generated Done row causes proposal lint to fail with a nonzero exit code.
+- Restoring the exact canonical index makes proposal lint pass; the check itself never rewrites INDEX.md.
