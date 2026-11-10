@@ -1,0 +1,341 @@
+{
+  "repository": "https://github.com/gothinkster/laravel-realworld-example-app",
+  "revision": "e45c37c8a5f57131c9d239f1fc104c227e66b6ee",
+  "license": {
+    "spdx": "MIT",
+    "source": "LICENSE"
+  },
+  "sourceFiles": {
+    ".travis.yml": "242457557b2d7229d973409100804bd5e8824964598848f1f4a6f766278e09bb",
+    "LICENSE": "3395959113679c195eabd2ab7f9f5b78333a9516240285e34a26e065c701744f",
+    "app/Article.php": "6725df0b4dced8bf554f004f2ecb4f530f42022410b85eac9bf0964191c8c999",
+    "app/Comment.php": "c3de4a7ff031bb24c43abc3aed6b3e676a776ef351635997c03c5859add9b7f5",
+    "app/Console/Kernel.php": "52d796d2b8ea4f8becce402c74370dc478916f360d47df5c12b3a88898e9d82e",
+    "app/Exceptions/Handler.php": "ac5b32e470fac9f10bf5042181989cd68ae6bb2195024f445d37a0d0c82f222c",
+    "app/Helpers/Helper.php": "239b41790c3d0d28e2ea3a17be1799bfab8171133816a0e1e4c32294135a805b",
+    "app/Http/Controllers/Api/ApiController.php": "3e8b090ef5f53f696de4a6b3b2e8b1bf2e88076eb9c9597bc57194662c5f710c",
+    "app/Http/Controllers/Api/ArticleController.php": "677f7a2ad700199435c5101d9c85d4a9c77d059c10edec427d75b66a42096703",
+    "app/Http/Controllers/Api/AuthController.php": "aa7daa16d63c3ea22dd91983b497430ba3acea58f58c038b8084a87b64b63bcd",
+    "app/Http/Controllers/Api/CommentController.php": "52da6a8a3e8768f856f5b5e5d027233642b2d16790516db912a987776cf8ce37",
+    "app/Http/Controllers/Api/FavoriteController.php": "692a38315d73bdcce77739afdd8ae83214c520aab45c0c1f5fe52028fdcd6cc5",
+    "app/Http/Controllers/Api/FeedController.php": "cc7b2fadbe36dea66350b5c6ea21cf22fec3cd7bf18df44e7bb22713a7c7ae1e",
+    "app/Http/Controllers/Api/ProfileController.php": "111feb9fb794fb86cf1840afdf394c5e2aecfafdd41e8edcfe2815329234be58",
+    "app/Http/Controllers/Api/TagController.php": "51e899e84f1282d9de2e1da0d88aba0202c273c0914adc499f0e9298ea892b49",
+    "app/Http/Controllers/Api/UserController.php": "bec82abdd1ab86cee9c3b355e80cf25a995a0fc5d66f8f655e58b628b0fdc086",
+    "app/Http/Controllers/Auth/ForgotPasswordController.php": "329b993b6384ff0f0623b42a4bc645d3c858eda0162f0b172fc9d9d54f0afca3",
+    "app/Http/Controllers/Auth/LoginController.php": "98dd2e9d4fd64264e354528b2dae415340b9ff463efdc3acf45f743b9206aac6",
+    "app/Http/Controllers/Auth/RegisterController.php": "654252f93d5803a693476a14aa8c3641a6044cb61bc5cf2b4acebb3a49fc5302",
+    "app/Http/Controllers/Auth/ResetPasswordController.php": "04c82730aa16a515c47ece70c3fc45013f17ab6a64e8ea19d2fe1a2897b71595",
+    "app/Http/Controllers/Controller.php": "f30a4b67ed3ae652f299a3ad73c99ec95a08b28b1e46a1f7e10379bc472dbe8f",
+    "app/Http/Kernel.php": "a6e2b5e86d2832bf32e166144fe258328d726d53db08da6fd07c40e7432f8a00",
+    "app/Http/Middleware/AuthenticateWithJWT.php": "c519b51d07db97e9b3eaf8f1be54521e90b445e36f31b45d1cdb33006a93dadc",
+    "app/Http/Middleware/EncryptCookies.php": "9ecb47cf9e345bed2e95780f56eec3761073aa7a7961dd6705dd8fb8e5194ae0",
+    "app/Http/Middleware/RedirectIfAuthenticated.php": "a843a63b7bfa8356c25094c44a1220f4d89ab8b14ec690f0e76dbe598415c820",
+    "app/Http/Middleware/TrimStrings.php": "925d49f75221912ba3848e7196315d3520adcb2a3bc811cbd89247b56781d360",
+    "app/Http/Middleware/VerifyCsrfToken.php": "029545c9b755a61d3007edcf33124f5fae06afd491eb7acd2c1f8382018f7678",
+    "app/Http/Requests/Api/ApiRequest.php": "f27eb882476a97c19bcf8e1292c0830cc70750372a74fe80eeceea90b1733710",
+    "app/Http/Requests/Api/CreateArticle.php": "5821bb129a42ab10153434fe4039bf6aecbdc9605e811b63badcae10a1e41b53",
+    "app/Http/Requests/Api/CreateComment.php": "40d5d18fb236af5d56d96173727a2c67303ffcc734e11d5d960f0a4ef46eec85",
+    "app/Http/Requests/Api/DeleteArticle.php": "d8a9ec6f181ddcd3c9c9c6f095b475e66eb8ca36d3fd7895195473af3cdd288f",
+    "app/Http/Requests/Api/DeleteComment.php": "ea9927c729a7a230e2933b1fe644db79a400eb661623fdb3c62282ee5eedfca1",
+    "app/Http/Requests/Api/LoginUser.php": "c80b524b1b3b078d9ba486fa2331975b974a336a85af046df5f180b305b5932b",
+    "app/Http/Requests/Api/RegisterUser.php": "138df1a35172c1a3c10e1d9c474a8311697f4a083477bf0906c96acc61407ea7",
+    "app/Http/Requests/Api/UpdateArticle.php": "2cceacb3dc25d583dbe0ee287b3120e068d85bc1968ffde0f7483fbeff53e1c2",
+    "app/Http/Requests/Api/UpdateUser.php": "1af6d09c2b703f79692ee4131b91f3933e7d88a1637afc1a842c988da706875c",
+    "app/Providers/AppServiceProvider.php": "3ae09d35664b44d77f24649523b87b8e9a9b4b367927116190ac7d6df27e7389",
+    "app/Providers/AuthServiceProvider.php": "888c5648f53c2ce3a8d49e530bdda39649a02e8f16baa28bf99a21bca59d8bc0",
+    "app/Providers/BroadcastServiceProvider.php": "62e871fda2abeecad8cb96b6958d9461afb44cf25cbe02393da330c5d6ae9b20",
+    "app/Providers/EventServiceProvider.php": "924c3f6b86ff692c9a31f1c50c3b7f622d969e88e755257ed81f49134f9b2ac3",
+    "app/Providers/RouteServiceProvider.php": "dbf6cf500d58fdbe8dc3d92e5783629d1e24378cdf37a684c4264f49887f69ae",
+    "app/RealWorld/Favorite/Favoritable.php": "45a61e601d075751cd2c21fc865140f4d6d7f55457420a3be76005c4ed4d67dd",
+    "app/RealWorld/Favorite/HasFavorite.php": "00de283256bf058f48fc71ba845243bd7bcee626bd89ad155b0a29e8a9f764c0",
+    "app/RealWorld/Filters/ArticleFilter.php": "cc5586a63813c9971fb96a5b2bd3804171ee2727c96b891c34b653071152c290",
+    "app/RealWorld/Filters/Filter.php": "595cfe86ae895bd5175e4df5db1e914794681e4f17b0bb150debca2238d26311",
+    "app/RealWorld/Filters/Filterable.php": "b73fdee1da0049147a2751f78fd936687d16c47fd439ca7be6482a80833ed825",
+    "app/RealWorld/Follow/Followable.php": "b6d682dddc6bda1fe3d13f771c05f646eac770f265acc924b1290f8b221aeb98",
+    "app/RealWorld/Paginate/Paginate.php": "7fc67c92f3976a81c352581eb2e7d6ae66b62be191b79228c1bea4dfaed975b4",
+    "app/RealWorld/Slug/HasSlug.php": "ab88ac0f9de0d7203a1aaf128b8aad4f0e4a51aba6e299d6f9f53e64a0a247f2",
+    "app/RealWorld/Slug/Slug.php": "19f758617981546f35465466020fdae9d9ec1b42eaaf43f72667c83aea3f6864",
+    "app/RealWorld/Transformers/ArticleTransformer.php": "4119cfd5d5efe53c9b47baf2a4ecc2861835cb49f17833e7c39398248d10d5d9",
+    "app/RealWorld/Transformers/CommentTransformer.php": "89535d6126071a9b1a4cf330169053aa6876752ae572dc4c928799abf731f368",
+    "app/RealWorld/Transformers/ProfileTransformer.php": "4f55de1b1d58ae49382027f405b07092b022e2a5dce1a4b99e82405991d041be",
+    "app/RealWorld/Transformers/TagTransformer.php": "db311618eb7554c9107df3f4309a9a46784a8901343bfbd2da2ecb4d28463dcd",
+    "app/RealWorld/Transformers/Transformer.php": "34f83c310108e7dce22dc893e6e15d84faae0a9a166db73dcda39400010fa6ad",
+    "app/RealWorld/Transformers/UserTransformer.php": "163a1d6fc02b2c6b551b20cfbae262d512e4d80902ff1b0a8f32effad8c5435e",
+    "app/Tag.php": "af04c58cb717c26fab31991b22be5ac198c78f92a96afeabefd7494d1dc980d0",
+    "app/User.php": "a934e8af88ca932df0f95d50b93022d9820df70cb262816abc3f12a8aa1da7fd",
+    "artisan": "99f140f6ba62efbda2470bdbd7afb1f1c9541457fa1662d2f6540f9b5b3ac231",
+    "bootstrap/app.php": "c73acac55dd8e955eab6842fa21d52b3094199f6ec39bdac1f3532357ebd24e6",
+    "bootstrap/autoload.php": "0859bb7f83b66bfdfd82d78d25b37e9367a2ba6f2cedf257b8e581abb90b9cb9",
+    "composer.json": "9fe5ce1a68c324bc25753f5763f6053b238f5245d603aaf8718127c4dbbfaf62",
+    "config/app.php": "b79cd61c06b45fa5657fd2b7d1d1a62cfc243b1fcec96c4bcf4687e5bcf3c5b7",
+    "config/auth.php": "da036fa9c618000dad08dba5992037a7e7b88ac327363390707fce2797335eb0",
+    "config/broadcasting.php": "c3ddef1d5f712dbf48297e3e0791b54da9734cb4b40d37afb2b5b8478c9cf5a1",
+    "config/cache.php": "a2ffee6759b555f25c05424aabd126c37e6c61ecb9951feb4ca448640f0a8928",
+    "config/cors.php": "6b4c52983dc91879cbb17c19f589859f365e36859a97a0db07500eda821179f2",
+    "config/database.php": "7199811ea46d4251afcf9762fc9369c385af50cc0f9ddfe4ee71a961449a90e5",
+    "config/filesystems.php": "da94ce40422909d950e77d37e56d4985f102a9a438ffe7e81bf2573d59f0587b",
+    "config/jwt.php": "b456db4669b86de9ebc1bc6dc8aedb2ec0764e1076e2a6425d98e931a32b4bd8",
+    "config/mail.php": "cda7dd555dda9cfe97b539276f8aa84ede2a930eec80259afe7e2cfd323b2457",
+    "config/queue.php": "8aa7561a32a922a02139e76dbcdb5193082f0da04d54064023a7814b9525e2c9",
+    "config/services.php": "322926f1e71195a517d1ff7acf5268751361a33cacd67ae4f2d3a9f54ee65ae2",
+    "config/session.php": "47a549cc4190e58042e5e7acd71a1482a70b45a2f0eb9b93ce6ca9498c0295a9",
+    "config/view.php": "d1db48eccd9c49437b686ab8c7d153e10643fb819465ce78cc945c3c37968071",
+    "database/factories/ModelFactory.php": "6a8bd7c254ac7d2a7968479037c5f0eba825ab02836773ebe2939a8b88b25310",
+    "database/migrations/2014_10_12_000000_create_users_table.php": "97bfcb9853c1d64a28a0786e9a3dcebeb152a2db633226a4961354811f693349",
+    "database/migrations/2017_04_25_201852_create_articles_table.php": "62ea32d063f4d16fa3b61ed2c3a26aaa635cf9877f8505c0cd3ee750c3c208c8",
+    "database/migrations/2017_04_25_201935_create_comments_table.php": "c3877451c540422d81f339d2632db45df6b45e2e090315d5299b2641c911000f",
+    "database/migrations/2017_04_25_201944_create_tags_table.php": "917ea9b7d7f3ce0d50c04f5590a5b15167b9a3f13501b9fb1f7648d81ffa1986",
+    "database/migrations/2017_04_27_200628_create_favorites_table.php": "41bc3f276e1de8c8635147b15a609c37968e5d8882cdf90845baeb690158da38",
+    "database/migrations/2017_04_27_200850_create_follows_table.php": "07a3e97ad00f4b58d0070029e229c542c4d7df56144893b427b5b9b32f8ec6e4",
+    "database/seeds/DatabaseSeeder.php": "78f045532a4ffe9b84273c608f57c3952e82592523444d1e2c952957eabff131",
+    "database/seeds/DummyDataSeeder.php": "929c3e4893327da51b54aef74fcec15a0b7c1b8c7abfdad9d3bc70debc5b6e9e",
+    "docker/docker-compose.yml": "44698897c2026f1ec59d1c8fd377f805d5f5b8991030943bb9b3210d7f394f38",
+    "package.json": "36d62d4680994470c9f9e7002259c180a3526ecf1327ffcbf3165e66010dc56f",
+    "public/index.php": "3765369cb3cdff04ef5505368d3b7749dd8652ff0ab0541e7d191397fb924e76",
+    "public/js/app.js": "75da83bf31fceba22c4d4f9e2c25687d56b044d6b91ffb9bc17224f693fc00d0",
+    "resources/assets/js/app.js": "d61a11c3a9952f2cc8ff238e6567a3a2d668fd415857bd5243113a1f53215632",
+    "resources/assets/js/bootstrap.js": "83ac9370707f05aa8ebf0fa302f0616157b174f113f157fae18b97d04f02da4c",
+    "resources/lang/en/auth.php": "7f99dce936aebdb18f5d8f03390a21a53708fb2893f2e81193b203bdca94a637",
+    "resources/lang/en/pagination.php": "5c9bed6d2c965666d0c8b9f17f93f87cbfc7a240ead19b3b061764e8238e219f",
+    "resources/lang/en/passwords.php": "af07dc5897e19d5d0d0eae83569e6f10c74bc05103bce49a48c3003c167996d2",
+    "resources/lang/en/validation.php": "e7d1f5a94ca04ad27243a6ca150506a48d0152b82c1106ba6f51d672d528b8db",
+    "resources/views/welcome.blade.php": "0efd985712f2671b65538d948c50d4e4c6535cfc944f7ec1402b6ff5bcf24436",
+    "routes/api.php": "ae0ea7280483dd1e088b6869859ec00ac16fe358963bafa9b38bb495bdf6f430",
+    "routes/channels.php": "d724780db00c324ce81bbcc78df08abba1670aa02b03872fece90fcf400c58a4",
+    "routes/console.php": "d72b61e456aba23825b5b8c610927a9f1b69c88eaf4da1e9127acfc65967bbb3",
+    "routes/web.php": "2cffb08bfe9d91a23b3255ac4fcc970d235523b54d6acfe4fabb904694aee1f1",
+    "server.php": "aa747cd76a2fd775289a51528d4356f816d3bf594494da626816b5cb80eaf365",
+    "tests/CreatesApplication.php": "63e92d10f62118215f6a4ee20036e86a26d6867175365429e65de33d0c60ba21",
+    "tests/Feature/Api/ArticleCreateTest.php": "1275d015e255eb0276c8eb2b22c95ea79316db568a1a11b0a925452d34904500",
+    "tests/Feature/Api/ArticleDeleteTest.php": "c1c9e09f009a477737b2e6692f68be11c6f4a6e2e82bcbe688de8f134eaa06ca",
+    "tests/Feature/Api/ArticleFavoriteTest.php": "35fcc8760f0522c3914ba285544c3f881903d795279afa7535f1f827613734f9",
+    "tests/Feature/Api/ArticleFilterTest.php": "b11d79b59d6e91f42d101e91f174b380052e76cf5a486c1005c1c375ecc1afe8",
+    "tests/Feature/Api/ArticlePaginateTest.php": "7887a9bdea2abbe4e7693fff4e95344e13a8426b18a3de53b6b5f3a146bc8a40",
+    "tests/Feature/Api/ArticleReadTest.php": "ff925d579c9c90cb25e9887263e4d36adde51914ed164927d6a016a88a1c109a",
+    "tests/Feature/Api/ArticleUpdateTest.php": "652aa1c4856daf13e1de1b6a15add073ecedf652924ed09ff5d752a9b39db20b",
+    "tests/Feature/Api/CommentTest.php": "2fc2c03b8421ecfc50f7e34d7952a0437f43d852b0919e60acf92a3537e25a78",
+    "tests/Feature/Api/FeedTest.php": "1b04f4e3311f6fd61325977c23fc9ad8048e69b8eaaf838a9024b0121732a72a",
+    "tests/Feature/Api/LoginTest.php": "554c82ecce22f2859e2b2dffab48037848fddb66e7482f6f6efa93a9d6da08bd",
+    "tests/Feature/Api/ProfileTest.php": "846d45da5533e8212f267cd414f763455ebc6a2a394b4db685b6adf821a5ae1a",
+    "tests/Feature/Api/RegistrationTest.php": "ef9a9e9bf600f561b59ee6fe7e3265801529662fbbbb5acddac3ad409612d9bc",
+    "tests/Feature/Api/TagTest.php": "270c886ae0ffbc464f73394592729301983752375f247719a817dd01c241e88d",
+    "tests/Feature/Api/UserTest.php": "1a20598314168f23573c1fd4cfab493ce761974bcb5abc4fd06dd93cc6d49691",
+    "tests/TestCase.php": "3f558bc5965f251a12795e9d47b3cfa97379478eba5e7803a2bac4b2d9c800c6",
+    "webpack.mix.js": "ef9dfa5f6725bddc9e7cdba91d7f9459fd28ae0436d27149fb2d4a7e799fada6"
+  },
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/users/login",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/AuthController.php"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/AuthController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/user",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/UserController.php"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/user",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/UserController.php"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/user",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/UserController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/profiles/{user}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ProfileController.php"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/profiles/{user}/follow",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ProfileController.php"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/profiles/{user}/follow",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ProfileController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/feed",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/FeedController.php"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/{article}/favorite",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/FavoriteController.php"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{article}/favorite",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/FavoriteController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/{article}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/articles/{article}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/articles/{article}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{article}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/{article}/comments",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/CommentController.php"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/{article}/comments",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/CommentController.php"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{article}/comments/{comment}",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/CommentController.php"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags",
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/TagController.php"
+      ]
+    }
+  ],
+  "responses": [
+    {
+      "method": "DELETE",
+      "path": "/api/articles/{article}",
+      "status": 200,
+      "evidence": [
+        "routes/api.php",
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Http/Controllers/Api/ApiController.php"
+      ]
+    }
+  ],
+  "schemaClaims": [
+    {
+      "method": "GET",
+      "path": "/api/articles/{article}",
+      "status": 200,
+      "properties": [
+        "article.slug",
+        "article.title",
+        "article.description",
+        "article.body",
+        "article.tagList",
+        "article.createdAt",
+        "article.updatedAt",
+        "article.favorited",
+        "article.favoritesCount",
+        "article.author.username",
+        "article.author.bio",
+        "article.author.image",
+        "article.author.following"
+      ],
+      "evidence": [
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Http/Controllers/Api/ApiController.php",
+        "app/RealWorld/Transformers/Transformer.php",
+        "app/RealWorld/Transformers/ArticleTransformer.php"
+      ]
+    }
+  ],
+  "version": 1,
+  "id": "realworld-laravel",
+  "framework": "laravel",
+  "inputScope": "All PHP/JS/TS/JSON/YAML source files, plus license and artisan where present; no dependencies or generated artifacts. Only these verified inputs are copied for analysis."
+}

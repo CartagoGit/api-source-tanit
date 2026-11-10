@@ -79,6 +79,24 @@ and `tanit-external-realworld-api-parity-20261110.json` under the temporary
 verification directory. They are audit artifacts, not runtime dependencies.
 The standalone verification binary is under `/tmp/tanit-x99-binary-20261110/`.
 
+## Reproducible external corpus
+
+The [committed corpus and runner](../tests/acceptance/external-corpus/README.md)
+replace the temporary one-off route comparison with pinned manifests and
+independently reviewed expectations for Express (20 operations) and Laravel
+(21 operations). The runner needs a local copy of the specified revision;
+it copies only verified inputs, runs no upstream scripts and keeps outputs
+and history in temporary directories.
+
+Reports separate endpoint precision/recall, semantic CLI/API parity, generated
+OpenAPI parity and response/schema claim coverage. Missing inference remains
+unknown, and full response/schema accuracy is explicitly unmeasured. A matching
+exporter fallback `200` cannot count as independently inferred evidence.
+The initial Laravel run found 10/21 operations in both carriers, despite their
+exports agreeing; its missing resource/match routes are a scanner defect, not
+a reason to weaken the baseline. Broader repositories and full schema accuracy
+remain acceptance work.
+
 ## Scope of the first closed beta
 
 The acceptance scope is CLI plus local web on Linux x64, with Express
