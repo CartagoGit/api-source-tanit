@@ -2,14 +2,14 @@
 id: a00020
 title: "Verificar una beta local instalable y delimitar los pendientes reales"
 kind: audit
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
-last-correlation-id: 9e67998b-3074-4ddf-a652-5b5505ad036a
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T15:29:01.057Z
+last-transition-id: ed9863f1-4038-4509-846f-7347a40bd467
+last-correlation-id: ed9863f1-4038-4509-846f-7347a40bd467
+last-transition-from: review
+last-transition-at: 2026-11-10T18:49:59.912Z
 shipped-in:
   - "e68c48cef4b942c50ef5b70eeafc22f92e21ea1c"
 ---
