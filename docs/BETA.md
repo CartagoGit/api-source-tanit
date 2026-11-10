@@ -1,4 +1,4 @@
-# Beta readiness — 2026-11-09
+# Beta readiness — evidence through 2026-11-10
 
 Tanit has a locally verified technical beta candidate for Linux x64,
 Express and Laravel. The package version remains `0.1.0-alpha.2`;
@@ -55,12 +55,46 @@ artifacts were checked again: Express 9 operations / 3 resolved local references
 Laravel 19 operations / no unresolved local references.
 These local paths are not runtime dependencies or committed machine paths.
 
+## External Express acceptance — 2026-11-10
+
+The public [RealWorld Express example](https://github.com/gothinkster/node-express-realworld-example-app/tree/30b68e1e881462b2f4164ea09ab4c4f5699c7b0b)
+was analyzed at that immutable revision without installing its dependencies,
+starting its server or executing its project scripts. No third-party source
+was copied into this repository.
+
+This run exposed two defects now fixed: an ambient TypeScript declaration
+with a null initializer aborted the scan, and chained default-exported routers
+lost their `/api` mount. The reviewed baseline contains 20 explicit method/path
+pairs: the root `GET /` plus 19 controller operations under `/api`.
+
+After the corrections, the source CLI, standalone Linux binary with only
+system tools on PATH, and Application API handlers in browser context all
+match those 20 pairs, with no missing or unexpected pairs. Comparison normalizes
+path-parameter representation between Postman-style placeholders and contract
+paths. This checks method/path identity on one sample; response and schema
+accuracy and a broader multi-repository corpus remain separate acceptance work.
+
+Local reports are `tanit-external-realworld-mounts-binary-acceptance-20261110.json`
+and `tanit-external-realworld-api-parity-20261110.json` under the temporary
+verification directory. They are audit artifacts, not runtime dependencies.
+The standalone verification binary is under `/tmp/tanit-x99-binary-20261110/`.
+
 ## Scope of the first closed beta
 
 The acceptance scope is CLI plus local web on Linux x64, with Express
 and Laravel exercised through actual exports. Other framework scanners
 and desktop carriers retain their existing automated tests, but this
 manual run does not certify every framework or operating system.
+
+Linux desktop additionally has a known dependency gate: `packages/desktop/Cargo.lock`
+contains `glib 0.18.5` through GTK 0.18 / Tauri.
+[RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html)
+affects GLib versions below 0.20 in the relevant release range. The current
+GTK dependency range cannot be repaired by independently replacing GLib.
+Track the supported upstream migration and audit plus installer checks
+before certifying Linux desktop; absence of direct application calls does
+not establish that a transitive vulnerability is unreachable. This gate
+does not change the verified CLI/local-web scope.
 
 Before an externally distributed beta, finish:
 
@@ -83,9 +117,41 @@ code through provenance and explicit conflicts; inferred and unknown data
 must remain distinguishable. Git change analysis and thin host adapters
 extend that same core.
 
-Optional anonymous remote AI enrichment is a later, separate capability:
-off by default, explicit consent before sending code, best effort when a
-provider is unavailable, and clearly marked generated suggestions. It must
+Optional anonymous remote AI enrichment follows the user's requested flow: first
+show the deterministic result, then consult only unresolved endpoint fields or
+descriptions when the user enables the UI option. No account, API key, local
+model or user-managed relay is a prerequisite.
+
+It stays off by default. Enabling it requires explicit consent before code
+is sent; unavailable providers leave the static result usable, and generated
+suggestions remain clearly marked. It must
 not become a prerequisite for installation or silently turn guesses into
 verified API facts. Provider availability needs verification before any
 implementation depends on it.
+
+
+## Tracked acceptance and product follow-ups — 2026-11-10
+
+The canonical proposal documents define the remaining work:
+
+- [External repository corpus](delendai/proposals/ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
+- [Swagger discovery and reconciliation](delendai/proposals/ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
+- [Optional anonymous enrichment](delendai/proposals/ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior.
+- [Linux desktop dependency gate](delendai/proposals/blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md): blocked on a supported upstream resolution, followed by dependency audit and actual installer acceptance. As verified on 2026-11-10, the Tauri/Wry migration PRs linked in that proposal remain open.
+
+Provider research on 2026-11-10 is preliminary. The
+[llmfaucet project](https://github.com/llmfaucet/llmfaucet) advertises a
+public anonymous endpoint with limited capacity, and warns that upstream
+availability can disappear. Its API and policy hostnames did not resolve
+from this environment; no inference request succeeded and no project code
+was sent. This is a local connectivity observation, not proof of a global outage.
+The current [LLM7 terms](https://github.com/chigwell/llm7.io/blob/main/TERMS.md)
+require an API token, so earlier claims that it meets the no-account/no-key
+requirement cannot be assumed. Verify an eligible service and its data
+handling before selecting a product default. No provider is certified or
+configured by this document.
+
+External audit scores are qualitative opinions. Targets such as 98% precision,
+95% recall or a 50% token reduction are proposed goals, not measured results.
+A frozen candidate still needs full validation and acceptance before a release;
+merging development work or closing proposal metadata does not publish a release.

@@ -4,7 +4,7 @@
   "workspaces": [
     "packages/app"
   ],
-  "description": "Tanit \u2014 API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
+  "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
     "tanit",
     "api-source",
@@ -165,7 +165,9 @@
     "lint:frameworks-table": "bun run scripts/build/frameworks-table.script.ts --check",
     "prove": "bun run scripts/gates/prove.script.ts",
     "prove:plan": "bun run scripts/gates/prove.script.ts --plan",
-    "test:affected": "bun run scripts/gates/prove.script.ts --affected-tests"
+    "test:affected": "bun run scripts/gates/prove.script.ts --affected-tests",
+    "gen:all": "bun run mcp:sync && bun run lint:proposals:gen-index && bun run docs:frameworks",
+    "gen:all:check": "bun run lint:mcp && bun run lint:proposals:fix:check && bun run lint:frameworks-table"
   },
   "dependencies": {
     "@angular/cdk": "^20.2.0",

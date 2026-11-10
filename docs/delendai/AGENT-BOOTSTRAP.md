@@ -260,6 +260,11 @@ The canonical project registration is **`DelendAI:Tanit`**, following
 `delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
 and grant agreement, including names containing colons.
 
+`bun run gen:all` delegates to the existing client-config, proposal-index
+and framework-table generators. `bun run gen:all:check` verifies those same
+artifacts without writing them. These commands satisfy the pinned runtime
+hooks while retaining each existing canonical input.
+
 The installed `delendai` command launches `__serve` with the workspace and
 `delendai.config.json`. It must be available on the host PATH. Contributors
 may install the CLI from a published package or their chosen local checkout;
@@ -328,9 +333,26 @@ remain unchanged when repairing malformed metadata. Terminal storage follows
 the stable ID family used by the runtime reconciler; legacy IDs retain their
 recorded kind. Semantic historical kinds are preserved.
 
+The [proposal index](proposals/INDEX.md) tracks the external TypeScript
+acceptance fix: ambient declarations have null initializers and must not
+abort shared LanguageIR analysis or invent constant values.
+
+The [proposal index](proposals/INDEX.md) tracks Express chained/default-export
+router mounts, module-scoped identity and unresolved/cyclic mount diagnostics,
+verified against the explicit method/path baseline of an external sample.
+
 The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
 opening fix required by the delivery gate: tests isolate launchers and the CLI
 opens the generated output using its injected context.
+
+The [beta acceptance record](../BETA.md) links the canonical follow-ups for
+external accuracy measurements, Swagger reconciliation, optional anonymous
+enrichment and the Linux desktop dependency gate. Their acceptance criteria
+keep static facts, documented evidence, unknowns and AI suggestions distinct.
+
+The [proposal index](proposals/INDEX.md) tracks the signing-fixture clock
+stability fix: freeze only ephemeral test key creation; product signing and
+verification retain real time and isolated temporary key homes.
 
 The [proposal index](proposals/INDEX.md) tracks the PR auto-merge repair:
 GitHub's official GraphQL mutation, an expected-head guard, scoped write
