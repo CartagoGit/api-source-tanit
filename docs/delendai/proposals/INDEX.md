@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00097` | `fix` | [`ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md`](ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md) |
 
 ## Bloqueadas
 
@@ -174,6 +173,11 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
 - `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
+- `x00090` — Preserve identical history appends as distinct occurrences — `—`
+- `x00093` — Make the Linux signing fixture deterministic and headless — `—`
+- `x00095` — Include Bun-owned tests in source proof planning — `—`
+- `x00096` — Lint canonical shipped-in proposal metadata — `—`
+- `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
 
 ### infra
 
