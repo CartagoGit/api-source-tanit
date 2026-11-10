@@ -2,14 +2,14 @@
 id: x00089
 title: "Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: 6a2d337f-e72c-4f26-8512-006a1309ab71
-last-correlation-id: 6a2d337f-e72c-4f26-8512-006a1309ab71
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T07:38:08.785Z
+last-transition-id: bc7ada63-a283-43f8-a33b-fae0495aae9b
+last-correlation-id: bc7ada63-a283-43f8-a33b-fae0495aae9b
+last-transition-from: review
+last-transition-at: 2026-11-10T18:10:30.016Z
 shipped-in:
   - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
