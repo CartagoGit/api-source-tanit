@@ -2,10 +2,14 @@
 id: x00101
 title: "Fail CI when the canonical proposal index is stale"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-10
+last-transition-id: d8146224-be34-46d1-ae81-3cc12d1ce97e
+last-correlation-id: d8146224-be34-46d1-ae81-3cc12d1ce97e
+last-transition-from: ready
+last-transition-at: 2026-11-10T18:44:12.117Z
 ---
 
 # x00101 — Fail CI when the canonical proposal index is stale
