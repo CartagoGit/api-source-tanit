@@ -10,6 +10,8 @@ last-transition-id: 011f325e-5a22-4072-add9-1481c350d19a
 last-correlation-id: 011f325e-5a22-4072-add9-1481c350d19a
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T21:30:25.318Z
+shipped-in:
+  - "e6a3d0dd89c5"
 ---
 
 # x00097 — La validación de desarrollos comparte el plan conservador y deja evidencia journaled
@@ -50,8 +52,10 @@ must reuse the same conservative plan and produce that authentic evidence.
   `docs/delendai/proposals/ready/fixes/x00097-la-validacion-de-desarrollos-comparte-el-plan-conservador-y-deja-evidencia-journaled.md`
 - **Gate**: `bunx vitest run tests/scripts-gates/validate-proof.spec.ts tests/scripts-gates/proof-plan.spec.ts`, `bun run typecheck:cli`, and `bun run lint:proposals`
 - shipped-in: `f7d7bf4a8b4a`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6-luna
+- review-reviewer: openai-gpt-6.1-sol
+- review-log: approved by openai-gpt-6.1-sol — verified at e6a3d0dd89c5, validate exit 0 and tests 26/26 claimed, no recorded run cited; acceptance 4/4: (1) Independent focused gate: 26/26 tests passed in /tmp/tanit-parent-x97-focused.log; wrapper delegates to prove.script main. Existing proof-plan tests cover docs… (2) Existing proof-plan regression suite passed unchanged; reviewed prove.script import delegation and no planner edits in PR137. Aggregate CI coverage, transport … (3) validate-proof cases exercise develop/main, detached, push event, release-target PR, unknown policy and explicit full. release-binaries.yml invokes validate:fu… (4) No changes to pinned runtime or journal code; wrapper returns actual executor exit. Own real delendai validate journal will be run after verdict; no old journa… — Independent source review plus actual 26/26 focused tests; all PR137 CI checks passed. Evidence count refers only to focused suite, not a claimed new full run.
 
 ## acceptance
 
