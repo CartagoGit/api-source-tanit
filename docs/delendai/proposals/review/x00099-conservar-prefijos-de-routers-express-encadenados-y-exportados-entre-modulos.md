@@ -2,14 +2,14 @@
 id: x00099
 title: "Conservar prefijos de routers Express encadenados y exportados entre módulos"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: frameworks
 date: 2026-11-10
-last-transition-id: 655f2f6d-3ec1-4200-b19b-3db0c161e3c9
-last-correlation-id: 655f2f6d-3ec1-4200-b19b-3db0c161e3c9
-last-transition-from: ready
-last-transition-at: 2026-11-10T07:30:33.286Z
+last-transition-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
+last-correlation-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T07:46:02.070Z
 ---
 
 # x00099 — Conservar prefijos de routers Express encadenados y exportados entre módulos
@@ -31,7 +31,7 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
 - global_gate: none
 
 ### S1 — Composición de montajes por identidad de router
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/express-router-mounts.helper.ts`, `tests/frameworks/express-chained-mounts.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -39,6 +39,9 @@ Aceptación externa: gothinkster/node-express-realworld-example-app a 30b68e1e88
   - "Resolver por instancia/módulo y componer prefijos anidados sin colisiones de nombres, doble prefijo, bucles ni asociar middleware arbitrario como router."
   - "Preservar montajes simples existentes, aliases, routers homónimos y diagnóstico honesto de receptores no resolubles."
   - "Repetir corpus externo fijado y comparar pares método/ruta completos con baseline revisado; contar coincidencias sin afirmar corrección de schemas/respuestas no medida."
+- shipped-in: `7d22c23829aa`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
