@@ -2,14 +2,14 @@
 id: x00102
 title: "Keep response coverage diagnostics off JSON stdout"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-10
-last-transition-id: 03c0fff6-302f-438e-acf7-f1f8359a9c05
-last-correlation-id: 03c0fff6-302f-438e-acf7-f1f8359a9c05
-last-transition-from: ready
-last-transition-at: 2026-11-10T18:52:57.643Z
+last-transition-id: 41f26281-53c0-4277-a521-6fa6e9b5cc8d
+last-correlation-id: 41f26281-53c0-4277-a521-6fa6e9b5cc8d
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T18:57:27.501Z
 ---
 
 # x00102 — Keep response coverage diagnostics off JSON stdout
@@ -38,10 +38,13 @@ human text before the JSON document and consumers fail to parse it.
 - global_gate: none
 
 ### S1 — Send coverage diagnostics to stderr
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/core/responses/coverage-reporter.ts`, `tests/response-inference/coverage.spec.ts`, `tests/cli/generate-json-report.test.ts`, this proposal.
 - **Gate**: focused response coverage and CLI JSON report specs.
 - **Acceptance**: a high-coverage report uses the warning channel and returns the same structured report; an inline Express route with a 100% response-inference result still produces parseable JSON on stdout and reports coverage on stderr.
+- shipped-in: `e82d1d1f8817`
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ## acceptance
 
