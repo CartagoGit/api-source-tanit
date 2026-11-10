@@ -2,14 +2,14 @@
 id: t00005
 title: "Certificar exactitud y paridad en repositorios API externos reproducibles"
 kind: test
-status: in-progress
+status: review
 type: proposal
 track: beta
 date: 2026-11-10
-last-transition-id: dde1c3a3-422b-4d4e-8daf-a54fe7ea3771
-last-correlation-id: dde1c3a3-422b-4d4e-8daf-a54fe7ea3771
-last-transition-from: ready
-last-transition-at: 2026-11-10T18:11:00.106Z
+last-transition-id: 6b2ab015-926f-4a10-9896-05d3c506c1d0
+last-correlation-id: 6b2ab015-926f-4a10-9896-05d3c506c1d0
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T19:14:38.425Z
 ---
 
 # t00005 — Certificar exactitud y paridad en repositorios API externos reproducibles
@@ -33,13 +33,16 @@ La beta técnica actual verifica ejemplos Express y Laravel; aún no mide precis
 - global_gate: none
 
 ### S1 — Corpus y baseline externo
-- **Status**: pending
+- **Status**: review
 - **Files**: `tests/acceptance/external-corpus`, `scripts/gates/acceptance-external.script.ts`, `scripts/helpers/external-corpus.helper.ts`, `tests/scripts-gates/external-corpus.spec.ts`, `packages/contracts/interfaces/runtime.d.ts`, `docs/BETA.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
 - acceptance:
   - "Corpus público con licencias, revisiones fijadas y expectativas revisadas manualmente; sin ejecutar servidores o scripts de instalación de terceros."
   - "Medir precisión y recall de endpoints por framework y exactitud de respuestas/schemas por separado; no presentar desconocidos como correctos."
   - "CLI y Application API generan el mismo resultado semántico sobre cada muestra; publicar evidencia reproducible y limitaciones."
+- shipped-in: `376b74b74d89`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
