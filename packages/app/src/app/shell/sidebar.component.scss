@@ -1,0 +1,13 @@
+.sidebar { display: flex; flex-direction: column; gap: var(--space-5); width: 236px; min-height: 100vh; padding: var(--space-5); border-right: 1px solid var(--color-border); background: var(--color-panel); }
+.brand { display: flex; align-items: center; gap: var(--space-3); }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--color-copper); color: #fff; font-weight: 700; }
+strong, small { display: block; }
+small { color: var(--color-muted); font-size: 11px; }
+nav { display: grid; gap: var(--space-4); }
+.group { display: grid; gap: var(--space-1); }
+.group-title { margin: 0; color: var(--color-muted); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding: 0 var(--space-3); }
+nav button, .theme { display: flex; align-items: center; gap: var(--space-2); width: 100%; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-muted); padding: var(--space-2) var(--space-3); text-align: left; }
+nav button:hover, nav button.active, .theme:hover { background: color-mix(in srgb, var(--color-copper) 12%, transparent); color: var(--color-ink); }
+nav button:focus-visible, .theme:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.theme { margin-top: auto; }
+@media (max-width: 720px) { .sidebar { width: 100%; min-height: auto; border-right: 0; border-bottom: 1px solid var(--color-border); } nav { grid-template-columns: repeat(2, 1fr); } .group-title { padding: 0; } }

@@ -1,0 +1,8 @@
+/* La comparación entre dos revisiones. */
+section { display: grid; gap: 10px; }
+header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+header h2 { margin: 0; font-size: 18px; }
+header label { display: inline-flex; align-items: center; gap: 6px; color: var(--color-muted); }
+p { margin: 0; color: var(--color-muted); }
+p[role="alert"] { color: var(--color-copper-strong); }
+div { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }

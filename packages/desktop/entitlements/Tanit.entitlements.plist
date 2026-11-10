@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements mínimos de Tanit.
+
+  Son los dos que Tauri necesita para que el WebView del sistema
+  funcione dentro de un bundle firmado, y ni uno más. Cada entitlement
+  de más es una capacidad de más para quien consiga ejecutar código
+  dentro del proceso, y esta lista es deliberadamente corta: lo que
+  no está aquí, no está permitido.
+
+    · com.apple.security.cs.allow-jit
+      El WebView de WebKit usa JIT, y sin esto el proceso no arranca.
+
+    · com.apple.security.cs.allow-unsigned-executable-memory
+      WebKit reserva memoria ejecutable sin marcarla. Sin esto, el
+      WebView aborta al arrancar.
+
+  Lo que NO está aquí, y por qué:
+
+    · com.apple.security.app-sandbox
+      La sandbox impediría que el sidecar `apisrc` lea el proyecto del
+      usuario, que es justo lo que hace.
+
+    · com.apple.security.cs.disable-library-validation
+      Sólo hace falta si el bundle carga librerías que no estén
+      firmadas por la misma identidad. Aquí todo se firma con el
+      Developer ID, así que no hace falta y no se pide.
+
+  La lista canónica vive en
+  `packages/contracts/constants/release/signing.constant.ts`
+  (MACOS_MINIMAL_ENTITLEMENTS) y el gate de la release comprueba que
+  este fichero y la constante dicen lo mismo.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+  </dict>
+</plist>
