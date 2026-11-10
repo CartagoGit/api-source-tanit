@@ -2,10 +2,14 @@
 id: x00100
 title: "Parse legacy Laravel resource and match routes"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-10
+last-transition-id: 5fe5acaf-4a71-4494-b608-4cce9fdc97d4
+last-correlation-id: 5fe5acaf-4a71-4494-b608-4cce9fdc97d4
+last-transition-from: ready
+last-transition-at: 2026-11-10T18:37:42.559Z
 ---
 
 # x00100 — Parse legacy Laravel resource and match routes
