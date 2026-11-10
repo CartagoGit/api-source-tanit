@@ -2,14 +2,14 @@
 id: c00011
 title: "Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto"
 kind: chore
-status: in-progress
+status: review
 type: proposal
 track: integration
 date: 2026-11-10
-last-transition-id: 586be38f-c460-4705-94ab-f90ed82f0d64
-last-correlation-id: 586be38f-c460-4705-94ab-f90ed82f0d64
-last-transition-from: ready
-last-transition-at: 2026-11-10T07:55:10.077Z
+last-transition-id: 68766e66-0ac3-4f0b-80dc-2d47b114d39e
+last-correlation-id: 68766e66-0ac3-4f0b-80dc-2d47b114d39e
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T08:00:59.130Z
 ---
 
 # c00011 — Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto
@@ -31,13 +31,16 @@ El hook post-merge del runtime fijado invoca bun run gen:all, pero Tanit no decl
 - global_gate: none
 
 ### S1 — S1
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
 - acceptance:
   - "gen:all reutiliza los generadores existentes de MCP, índice y tabla sin reimplementar ni crear otra fuente de datos."
   - "gen:all:check comprueba los mismos artefactos sin escribirlos y falla ante drift."
   - "Regeneración idempotente sobre árbol correcto; ningún cambio al runtime inmutable 0.3.0 ni dependencia DelendAI añadida al producto."
+- shipped-in: `c8ea939b42c8`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
