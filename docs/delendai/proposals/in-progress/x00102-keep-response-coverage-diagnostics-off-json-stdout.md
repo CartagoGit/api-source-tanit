@@ -37,7 +37,7 @@ human text before the JSON document and consumers fail to parse it.
 
 - global_gate: none
 
-### S1 — Send every coverage diagnostic to stderr
+### S1 — Send coverage diagnostics to stderr
 - **Status**: pending
 - **Files**: `packages/core/responses/coverage-reporter.ts`, `tests/response-inference/coverage.spec.ts`, `tests/cli/generate-json-report.test.ts`, this proposal.
 - **Gate**: focused response coverage and CLI JSON report specs.
