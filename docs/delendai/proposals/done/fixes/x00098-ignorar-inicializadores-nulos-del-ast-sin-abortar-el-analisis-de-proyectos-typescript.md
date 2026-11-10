@@ -2,14 +2,16 @@
 id: x00098
 title: "Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript"
 kind: fix
-status: review
+status: done
 type: proposal
 track: language-ir
 date: 2026-11-10
-last-transition-id: b7bf0500-654e-4eae-97ed-0649de1972d9
-last-correlation-id: b7bf0500-654e-4eae-97ed-0649de1972d9
-last-transition-from: in-progress
-last-transition-at: 2026-11-10T07:40:43.599Z
+last-transition-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-correlation-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-transition-from: review
+last-transition-at: 2026-11-10T18:50:35.711Z
+shipped-in:
+  - "e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d"
 ---
 
 # x00098 — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript
@@ -31,7 +33,7 @@ Aceptación externa 2026-11-10: binario Linux aborta en unwrapTSAsExpression al 
 - global_gate: none
 
 ### S1 — Respetar nulabilidad de VariableDeclarator.init
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/language-ir/collect-constants.helper.ts`, `tests/frameworks/collect-constants.spec.ts`, `tests/frameworks/build-language-ir.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -39,8 +41,10 @@ Aceptación externa 2026-11-10: binario Linux aborta en unwrapTSAsExpression al 
   - "Mantener constantes literales y rutas que siguen a declaraciones ambientales; cubrir tanto entrada source como Program AST."
   - "Repetir análisis estático del repositorio externo fijado sin instalar dependencias ni ejecutar su código y registrar limitaciones por separado."
 - shipped-in: `e34de9650e4f`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at e1653ac68c18, validate exit 0 and tests 27/27 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed e34de9650e4f: collector treats undefined and null VariableDeclarator.init as absent. Focused collect-constants, build-language-ir, and constant-propag… (2) Reviewed regressions in tests/frameworks/collect-constants.spec.ts for source and parsed Program AST, plus build-language-ir.spec.ts route-call/literal binding… (3) Inspected proposal immutable revision 30b68e1e881462b2f4164ea09ab4c4f5699c7b0b evidence and /tmp/tanit-corpus-express-20261110.json: static-only 52-file scope,… — Approved independently after source review and focused Vitest run (27/27); external evidence is limited to static route identity/parity and does not claim schema accuracy.
 
 ## acceptance
 
