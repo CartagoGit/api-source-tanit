@@ -2,14 +2,16 @@
 id: r00021
 title: "Generación e historial compartidos entre CLI, web y app"
 kind: refactor
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: fedc6a2a-9376-4a99-ad20-1499d209de39
-last-correlation-id: fedc6a2a-9376-4a99-ad20-1499d209de39
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T08:16:21.652Z
+last-transition-id: fbcb6542-c954-41ba-881f-02c33fc23e15
+last-correlation-id: fbcb6542-c954-41ba-881f-02c33fc23e15
+last-transition-from: review
+last-transition-at: 2026-11-10T18:10:20.768Z
+shipped-in:
+  - "bebadb7005b46141961d4924c96e8a97268ad2d5"
 ---
 
 # r00021 — Generación e historial compartidos entre CLI, web y app
@@ -39,8 +41,10 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
   - "Mismas opciones producen los mismos artefactos por CLI y Application API."
   - "Enriquecimiento y selección viven en un servicio común."
 - shipped-in: `d5ec9484c46f`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 2/2: (1) Reviewed shared export preparation and tests/e2e/cli-api-export-parity.spec.ts for matching CLI/Application API artifacts. (2) Reviewed generation-preparation.service.ts and shared enrichment/selection call paths from CLI and Application API. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ### S2 — Historial persistente común
 - **Status**: done
@@ -51,8 +55,10 @@ generate.script.ts y la web heredada mantienen caminos propios; el CLI usa histo
   - "La lectura del historial no requiere reescanear."
   - "La migración de history.jsonl conserva registros y evita duplicados."
 - shipped-in: `8565c136c69c`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bebadb7005b4, validate exit 0 and tests 4973/4975 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed history repository/application/UI handlers and history-authority e2e coverage for shared run identity. (2) Reviewed persisted history read path and tests confirming history retrieval does not invoke a scan. (3) Reviewed legacy history migration and deduplication cases in session/history migration tests. — Independent review at landed develop snapshot bebadb7005b46141961d4924c96e8a97268ad2d5. Reused the actual governed validation from the previous review unit: exit 0, 4917 Vitest + 15 SQLite + 41 transport = 4973/4975, two platform skips; journal timestamp 2026-11-09T15:37:21.268Z at the prior unit path .cache/delendai/results/logs/validate.jsonl. It was not rerun in G4. Tracked source diff from validated 3e02acdb to this snapshot is empty outside proposal metadata. Fresh lint:docs and lint:proposals pass. Independent source review; no changes requested.
 
 ## acceptance
 
