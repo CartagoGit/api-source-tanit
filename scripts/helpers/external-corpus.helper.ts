@@ -42,6 +42,11 @@ export const CorpusCaseSchema = z.object({
       if (!Object.hasOwn(value.sourceFiles, file)) ctx.addIssue({ code: "custom", message: `Evidence lacks a source hash: ${file}` });
     }
   }
+  for (const schema of value.schemaClaims) {
+    for (const property of Object.keys(schema.types ?? {})) {
+      if (!schema.properties.includes(property)) ctx.addIssue({ code: "custom", message: "A type claim must name a reviewed property" });
+    }
+  }
   if (!Object.hasOwn(value.sourceFiles, value.license.source)) ctx.addIssue({ code: "custom", message: "License evidence lacks a hash" });
 });
 export type CorpusCase = z.infer<typeof CorpusCaseSchema>;

@@ -93,9 +93,10 @@ OpenAPI parity and response/schema claim coverage. Missing inference remains
 unknown, and full response/schema accuracy is explicitly unmeasured. A matching
 exporter fallback `200` cannot count as independently inferred evidence.
 The initial Laravel run found 10/21 operations in both carriers, despite their
-exports agreeing; its missing resource/match routes are a scanner defect, not
-a reason to weaken the baseline. Broader repositories and full schema accuracy
-remain acceptance work.
+exports agreeing. Correcting legacy resource/match declarations raised the
+verified result to 21/21, with matching semantic and OpenAPI exports; the oracle
+was retained. Express also passes 20/20 with the standalone binary against the
+source API. Broader repositories and full schema accuracy remain acceptance work.
 
 ## Scope of the first closed beta
 
