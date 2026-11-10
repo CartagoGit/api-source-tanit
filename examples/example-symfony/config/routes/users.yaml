@@ -1,0 +1,9 @@
+users_list:
+  path: /users
+  controller: App\Controller\UserController::list
+  methods: [GET]
+
+users_show:
+  path: /users/{id}
+  controller: App\Controller\UserController::show
+  methods: [GET]

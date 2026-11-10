@@ -1,0 +1,8 @@
+:host { display: block; }
+.filters { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; padding: 14px; border: 1px solid var(--color-border); background: var(--color-panel); }
+label { display: grid; gap: 4px; color: var(--color-muted); font-size: 11px; }
+.search { grid-column: span 2; }
+input, select, button { min-height: 34px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); padding: 6px 8px; font: inherit; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+button { align-self: end; cursor: pointer; }
+@media (max-width: 900px) { .filters { grid-template-columns: repeat(2, 1fr); } .search { grid-column: span 2; } }
