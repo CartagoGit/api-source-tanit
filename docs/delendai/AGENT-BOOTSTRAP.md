@@ -337,6 +337,10 @@ external accuracy measurements, Swagger reconciliation, optional anonymous
 enrichment and the Linux desktop dependency gate. Their acceptance criteria
 keep static facts, documented evidence, unknowns and AI suggestions distinct.
 
+The [proposal index](proposals/INDEX.md) tracks the signing-fixture clock
+stability fix: freeze only ephemeral test key creation; product signing and
+verification retain real time and isolated temporary key homes.
+
 The [proposal index](proposals/INDEX.md) tracks the PR auto-merge repair:
 GitHub's official GraphQL mutation, an expected-head guard, scoped write
 permissions, and failures that remain visible to the delivery workflow.

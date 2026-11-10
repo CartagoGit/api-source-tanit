@@ -197,6 +197,11 @@ async function createThrowawayKeyring(
         "loopback",
         "--passphrase-fd",
         "0",
+        // Freeze only fixture key creation: WSL wall-clock corrections can
+        // otherwise make its self-signature appear older than its key.
+        // Signing and product verification continue to use the real clock.
+        "--faked-system-time",
+        "20200101T000000!",
         "--quick-generate-key",
         "Tanit Release Fixture <release@example.invalid>",
         "ed25519",
