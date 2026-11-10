@@ -2,14 +2,14 @@
 id: t00006
 title: "Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj"
 kind: test
-status: in-progress
+status: review
 type: proposal
 track: quality
 date: 2026-11-10
-last-transition-id: 263f8ffe-09f5-4c31-80aa-bc3981027b64
-last-correlation-id: 263f8ffe-09f5-4c31-80aa-bc3981027b64
-last-transition-from: ready
-last-transition-at: 2026-11-10T07:26:56.969Z
+last-transition-id: 6383e7f0-5d0d-41c2-ae88-c45aa7b692c8
+last-correlation-id: 6383e7f0-5d0d-41c2-ae88-c45aa7b692c8
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T07:30:38.377Z
 ---
 
 # t00006 — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj
@@ -31,13 +31,16 @@ La entrega aislada del fix AST falló en createThrowawayKeyring porque la clave 
 - global_gate: none
 
 ### S1 — S1
-- **Status**: pending
+- **Status**: review
 - **Files**: `tests/release/signing.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "La fixture genera claves con reloj de prueba estable anterior al actual; firmas y verificadores reales conservan sus comprobaciones de tiempo."
   - "La suite de firma real valida claves protegidas y no protegidas sin pinentry gráfico, sin cambiar el almacén personal ni ignorar Time conflict."
   - "No modificar scripts de firma o validación de producción para ocultar la condición."
+- shipped-in: `541f4709d008`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
