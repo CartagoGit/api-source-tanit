@@ -2,14 +2,14 @@
 id: s00001
 title: "Resolver bloqueo GLib transitivo antes de certificar escritorio Linux"
 kind: spike
-status: in-progress
+status: blocked
 type: proposal
 track: desktop
 date: 2026-11-10
-last-transition-id: a27bc4ee-3780-4645-9f00-42f6851e4a6b
-last-correlation-id: a27bc4ee-3780-4645-9f00-42f6851e4a6b
-last-transition-from: ready
-last-transition-at: 2026-11-10T08:20:05.720Z
+last-transition-id: 725b4ae2-57af-4cf2-af92-7ad25b0c2a4e
+last-correlation-id: 725b4ae2-57af-4cf2-af92-7ad25b0c2a4e
+last-transition-from: in-progress
+last-transition-at: 2026-11-10T08:20:20.841Z
 ---
 
 # s00001 — Resolver bloqueo GLib transitivo antes de certificar escritorio Linux
