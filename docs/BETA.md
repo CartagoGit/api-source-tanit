@@ -62,6 +62,16 @@ and Laravel exercised through actual exports. Other framework scanners
 and desktop carriers retain their existing automated tests, but this
 manual run does not certify every framework or operating system.
 
+Linux desktop additionally has a known dependency gate: `packages/desktop/Cargo.lock`
+contains `glib 0.18.5` through GTK 0.18 / Tauri.
+[RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html)
+affects GLib versions below 0.20 in the relevant release range. The current
+GTK dependency range cannot be repaired by independently replacing GLib.
+Track the supported upstream migration and audit plus installer checks
+before certifying Linux desktop; absence of direct application calls does
+not establish that a transitive vulnerability is unreachable. This gate
+does not change the verified CLI/local-web scope.
+
 Before an externally distributed beta, finish:
 
 - Acceptance on representative real repositories, beyond reference examples,
@@ -83,9 +93,41 @@ code through provenance and explicit conflicts; inferred and unknown data
 must remain distinguishable. Git change analysis and thin host adapters
 extend that same core.
 
-Optional anonymous remote AI enrichment is a later, separate capability:
+Optional anonymous remote AI enrichment follows the user's requested flow: first
+show the deterministic result, then consult only unresolved endpoint fields or
+descriptions when the user enables the UI option. No account, API key, local
+model or user-managed relay is a prerequisite.
+
+It is
 off by default, explicit consent before sending code, best effort when a
 provider is unavailable, and clearly marked generated suggestions. It must
 not become a prerequisite for installation or silently turn guesses into
 verified API facts. Provider availability needs verification before any
 implementation depends on it.
+
+
+## Tracked acceptance and product follow-ups — 2026-11-10
+
+The canonical proposal documents define the remaining work:
+
+- [External repository corpus](delendai/proposals/ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
+- [Swagger discovery and reconciliation](delendai/proposals/ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
+- [Optional anonymous enrichment](delendai/proposals/ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior.
+- [Linux desktop dependency gate](delendai/proposals/ready/spikes/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md): supported upstream resolution and actual installer acceptance.
+
+Provider research on 2026-11-10 is preliminary. The
+[llmfaucet project](https://github.com/llmfaucet/llmfaucet) advertises a
+public anonymous endpoint with limited capacity, and warns that upstream
+availability can disappear. Its API and policy hostnames did not resolve
+from this environment; no inference request succeeded and no project code
+was sent. This is a local connectivity observation, not proof of a global outage.
+The current [LLM7 terms](https://github.com/chigwell/llm7.io/blob/main/TERMS.md)
+require an API token, so earlier claims that it meets the no-account/no-key
+requirement cannot be assumed. Verify an eligible service and its data
+handling before selecting a product default. No provider is certified or
+configured by this document.
+
+External audit scores are qualitative opinions. Targets such as 98% precision,
+95% recall or a 50% token reduction are proposed goals, not measured results.
+A frozen candidate still needs full validation and acceptance before a release;
+merging development work or closing proposal metadata does not publish a release.
