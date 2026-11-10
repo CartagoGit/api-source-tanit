@@ -2,14 +2,14 @@
 id: x00084
 title: "Configuración de sesión efectiva, parcial y atómica"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 8d21d0ac-8829-4c12-8d44-cefd6fc66c95
-last-correlation-id: 8d21d0ac-8829-4c12-8d44-cefd6fc66c95
-last-transition-from: in-progress
-last-transition-at: 2026-11-08T20:46:01.120Z
+last-transition-id: 13fa071f-263d-4f0f-932a-6efbec36f360
+last-correlation-id: 13fa071f-263d-4f0f-932a-6efbec36f360
+last-transition-from: review
+last-transition-at: 2026-11-10T18:23:24.439Z
 shipped-in:
   - "44a9237b01db93db8f15bc57e734c4ae2b9de684"
 ---
