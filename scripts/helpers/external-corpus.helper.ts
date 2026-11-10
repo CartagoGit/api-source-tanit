@@ -1,6 +1,4 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute } from "node:path";
 import { z } from "zod";
 import { isRecord, parseJson } from "../../packages/core/helpers/parse-json.helper.js";
 
@@ -66,24 +64,6 @@ export function operationKey(value: { method: string; path: string }): string {
   return `${value.method.toUpperCase()} ${normalizePath(value.path)}`;
 }
 
-/** Copy only hash-verified inputs; project hooks, dependencies and extra files are never executed/copied. */
-export async function materializeCorpus(input: string, output: string, corpus: CorpusCase): Promise<void> {
-  const root = await realpath(input);
-  let bytes = 0;
-  for (const [file, expectedHash] of Object.entries(corpus.sourceFiles)) {
-    const source = await realpath(resolve(root, file));
-    const rel = relative(root, source);
-    if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) throw new Error(`Source escapes input root: ${file}`);
-    const content = await readFile(source, "utf8");
-    const length = new TextEncoder().encode(content).byteLength;
-    bytes += length;
-    if (length > 4 * 1024 * 1024 || bytes > 32 * 1024 * 1024) throw new Error("Corpus input exceeds its size budget");
-    if (createHash("sha256").update(content).digest("hex") !== expectedHash) throw new Error(`Source hash mismatch: ${file}`);
-    const destination = resolve(output, file);
-    await mkdir(dirname(destination), { recursive: true });
-    await writeFile(destination, content, "utf8");
-  }
-}
 
 export function endpointMetrics(expected: readonly string[], actual: readonly string[]) {
   const truth = new Set(expected), found = new Set(actual);

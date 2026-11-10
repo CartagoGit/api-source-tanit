@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, realpath } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, relative, isAbsolute, dirname } from "node:path";
+import { join, relative, isAbsolute, dirname, resolve } from "node:path";
 import { fromRoot } from "../helpers/root.helper.js";
 import { writeJsonAtomic } from "../../packages/core/helpers/atomic-write.helper.js";
 import {
   assessClaims, canonicalJson, CorpusCaseSchema, endpointMetrics,
-  jsonValue, materializeCorpus, normalizePath, operationKey, postmanOperations,
+  jsonValue, normalizePath, operationKey, postmanOperations,
   type CorpusCase,
 } from "../helpers/external-corpus.helper.js";
 import { isRecord } from "../../packages/core/helpers/parse-json.helper.js";
@@ -41,8 +42,9 @@ function object(value: unknown, label: string): Record<string, unknown> {
   if (!isRecord(value)) throw new Error(`Invalid ${label}`);
   return value;
 }
-async function artifact(path: string, directory: string): Promise<unknown> {
-  const rel = relative(directory, path);
+export async function artifact(path: string, directory: string): Promise<unknown> {
+  const [root, target] = await Promise.all([realpath(directory), realpath(path)]);
+  const rel = relative(root, target);
   if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) throw new Error("Tanit returned an artifact outside its output directory");
   const raw = await readFile(path, "utf8");
   if (path.endsWith(".json")) return jsonValue(raw);
@@ -51,6 +53,27 @@ async function artifact(path: string, directory: string): Promise<unknown> {
   if (unsupportedYamlFeatures(raw).length > 0) throw new Error("Generated YAML exceeds the existing parser's supported subset");
   return parseYamlLite(raw);
 }
+
+/** Copy only hash-verified inputs; project hooks, dependencies and extra files are never executed/copied. */
+export async function materializeCorpus(input: string, output: string, corpus: CorpusCase): Promise<void> {
+  const root = await realpath(input);
+  let bytes = 0;
+  for (const [file, expectedHash] of Object.entries(corpus.sourceFiles)) {
+    const source = await realpath(resolve(root, file));
+    const rel = relative(root, source);
+    if (rel === ".." || rel.startsWith("../") || isAbsolute(rel)) throw new Error(`Source escapes input root: ${file}`);
+    const data = await readFile(source);
+    const length = data.byteLength;
+    bytes += length;
+    if (length > 4 * 1024 * 1024 || bytes > 32 * 1024 * 1024) throw new Error("Corpus input exceeds its size budget");
+    if (createHash("sha256").update(data).digest("hex") !== expectedHash) throw new Error(`Source hash mismatch: ${file}`);
+    const content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(data);
+    const destination = resolve(output, file);
+    await mkdir(dirname(destination), { recursive: true });
+    await writeFile(destination, content, "utf8");
+  }
+}
+
 
 /** The same registered handlers used by browser/desktop bridges; no mock scanner. */
 async function apiWorker(args: Record<string, string>): Promise<void> {

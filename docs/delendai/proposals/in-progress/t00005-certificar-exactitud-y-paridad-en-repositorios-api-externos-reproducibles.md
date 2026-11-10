@@ -34,7 +34,7 @@ La beta técnica actual verifica ejemplos Express y Laravel; aún no mide precis
 
 ### S1 — Corpus y baseline externo
 - **Status**: pending
-- **Files**: `tests/acceptance/external-corpus`, `scripts/gates/acceptance-external.script.ts`, `scripts/helpers/external-corpus.helper.ts`, `tests/scripts-gates/external-corpus.spec.ts`, `docs/BETA.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
+- **Files**: `tests/acceptance/external-corpus`, `scripts/gates/acceptance-external.script.ts`, `scripts/helpers/external-corpus.helper.ts`, `tests/scripts-gates/external-corpus.spec.ts`, `packages/contracts/interfaces/runtime.d.ts`, `docs/BETA.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
 - acceptance:
   - "Corpus público con licencias, revisiones fijadas y expectativas revisadas manualmente; sin ejecutar servidores o scripts de instalación de terceros."

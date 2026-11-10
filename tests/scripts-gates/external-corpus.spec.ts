@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { main } from "../../scripts/gates/acceptance-external.script.js";
+import { artifact, main, materializeCorpus } from "../../scripts/gates/acceptance-external.script.js";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   assessClaims, canonicalJson, claimMetrics, CorpusCaseSchema, endpointMetrics, jsonValue,
-  materializeCorpus, normalizePath, operationKey, postmanOperations,
+  normalizePath, operationKey, postmanOperations,
 } from "../../scripts/helpers/external-corpus.helper.js";
 
 const source = "reviewed source";
@@ -101,6 +101,30 @@ describe("verified input materialization", () => {
       await expect(readFile(join(work, "copy/unaudited.js"), "utf8")).rejects.toThrow();
       await writeFile(join(input, "src/main.ts"), "changed source");
       await expect(materializeCorpus(input, join(work, "changed"), oracle())).rejects.toThrow("hash mismatch");
+    } finally { await rm(work, { recursive: true, force: true }); }
+  });
+  test("rejects invalid UTF-8 even with a matching byte hash", async () => {
+    const work = await mkdtemp(join(tmpdir(), "tanit-corpus-encoding-"));
+    try {
+      const input = join(work, "input");
+      await mkdir(join(input, "src"), { recursive: true });
+      await writeFile(join(input, "LICENSE"), source);
+      const bytes = Buffer.from("fffe", "hex");
+      await writeFile(join(input, "src/main.ts"), bytes);
+      const corpus = oracle();
+      corpus.sourceFiles["src/main.ts"] = createHash("sha256").update(bytes).digest("hex");
+      await expect(materializeCorpus(input, join(work, "copy"), corpus)).rejects.toThrow();
+    } finally { await rm(work, { recursive: true, force: true }); }
+  });
+  test("rejects artifacts symlinked outside their output directory", async () => {
+    const work = await mkdtemp(join(tmpdir(), "tanit-corpus-artifact-"));
+    try {
+      const output = join(work, "output");
+      await mkdir(output);
+      await writeFile(join(work, "outside.json"), "{}");
+      const link = join(output, "collection.json");
+      await symlink(join(work, "outside.json"), link);
+      await expect(artifact(link, output)).rejects.toThrow("outside its output directory");
     } finally { await rm(work, { recursive: true, force: true }); }
   });
   test("a symlink outside the source root is rejected even when its bytes match", async () => {
