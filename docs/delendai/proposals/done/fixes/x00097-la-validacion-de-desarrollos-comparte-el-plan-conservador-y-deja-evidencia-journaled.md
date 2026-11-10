@@ -2,14 +2,14 @@
 id: x00097
 title: "La validación de desarrollos comparte el plan conservador y deja evidencia journaled"
 kind: fix
-status: review
+status: done
 type: proposal
 track: quality
 date: 2026-11-09
-last-transition-id: 011f325e-5a22-4072-add9-1481c350d19a
-last-correlation-id: 011f325e-5a22-4072-add9-1481c350d19a
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T21:30:25.318Z
+last-transition-id: 9e1d98c6-0b75-448d-92fb-4bf916b514cd
+last-correlation-id: 9e1d98c6-0b75-448d-92fb-4bf916b514cd
+last-transition-from: review
+last-transition-at: 2026-11-10T07:04:08.195Z
 shipped-in:
   - "e6a3d0dd89c5"
 ---
