@@ -45,6 +45,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `a00017` — i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa — `fa98d36`
 - `a00018` — Auditoría exhaustiva 2026-09-06 — LanguageIR universal, transport generalization, SymbolGraph y response inference — `2994687, 6b2fcda, 728abea, 1b4c1af, bda0c14, 0285f7f, 13676c4, ef73349`
 - `a00019` — Auditoría 2026-09-07 — consolidación post-158 propuestas y plan de productización Tanit — `—`
+- `a00020` — Verificar una beta local instalable y delimitar los pendientes reales — `—`
 
 ### breaking
 
@@ -59,6 +60,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `c00006` — integration verifier y validate package con if always — `9afed13`
 - `c00007` — prohibir sync_proposals automático en Tanit — `eb6981c`
 - `c00010` — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados — `f77f8e1`
+- `c00011` — Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto — `—`
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
@@ -189,6 +191,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00095` — Include Bun-owned tests in source proof planning — `—`
 - `x00096` — Lint canonical shipped-in proposal metadata — `—`
 - `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
+- `x00098` — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript — `—`
+- `x00099` — Conservar prefijos de routers Express encadenados y exportados entre módulos — `—`
 
 ### infra
 
@@ -239,5 +243,6 @@ propuesta con sus SHAs (`shippedIn`).
 - `t00002` — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento — `6d37cca`
 - `t00003` — El presupuesto de forma del scan, vigilado de verdad — `f967468`
 - `t00004` — branches de scanners: fixtures dirigidos para subir el suelo (62→70) — `0ac222e`
+- `t00006` — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj — `—`
 - `x00046` — x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local) — `1f42832`
 
