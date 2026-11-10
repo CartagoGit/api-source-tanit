@@ -32,8 +32,12 @@ import type {
 import type { LaravelScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
+const ROUTE_MATCH_RE =
+  /Route::match\s*\(\s*\[([\s\S]*?)\]\s*,\s*['"]([^'"]*)['"]\s*,\s*['"]([A-Za-z0-9_\\]+)@([A-Za-z0-9_]+)['"]/i;
 const RESOURCE_RE =
-  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*([A-Za-z0-9_\\]+)::class([^)]*)\)/;
+  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*([A-Za-z0-9_\\]+)::class/i;
+const LEGACY_RESOURCE_RE =
+  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([A-Za-z0-9_\\]+)['"]/i;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
 const ACTION_RE =
   /\[\s*([A-Za-z0-9_]+)::class\s*,\s*['"]([A-Za-z0-9_]+)['"]\s*\]/;
@@ -135,6 +139,56 @@ function resolveControllerClass(
   imports: Map<string, string>,
 ): string {
   return imports.get(alias) ?? `App\\Http\\Controllers\\${alias}`;
+}
+
+function resolveLegacyControllerClass(
+  controller: string,
+  imports: Map<string, string>,
+): string {
+  const normalized = controller.replace(/^\\/, "");
+  if (normalized.includes("\\")) return normalized;
+  return resolveControllerClass(normalized, imports);
+}
+
+/** Collect a route declaration that may continue across lines. */
+function routeDeclarationAt(lines: string[], startIndex: number): string {
+  let declaration = "";
+  let depth = 0;
+  let quote: "'" | '"' | null = null;
+  let escaped = false;
+
+  for (let lineIndex = startIndex; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex] ?? "";
+    declaration += `${line}\n`;
+    for (const char of line) {
+      if (quote !== null) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === quote) quote = null;
+        continue;
+      }
+      if (char === "'" || char === '"') quote = char;
+      else if (char === "(") depth++;
+      else if (char === ")") depth--;
+      else if (char === ";" && depth <= 0) return declaration;
+    }
+  }
+  return declaration;
+}
+
+function selectResourceRoutes(
+  options: string,
+  routes: ReadonlyArray<{ method: string; suffix: string; action: string }>,
+): typeof routes {
+  const only = /['"]only['"]\s*=>\s*\[([\s\S]*?)\]/i.exec(options)?.[1];
+  const except = /['"]except['"]\s*=>\s*\[([\s\S]*?)\]/i.exec(options)?.[1];
+  const names = (value: string | undefined): Set<string> =>
+    new Set(value?.match(/['"]([A-Za-z]+)['"]/g)?.map((name) => name.slice(1, -1)) ?? []);
+  const onlyNames = names(only);
+  const exceptNames = names(except);
+  if (only !== undefined) return routes.filter((route) => onlyNames.has(route.action));
+  if (except !== undefined) return routes.filter((route) => !exceptNames.has(route.action));
+  return routes;
 }
 
 /** Route files that are NOT HTTP API. */
@@ -340,6 +394,9 @@ export async function parseRoutesFile(
     const line = lines[i] ?? "";
     const nextLine = lines[i + 1] ?? "";
     const window = `${line} ${nextLine}`;
+    const declaration = /Route::(?:match|apiResource|resource)\b/i.test(line)
+      ? routeDeclarationAt(lines, i)
+      : line;
 
     const pm = PREFIX_RE.exec(line);
     if (pm?.[1]) {
@@ -349,18 +406,49 @@ export async function parseRoutesFile(
       prefixStack.pop();
     }
 
+    const matchRoute = ROUTE_MATCH_RE.exec(declaration);
+    if (matchRoute?.[1] !== undefined && matchRoute[2] !== undefined) {
+      const methods = matchRoute[1].match(/['"]([A-Za-z]+)['"]/g) ?? [];
+      const rawUri = matchRoute[2];
+      const segments = rawUri ? [...prefixStack, rawUri] : [...prefixStack];
+      const full = joinRoutePath("/", ...segments);
+      const controllerClass = resolveLegacyControllerClass(matchRoute[3] ?? "", imports);
+      const actionName = matchRoute[4];
+      const whereConstraints = captureWhereConstraints(lines, i);
+      const uri = encodeWithConstraintsInUri(full, whereConstraints);
+      for (const rawMethod of methods) {
+        const method = rawMethod.slice(1, -1).toUpperCase();
+        out.push({
+          method,
+          uri,
+          rawUri,
+          sourceFile: relPath,
+          lineNumber: i + 1,
+          prefixChain: [...prefixStack],
+          controllerClass,
+          ...(actionName ? { actionName } : {}),
+        });
+      }
+      continue;
+    }
+
     // Route::resource / Route::apiResource → expand to N routes.
-    const resourceMatch = RESOURCE_RE.exec(line);
+    const modernResource = RESOURCE_RE.exec(declaration);
+    const legacyResource = modernResource ? null : LEGACY_RESOURCE_RE.exec(declaration);
+    const resourceMatch = modernResource ?? legacyResource;
     if (resourceMatch?.[1] && resourceMatch[2] && resourceMatch[3]) {
       const kind = resourceMatch[1];
       const resourceUri = resourceMatch[2];
-      const alias = resourceMatch[3];
-      const matchEnd = (resourceMatch.index ?? 0) + resourceMatch[0].length;
-      const options = `${resourceMatch[4] ?? ""}${line.slice(matchEnd)}`;
-      const controllerClass = resolveControllerClass(alias, imports);
+      const controller = resourceMatch[3];
+      const options = declaration.slice((resourceMatch.index ?? 0) + resourceMatch[0].length);
+      const controllerClass = modernResource
+        ? resolveControllerClass(controller, imports)
+        : resolveLegacyControllerClass(controller, imports);
       const whereConstraints = captureWhereConstraints(lines, i);
-      const expanded =
-        kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES;
+      const expanded = selectResourceRoutes(
+        options,
+        kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES,
+      );
       // Laravel uses the singular name of the resource as the implicit
       // parameter; `->parameters(['users' => 'user_id'])` lets you
       // override it.

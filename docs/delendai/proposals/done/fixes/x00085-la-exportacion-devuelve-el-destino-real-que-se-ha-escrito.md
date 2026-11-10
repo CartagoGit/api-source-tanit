@@ -2,14 +2,14 @@
 id: x00085
 title: "La exportación devuelve el destino real que se ha escrito"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: de8a7cc7-44df-4cef-95f1-2233da6b4d77
-last-correlation-id: de8a7cc7-44df-4cef-95f1-2233da6b4d77
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T01:32:19.823Z
+last-transition-id: 5b02b74e-9af8-4d61-9e60-bfe8b8878db0
+last-correlation-id: 5b02b74e-9af8-4d61-9e60-bfe8b8878db0
+last-transition-from: review
+last-transition-at: 2026-11-10T18:23:34.615Z
 shipped-in:
   - "44a9237b01db93db8f15bc57e734c4ae2b9de684"
 ---
