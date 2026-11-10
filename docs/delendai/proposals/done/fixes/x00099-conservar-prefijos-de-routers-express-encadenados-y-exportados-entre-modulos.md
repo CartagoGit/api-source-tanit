@@ -2,14 +2,14 @@
 id: x00099
 title: "Conservar prefijos de routers Express encadenados y exportados entre módulos"
 kind: fix
-status: review
+status: done
 type: proposal
 track: frameworks
 date: 2026-11-10
-last-transition-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
-last-correlation-id: 779ebc62-5905-41c9-8cc8-f8f1f2d6eca1
-last-transition-from: in-progress
-last-transition-at: 2026-11-10T07:46:02.070Z
+last-transition-id: 5f735d97-9f02-4f06-a81b-f944f4875955
+last-correlation-id: 5f735d97-9f02-4f06-a81b-f944f4875955
+last-transition-from: review
+last-transition-at: 2026-11-10T18:50:45.614Z
 shipped-in:
   - "e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d"
 ---
