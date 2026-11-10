@@ -11,6 +11,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `f00021` | `feat` | [`ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md`](ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md) |
 | `s00001` | `spike` | [`ready/spikes/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md`](ready/spikes/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md) |
 | `t00005` | `test` | [`ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md`](ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md) |
+| `x00099` | `fix` | [`ready/fixes/x00099-conservar-prefijos-de-routers-express-encadenados-y-exportados-entre-modulos.md`](ready/fixes/x00099-conservar-prefijos-de-routers-express-encadenados-y-exportados-entre-modulos.md) |
 
 ## Bloqueadas
 
