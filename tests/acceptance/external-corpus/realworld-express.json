@@ -71,10 +71,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -83,10 +80,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -95,10 +89,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -107,22 +98,14 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/profile/profile.controller.ts"
       ]
     },
     {
       "method": "GET",
       "path": "/",
       "evidence": [
-        "src/main.ts",
-        "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/main.ts"
       ]
     },
     {
@@ -131,10 +114,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -143,10 +123,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -155,10 +132,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -167,10 +141,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -179,10 +150,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/profile/profile.controller.ts"
       ]
     },
     {
@@ -191,9 +159,6 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
         "src/app/routes/tag/tag.controller.ts"
       ]
     },
@@ -203,10 +168,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/auth/auth.controller.ts"
       ]
     },
     {
@@ -215,10 +177,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -227,10 +186,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -239,10 +195,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -251,10 +204,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/profile/profile.controller.ts"
       ]
     },
     {
@@ -263,10 +213,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/auth/auth.controller.ts"
       ]
     },
     {
@@ -275,10 +222,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/auth/auth.controller.ts"
       ]
     },
     {
@@ -287,10 +231,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/article/article.controller.ts"
       ]
     },
     {
@@ -299,10 +240,7 @@
       "evidence": [
         "src/main.ts",
         "src/app/routes/routes.ts",
-        "src/app/routes/article/article.controller.ts",
-        "src/app/routes/auth/auth.controller.ts",
-        "src/app/routes/profile/profile.controller.ts",
-        "src/app/routes/tag/tag.controller.ts"
+        "src/app/routes/auth/auth.controller.ts"
       ]
     }
   ],

@@ -8,6 +8,7 @@ import { writeJsonAtomic } from "../../packages/core/helpers/atomic-write.helper
 import {
   assessClaims, canonicalJson, CorpusCaseSchema, endpointMetrics,
   jsonValue, materializeCorpus, normalizePath, operationKey, postmanOperations,
+  type CorpusCase,
 } from "../helpers/external-corpus.helper.js";
 import { isRecord } from "../../packages/core/helpers/parse-json.helper.js";
 
@@ -98,7 +99,11 @@ async function apiWorker(args: Record<string, string>): Promise<void> {
   } finally { await closeAllSessions(); }
 }
 
-export async function main(argv = process.argv.slice(2)): Promise<number> {
+export async function main(
+  argv = process.argv.slice(2),
+  loadCase: (id: string) => Promise<CorpusCase> = async (id) => CorpusCaseSchema.parse(jsonValue(await readFile(fromRoot("tests", "acceptance", "external-corpus", `${id}.json`), "utf8"))),
+  executable = process.execPath,
+): Promise<number> {
   const args = argumentsOf(argv);
   if (args["api-worker"] === "true") { await apiWorker(args); return 0; }
   const id = args.case;
@@ -110,7 +115,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (reportRelative !== ".." && !reportRelative.startsWith("../") && !isAbsolute(reportRelative)) throw new Error("Write acceptance reports outside the third-party input tree");
   const work = await mkdtemp(join(tmpdir(), "tanit-external-acceptance-"));
   try {
-  const corpus = CorpusCaseSchema.parse(jsonValue(await readFile(fromRoot("tests", "acceptance", "external-corpus", `${id}.json`), "utf8")));
+    const corpus = CorpusCaseSchema.parse(await loadCase(id));
     const input = join(work, "input"), cliOutput = join(work, "cli"), apiOutput = join(work, "api");
     await materializeCorpus(source, input, corpus);
     const binary = args["cli-binary"];
@@ -119,7 +124,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       const rel = relative(source, await realpath(binary));
       if (rel !== ".." && !rel.startsWith("../") && !isAbsolute(rel)) throw new Error("Do not execute a binary from the third-party project");
     }
-    const cli = object(jsonValue(run(binary ?? process.execPath, [
+    const cli = object(jsonValue(run(binary ?? executable, [
       ...(binary === undefined ? [fromRoot("packages", "cli", "cli.script.ts")] : []),
       "generate", `--project-root=${input}`, `--output-dir=${cliOutput}`, "--formats=postman,openapi", "--json",
     ], controlledEnvironment(join(work, "cli-state")))), "CLI report");
@@ -127,7 +132,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const cliOpenapi = cli.extraPaths.find((path): path is string => typeof path === "string" && path.endsWith(".openapi.yaml"));
     if (!cliOpenapi) throw new Error("CLI returned no OpenAPI artifact");
     const workerReport = join(work, "api-result.json");
-    run(process.execPath, [fromRoot("scripts", "gates", "acceptance-external.script.ts"), "--api-worker=true", `--project-root=${input}`, `--output-dir=${apiOutput}`, `--report=${workerReport}`], controlledEnvironment(join(work, "api-state")));
+    run(executable, [fromRoot("scripts", "gates", "acceptance-external.script.ts"), "--api-worker=true", `--project-root=${input}`, `--output-dir=${apiOutput}`, `--report=${workerReport}`], controlledEnvironment(join(work, "api-state")));
     const worker = object(jsonValue(await readFile(workerReport, "utf8")), "API report");
     const paths = object(worker.paths, "API artifact paths");
     if (typeof paths.postman !== "string" || typeof paths.openapi !== "string" || !Array.isArray(worker.endpoints)) throw new Error("API returned incomplete artifacts");

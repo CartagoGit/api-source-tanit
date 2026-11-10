@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { main } from "../../scripts/gates/acceptance-external.script.js";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -113,4 +114,37 @@ describe("verified input materialization", () => {
       await expect(materializeCorpus(input, join(work, "copy"), oracle())).rejects.toThrow("escapes input root");
     } finally { await rm(work, { recursive: true, force: true }); }
   });
+});
+
+
+describe("real offline acceptance runner", () => {
+  test("compares real CLI/API exports, reports missing routes and replaces stale success after input tampering", async () => {
+    const work = await mkdtemp(join(tmpdir(), "tanit-corpus-runner-"));
+    try {
+      const input = join(work, "source");
+      await mkdir(input);
+      const files: Record<string, string> = {
+        "LICENSE": "Owned synthetic test fixture",
+        "package.json": '{"name":"acceptance-fixture","dependencies":{"express":"^4.18.0"},"scripts":{"preinstall":"exit 99"}}',
+        "main.js": `const express = require('express'); const app = express(); app.get('/health', (req,res) => res.json({status:'ok'}));`,
+      };
+      for (const [path, content] of Object.entries(files)) await writeFile(join(input, path), content);
+      const corpus = CorpusCaseSchema.parse({
+        ...oracle(), id: "synthetic-case", inputScope: "Only Tanit-owned synthetic test inputs",
+        license: { spdx: "test-fixture", source: "LICENSE" },
+        sourceFiles: Object.fromEntries(Object.entries(files).map(([path, content]) => [path, createHash('sha256').update(content).digest('hex')])),
+        endpoints: [{ method: "GET", path: "/health", evidence: ["main.js"] }], responses: [], schemaClaims: [],
+      });
+      const report = join(work, "result.json");
+      const args = ['--case=synthetic-case', `--project-root=${input}`, `--report=${report}`];
+      expect(await main(args, async () => corpus, 'bun')).toBe(0);
+      expect(jsonValue(await readFile(report, 'utf8'))).toMatchObject({ passed: true, semanticParity: true, contractsParity: true, responseSchemaClaimsComplete: null, betaReleaseCertified: false });
+      const incomplete = CorpusCaseSchema.parse({ ...corpus, endpoints: [...corpus.endpoints, {method:'GET',path:'/missing',evidence:['main.js']}] });
+      expect(await main(args, async () => incomplete, 'bun')).toBe(1);
+      expect(jsonValue(await readFile(report, 'utf8'))).toMatchObject({ passed: false, routing: {cli:{recall:0.5,missing:['GET /missing']}} });
+      await writeFile(join(input,'main.js'), 'changed');
+      await expect(main(args, async () => corpus, 'bun')).rejects.toThrow('hash mismatch');
+      expect(jsonValue(await readFile(report, 'utf8'))).toMatchObject({passed:false,status:'execution-error'});
+    } finally { await rm(work, {recursive:true,force:true}); }
+  }, 30_000);
 });

@@ -130,7 +130,8 @@
       "path": "/api/users/login",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/AuthController.php"
+        "app/Http/Controllers/Api/AuthController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -138,7 +139,8 @@
       "path": "/api/users",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/AuthController.php"
+        "app/Http/Controllers/Api/AuthController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -146,7 +148,8 @@
       "path": "/api/user",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/UserController.php"
+        "app/Http/Controllers/Api/UserController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -154,7 +157,8 @@
       "path": "/api/user",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/UserController.php"
+        "app/Http/Controllers/Api/UserController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -162,7 +166,8 @@
       "path": "/api/user",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/UserController.php"
+        "app/Http/Controllers/Api/UserController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -170,7 +175,8 @@
       "path": "/api/profiles/{user}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ProfileController.php"
+        "app/Http/Controllers/Api/ProfileController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -178,7 +184,8 @@
       "path": "/api/profiles/{user}/follow",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ProfileController.php"
+        "app/Http/Controllers/Api/ProfileController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -186,7 +193,8 @@
       "path": "/api/profiles/{user}/follow",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ProfileController.php"
+        "app/Http/Controllers/Api/ProfileController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -194,7 +202,8 @@
       "path": "/api/articles/feed",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/FeedController.php"
+        "app/Http/Controllers/Api/FeedController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -202,7 +211,8 @@
       "path": "/api/articles/{article}/favorite",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/FavoriteController.php"
+        "app/Http/Controllers/Api/FavoriteController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -210,7 +220,8 @@
       "path": "/api/articles/{article}/favorite",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/FavoriteController.php"
+        "app/Http/Controllers/Api/FavoriteController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -218,7 +229,8 @@
       "path": "/api/articles",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -226,7 +238,8 @@
       "path": "/api/articles",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -234,7 +247,8 @@
       "path": "/api/articles/{article}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -242,7 +256,8 @@
       "path": "/api/articles/{article}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -250,7 +265,8 @@
       "path": "/api/articles/{article}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -258,7 +274,8 @@
       "path": "/api/articles/{article}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/ArticleController.php"
+        "app/Http/Controllers/Api/ArticleController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -266,7 +283,8 @@
       "path": "/api/articles/{article}/comments",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/CommentController.php"
+        "app/Http/Controllers/Api/CommentController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -274,7 +292,8 @@
       "path": "/api/articles/{article}/comments",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/CommentController.php"
+        "app/Http/Controllers/Api/CommentController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -282,7 +301,8 @@
       "path": "/api/articles/{article}/comments/{comment}",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/CommentController.php"
+        "app/Http/Controllers/Api/CommentController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     },
     {
@@ -290,7 +310,8 @@
       "path": "/api/tags",
       "evidence": [
         "routes/api.php",
-        "app/Http/Controllers/Api/TagController.php"
+        "app/Http/Controllers/Api/TagController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     }
   ],
@@ -302,7 +323,8 @@
       "evidence": [
         "routes/api.php",
         "app/Http/Controllers/Api/ArticleController.php",
-        "app/Http/Controllers/Api/ApiController.php"
+        "app/Http/Controllers/Api/ApiController.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     }
   ],
@@ -330,7 +352,8 @@
         "app/Http/Controllers/Api/ArticleController.php",
         "app/Http/Controllers/Api/ApiController.php",
         "app/RealWorld/Transformers/Transformer.php",
-        "app/RealWorld/Transformers/ArticleTransformer.php"
+        "app/RealWorld/Transformers/ArticleTransformer.php",
+        "app/Providers/RouteServiceProvider.php"
       ]
     }
   ],
