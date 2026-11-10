@@ -2,10 +2,14 @@
 id: c00011
 title: "Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto"
 kind: chore
-status: ready
+status: in-progress
 type: proposal
 track: integration
 date: 2026-11-10
+last-transition-id: 586be38f-c460-4705-94ab-f90ed82f0d64
+last-correlation-id: 586be38f-c460-4705-94ab-f90ed82f0d64
+last-transition-from: ready
+last-transition-at: 2026-11-10T07:55:10.077Z
 ---
 
 # c00011 — Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto
