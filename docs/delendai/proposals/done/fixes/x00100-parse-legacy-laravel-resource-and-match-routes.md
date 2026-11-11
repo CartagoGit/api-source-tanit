@@ -2,14 +2,14 @@
 id: x00100
 title: "Parse legacy Laravel resource and match routes"
 kind: fix
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-10
-last-transition-id: 2b83071b-f40f-433f-bc90-47574e0e4d92
-last-correlation-id: 2b83071b-f40f-433f-bc90-47574e0e4d92
-last-transition-from: in-progress
-last-transition-at: 2026-11-10T18:42:06.570Z
+last-transition-id: 54799d0c-ff30-4f14-9911-3ed06616d099
+last-correlation-id: 54799d0c-ff30-4f14-9911-3ed06616d099
+last-transition-from: review
+last-transition-at: 2026-11-11T00:18:25.676Z
 shipped-in:
   - "b918c6ba"
 ---
