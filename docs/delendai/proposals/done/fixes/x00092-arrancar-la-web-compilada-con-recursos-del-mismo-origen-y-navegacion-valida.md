@@ -2,14 +2,16 @@
 id: x00092
 title: "Arrancar la web compilada con recursos del mismo origen y navegación válida"
 kind: fix
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-11-09
-last-transition-id: deb6e556-a80a-465a-a887-96bb37f6a808
-last-correlation-id: deb6e556-a80a-465a-a887-96bb37f6a808
-last-transition-from: in-progress
-last-transition-at: 2026-11-09T15:12:19.597Z
+last-transition-id: 6a3a4157-8f64-443b-807e-328599f4d8ee
+last-correlation-id: 6a3a4157-8f64-443b-807e-328599f4d8ee
+last-transition-from: review
+last-transition-at: 2026-11-11T00:43:54.911Z
+shipped-in:
+  - "bcf04e22c26af4f82af4a6191d59f29243a9a98e"
 ---
 
 # x00092 — Arrancar la web compilada con recursos del mismo origen y navegación válida
@@ -39,8 +41,10 @@ TODO: why this work matters now.
   - "La aplicación renderiza su shell y no sólo devuelve HTTP 200."
   - "Origen y token siguen protegiendo la Application API."
 - shipped-in: `f6c2d1bd9ccc`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at bcf04e22c26a, validate exit 0 and tests 6/6 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed landed CSP: script-src and style-src permit self while default-src stays none. bun test tests/transport/ui-web-bridge.spec.ts passed 6/6 including the… (2) Inspected existing manual browser evidence (not rerun): /tmp/tanit-beta-web-fixed.png visibly shows the Tanit shell; /tmp/tanit-beta-web-fixed-dom.html contain… (3) Reviewed unchanged origin guard in http-bridge.server.ts (rejects a nonmatching supplied Origin) and token guard; focused Bun test verifies same-origin API suc… — Approved after focused Bun tests (6/6), source review, and inspection of persisted prior browser evidence. Browser screenshot was not rerun; origin enforcement was verified in code, while the focused test directly exercises token rejection.
 
 ## acceptance
 
