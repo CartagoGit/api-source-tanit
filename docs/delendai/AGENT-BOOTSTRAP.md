@@ -349,6 +349,8 @@ The [beta acceptance record](../BETA.md) links the canonical follow-ups for
 external accuracy measurements, Swagger reconciliation, optional anonymous
 enrichment and the Linux desktop dependency gate. Their acceptance criteria
 keep static facts, documented evidence, unknowns and AI suggestions distinct.
+Before continuing optional enrichment work, read the current provider findings
+and eligibility limits in [AI-ENRICHMENT.md](../AI-ENRICHMENT.md).
 
 The [proposal index](proposals/INDEX.md) tracks the signing-fixture clock
 stability fix: freeze only ephemeral test key creation; product signing and
