@@ -61,7 +61,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 
 ### S3 — Presentación del informe común
 - **Status**: review
-- **Files**: `packages/cli/commands/summary.script.ts`, `packages/ui/web/index.html.constant.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/cli/contract-evidence-summary.spec.ts`
+- **Files**: `packages/cli/commands/summary.script.ts`, `packages/ui/web/index.html.constant.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/app/reachable.spec.ts`, `tests/cli/contract-evidence-summary.spec.ts`
 - **Gate**: real carrier rendering, localized diagnostics and CLI report tests
 - acceptance:
   - "CLI, web y escritorio representan origen, comparación y conflictos del mismo informe; conservan el flujo de exportación existente. La lectura original queda en S4."
