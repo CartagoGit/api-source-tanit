@@ -193,6 +193,9 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
 - `x00098` — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript — `—`
 - `x00099` — Conservar prefijos de routers Express encadenados y exportados entre módulos — `—`
+- `x00100` — Parse legacy Laravel resource and match routes — `—`
+- `x00101` — Fail CI when the canonical proposal index is stale — `—`
+- `x00102` — Keep response coverage diagnostics off JSON stdout — `—`
 
 ### infra
 
