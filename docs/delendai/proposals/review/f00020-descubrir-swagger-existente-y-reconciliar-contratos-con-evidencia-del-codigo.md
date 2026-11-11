@@ -10,6 +10,8 @@ last-transition-id: 91dcd64d-b9f4-4d0e-85d5-0d3beaa59a6d
 last-correlation-id: 91dcd64d-b9f4-4d0e-85d5-0d3beaa59a6d
 last-transition-from: in-progress
 last-transition-at: 2026-11-11T00:31:53.885Z
+shipped-in:
+  - "9f10a99e38a8ea5975db6fe2dcb0a74f8a8dfc5c"
 ---
 
 # f00020 — Descubrir Swagger existente y reconciliar contratos con evidencia del código
@@ -33,7 +35,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - global_gate: none
 
 ### S1 — Informe común y procedencia del escaneo
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/contracts/constants/core/contract-evidence.constant.ts`, `packages/contracts/interfaces/core/contract-evidence.interface.ts`, `packages/contracts/interfaces/core/scanner.interface.ts`, `packages/contracts/interfaces/core/discovery.interface.ts`, `packages/contracts/interfaces/core/domain.interface.ts`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/core/adapters/parsed-route-to-spec.adapter.ts`, `packages/core/discovery/contract-reconciliation.service.ts`, `packages/core/discovery/generation.pipeline.ts`, `packages/core/discovery/generation-summary.helper.ts`, `packages/core/application-api/snapshot-summary.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/contract-reconciliation.spec.ts`, `tests/frameworks/openapi-hybrid.spec.ts`
 - **Gate**: targeted reconciliation, hybrid pipeline and API summary tests
 - acceptance:
@@ -41,8 +43,10 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "Los límites del parser o del scanner hacen desconocida la ausencia; ningún scanner histórico se presume completo."
   - "Generación, resumen común y snapshots de Application API proyectan el mismo informe, validado por un contrato único."
 - shipped-in: `743d25852042`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 9f10a99e38a8, validate exit 0 and tests 100/100 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed landed contract-reconciliation.service.ts and generation.pipeline.ts: reconciliation reads per-scanner candidate specs/routes, groups by service and n… (2) Reviewed adapter defaults for undeclared scanner coverage to unknown and propagates diagnostics/validation failures as partial. OpenAPI declares partial comple… (3) Focused hybrid test verifies the generated report passes ContractEvidenceReportSchema through SnapshotSummarySchema and that generation summary and Application… — Approved S1 independently on landed develop 9f10a99e. Scope is static route identity and overlapping validation type/required/format/auth assertions; report limitations explicitly exclude body/schema graphs, responses, and live HTTP. S2/S3 remain open; this approval does not close the overall proposal.
 
 ### S2 — Descubrimiento y referencias locales de documentación
 - **Status**: review
