@@ -358,6 +358,10 @@ The [proposal index](proposals/INDEX.md) tracks the PR auto-merge repair:
 GitHub's official GraphQL mutation, an expected-head guard, scoped write
 permissions, and failures that remain visible to the delivery workflow.
 
+The [proposal index](proposals/INDEX.md) tracks native Swagger reconciliation: raw
+scanner observations retain source files and declared coverage limits before
+merger precedence. Missing scanner coverage never establishes route absence.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ContractEvidenceReportSchema } from "./contract-evidence.constant.js";
 
 export const ProjectRootSchema = z.string().min(1, "projectRoot must not be empty");
 export const SessionIdSchema = z.string().min(1, "sessionId must not be empty");
@@ -248,6 +249,7 @@ export const ProjectDiagnosticSchema = z.object({
   source: z.string().optional(),
 });
 export const SnapshotSummarySchema = z.object({
+  contractEvidence: z.array(ContractEvidenceReportSchema).optional(),
   sessionId: z.string(),
   projectRoot: z.string(),
   capturedAt: z.string(),

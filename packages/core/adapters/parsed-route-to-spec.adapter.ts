@@ -419,7 +419,23 @@ export async function buildSpecsFromScanner(
     }
     specs.push(spec);
   }
-  return { specs, routes, withFormRequest, withoutFormRequest, validationFailures };
+  const scanLimitations = [
+    ...(scanResult.diagnostics ?? []).map(diagnostic => `${diagnostic.file}: ${diagnostic.reason}`),
+    ...validationFailures,
+  ];
+  const declaredEvidence = scanResult.evidence;
+  const scanEvidence = declaredEvidence || scanLimitations.length > 0 ? {
+    ...(declaredEvidence ?? {
+      kind: "code" as const, completeness: "unknown" as const,
+      artifacts: [...match.artifacts], limitations: [],
+    }),
+    completeness: declaredEvidence?.completeness === "complete" && scanLimitations.length > 0
+      ? "partial" as const : declaredEvidence?.completeness ?? "unknown" as const,
+    limitations: [...(declaredEvidence?.limitations ?? []), ...scanLimitations],
+  } : undefined;
+  return { specs, routes, withFormRequest, withoutFormRequest, validationFailures,
+    ...(scanEvidence ? { scanEvidence } : {}),
+  };
 }
 
 /** Helper: reads the first byte of an OpenAPI spec for validation (unused). */

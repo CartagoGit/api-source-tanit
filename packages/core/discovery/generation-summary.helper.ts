@@ -18,6 +18,7 @@ export function summarizeGenerationResults(results: ReadonlyArray<IGenerationRes
     inferredVariables: total(result => result.config.variables.length),
     auth: login ? { loginEndpoint: `${login.request?.method ?? "POST"} ${login.request?.url?.raw ?? login.name}` } : null,
     warnings: results.flatMap(result => result.warnings), evidence: [...evidence],
+    ...(results.some(result => result.contractEvidence) ? { contractEvidence: results.flatMap(result => result.contractEvidence ? [result.contractEvidence] : []) } : {}),
     health: computeProjectHealth(results.flatMap(result => result.specs)),
   };
 }
