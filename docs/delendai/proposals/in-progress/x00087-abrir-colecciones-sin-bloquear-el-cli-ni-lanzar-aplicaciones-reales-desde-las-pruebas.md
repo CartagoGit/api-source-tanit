@@ -24,7 +24,8 @@ La validación completa queda esperando a Chrome: open-postman usa spawnSync y l
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No cambiar aplicaciones predeterminadas ni gestionar keyrings del usuario.
+- No abrir navegadores o aplicaciones reales desde las pruebas.
 
 ## slices
 
