@@ -33,7 +33,7 @@ Opción UI apagada por defecto; consultas mínimas por endpoint y evidencia falt
 - global_gate: none
 
 ### S1 — Verificar proveedor y disponibilidad real
-- **Status**: pending
+- **Status**: review
 - **Files**: `docs/AI-ENRICHMENT.md`, `docs/BETA.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: documentation review; `bun run lint:docs` and `bun run lint:proposals`
 - acceptance:
@@ -41,6 +41,8 @@ Opción UI apagada por defecto; consultas mínimas por endpoint y evidencia falt
   - "Registrar los resultados observados de llmfaucet y las comprobaciones de catálogo y solicitud sintética de Kilo; distinguir el fallo de un ID obsoleto de la respuesta del modelo vigente."
   - "Explicar que los términos NVIDIA publicados dicen que el uso confirma el acuerdo, sin afirmar que el usuario aceptó legalmente; registrar que la solicitud sintética precedió la lectura de esos términos."
   - "No enviar datos de proyecto ni credenciales, no configurar el producto y no inferir una API anónima de un chat web. Si no hay proveedor elegible, mantener S2 pendiente."
+- review-state: in_review
+- review-implementer: openai-gpt-6-luna
 
 ### S2 — Huecos, consentimiento, caché y UI comunes
 - **Status**: pending
