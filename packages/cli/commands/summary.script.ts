@@ -65,6 +65,23 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
       `examples ${s.health.withExamplesPercent}% · ` +
       `descriptions ${s.health.withDescriptionPercent}%`,
   ];
+  for (const report of s.contractEvidence ?? []) {
+    lines.push("\n→ Documentation/code: static observations; unknown is not absence.");
+    for (const source of report.sources) {
+      lines.push(`  ${source.framework} [${source.completeness}] (${source.serviceId})`);
+      for (const artifact of source.artifacts) lines.push(`    ${artifact}`);
+    }
+    const attention = report.operations.filter(operation => operation.status !== "matched");
+    lines.push(`  ${report.operations.length} route comparisons; ${attention.length} need attention.`);
+    for (const operation of attention.slice(0, 20)) {
+      lines.push(`  [${operation.status}] ${operation.method} ${operation.path} (${operation.serviceId})`);
+      for (const evidence of operation.documented) lines.push(`    documented: ${evidence.file}`);
+      for (const evidence of operation.observed) lines.push(`    observed: ${evidence.file}`);
+      for (const conflict of operation.conflicts) lines.push(`    ${conflict.field}: documented=${conflict.documented}; observed=${conflict.observed}`);
+    }
+    if (attention.length > 20) lines.push(`  ${attention.length - 20} more: use --format json for the full report.`);
+    lines.push("  Comparison covers overlapping field/auth assertions; complete schemas and HTTP behavior are not certified.");
+  }
   for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);
   // f00010 S3: the user sees **why** the framework was chosen, not
   // just which one. Each signal is one line with its weight; detectors

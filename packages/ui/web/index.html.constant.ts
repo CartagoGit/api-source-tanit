@@ -795,6 +795,25 @@ export const UI_HTML = String.raw`<!doctype html>
       // del resumen plano para que el orden visual sea de lo
       // conocido a lo explicado, no al revés.
       pintaDeteccion(s);
+      (s.contractEvidence || []).forEach(function (report) {
+        var details = document.createElement("details");
+        var heading = document.createElement("summary");
+        heading.textContent = "Documentación y código — " + report.operations.length + " comparaciones estáticas";
+        details.appendChild(heading);
+        var scope = document.createElement("p");
+        scope.textContent = "Desconocido no significa ausente. No se certifican esquemas completos ni comportamiento HTTP.";
+        details.appendChild(scope);
+        var rows = [];
+        report.sources.forEach(function (source) { rows.push([source.framework + " · " + source.completeness, source.artifacts.join(", ")]); });
+        var attention = report.operations.filter(function (operation) { return operation.status !== "matched"; });
+        if (attention.length > 100) rows.push(["Límite de vista", "Se muestran 100 de " + attention.length + ". CLI: summary --format json muestra el informe completo."]);
+        attention.slice(0, 100).forEach(function (operation) {
+          rows.push([operation.method + " " + operation.path, operation.status + " · " + operation.serviceId]);
+          operation.conflicts.forEach(function (conflict) { rows.push([conflict.field, "Documentado: " + conflict.documented + " · Observado: " + conflict.observed]); });
+        });
+        details.appendChild(tabla(rows));
+        viva.firstChild.appendChild(details);
+      });
       if (res.j.notice) {
         var p = document.createElement("p");
         p.textContent = res.j.notice;

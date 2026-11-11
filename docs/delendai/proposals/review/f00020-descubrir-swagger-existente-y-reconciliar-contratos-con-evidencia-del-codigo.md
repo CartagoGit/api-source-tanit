@@ -55,16 +55,24 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
 
-### S3 — Presentación común y controles de acceso remoto
+### S3 — Presentación del informe común
 - **Status**: review
-- **Files**: `packages/cli`, `packages/ui`, `packages/app`, `packages/core/application-api`, `tests/contracts`
-- **Gate**: carrier rendering and explicit remote authorization tests
+- **Files**: `packages/cli/commands/summary.script.ts`, `packages/ui/web/index.html.constant.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/cli/contract-evidence-summary.spec.ts`
+- **Gate**: real carrier rendering, localized diagnostics and CLI report tests
 - acceptance:
-  - "CLI, web y escritorio representan documentación original, comparación y exportación a partir del mismo informe; conservan conflictos visibles."
+  - "CLI, web y escritorio representan origen, comparación y conflictos del mismo informe; conservan el flujo de exportación existente. La lectura original queda en S4."
   - "Red únicamente por URL/autorización explícita con límites de tiempo, tamaño, redirecciones y referencias."
 - shipped-in: `bc02a49eb276`
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
+
+### S5 — Paridad de la integración MCP opcional
+- **Status**: pending
+- **Files**: `integrations/delendai/src/lib/contracts/plugin.interface.ts`, `integrations/delendai/src/lib/tools/summary.tool.ts`, `integrations/delendai/package.json`, `integrations/delendai/tests`
+- **Gate**: pinned optional integration tests and schema validation
+- acceptance:
+  - "La herramienta summary opcional expone el mismo informe compartido reutilizando su schema, sin reconstruir hechos ni introducir dependencias DelendAI en el producto."
+  - "Versionar la superficie pública del plugin y comprobar su salida contra el runtime inmutable 0.3.0."
 
 ## acceptance
 
