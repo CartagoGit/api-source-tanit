@@ -1,0 +1,7 @@
+{
+  "framework": "grpc",
+  "routes": [
+    { "method": "POST", "uri": "/MiniService/GetUser" },
+    { "method": "POST", "uri": "/MiniService/ListUsers" }
+  ]
+}
