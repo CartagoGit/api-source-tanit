@@ -10,6 +10,8 @@ last-transition-id: 3cab2cd5-365a-42d1-9653-774dcad62aa5
 last-correlation-id: 3cab2cd5-365a-42d1-9653-774dcad62aa5
 last-transition-from: in-progress
 last-transition-at: 2026-11-09T15:00:53.250Z
+shipped-in:
+  - "9f10a99e38a8ea5975db6fe2dcb0a74f8a8dfc5c"
 ---
 
 # x00094 — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI
@@ -35,8 +37,10 @@ The first clean GitHub run (42636714514) failed TypeScript resolution for zod an
 - **Files**: `.github/workflows/integration-delendai.yml`, `tests/scripts-gates/integration-delendai-workflow.spec.ts`
 - **Gate**: cli
 - shipped-in: `d2bb6e1d9e43`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 9f10a99e38a8, validate exit 0 and tests 3/3 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed current workflow: root frozen install (with scripts disabled) runs after checkout/setup and before the private plugin install and validation. Regressi… (2) Workflow still reads the canonical commit pin, checks out that immutable commit with persist-credentials false, installs integrations/delendai with --frozen-lo… (3) bunx vitest run tests/scripts-gates/integration-delendai-workflow.spec.ts passed 3/3 on current source. Verified the workflow and spec are unchanged between sh… — Independent review of landed workflow; focused workflow tests passed 3/3. No plugin or runtime installation was performed during this review.
 
 ## acceptance
 
