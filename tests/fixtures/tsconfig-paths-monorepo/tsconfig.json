@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // The two knobs the resolver has to understand: `baseUrl` and
+    // the `paths` aliases. `@/*` points inside this package and
+    // `@orders/*` points into the workspace package — the
+    // cross-package alias.
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@orders/*": ["packages/orders/src/*"]
+    }
+  },
+  "include": ["src", "packages"]
+}
