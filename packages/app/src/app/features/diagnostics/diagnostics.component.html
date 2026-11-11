@@ -6,7 +6,7 @@
     <ul>
       @for (diagnostic of diagnostics(); track diagnostic.message) {
         <li [class.error]="diagnostic.severity === 'error'">
-          <strong>{{ diagnostic.severity === 'error' ? 'i18n.translate("diagnostics.error")' : 'i18n.translate("diagnostics.warning")' }}</strong>
+          <strong>{{ diagnostic.severity === 'error' ? i18n.translate("diagnostics.error") : i18n.translate("diagnostics.warning") }}</strong>
           <span>{{ diagnostic.message }}</span>
           @if (diagnostic.source) { <small>{{ diagnostic.source }}</small> }
         </li>
@@ -14,3 +14,44 @@
     </ul>
   }
 </section>
+
+@if (contractReports().length > 0) {
+  <section class="contracts" aria-labelledby="contracts-title">
+    <header><h2 id="contracts-title">{{ i18n.translate("contracts.title") }}</h2><span>{{ comparisonCount() }}</span></header>
+    <p>{{ i18n.translate("contracts.scope") }}</p>
+    @for (report of contractReports(); track $index) {
+      @for (source of report.sources; track $index) {
+        <details class="contract-source">
+          <summary>{{ source.framework }} · {{ source.serviceId }} · {{ coverageLabel(source.completeness) }}</summary>
+          @for (artifact of source.artifacts; track artifact) { <code>{{ artifact }}</code> }
+          @for (limitation of source.limitations; track $index) { <p class="muted">{{ limitation }}</p> }
+        </details>
+      }
+    }
+    <label class="contract-filter"><input type="checkbox" [checked]="showMatches()" (change)="showMatches.set(!showMatches()); operationLimit.set(100)" />{{ i18n.translate("contracts.showMatches") }}</label>
+    @if (comparisons().length === 0) { <p class="muted">{{ i18n.translate("contracts.noDifferences") }}</p> }
+    <ul>
+      @for (operation of visibleComparisons(); track $index) {
+        <li class="contract-operation" [class.conflict]="operation.status === 'conflict'">
+          <strong>{{ statusLabel(operation.status) }}</strong>
+          <code>{{ operation.method }} {{ operation.path }}</code><small>{{ operation.serviceId }}</small>
+          @for (evidence of operation.documented; track $index) {
+            <p><b>{{ i18n.translate("contracts.documented") }}</b> <code>{{ evidence.file }}</code> @if (evidence.line > 0) { <span>:{{ evidence.line }}</span> }</p>
+            @if (evidence.description) { <p>{{ evidence.description }}</p> }
+          }
+          @for (evidence of operation.observed; track $index) {
+            <p><b>{{ i18n.translate("contracts.observed") }}</b> <code>{{ evidence.file }}</code> @if (evidence.line > 0) { <span>:{{ evidence.line }}</span> }</p>
+            @if (evidence.description) { <p>{{ evidence.description }}</p> }
+          }
+          @for (conflict of operation.conflicts; track $index) {
+            <p class="contract-conflict"><code>{{ conflict.field }}</code>: {{ i18n.translate("contracts.documented") }} <code>{{ conflict.documented }}</code> · {{ i18n.translate("contracts.observed") }} <code>{{ conflict.observed }}</code></p>
+          }
+          @for (limitation of operation.limitations; track $index) { <small>{{ limitation }}</small> }
+        </li>
+      }
+    </ul>
+    @if (visibleComparisons().length < comparisons().length) {
+      <button type="button" (click)="operationLimit.update(addPage)">{{ i18n.translate("contracts.showMore") }}</button>
+    }
+  </section>
+}
