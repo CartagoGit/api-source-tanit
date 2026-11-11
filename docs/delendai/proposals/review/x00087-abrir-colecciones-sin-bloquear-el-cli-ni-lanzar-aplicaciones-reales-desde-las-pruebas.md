@@ -2,14 +2,14 @@
 id: x00087
 title: "Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-11-08
-last-transition-id: 4aeb4732-8487-426e-b1d7-0ce248b3679d
-last-correlation-id: 4aeb4732-8487-426e-b1d7-0ce248b3679d
-last-transition-from: ready
-last-transition-at: 2026-11-08T13:26:44.697Z
+last-transition-id: ccaba61e-186f-437a-8b77-61c86743c0d3
+last-correlation-id: ccaba61e-186f-437a-8b77-61c86743c0d3
+last-transition-from: in-progress
+last-transition-at: 2026-11-11T00:28:51.117Z
 ---
 
 # x00087 — Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas
@@ -24,7 +24,8 @@ La validación completa queda esperando a Chrome: open-postman usa spawnSync y l
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No cambiar aplicaciones predeterminadas ni gestionar keyrings del usuario.
+- No abrir navegadores o aplicaciones reales desde las pruebas.
 
 ## slices
 
@@ -39,6 +40,9 @@ La validación completa queda esperando a Chrome: open-postman usa spawnSync y l
   - "Fallos al iniciar el launcher prueban fallback sin matar aplicaciones del usuario."
   - "Las pruebas no lanzan navegador ni aplicaciones de escritorio reales."
   - "generate --open utiliza el archivo y el contexto generados, incluso con opciones inyectadas."
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
+- shipped-in: `b43938a8f163`
 
 ## acceptance
 
