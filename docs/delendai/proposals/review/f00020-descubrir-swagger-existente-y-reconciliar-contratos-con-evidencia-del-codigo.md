@@ -46,11 +46,12 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 
 ### S2 — Descubrimiento y referencias locales de documentación
 - **Status**: review
-- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `packages/contracts/interfaces/core/contract-evidence.interface.ts`, `tests/frameworks/openapi-scanner.spec.ts`
+- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `packages/contracts/constants/core/contract-evidence.constant.ts`, `packages/contracts/interfaces/core/contract-evidence.interface.ts`, `packages/contracts/interfaces/core/scanner.interface.ts`, `packages/core/discovery/contract-reconciliation.service.ts`, `tests/frameworks/openapi-scanner.spec.ts`, `tests/core/contract-reconciliation.spec.ts`
 - **Gate**: targeted OpenAPI discovery and bounded local reference tests
 - acceptance:
   - "Reutilizar el parser para múltiples especificaciones JSON/YAML y referencias locales contenidas, con ciclos y límites explícitos; sin ejecutar código ni red automática."
-  - "Detectar configuración Swagger estáticamente resoluble y enlaces sin inventar URLs; conservar límites de resolución y completar descripciones compatibles con procedencia."
+  - "Detectar configuración Swagger estáticamente resoluble y enlaces declarados literales HTTP(S), sin credenciales ni URLs inventadas; conservar límites de resolución y completar descripciones compatibles con procedencia."
+  - "Transportar el archivo relativo, pointer RFC 6901 y referencias locales resueltas por el contrato común y la proyección de reconciliación, sin perder procedencia."
 - shipped-in: `bc02a49eb276`
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
@@ -69,7 +70,8 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 ## acceptance
 
 - Reutilizar el scanner/parser para localizar especificaciones JSON/YAML y referencias locales contenidas; sin ejecutar el proyecto ni acceder a red por defecto.
-- Conservar origen y límites de resolución; detectar configuración Swagger estáticamente resoluble y enlaces sin inventar URLs.
+- Conservar origen y límites de resolución; detectar configuración Swagger estáticamente resoluble y enlaces declarados literales HTTP(S), sin credenciales ni URLs inventadas.
+- Las observaciones documentales llevan archivo relativo y pointer RFC 6901; las referencias locales resueltas conservan su archivo y pointer de origen en el contrato común y en la proyección de reconciliación.
 - Distinguir coincidencias, solo documentado, solo observado y conflictos; desconocido del scanner no demuestra ausencia.
 - Completar descripciones compatibles con procedencia; sin sobreescribir conflictos ni convertir Swagger en verdad absoluta.
 - Un servicio común entrega idéntico informe semántico a CLI, web y escritorio; consumidores representan documentación original, comparación y exportación.

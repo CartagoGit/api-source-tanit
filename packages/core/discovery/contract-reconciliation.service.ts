@@ -26,15 +26,22 @@ export function reconcileContracts(scans: ReadonlyArray<IContractScan>): IContra
   if (!scans.some(scan => scan.source.kind === "documentation")) return undefined;
   const groups = new Map<string, Array<{ scan: IContractScan; spec: EndpointSpec; evidence: IContractOperationEvidence }>>();
   for (const scan of scans) {
-    const routes = new Map<string, typeof scan.routes[number]>();
-    for (const route of scan.routes) routes.set(identity(route.method, route.uri), route);
+    const routes = new Map<string, Array<typeof scan.routes[number]>>();
+    for (const route of scan.routes) {
+      const key = identity(route.method, route.uri);
+      const queue = routes.get(key) ?? [];
+      queue.push(route);
+      routes.set(key, queue);
+    }
     for (const spec of scan.specs) {
       const key = JSON.stringify([scan.source.serviceId, identity(spec.method, spec.uri)]);
       const group = groups.get(key) ?? [];
-      const route = routes.get(identity(spec.method, spec.uri));
+      const route = routes.get(identity(spec.method, spec.uri))?.shift();
       group.push({ scan, spec, evidence: {
         framework: scan.source.framework, file: route?.sourceFile ?? "",
         line: Math.max(0, route?.lineNumber ?? 0),
+        ...(route?.sourcePointer ? { pointer: route.sourcePointer } : {}),
+        ...(route?.sourceReferences ? { references: [...route.sourceReferences] } : {}),
         ...(spec.description !== undefined ? { description: spec.description } : {}),
       } });
       groups.set(key, group);

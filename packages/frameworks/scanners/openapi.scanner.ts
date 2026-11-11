@@ -18,7 +18,7 @@
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -30,6 +30,9 @@ import type {
 import { isRecord, parseJson, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
 import { rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
+import { ensureInside } from "../../core/helpers/path-containment.helper.js";
+import { parseWithProgram } from "../../core/language-frontends/typescript/index.js";
+import { stat } from "node:fs/promises";
 
 /** Look for OpenAPI in the most common locations. */
 const OPENAPI_CANDIDATES = [
@@ -56,6 +59,18 @@ const OPENAPI_CANDIDATES = [
   "src/openapi.yaml",
   "src/openapi.yml",
 ];
+
+const SWAGGER_CONFIG_CANDIDATES = [
+  "swagger-initializer.js", "swagger-ui/swagger-initializer.js",
+  "public/swagger-initializer.js", "docs/swagger-initializer.js",
+  "swagger-config.json", "swagger-ui.json",
+];
+const MAX_OPENAPI_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_OPENAPI_TOTAL_BYTES = 16 * 1024 * 1024;
+const MAX_OPENAPI_DOCUMENTS = 32;
+const MAX_OPENAPI_REF_DEPTH = 16;
+const MAX_OPENAPI_REF_VISITS = 1000;
+const MAX_OPENAPI_SCAN_MS = 5000;
 
 const HTTP_METHODS = [
   "get",
@@ -408,7 +423,7 @@ export class OpenApiProjectScanner implements IProjectScanner {
   readonly framework = "openapi" as const;
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
-    for (const rel of OPENAPI_CANDIDATES) {
+    for (const rel of [...OPENAPI_CANDIDATES, ...SWAGGER_CONFIG_CANDIDATES]) {
       if (existsSync(join(projectRoot, rel))) {
         return withEvidence(1, [{
           signal: `Spec OpenAPI/Swagger presente (${rel})`,
@@ -422,7 +437,7 @@ export class OpenApiProjectScanner implements IProjectScanner {
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
     const artifacts: string[] = [];
-    for (const rel of OPENAPI_CANDIDATES) {
+    for (const rel of [...OPENAPI_CANDIDATES, ...SWAGGER_CONFIG_CANDIDATES]) {
       const abs = join(projectRoot, rel);
       if (existsSync(abs)) artifacts.push(rel);
     }
@@ -448,85 +463,69 @@ export class OpenApiRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const specRel = this.opts.specPath ?? match.artifacts[0];
-    if (!specRel) return { routes: [] };
-    const absPath = resolve(rawProjectRoot(match), specRel);
-    let raw: string;
-    try {
-      raw = await readFile(absPath, "utf8");
-    } catch {
-      return { routes: [] };
-    }
-    let spec: unknown;
-    if (specRel.endsWith(".json")) {
-      const parsed = parseJson(raw);
-      if (!parsed.ok) {
-        throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${parsed.reason}`);
-      }
-      spec = parsed.value;
-    } else {
-      // Warn **before** parsing: the parser doesn't throw on these
-      // constructs, it returns values that aren't the spec's. A
-      // failure you don't see is the one that ends up in the collection.
-      const noSoportado = unsupportedYamlFeatures(raw);
-      if (noSoportado.length > 0) {
-        console.warn(
-          `⚠ ${specRel} uses YAML this parser doesn't understand: ${noSoportado.join(", ")}.\n` +
-            "  · The affected values will come out wrong in the collection, with no further warning.\n" +
-            "  · Convert it to JSON (`openapi.json`) and it will be read in full.",
-        );
-      }
-      try {
-        spec = parseYamlLite(raw);
-      } catch (e) {
-        // YAML syntax error: abort cleanly.
-        throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
-      }
-    }
-    const basePath =
-      this.opts.basePath ??
-      readString(spec, "basePath") ??
-      serverPath(readArray(spec, "servers"));
-    const paths = readObject(spec, "paths") ?? {};
-    const out: ParsedRoute[] = [];
-    for (const [pathTemplate, pathItem] of Object.entries(paths)) {
-      if (!pathItem || typeof pathItem !== "object") continue;
-      const item = pathItem as Record<string, unknown>;
-      // Path-level `parameters` were read here only to store them in
-      // `__params`, and nobody consumed them: `resolve()` re-reads the
-      // spec from disk. When the hidden property was removed, they
-      // were left without a reader, so they go with it.
-      for (const method of HTTP_METHODS) {
-        const op = item[method];
-        if (!op || typeof op !== "object") continue;
-        const opObj = op as Record<string, unknown>;
-        const tags = Array.isArray(opObj.tags) ? (opObj.tags as string[]) : [];
-        const summary = typeof opObj.summary === "string" ? opObj.summary : "";
-        const description = typeof opObj.description === "string" ? opObj.description : "";
-        const operationId = typeof opObj.operationId === "string" ? opObj.operationId : "";
-        const uri = join(basePath, pathTemplate).replace(/\/+/g, "/");
-        out.push({
-          method: method.toUpperCase(),
-          uri,
-          rawUri: pathTemplate,
-          sourceFile: `${specRel}#${method.toUpperCase()}${pathTemplate}`,
-          lineNumber: 0,
-          prefixChain: basePath ? [basePath] : [],
-          displayName: operationId || summary || `${method.toUpperCase()} ${pathTemplate}`,
-          ...(tags.length > 0 ? { tags } : {}),
-          ...(description ? { description } : {}),
-          ...(summary && !description ? { description: summary } : {}),
-        });
+    const root = rawProjectRoot(match);
+    const documents = new OpenApiDocumentSet(root);
+    const configFiles = this.opts.specPath ? [] : match.artifacts.filter(file => SWAGGER_CONFIG_CANDIDATES.includes(file));
+    const config = await readStaticSwaggerConfig(root, configFiles);
+    const selected = this.opts.specPath ? [this.opts.specPath] : [
+      ...match.artifacts.filter(file => OPENAPI_CANDIDATES.includes(file)), ...config.localSpecs,
+    ];
+    const specFiles = [...new Set(selected)].slice(0, MAX_OPENAPI_DOCUMENTS);
+    if (specFiles.length < new Set(selected).size) documents.limitations.push(`OpenAPI document limit (${MAX_OPENAPI_DOCUMENTS}) reached.`);
+    const routes: ParsedRoute[] = [];
+    const links = [...config.links];
+    const operationCache = new Map<string, { pathItem: Record<string, unknown>; operation: Record<string, unknown> }>();
+    for (const specRel of specFiles) {
+      const document = await documents.load(specRel);
+      if (!document) continue;
+      const spec = document.value;
+      const basePath = this.opts.basePath ?? readString(spec, "basePath") ?? serverPath(readArray(spec, "servers"));
+      const paths = readObject(spec, "paths") ?? {};
+      for (const [pathTemplate, pathItemValue] of Object.entries(paths)) {
+        const resolvedPath = await documents.resolve(pathItemValue, specRel);
+        if (!isRecord(resolvedPath.value)) continue;
+        for (const method of HTTP_METHODS) {
+          const operation = resolvedPath.value[method];
+          if (!isRecord(operation)) continue;
+          const tags = Array.isArray(operation.tags) ? operation.tags.filter((tag): tag is string => typeof tag === "string") : [];
+          const summary = readString(operation, "summary") ?? "";
+          const description = readString(operation, "description") ?? "";
+          const operationId = readString(operation, "operationId") ?? "";
+          const uri = join(basePath, pathTemplate).replace(/\/+/g, "/");
+          const sourceFile = resolvedPath.origin?.file ?? specRel;
+          const sourcePointer = resolvedPath.origin
+            ? `${resolvedPath.origin.pointer}/${method}`
+            : `#/paths/${escapePointer(pathTemplate)}/${method}`;
+          routes.push({
+            framework: "openapi", method: method.toUpperCase(), uri, rawUri: pathTemplate,
+            sourceFile, sourcePointer, sourceDocument: specRel,
+            ...(resolvedPath.references.length ? { sourceReferences: resolvedPath.references } : {}),
+            lineNumber: 0, prefixChain: basePath ? [basePath] : [],
+            displayName: operationId || summary || `${method.toUpperCase()} ${pathTemplate}`,
+            ...(tags.length ? { tags } : {}),
+            ...(description ? { description } : summary ? { description: summary } : {}),
+          });
+          operationCache.set(`${specRel}\0${method}\0${pathTemplate}`, { pathItem: resolvedPath.value, operation });
+          const docsUrl = readString(readObject(operation, "externalDocs"), "url");
+          if (docsUrl && isSafeHttpUrl(docsUrl)) links.push({ url: docsUrl, file: sourceFile, pointer: `${sourcePointer}/externalDocs/url` });
+        }
       }
     }
-    return { routes: out, evidence: {
-      kind: "documentation", completeness: "partial", artifacts: [specRel],
-      limitations: [
-        "Only the selected specification is scanned; additional artifacts and unresolved references may contain other operations.",
-        "The static JSON/YAML subset does not establish complete route or response/schema coverage.",
-      ],
-    } };
+    const artifacts = [...new Set([...documents.documents.keys(), ...configFiles])];
+    const limitations = [...new Set([
+      ...documents.limitations, ...config.limitations,
+      "The static JSON/YAML subset does not establish complete response/schema or runtime coverage.",
+    ])];
+    return {
+      routes,
+      providerContext: new Map<string, unknown>([["openapi.documents", documents.documents], ["openapi.operations", operationCache]]),
+      evidence: {
+        kind: "documentation", completeness: "partial", artifacts, limitations,
+        ...(links.length ? { links: dedupeLinks(links) } : {}),
+      },
+    };
   }
+
 }
 
 function serverPath(servers: unknown[] | undefined): string {
@@ -538,6 +537,320 @@ function serverPath(servers: unknown[] | undefined): string {
   } catch {
     return url.split(/[?#]/, 1)[0]?.replace(/^https?:\/\/[^/]+/i, "").replace(/\/$/, "") ?? "";
   }
+}
+
+interface StaticSwaggerConfig {
+  readonly localSpecs: string[];
+  readonly links: Array<{ url: string; file: string; pointer: string }>;
+  readonly limitations: string[];
+}
+
+async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string>): Promise<StaticSwaggerConfig> {
+  const result: StaticSwaggerConfig = { localSpecs: [], links: [], limitations: [] };
+  for (const file of files) {
+    try {
+      const safe = await ensureInside(root, resolve(root, file));
+      if (!safe.ok) { result.limitations.push(`Swagger config escaped the project root and was ignored: ${file}.`); continue; }
+      const details = await stat(safe.resolved);
+      if (details.size > MAX_OPENAPI_FILE_BYTES) { result.limitations.push(`Swagger config size limit exceeded: ${file}.`); continue; }
+      const raw = await readFile(safe.resolved, "utf8");
+      let configs: unknown[] = [];
+      if (file.endsWith(".json")) {
+        const parsed = parseJson(raw);
+        if (parsed.ok && isRecord(parsed.value)) configs = [parsed.value];
+      } else {
+        const parsed = parseWithProgram(raw, file).program;
+        configs = findSwaggerUiConfigs(parsed);
+      }
+      if (!configs.length) {
+        result.limitations.push(`Swagger configuration in ${file} is not a recognized static literal and was not evaluated.`);
+        continue;
+      }
+      for (const config of configs) {
+        if (!isRecord(config)) continue;
+        const candidates: Array<{ value: unknown; pointer: string }> = [];
+        for (const key of ["url", "configUrl"]) if (typeof config[key] === "string") candidates.push({ value: config[key], pointer: `#/${key}` });
+        if (Array.isArray(config["urls"])) config["urls"].forEach((item, index) => {
+          if (isRecord(item) && typeof item["url"] === "string") candidates.push({ value: item["url"], pointer: `#/urls/${index}/url` });
+        });
+        for (const candidate of candidates) {
+          const value = candidate.value as string;
+          if (isSafeHttpUrl(value)) result.links.push({ url: value, file, pointer: candidate.pointer });
+          else if (isLocalSpecPath(value)) {
+            const local = projectRelativePath(file, value);
+            if (local) result.localSpecs.push(local);
+            else result.limitations.push(`Swagger config path escaped the project root and was ignored: ${file}${candidate.pointer}.`);
+          } else {
+            result.limitations.push(`Swagger config value was not a contained local spec or credential-free HTTP(S) URL: ${file}${candidate.pointer}.`);
+          }
+        }
+      }
+    } catch {
+      result.limitations.push(`Swagger configuration could not be statically parsed: ${file}.`);
+    }
+  }
+  return { ...result, localSpecs: [...new Set(result.localSpecs)], links: dedupeLinks(result.links) };
+}
+
+function findSwaggerUiConfigs(program: unknown): unknown[] {
+  const configs: unknown[] = [];
+  const stack: unknown[] = [program];
+  let visited = 0;
+  while (stack.length && visited++ < 50000) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    const item = node as Record<string, unknown>;
+    if (item["type"] === "CallExpression") {
+      const callee = item["callee"] as Record<string, unknown> | undefined;
+      const args = Array.isArray(item["arguments"]) ? item["arguments"] : [];
+      if (callee?.["type"] === "Identifier" && callee["name"] === "SwaggerUIBundle" && args.length) {
+        const literal = staticLiteral(args[0], 0);
+        if (isRecord(literal)) configs.push(literal);
+      }
+    }
+    for (const [key, value] of Object.entries(item)) {
+      if (["loc", "start", "end", "comments", "leadingComments", "trailingComments"].includes(key)) continue;
+      if (Array.isArray(value)) stack.push(...value);
+      else if (value && typeof value === "object") stack.push(value);
+    }
+  }
+  return configs;
+}
+
+function staticLiteral(node: unknown, depth: number): unknown {
+  if (depth > 16 || !node || typeof node !== "object") return undefined;
+  const item = node as Record<string, unknown>;
+  switch (item["type"]) {
+    case "StringLiteral": case "NumericLiteral": case "BooleanLiteral": return item["value"];
+    case "NullLiteral": return null;
+    case "ArrayExpression": return Array.isArray(item["elements"]) ? item["elements"].map(value => staticLiteral(value, depth + 1)) : undefined;
+    case "ObjectExpression": {
+      if (!Array.isArray(item["properties"])) return undefined;
+      const output: Record<string, unknown> = {};
+      for (const rawProperty of item["properties"]) {
+        if (!rawProperty || typeof rawProperty !== "object") return undefined;
+        const property = rawProperty as Record<string, unknown>;
+        if (property["type"] !== "ObjectProperty" || property["computed"] === true || property["method"] === true) return undefined;
+        const key = property["key"] as Record<string, unknown> | undefined;
+        const name = key?.["type"] === "Identifier" ? key["name"] : key?.["type"] === "StringLiteral" ? key["value"] : undefined;
+        if (typeof name !== "string") return undefined;
+        const value = staticLiteral(property["value"], depth + 1);
+        if (value === undefined) return undefined;
+        output[name] = value;
+      }
+      return output;
+    }
+    default: return undefined;
+  }
+}
+
+function isSafeHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const authority = value.match(/^https?:\/\/([^/?#]*)/i)?.[1] ?? "";
+    return ["http:", "https:"].includes(url.protocol) && !authority.includes("@");
+  } catch { return false; }
+}
+
+function isLocalSpecPath(value: string): boolean {
+  return !value.startsWith("/") && !value.startsWith("\\") && !/^[A-Za-z]:/.test(value) &&
+    !/^[a-z][a-z\d+.-]*:/i.test(value) && !/[?#]/.test(value) && /\.(?:json|ya?ml)$/i.test(value);
+}
+
+function projectRelativePath(fromFile: string, path: string): string | undefined {
+  const parts: string[] = [];
+  const segments = `${dirname(fromFile).replace(/\\/g, "/")}/${path.replace(/\\/g, "/")}`.split("/");
+  for (const segment of segments) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      if (!parts.length) return undefined;
+      parts.pop();
+    } else parts.push(segment);
+  }
+  return parts.join("/") || undefined;
+}
+
+function escapePointer(value: string): string { return value.replace(/~/g, "~0").replace(/\//g, "~1"); }
+
+function dedupeLinks<T extends { readonly url: string; readonly file: string; readonly pointer: string }>(links: ReadonlyArray<T>): T[] {
+  const seen = new Set<string>();
+  return links.filter(link => {
+    const key = `${link.url}\0${link.file}\0${link.pointer}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+interface LoadedOpenApiDocument { readonly file: string; readonly value: unknown; }
+interface ResolvedOpenApiValue {
+  readonly value: unknown;
+  readonly references: ReadonlyArray<{ readonly file: string; readonly pointer: string }>;
+  readonly origin?: { readonly file: string; readonly pointer: string };
+}
+
+/** Per-scan parser cache and resource budget. Never shared between projects. */
+class OpenApiDocumentSet {
+  readonly documents = new Map<string, LoadedOpenApiDocument>();
+  readonly limitations: string[] = [];
+  private totalBytes = 0;
+  private refVisits = 0;
+  private readonly startedAt = Date.now();
+
+  constructor(private readonly root: string) {}
+
+  private withinTime(): boolean {
+    if (Date.now() - this.startedAt <= MAX_OPENAPI_SCAN_MS) return true;
+    this.addLimitation(`OpenAPI scan time budget (${MAX_OPENAPI_SCAN_MS}ms) reached.`);
+    return false;
+  }
+
+  private addLimitation(message: string): void {
+    if (!this.limitations.includes(message)) this.limitations.push(message);
+  }
+
+  async load(file: string): Promise<LoadedOpenApiDocument | undefined> {
+    const normalized = file.replace(/\\/g, "/");
+    const cached = this.documents.get(normalized);
+    if (cached) return cached;
+    if (!this.withinTime()) return undefined;
+    if (this.documents.size >= MAX_OPENAPI_DOCUMENTS) {
+      this.addLimitation(`OpenAPI document limit (${MAX_OPENAPI_DOCUMENTS}) reached.`);
+      return undefined;
+    }
+    const abs = resolve(this.root, normalized);
+    const contained = await ensureInside(this.root, abs);
+    if (!contained.ok) {
+      this.addLimitation(`Reference escaped the project root and was ignored: ${normalized}.`);
+      return undefined;
+    }
+    try {
+      const details = await stat(contained.resolved);
+      if (details.size > MAX_OPENAPI_FILE_BYTES) {
+        this.addLimitation(`OpenAPI file size limit (${MAX_OPENAPI_FILE_BYTES} bytes) exceeded: ${normalized}.`);
+        return undefined;
+      }
+      if (this.totalBytes + details.size > MAX_OPENAPI_TOTAL_BYTES) {
+        this.addLimitation(`OpenAPI total size limit (${MAX_OPENAPI_TOTAL_BYTES} bytes) reached.`);
+        return undefined;
+      }
+      const raw = await readFile(contained.resolved, "utf8");
+      this.totalBytes += details.size;
+      let value: unknown;
+      if (/\.json$/i.test(normalized)) {
+        const parsed = parseJson(raw);
+        if (!parsed.ok) throw new Error(parsed.reason);
+        value = parsed.value;
+      } else {
+        const unsupported = unsupportedYamlFeatures(raw);
+        if (unsupported.length) this.addLimitation(`${normalized} uses unsupported YAML constructs: ${unsupported.join(", ")}.`);
+        value = parseYamlLite(raw);
+      }
+      const document = { file: normalized, value };
+      this.documents.set(normalized, document);
+      if (!this.withinTime()) return undefined;
+      return document;
+    } catch (error) {
+      this.addLimitation(`Unable to read or parse ${normalized}: ${error instanceof Error ? error.message : String(error)}.`);
+      return undefined;
+    }
+  }
+
+  async resolve(value: unknown, file: string, depth = 0, stack: ReadonlySet<string> = new Set()): Promise<ResolvedOpenApiValue> {
+    if (!this.withinTime()) return { value, references: [] };
+    if (depth > MAX_OPENAPI_REF_DEPTH) {
+      this.addLimitation(`OpenAPI traversal/reference depth limit (${MAX_OPENAPI_REF_DEPTH}) reached.`);
+      return { value, references: [] };
+    }
+    if (Array.isArray(value)) {
+      const out: unknown[] = [];
+      const references: { file: string; pointer: string }[] = [];
+      for (const item of value) {
+        const resolved = await this.resolve(item, file, depth + 1, stack);
+        out.push(resolved.value); references.push(...resolved.references);
+      }
+      return { value: out, references: uniqueReferences(references) };
+    }
+    if (!isRecord(value)) return { value, references: [] };
+    let source: Record<string, unknown> = value;
+    let references: { file: string; pointer: string }[] = [];
+    let origin: ResolvedOpenApiValue["origin"];
+    const ref = value["$ref"];
+    if (typeof ref === "string") {
+      if (++this.refVisits > MAX_OPENAPI_REF_VISITS) {
+        this.addLimitation(`OpenAPI reference visit limit (${MAX_OPENAPI_REF_VISITS}) reached.`);
+        return { value, references: [] };
+      }
+      const target = splitLocalRef(ref, file);
+      if (!target) {
+        this.addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
+          ? `Reference escaped the project root and was ignored: ${ref}.`
+          : `Non-local or invalid reference was not followed: ${ref}.`);
+        return { value, references: [] };
+      }
+      const id = `${target.file}#${target.pointer}`;
+      if (stack.has(id)) {
+        this.addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
+        return { value, references: [{ file: target.file, pointer: target.pointer }] };
+      }
+      const document = await this.load(target.file);
+      const referenced = document ? pointerValue(document.value, target.pointer) : undefined;
+      if (referenced === undefined) {
+        this.addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
+        return { value, references: [{ file: target.file, pointer: target.pointer }] };
+      }
+      const nextStack = new Set(stack); nextStack.add(id);
+      const resolved = await this.resolve(referenced, target.file, depth + 1, nextStack);
+      source = { ...(isRecord(resolved.value) ? resolved.value : {}), ...value };
+      delete source["$ref"];
+      references = [{ file: target.file, pointer: target.pointer }, ...resolved.references];
+      origin = { file: target.file, pointer: target.pointer };
+    }
+    const output: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(source)) {
+      const resolved = await this.resolve(child, origin?.file ?? file, depth + 1, stack);
+      output[key] = resolved.value;
+      references.push(...resolved.references);
+    }
+    return { value: output, references: uniqueReferences(references), ...(origin ? { origin } : {}) };
+  }
+}
+
+function uniqueReferences(references: ReadonlyArray<{ readonly file: string; readonly pointer: string }>): { file: string; pointer: string }[] {
+  const seen = new Set<string>();
+  return references.filter(reference => {
+    const key = `${reference.file}#${reference.pointer}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function splitLocalRef(ref: string, fromFile: string): { file: string; pointer: string } | undefined {
+  if (/^[a-z][a-z\d+.-]*:/i.test(ref) || ref.startsWith("//") || ref.startsWith("\\") || ref.includes("?")) return undefined;
+  const hashAt = ref.indexOf("#");
+  const documentPart = hashAt < 0 ? ref : ref.slice(0, hashAt);
+  const pointer = hashAt < 0 ? "" : ref.slice(hashAt + 1);
+  if (pointer && !pointer.startsWith("/")) return undefined;
+  let file = fromFile;
+  if (documentPart) {
+    if (isAbsolute(documentPart) || /^[A-Za-z]:/.test(documentPart)) return undefined;
+    const resolvedFile = projectRelativePath(fromFile, documentPart);
+    if (!resolvedFile) return undefined;
+    file = resolvedFile;
+  }
+  return { file, pointer: pointer ? `#${pointer}` : "" };
+}
+
+function pointerValue(root: unknown, pointer: string): unknown {
+  if (!pointer || pointer === "#") return root;
+  if (!pointer.startsWith("#/")) return undefined;
+  let current = root;
+  for (const encoded of pointer.slice(2).split("/")) {
+    const part = encoded.replace(/~1/g, "/").replace(/~0/g, "~");
+    if (Array.isArray(current) && /^\d+$/.test(part)) current = current[Number(part)];
+    else if (isRecord(current)) current = current[part];
+    else return undefined;
+  }
+  return current;
 }
 
 // ---------------------------------------------------------------------------
@@ -637,33 +950,39 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     match: IProjectMatch,
     _scanResult: IScanResult,
   ): Promise<Awaited<ReturnType<IValidationSpecProvider["resolve"]>>> {
-    const specRel = this.getSpecPath(match);
+    const specRel = route.sourceDocument ?? this.getSpecPath(match);
     if (!specRel) return { endpointKey: keyOf(route), fields: [] };
-    const absPath = resolve(rawProjectRoot(match), specRel);
-    let raw: string;
-    try {
-      raw = await readFile(absPath, "utf8");
-    } catch {
-      return { endpointKey: keyOf(route), fields: [] };
-    }
+    const operations = _scanResult.providerContext?.get("openapi.operations") as
+      | ReadonlyMap<string, { pathItem: Record<string, unknown>; operation: Record<string, unknown> }>
+      | undefined;
     let spec: unknown;
-    if (specRel.endsWith(".json")) {
-      const parsed = parseJson(raw);
-      if (!parsed.ok) {
-        return { endpointKey: keyOf(route), fields: [] };
-      }
-      spec = parsed.value;
+    let pathItem: Record<string, unknown> | undefined;
+    let op: Record<string, unknown> | undefined;
+    const cached = operations?.get(`${specRel}\0${route.method.toLowerCase()}\0${route.rawUri}`);
+    if (cached) {
+      pathItem = cached.pathItem;
+      op = cached.operation;
+      const docs = _scanResult.providerContext?.get("openapi.documents") as
+        | ReadonlyMap<string, { readonly value: unknown }> | undefined;
+      spec = docs?.get(specRel)?.value;
     } else {
-      try {
-        spec = parseYamlLite(raw);
-      } catch {
-        return { endpointKey: keyOf(route), fields: [] };
+      // Compatibility for callers that invoke the provider directly without a scan result.
+      const absPath = resolve(rawProjectRoot(match), specRel);
+      let raw: string;
+      try { raw = await readFile(absPath, "utf8"); }
+      catch { return { endpointKey: keyOf(route), fields: [] }; }
+      if (specRel.endsWith(".json")) {
+        const parsed = parseJson(raw);
+        if (!parsed.ok) return { endpointKey: keyOf(route), fields: [] };
+        spec = parsed.value;
+      } else {
+        try { spec = parseYamlLite(raw); }
+        catch { return { endpointKey: keyOf(route), fields: [] }; }
       }
+      pathItem = readObject(readObject(spec, "paths"), route.rawUri);
+      op = readObject(pathItem, route.method.toLowerCase());
     }
-    const pathItem = readObject(readObject(spec, "paths"), route.rawUri);
-    if (!pathItem) return { endpointKey: keyOf(route), fields: [] };
-    const op = readObject(pathItem, route.method.toLowerCase());
-    if (!op) return { endpointKey: keyOf(route), fields: [] };
+    if (!pathItem || !op) return { endpointKey: keyOf(route), fields: [] };
     const fields: IValidationSpec[] = [];
     const params = [
       ...(readArray(pathItem, "parameters") ?? []),

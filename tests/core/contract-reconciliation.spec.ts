@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { IContractScan } from "../../packages/contracts/interfaces/core/contract-evidence.interface.js";
 import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface.js";
-import { ContractEvidenceReportSchema } from "../../packages/contracts/constants/core/contract-evidence.constant.js";
+import { ContractEvidenceReportSchema, ContractScanEvidenceSchema } from "../../packages/contracts/constants/core/contract-evidence.constant.js";
 import { reconcileContracts } from "../../packages/core/discovery/contract-reconciliation.service.js";
 
 function scan(kind: "code" | "documentation", path = "/users/{{id}}", completeness: "complete" | "partial" | "unknown" = "unknown", overrides: Partial<EndpointSpec> = {}): IContractScan {
@@ -21,6 +21,47 @@ describe("shared static contract reconciliation", () => {
     expect(result?.operations[0]).toMatchObject({ status: "matched", path: "/users/{id}", observed: [{ file: "code.json", line: 12, description: "Observed description" }], documented: [{ file: "documentation.json", description: "Documented description" }] });
     expect(result?.operations[0]?.limitations).not.toHaveLength(0);
     expect(ContractEvidenceReportSchema.parse(result)).toEqual(result);
+  });
+  test("preserves RFC 6901 pointers, local-reference provenance and declared links through the shared schema", () => {
+    const code = scan("code");
+    const docs = scan("documentation");
+    const documented = {
+      ...docs,
+      source: { ...docs.source, links: [{ url: "https://docs.example/api", file: "swagger-initializer.js", pointer: "#/url" }] },
+      routes: [{ ...docs.routes[0]!, sourcePointer: "#/paths/~1users/get", sourceReferences: [{ file: "paths/users.yaml", pointer: "#/UserPath" }] }],
+    };
+    const result = reconcileContracts([code, documented]);
+    expect(result?.operations[0]?.documented[0]).toMatchObject({
+      file: "documentation.json", pointer: "#/paths/~1users/get",
+      references: [{ file: "paths/users.yaml", pointer: "#/UserPath" }],
+    });
+    expect(result?.sources[1]?.links).toEqual([{ url: "https://docs.example/api", file: "swagger-initializer.js", pointer: "#/url" }]);
+    expect(ContractEvidenceReportSchema.parse(result)).toEqual(result);
+    expect(() => ContractScanEvidenceSchema.parse({
+      kind: "documentation", completeness: "partial", artifacts: [], limitations: [],
+      links: [{ url: "https://user:secret@example.test/api", file: "swagger.js", pointer: "#/url" }],
+    })).toThrow();
+    if (!result) throw new Error("Expected a report for documentation scans");
+    expect(() => ContractEvidenceReportSchema.parse({
+      ...result,
+      operations: result?.operations.map(operation => ({
+        ...operation,
+        documented: [{ framework: "openapi", file: "openapi.json", line: 0, pointer: "#/bad~2pointer" }],
+      })),
+    })).toThrow();
+  });
+  test("retains separate source pointers when multiple documentation artifacts declare one operation", () => {
+    const base = scan("documentation", "/users");
+    const multi = {
+      ...base,
+      specs: [base.specs[0]!, { ...base.specs[0]!, name: "users-copy" }],
+      routes: [
+        { ...base.routes[0]!, sourceFile: "openapi.json", sourcePointer: "#/paths/~1users/get" },
+        { ...base.routes[0]!, sourceFile: "docs/openapi.yaml", sourcePointer: "#/paths/~1users/get" },
+      ],
+    };
+    const result = reconcileContracts([multi]);
+    expect(result?.operations[0]?.documented.map(item => item.file)).toEqual(["openapi.json", "docs/openapi.yaml"]);
   });
   test.each(["partial", "unknown"] as const)("does not infer absence from a %s code scanner", completeness => {
     const empty = { ...scan("code", "/missing", completeness), specs: [], routes: [] };
