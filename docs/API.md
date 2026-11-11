@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 450 símbolos en 177 módulos.
+> 451 símbolos en 178 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -635,6 +635,17 @@ between iterations).
 added in the future (global auth, extra headers, URI prefixes, etc.), this
 helper is the natural place to extend them.
 
+### `packages/core/discovery/contract-reconciliation.service.ts`
+
+#### `reconcileContracts`
+
+```ts
+export function reconcileContracts(scans: ReadonlyArray<IContractScan>): IContractEvidenceReport | undefined
+```
+
+Compare original observations without changing merger precedence or inventing absence.
+A match means compatible observed assertions, not full HTTP/schema certification.
+
 ### `packages/core/discovery/discovery.orchestrator.ts`
 
 `DiscoveryOrchestrator` — the single entry point for framework-agnostic discovery.
@@ -807,8 +818,6 @@ export function summarizeGenerationResults(results: ReadonlyArray<IGenerationRes
 ```
 
 ### `packages/core/discovery/generation.pipeline.ts`
-
-Generation pipeline: `projectRoot` -> `PostmanCollection`.
 
 #### `MultipleServicesWithoutCombineError`
 
