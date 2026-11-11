@@ -2,14 +2,14 @@
 id: x00101
 title: "Fail CI when the canonical proposal index is stale"
 kind: fix
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-10
-last-transition-id: 46dbac9d-faa6-450f-85d8-5af59737ce29
-last-correlation-id: 46dbac9d-faa6-450f-85d8-5af59737ce29
-last-transition-from: in-progress
-last-transition-at: 2026-11-10T18:49:02.179Z
+last-transition-id: b054cb10-f788-48e2-bcf0-4cc6e61e2346
+last-correlation-id: b054cb10-f788-48e2-bcf0-4cc6e61e2346
+last-transition-from: review
+last-transition-at: 2026-11-11T00:18:36.237Z
 shipped-in:
   - "94bacf8b"
 ---
