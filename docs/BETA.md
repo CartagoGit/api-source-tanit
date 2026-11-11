@@ -136,20 +136,23 @@ The canonical proposal documents define the remaining work:
 
 - [External repository corpus](delendai/proposals/ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
 - [Swagger discovery and reconciliation](delendai/proposals/INDEX.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
-- [Optional anonymous enrichment](delendai/proposals/ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior.
+- [Optional anonymous enrichment](delendai/proposals/INDEX.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior. Current provider research is in [AI-ENRICHMENT.md](AI-ENRICHMENT.md).
 - [Linux desktop dependency gate](delendai/proposals/blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md): blocked on a supported upstream resolution, followed by dependency audit and actual installer acceptance. As verified on 2026-11-10, the Tauri/Wry migration PRs linked in that proposal remain open.
 
-Provider research on 2026-11-10 is preliminary. The
-[llmfaucet project](https://github.com/llmfaucet/llmfaucet) advertises a
-public anonymous endpoint with limited capacity, and warns that upstream
-availability can disappear. Its API and policy hostnames did not resolve
-from this environment; no inference request succeeded and no project code
-was sent. This is a local connectivity observation, not proof of a global outage.
-The current [LLM7 terms](https://github.com/chigwell/llm7.io/blob/main/TERMS.md)
-require an API token, so earlier claims that it meets the no-account/no-key
-requirement cannot be assumed. Verify an eligible service and its data
-handling before selecting a product default. No provider is certified or
-configured by this document.
+## Remote AI provider check — 2026-11-11
+
+No eligible provider has been verified for distributed product use. The
+[llmfaucet project](https://github.com/llmfaucet/llmfaucet) advertises
+anonymous access, but its API/docs could not be verified from this environment.
+[LLM7 terms](https://github.com/chigwell/llm7.io/blob/main/TERMS.md) require an
+API token, and [Pollinations generation requests](https://github.com/pollinations/pollinations/blob/main/gen.pollinations.ai/src/docs/apidocs-recipes.md)
+require authentication. Kilo's public catalog confirmed a current zero-cost
+anonymous model and one synthetic request returned HTTP 200, but the selected
+NVIDIA model's [trial terms](https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf)
+exclude production and distribution. A previously documented Kilo model ID
+returned 404; this does not imply that all Kilo models are unavailable.
+Details, limits and policy links are in [AI-ENRICHMENT.md](AI-ENRICHMENT.md).
+Nothing here configures a provider or certifies enrichment for product use.
 
 External audit scores are qualitative opinions. Targets such as 98% precision,
 95% recall or a 50% token reduction are proposed goals, not measured results.
