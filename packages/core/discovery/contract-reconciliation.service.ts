@@ -66,7 +66,7 @@ export function reconcileContracts(scans: ReadonlyArray<IContractScan>): IContra
     operations.push({
       serviceId: first.scan.source.serviceId, method: first.spec.method.toUpperCase(), path: routePath(first.spec.uri), status,
       documented: documented.map(item => item.evidence), observed: observed.map(item => item.evidence), conflicts,
-      limitations: presentBoth ? ["Matching route observations do not certify complete request/response schemas or live HTTP behavior."]
+      limitations: presentBoth ? ["Comparison covers route identity and overlapping validation type/required/format and explicit operation-auth assertions. Body/schema graphs, responses and live HTTP behavior are not evaluated."]
         : absenceKnown ? [] : [`No complete ${missingKind} scan establishes absence for this service.`],
     });
   }
