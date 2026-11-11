@@ -1,0 +1,9 @@
+{
+  "framework": "websocket",
+  "routes": [
+    { "method": "IN", "uri": "/ws/events/ping" },
+    { "method": "OUT", "uri": "/ws/events/pong" },
+    { "method": "IN", "uri": "/ws/events/message" },
+    { "method": "OUT", "uri": "/ws/events/ack" }
+  ]
+}
