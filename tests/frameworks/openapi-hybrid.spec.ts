@@ -81,3 +81,35 @@ describe("the scanner no longer leaks anything outside the contract", () => {
     }
   });
 });
+
+describe("shared documentation evidence through real generation", () => {
+  test("retains raw sources and identical summary/API reports for a flat hybrid service", async () => {
+    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const { generateCollection } = await import("../../packages/core/discovery/generation.pipeline.js");
+    const { defaultOrchestrator } = await import("../../packages/frameworks/framework.registry.js");
+    const { summarizeGenerationResults } = await import("../../packages/core/discovery/generation-summary.helper.js");
+    const { summarizeSnapshot } = await import("../../packages/core/application-api/snapshot-summary.helper.js");
+    const { makeSnapshot } = await import("../../packages/core/session/project-snapshot.js");
+    const { SnapshotSummarySchema } = await import("../../packages/contracts/constants/core/application-api.constant.js");
+    const root = await mkdtemp(join(tmpdir(), "tanit-doc-evidence-"));
+    try {
+      await writeFile(join(root, "package.json"), JSON.stringify({ name: "hybrid-evidence", dependencies: { express: "4" } }));
+      await writeFile(join(root, "main.js"), "const express=require('express'); const app=express(); app.get('/users/:id', (req,res)=>res.json({ok:true})); app.get('/code-only', (req,res)=>res.json({ok:true}));");
+      await writeFile(join(root, "openapi.json"), JSON.stringify({ openapi: "3.0.3", info: { title: "Evidence", version: "1" }, paths: { "/users/{id}": { get: { description: "Existing documentation", responses: { "200": { description: "OK" } } } }, "/doc-only": { get: { responses: { "200": { description: "OK" } } } } } }));
+      const result = await generateCollection(root, { orchestrator: defaultOrchestrator() });
+      const report = result.contractEvidence;
+      expect(report).toBeDefined();
+      expect(report?.sources.every(source => source.serviceId === result.serviceId)).toBe(true);
+      expect(report?.operations.find(operation => operation.path === "/users/{id}")).toMatchObject({ status: "matched", documented: [{ file: "openapi.json#GET/users/{id}" }], observed: [{ file: expect.stringContaining("main.js") }] });
+      expect(report?.operations.find(operation => operation.path === "/doc-only")?.status).toBe("unknown");
+      expect(report?.operations.find(operation => operation.path === "/code-only")?.status).toBe("unknown");
+      const summary = summarizeGenerationResults([result], result.frameworks);
+      const snapshot = makeSnapshot({ sessionId: "evidence", projectRoot: root, results: [result], diagnostics: [] });
+      const api = SnapshotSummarySchema.parse(summarizeSnapshot(snapshot));
+      expect(summary.contractEvidence).toEqual([report]);
+      expect(api.contractEvidence).toEqual(summary.contractEvidence);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+});

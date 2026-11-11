@@ -135,7 +135,7 @@ implementation depends on it.
 The canonical proposal documents define the remaining work:
 
 - [External repository corpus](delendai/proposals/ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md): fixed revisions, reviewed expectations, endpoint precision/recall and response/schema accuracy measured separately, plus CLI/Application API parity.
-- [Swagger discovery and reconciliation](delendai/proposals/ready/feats/f00020-descubrir-swagger-existente-y-reconciliar-contratos-con-evidencia-del-codigo.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
+- [Swagger discovery and reconciliation](delendai/proposals/INDEX.md): reuse existing import/scanner support, link original documentation, preserve provenance and expose conflicts. Existing OpenAPI import alone does not implement reconciliation.
 - [Optional anonymous enrichment](delendai/proposals/ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md): minimal bounded queries, cached by evidence, marked `AI generated`; failures retain the static result. Generated descriptions do not establish verified HTTP behavior.
 - [Linux desktop dependency gate](delendai/proposals/blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md): blocked on a supported upstream resolution, followed by dependency audit and actual installer acceptance. As verified on 2026-11-10, the Tauri/Wry migration PRs linked in that proposal remain open.
 

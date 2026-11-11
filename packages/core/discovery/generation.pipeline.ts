@@ -1,3 +1,5 @@
+import { reconcileContracts } from "./contract-reconciliation.service.js";
+import type { IContractScan } from "../../contracts/interfaces/core/contract-evidence.interface.js";
 /**
  * Generation pipeline: `projectRoot` -> `PostmanCollection`.
  *
@@ -589,6 +591,12 @@ async function buildForService(
     collection.variable = localConfig.variables;
   }
 
+  const comparisonIds = new Set([service.match, ...service.additionalMatches].map(deriveServiceId));
+  const combinedComparison = options.combineServices === true && service.serviceId === "";
+  const comparisonScans = discovery.contractScans?.filter(scan => combinedComparison || comparisonIds.has(scan.source.serviceId))
+    .map(scan => ({ ...scan, source: { ...scan.source, serviceId: combinedComparison ? scan.source.serviceId : service.serviceId } }));
+  const contractEvidence = comparisonScans ? reconcileContracts(comparisonScans) : undefined;
+
   const result: IGenerationResult = {
     collection,
     specs,
@@ -609,6 +617,7 @@ async function buildForService(
     frameworks: discovery.frameworks,
     project: discovery.project,
     ...(discovery.provenance ? { provenance: discovery.provenance } : {}),
+    ...(contractEvidence ? { contractEvidence } : {}),
     metrics: {
       // Per-service metrics. Before this slice they came from
       // `discovery.routes` / `discovery.withValidation` /
@@ -993,6 +1002,7 @@ function isSafeRelativeSubdir(value: string): boolean {
 }
 
 interface IDiscovery {
+  readonly contractScans?: ReadonlyArray<IContractScan>;
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
   readonly config: ProjectConfig;
@@ -1137,6 +1147,7 @@ async function discoverSpecs(
       readonly scannerRoutes: ReadonlyArray<ParsedRoute>;
     }
     const perScanner: IPerScanner[] = [];
+    const contractScans: IContractScan[] = [];
 
     for (const candidate of usable) {
       const result = await buildSpecsFromScanner(
@@ -1144,6 +1155,17 @@ async function discoverSpecs(
         candidate.match,
         candidate.validation,
       );
+      contractScans.push({
+        source: {
+          ...(result.scanEvidence ?? {
+            kind: "code" as const, completeness: "unknown" as const,
+            artifacts: [...candidate.match.artifacts],
+            limitations: ["This scanner has not declared complete route coverage."],
+          }),
+          framework: candidate.match.framework, serviceId: deriveServiceId(candidate.match),
+        },
+        specs: result.specs.filter(spec => (spec.transport ?? "http") === "http"), routes: result.routes,
+      });
       specs.push(...result.specs);
       routes.push(...result.routes);
       withValidation += result.withFormRequest;
@@ -1256,6 +1278,7 @@ async function discoverSpecs(
         frameworks: usable.map((c) => c.match.framework),
         project,
         provenance,
+        contractScans,
         matches: usable.map((c) => c.match),
         routesByService: accumulateRoutesByService(
           perScanner.map(({ serviceId, scannerRoutes }) => {
@@ -1296,6 +1319,7 @@ async function discoverSpecs(
       warnings,
       frameworks: usable.map((c) => c.match.framework),
       project,
+      contractScans,
       matches: usable.map((c) => c.match),
       routesByService: new Map([
         [deriveServiceId(usable[0]!.match), routes],
