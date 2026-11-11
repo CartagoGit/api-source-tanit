@@ -36,6 +36,7 @@ export function summarizeSnapshot(snapshot: IProjectSnapshot): ISnapshotSummary 
       snapshot.results.map((r) => r.serviceId ?? "default"),
     ).size,
     diagnostics: diagnosticsOf(snapshot),
+    ...(snapshot.results.some(result => result.contractEvidence) ? { contractEvidence: snapshot.results.flatMap(result => result.contractEvidence ? [result.contractEvidence] : []) } : {}),
   };
 }
 

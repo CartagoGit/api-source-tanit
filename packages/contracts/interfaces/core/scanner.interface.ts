@@ -226,6 +226,8 @@ export interface ParsedRoute {
  * duplicating the descriptor inside the serialized string.
  */
 export interface IScanResult {
+  /** Explicit observation limits; omission never proves that routes are absent. */
+  readonly evidence?: import("./contract-evidence.interface.js").IContractScanEvidence;
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**
    * Map `${method} ${uri}` → auxiliary descriptor.

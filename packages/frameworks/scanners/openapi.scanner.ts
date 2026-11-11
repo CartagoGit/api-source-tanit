@@ -519,7 +519,13 @@ export class OpenApiRouteScanner implements IRouteScanner {
         });
       }
     }
-    return { routes: out };
+    return { routes: out, evidence: {
+      kind: "documentation", completeness: "partial", artifacts: [specRel],
+      limitations: [
+        "Only the selected specification is scanned; additional artifacts and unresolved references may contain other operations.",
+        "The static JSON/YAML subset does not establish complete route or response/schema coverage.",
+      ],
+    } };
   }
 }
 
