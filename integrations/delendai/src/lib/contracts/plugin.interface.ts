@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { FRAMEWORK_IDS } from "../../../../../packages/contracts/constants/frameworks/framework-ids.constant";
 import { EXPORT_FORMATS } from "../../../../../packages/contracts/constants/core/export-formats.constant";
+import { ContractEvidenceReportSchema } from "../../../../../packages/contracts/constants/core/contract-evidence.constant";
 import type { IProjectSummary } from "../../../../../packages/contracts/interfaces/core/domain.interface";
 import type { ICheckReport } from "../../../../../packages/contracts/interfaces/cli/command-outcomes.interface";
 import type { IStatsOutcome } from "../../../../../packages/contracts/interfaces/cli/stats-outcome.interface";
@@ -439,6 +440,9 @@ export const SummaryOutputSchema = z.object({
   // f00010 S2: documentation health, in percentages. On the final
   // specs (the same ones `generate` would feed), so what the health
   // says is what the collection will carry.
+  contractEvidence: z.array(ContractEvidenceReportSchema).optional().describe(
+    "Comparaciones estáticas de documentación y código, si se encontró documentación.",
+  ),
   health: ProjectHealthSchema.describe(
     "Salud de la documentación, en porcentajes 0..100. 0 en todo con cero endpoints.",
   ),
@@ -466,6 +470,9 @@ export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
 const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
   SummaryOutputSchema;
 void _summaryCubreElContrato;
+// Structural assignment alone does not detect omitted optional keys.
+const _summaryCoversOptionalKeys: keyof IProjectSummary extends keyof ISummaryOutput ? true : never = true;
+void _summaryCoversOptionalKeys;
 
 /** A step of `test`: the execution of a sub-command. */
 export const TestStepSchema = z.object({
