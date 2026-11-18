@@ -42,7 +42,7 @@ Opción UI apagada por defecto; consultas mínimas por endpoint y evidencia falt
   - "Distinguir los términos de la API de prueba de NVIDIA de los términos aplicables a la ruta de Kilo, cuyo proveedor de inferencia sigue sin verificar. Registrar que la solicitud sintética precedió la lectura de los términos enlazados."
   - "No enviar datos de proyecto ni credenciales, no configurar el producto y no inferir una API anónima de un chat web. Si no hay proveedor elegible, mantener S2 pendiente."
 - review-state: in_review
-- review-implementer: openai-gpt-6-luna
+- review-implementer: openai-gpt-6.2-sol
 
 ### S2 — Huecos, consentimiento, caché y UI comunes
 - **Status**: pending
