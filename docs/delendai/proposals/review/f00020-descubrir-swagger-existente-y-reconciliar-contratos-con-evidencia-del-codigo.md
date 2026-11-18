@@ -69,7 +69,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "La presentación consume el snapshot compartido y renderiza texto sin hacer solicitudes de red de documentación."
 - shipped-in: `b0747b9bc82341dd21a83741f83c8659b79a3411`
 - review-state: in_review
-- review-implementer: openai-gpt-6.1-sol
+- review-implementer: openai-gpt-6.2-sol
 
 ### S4 — Lectura explícita de documentación original
 - **Status**: pending
