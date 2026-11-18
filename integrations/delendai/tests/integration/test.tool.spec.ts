@@ -14,8 +14,9 @@
  *     fixture, the step returns `ok=false` with a `detail` useful
  *     for acting on.
  */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+import { TestOutputSchema } from "../../src/lib/contracts/plugin.interface";
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
@@ -62,6 +63,22 @@ describe("tanit_test", () => {
     expect(smokeAllStep?.ok, smokeAllStep?.detail).toBe(true);
     expect(smokeAllStep?.summary).toMatch(/\d+ frameworks pass/);
     expect(parsed.durationMs).toBeGreaterThan(0);
+  });
+
+  test("reports valid elapsed durations when the wall clock moves backward", async () => {
+    const handler = await captureHandler(buildTestToolRegistration(makeCtx()));
+    const wallClock = vi.spyOn(Date, "now").mockReturnValueOnce(10_000).mockReturnValue(9_000);
+    try {
+      const result = await handler({ framework: "django", withTypecheck: false });
+      expect(result.isError).toBeFalsy();
+      const report = TestOutputSchema.parse(JSON.parse(result.content[0]?.text ?? "{}"));
+      expect(report.passed).toBe(true);
+      expect(report.durationMs).toBeGreaterThan(0);
+      expect(report.steps.map(step => step.name)).toEqual(["smoke:django", "test:smoke-all"]);
+      expect(report.steps.every(step => step.durationMs >= 0)).toBe(true);
+    } finally {
+      wallClock.mockRestore();
+    }
   });
 
   test("includes typecheck when requested", { timeout: 110_000 }, async () => {
