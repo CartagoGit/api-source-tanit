@@ -18,6 +18,21 @@ Restablecer la auditoría y las pruebas de entrega tras el aviso GHSA-fc5q-39xc-
 
 Angular, Vite y Vitest resuelven dependencias de picomatch afectadas. No hay versión oficial corregida publicada. Un fork público con el parche puede sustituirlas temporalmente si su contenido y compatibilidad se verifican.
 
+## dependency resolution
+
+The official [security advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+lists no patched upstream release. Use `@ryotsu/picomatch@4.0.7` as a temporary
+replacement for every transitive `picomatch` resolution. The lockfile pins
+the exact registry tarball and its integrity. The package contains the
+[public fork patch](https://github.com/ryotsu-kankichi/secured-picomatch/commit/ef699ef45d5ad5ad976fb30d2939b4c814b7ca01).
+The reviewed files match that commit. The entry points remain unchanged.
+The fork also changes some bracket and globstar behavior, so the full
+Tanit proof and an Angular production build are required.
+
+Remove the override when an official patched release is available. Confirm
+that Angular, Vite, Vitest and watcher dependencies all resolve to a corrected
+version, then run the same frozen installation, audit and full validation.
+
 ## non-goals
 
 - Omitir el aviso, modificar los umbrales de auditoría o cambiar la configuración de CI.
