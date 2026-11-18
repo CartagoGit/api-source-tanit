@@ -15,6 +15,7 @@ que explica qué lo destraba.
 
 | id | kind | path | nota |
 | --- | --- | --- | --- |
+| `f00021` | `feat` | [`blocked/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md`](blocked/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md) | — |
 | `s00001` | `spike` | [`blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md`](blocked/s00001-resolver-bloqueo-glib-transitivo-antes-de-certificar-escritorio-linux.md) | GLib 0.18.5 remains affected by RUSTSEC-2024-0429. A compatible Tauri/GTK migration is pending; upstream Tauri |
 
 ## Done
