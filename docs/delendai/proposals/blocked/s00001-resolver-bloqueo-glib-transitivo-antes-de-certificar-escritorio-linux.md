@@ -82,3 +82,25 @@ adoption, the build must use verified patched bytes reproducibly, pass an
 audit that recognizes their provenance, and pass Rust tests and installer
 acceptance. The Tanit dependency lock, installer certification and advisory
 remain unchanged.
+
+## Linux package and audit comparison — 2026-11-18
+
+With the same source snapshot and local GLib patch, the official Tauri CLI
+2.12.5 built an unsigned debug package for amd64. Cargo ran with
+`--locked --offline` and the temporary lock checksum stayed the same. The
+extracted package contained `tanit-desktop`, the desktop entry, and `apisrc`.
+The bundled CLI matched the freshly compiled sidecar byte for byte and
+returned the expected help and version `0.1.0-alpha.2`. The smoke test ran
+the CLI only. The native UI, signature, and updater still require acceptance.
+
+The experimental package was 52,150,784 bytes with SHA-256
+`2b96bfa12e30959fb81bb8ae17702e19ad1a76f17bfe08b990ae766ac1c7db97`.
+
+Cargo Audit 0.22.2 compared the registry and local-patch locks against
+RustSec database commit `472a4c9a785030434f15d7da84964d60fbe789ab`, with
+no ignored advisories. Both contained 456 crates. The stock lock reported
+RUSTSEC-2024-0429. The local lock omitted that warning because
+[RustSec excludes local crate sources from this matching](https://github.com/rustsec/rustsec/pull/1573).
+Accepting the backport still requires verification of the exact patched
+source supplied to the build. The independent Tokio warning in both locks
+is tracked by [PR #168](https://github.com/CartagoGit/api-source-tanit/pull/168).
