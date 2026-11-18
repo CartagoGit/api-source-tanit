@@ -9,7 +9,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | --- | --- | --- |
 | `f00021` | `feat` | [`ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md`](ready/feats/f00021-completar-huecos-puntuales-con-ia-remota-anonima-opcional-y-trazable.md) |
 | `t00005` | `test` | [`ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md`](ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md) |
-| `x00105` | `fix` | [`ready/fixes/x00105-actualizar-tokio-a-una-version-corregida-en-el-escritorio.md`](ready/fixes/x00105-actualizar-tokio-a-una-version-corregida-en-el-escritorio.md) |
 
 ## Bloqueadas
 
