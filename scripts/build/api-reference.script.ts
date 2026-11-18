@@ -7,7 +7,7 @@
  * información: los docblocks del código y una copia generada en otro
  * dominio. La copia es la que se queda vieja, y encima nadie la mira
  * porque el producto principal de este paquete es un CLI —para eso está
- * `expostman --help`, que se genera del propio dispatcher.
+ * `apisrc --help`, que se genera del propio dispatcher.
  *
  * Lo que sí falta es un índice de lo **importable**: el `exports` del
  * `package.json` deja entrar `./core/*` y `./frameworks`, y hasta ahora
@@ -148,7 +148,7 @@ async function build(): Promise<string> {
     "```",
     "",
     "Si lo que buscas es la herramienta de línea de comandos y no la",
-    "librería, `expostman --help` lista los comandos y las banderas.",
+    "librería, `apisrc --help` lista los comandos y las banderas.",
     "",
     `> ${symbolCount} símbolos en ${sections.length} módulos.`,
     "",

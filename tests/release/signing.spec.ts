@@ -1774,17 +1774,18 @@ describe("the release policy", () => {
   test("the workflow asks the build script for the bundles the matrix declares", async () => {
     const workflow = await readFile(WORKFLOW, "utf8");
 
-    // `scripts/build/desktop-build.script.ts` lee `EXPOSTMAN_BUNDLES`.
+    // `scripts/build/desktop-build.script.ts` lee `TANIT_BUNDLES`.
     // Con otro nombre, el recorte de formatos se ignora en silencio y
     // el runner construye bundles que la matriz no pidió.
     const build = await readFile(
       join(REPO_ROOT, "scripts", "build", "desktop-build.script.ts"),
       "utf8",
     );
-    expect(build).toContain("EXPOSTMAN_BUNDLES");
+    expect(build).toContain('process.env["TANIT_BUNDLES"]');
 
-    expect(workflow).toContain("EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}");
-    expect(workflow).not.toContain("TANIT_BUNDLES");
+    expect(workflow).toContain("TANIT_BUNDLES: ${{ matrix.tauri_bundles }}");
+    const compose = await readFile(join(REPO_ROOT, ".docker", "docker-compose.yml"), "utf8");
+    expect(compose).toContain("TANIT_BUNDLES: deb");
   });
 
   test("the release documentation covers secrets, rotation, troubleshooting and verification", async () => {
