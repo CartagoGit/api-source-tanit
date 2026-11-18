@@ -67,7 +67,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - acceptance:
   - "CLI, web y escritorio representan origen, punteros, comparaciones y conflictos del mismo informe, con JSON completo y vistas acotadas; el flujo de exportación se conserva."
   - "La presentación consume el snapshot compartido y renderiza texto sin hacer solicitudes de red de documentación."
-- shipped-in: `60f41f7ceb7fc567e19b29cff5761146b933c221`
+- shipped-in: `b0747b9bc82341dd21a83741f83c8659b79a3411`
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
 
