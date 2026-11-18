@@ -1,0 +1,399 @@
+name: rehydrate-develop
+
+# Devuelve `main` a `develop` cada vez que `main` cambia.
+#
+# ## Por qué existe
+#
+# La promoción va de `develop` a `main`. Lo que no iba al revés era
+# `main` a `develop`, y sin esa mitad el grafo se rompía: `main` se
+# quedaba con commits que `develop` no tenía, y la promoción siguiente
+# chocaba —`requireLatestIntegration` exige que la rama que se promueve
+# contenga a la que se promueve hacia—. El PR de promoción quedaba
+# `dirty` y nadie sabía por qué.
+#
+# El invariante es `develop -> main -> develop`: la promoción lleva
+# `develop` a `main`, y esta workflow devuelve `main` a `develop`.
+#
+# ## Qué hace
+#
+# Al recibir un `push` a `main`:
+#
+#   1. Si `develop` ya contiene a `main`, no hay nada que rehidratar.
+#   2. Si no, comprueba que el contenido de `main` está en la historia
+#      de `develop`, prepara una rama desde `develop` y le fusiona
+#      `main` con un merge commit.
+#   3. Abre un PR contra `develop` y activa el auto-merge.
+#   4. Espera a que se integre, borra la rama y comprueba que el
+#      invariante se cumple.
+#
+# ## Por qué un PR y no un push
+#
+# Porque `develop` es una rama protegida y un push directo lo rechaza:
+# "Changes must be made through a pull request". Y porque el
+# auto-merge **no** necesita aprobación aquí: `develop` pide **cero**
+# aprobaciones, así que le basta con que `ci-summary` esté en verde.
+# (La promoción, que va contra `main`, sí exige aprobación, y esa la
+# da el bot de `auto-approve` porque el PR lo firma el dueño.)
+#
+# ## Por qué el árbol no cambia
+#
+# `main` no tiene nada que `develop` no tenga ya: su commit es un
+# squash de commits que `develop` conserva en su historia, y tras una
+# promoción con merge commit su árbol es el árbol que `develop` tenía
+# en ese momento. La fusión usa la estrategia `ours`, que toma el
+# árbol de `develop` y registra el linaje de `main` en el grafo.
+#
+# Antes de fusionar, el workflow **comprueba** que el árbol de `main`
+# existe en la historia de `develop`. Si no existe —alguien reescribió
+# `main` por la fuerza, o la promoción se hizo de otra manera— el
+# workflow **falla con el motivo**, en vez de tomar la parte de
+# `develop` en silencio y esconder un contenido que faltaba.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  # `checks: write` para reportar el `ci-summary` del PR de
+  # rehidratación: su CI no puede correr —el PR lo abre este mismo
+  # workflow con `GITHUB_TOKEN`, y los eventos que dispara el
+  # `GITHUB_TOKEN` no crean ejecuciones—, y sin ese check el PR
+  # esperaría para siempre a uno que no llega.
+  checks: write
+
+env:
+  # La rama de integración: la que recibe la rehidratación.
+  INTEGRATION_BRANCH: develop
+  # El check que resume la validación entera.
+  SUMMARY_CHECK: ci-summary
+  # Cuánto se espera a que el auto-merge integre el PR.
+  MERGE_TIMEOUT_SECONDS: 2700
+  POLL_SECONDS: 20
+
+jobs:
+  rehydrate:
+    name: rehidratar develop con main
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Todo el historial: la fusión necesita el ancestro común y
+          # la comprobación de ancestros necesita los dos lados.
+          fetch-depth: 0
+
+      - name: Traer las dos ramas
+        run: |
+          set -euo pipefail
+          # El runner no tiene identidad de git, y un `git merge` que
+          # crea un commit la necesita: sin esto el merge muere con
+          # 128 y *"Please tell me who you are"*.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin \
+            "+refs/heads/*:refs/remotes/origin/*"
+          # `sed -n '1,20p'` y no `head -20`: `head` cierra el pipe y
+          # `git branch` recibe un SIGPIPE, que con `pipefail` es un
+          # error del paso.
+          git --no-pager branch -r | sed -n '1,20p'
+
+      - name: ¿Ya contiene develop a main?
+        id: check
+        run: |
+          set -euo pipefail
+          if git merge-base --is-ancestor "origin/main" "origin/${INTEGRATION_BRANCH}"; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "✓ ${INTEGRATION_BRANCH} ya contiene a main: no hay nada que rehidratar"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "→ ${INTEGRATION_BRANCH} no contiene a main: hay que rehidratar"
+            echo "  commits de main que faltan en ${INTEGRATION_BRANCH}:"
+            # `sed -n '1,20p'` y no `head -20`: `head` cierra el pipe
+            # en cuanto tiene veinte líneas, `git log` recibe un
+            # SIGPIPE y, con `pipefail`, eso es un error. Con menos de
+            # veinte líneas no pasa —y por eso parece funcionar—,
+            # pero con veinte o más el paso muere por un motivo que
+            # no tiene nada que ver con lo que el paso comprueba.
+            git --no-pager log --oneline "origin/${INTEGRATION_BRANCH}..origin/main" | sed -n '1,20p'
+          fi
+
+      # El contenido de `main` tiene que estar en la historia de
+      # `develop`. Si no está, la rehidratación no es "unir el
+      # linaje": es traer contenido que faltaba, y eso es otra
+      # operación —que exige revisión humana—. El workflow para con
+      # el motivo en vez de decidir por su cuenta.
+      - name: Comprobar que el contenido de main ya está en develop
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          MAIN_TREE="$(git rev-parse "origin/main^{tree}")"
+          # El `awk` **no** sale antes de tiempo: con `exit`, cierra el
+          # pipe, `git log` recibe un SIGPIPE y `pipefail` convierte
+          # eso en un error —el paso moría con 141 sin llegar a
+          # comprobar nada—. Se lee el flujo entero y se guarda la
+          # primera coincidencia.
+          FOUND="$(git --no-pager log --format='%H %T' "origin/${INTEGRATION_BRANCH}" \
+            | awk -v tree="$MAIN_TREE" '$2 == tree && !seen { print $1; seen = 1 }')"
+          if [ -z "$FOUND" ]; then
+            echo "✗ el contenido de main no está en la historia de ${INTEGRATION_BRANCH}." >&2
+            echo "  La rehidratación no sería sólo unir el linaje: sería traer" >&2
+            echo "  contenido que faltaba, y eso necesita revisión humana." >&2
+            echo "  main:    $(git rev-parse origin/main)" >&2
+            echo "  árbol:   $MAIN_TREE" >&2
+            exit 1
+          fi
+          echo "✓ el contenido de main está en ${INTEGRATION_BRANCH} (commit $FOUND)"
+          echo "  la fusión no va a cambiar el árbol"
+
+      - name: Preparar la rama de rehidratación
+        id: prepare
+        if: steps.check.outputs.needed == 'true'
+        run: |
+          set -euo pipefail
+          # El espacio de nombres es propio: `wip/` y `pr/` son del
+          # runtime de delendai, y una rama de CI ahí se confundiría
+          # con una unidad de trabajo.
+          #
+          # El nombre **no** lleva el id de la ejecución: la rama es
+          # la misma para todas las rehidrataciones, así que el PR se
+          # reutiliza en vez de acumularse uno por cada promoción.
+          BRANCH="rehydrate/main-into-develop"
+          git checkout -B "$BRANCH" "origin/${INTEGRATION_BRANCH}"
+          # `-s ours`: toma el árbol de `${INTEGRATION_BRANCH}` y
+          # registra `main` como segundo padre. El contenido ya está
+          # —eso se acaba de comprobar—, así que el árbol no cambia
+          # y lo que se recupera es el linaje.
+          git merge --no-ff -s ours "origin/main" \
+            -m "merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git push --force origin "$BRANCH"
+          echo "✓ rama $BRANCH publicada"
+
+      - name: Abrir el PR y activar el auto-merge
+        id: pr
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # El cuerpo del PR va en un fichero, no en un argumento con
+          # comillas: un argumento multilínea dentro de un bloque YAML
+          # tiene que seguir indentado, y si no, YAML lo lee como
+          # claves nuevas y el workflow entero deja de ser válido.
+          # Un workflow con el YAML roto no falla donde se ve: GitHub
+          # lo ejecuta con el **nombre del fichero** en vez del suyo,
+          # sin filtros de rama, y se muere en cada push.
+          cat > "$RUNNER_TEMP/body.md" <<'BODY'
+          Esta rama fusiona `main` en `develop` con un merge commit.
+
+          El árbol **no** cambia: el contenido de `main` ya está en `develop`, y la
+          fusión registra el linaje en el grafo. Lo que cambia es la historia, y con
+          ella la forma del PR de promoción: `develop` vuelve a contener a `main`,
+          que es lo que `requireLatestIntegration` exige.
+
+          La hizo el workflow de rehidratación, sin tocar el contenido.
+          BODY
+          # El PR se abre por la API REST y no con `gh pr create`: la
+          # respuesta **trae el número**, así que no hace falta una
+          # segunda llamada para averiguarlo. Y `gh pr create` puede
+          # terminar con error **después** de haberlo creado —la
+          # release quedaba creada y el workflow moría sin el
+          # número—.
+          #
+          # La ruta del cuerpo es **absoluta**: `body.md` está en
+          # `$RUNNER_TEMP`, y el directorio de trabajo del paso es el
+          # checkout del repo. Con una ruta relativa el fichero no
+          # existe, `gh` falla, y el PR no se abre.
+          #
+          # Y el error **no** se tapa: un `2>/dev/null` convierte
+          # "no se pudo abrir el PR" en un misterio.
+          PR_JSON="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
+            -f title="merge: main entra en ${INTEGRATION_BRANCH} — la rehidratación que cierra el ciclo" \
+            -f head="$BRANCH" \
+            -f base="$INTEGRATION_BRANCH" \
+            -F body=@"$RUNNER_TEMP/body.md" 2>"$RUNNER_TEMP/pr.err" || true)"
+          NUMBER="$(echo "$PR_JSON" | jq -r '.number // empty')"
+          if [ -z "$NUMBER" ]; then
+            # ¿ya había un PR abierto para esa rama? La rama es la
+            # misma para todas las rehidrataciones, así que un PR
+            # anterior sigue abierto y lo que hay es **actualizarlo**.
+            #
+            # El filtro va en local, no en el parámetro `head` de la
+            # API: ese parámetro quiere `dueño:rama`, y
+            # `repos/${GITHUB_REPOSITORY}` es `dueño/repo` — con la
+            # barra de más no encuentra nada y el workflow se rinde
+            # con un PR abierto que sí existe.
+            NUMBER="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+              | jq -r --arg head "$BRANCH" '[.[] | select(.head.ref == $head) | .number] | first // empty')"
+            if [ -z "$NUMBER" ]; then
+              echo "✗ no se pudo abrir el PR de rehidratación" >&2
+              echo "  lo que dijo la API:" >&2
+              cat "$RUNNER_TEMP/pr.err" >&2 || true
+              echo "$PR_JSON" >&2
+              exit 1
+            fi
+            echo "✓ el PR #$NUMBER ya existía: se reutiliza"
+          else
+            echo "✓ PR #$NUMBER abierto"
+          fi
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      # El check lo reporta el workflow, y no la CI.
+      #
+      # ## Por qué
+      #
+      # El PR lo abre este workflow con `GITHUB_TOKEN`, y **los
+      # eventos que dispara el propio `GITHUB_TOKEN` no crean
+      # ejecuciones nuevas**: la CI del PR no corre, y el check que
+      # `develop` exige —`ci-summary`— no llega nunca. El PR se
+      # quedaba abierto para siempre, esperando un check que no
+      # iba a venir, y en cada promoción se acumulaba uno más.
+      #
+      # ## Por qué es legítimo
+      #
+      # Porque este PR **no cambia el contenido**: su árbol es el de
+      # `develop`, byte a byte. Lo único que trae es el linaje de
+      # `main` en el grafo. La validación que `develop` exige es la
+      # de ese mismo árbol, y ya está en verde.
+      #
+      # Y el workflow **comprueba las dos cosas** antes de reportar
+      # nada: que el árbol de la cabeza es idéntico al de la base, y
+      # que el `ci-summary` de la base está en verde. Si cualquiera
+      # de las dos no se cumple, no se reporta el check y el PR
+      # espera a una validación de verdad.
+      - name: El check lo reporta el workflow — el PR no cambia el contenido
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" -q .head.sha)"
+          BASE_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" -q .base.sha)"
+          HEAD_TREE="$(git rev-parse "${HEAD_SHA}^{tree}")"
+          BASE_TREE="$(git rev-parse "${BASE_SHA}^{tree}")"
+          if [ "$HEAD_TREE" != "$BASE_TREE" ]; then
+            echo "✗ el PR cambia el contenido: la validación tiene que correr de verdad" >&2
+            echo "  cabeza: $HEAD_TREE" >&2
+            echo "  base:   $BASE_TREE" >&2
+            exit 1
+          fi
+          echo "✓ el árbol de la cabeza es idéntico al de la base"
+
+          # La base puede estar **en curso** de validación: la
+          # promoción y el merge en `${INTEGRATION_BRANCH}` ocurren
+          # casi a la vez, y el `ci-summary` de la base puede no
+          # haber terminado cuando este workflow llega. Se **espera**
+          # a que termine; sólo si falla, o si no termina nunca, se
+          # rinde.
+          #
+          # Rendirse en vez de esperar es lo que hacía que el ciclo
+          # no cerrara: el workflow se dying con "la base no está en
+          # verde (in_progress)" cuando la base iba a ponerse verde
+          # en un minuto.
+          deadline=$(( SECONDS + 1200 ))
+          while :; do
+            BASE_CI="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${BASE_SHA}/check-runs" \
+              | jq -r '[.check_runs[] | select(.name == "ci-summary")] | sort_by(.id) | last | (if . == null then "" else (.status + "/" + (.conclusion // "-")) end)')"
+            case "$BASE_CI" in
+              completed/success)
+                break
+                ;;
+              completed/failure*|completed/cancelled*|completed/timed_out*)
+                echo "✗ la base está en rojo ($BASE_CI): no se reporta el check" >&2
+                exit 1
+                ;;
+            esac
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "✗ la base no terminó su validación (${BASE_CI:-sin check})" >&2
+              exit 1
+            fi
+            echo "… la base todavía no está en verde (${BASE_CI:-sin check})"
+            sleep "$POLL_SECONDS"
+          done
+          echo "✓ la base está en verde"
+
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/check-runs" \
+            -f name=ci-summary \
+            -f head_sha="$HEAD_SHA" \
+            -f status=completed \
+            -f conclusion=success \
+            -f "output[title]=El contenido no cambia: esto es la rehidratación" \
+            -f "output[summary]=El árbol de la cabeza es idéntico al de ${BASE_SHA}, cuya validación estaba en verde. Este pull request sólo une el linaje de main en el grafo: no cambia ni un fichero."
+          echo "✓ check reportado"
+
+      - name: Activar el auto-merge
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          # El auto-merge se activa por el endpoint de **fusión** con
+          # `enable_auto_merge`, no por un `/auto-merge` aparte: ese
+          # endpoint **no existe** en la API REST, y llamarlo devolvía
+          # un 404 que el paso se comía sin decir nada.
+          #
+          # `develop` pide cero aprobaciones, así que el auto-merge
+          # integra en cuanto `ci-summary` está en verde. Si la
+          # protección de la rama cambiara, esto falla —y falla con
+          # el motivo, que es lo que hace falta.
+          gh api --method PUT \
+          "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}/merge" \
+          -f merge_method=merge \
+          -F enable_auto_merge=true
+          echo "✓ auto-merge activado"
+
+      # Se espera a que el PR se integre. El workflow termina en verde
+      # cuando el ciclo está **cerrado**, no cuando el PR existe: un
+      # verde que sólo significa "abrí un PR" mentiría sobre lo que
+      # el workflow promete.
+      - name: Esperar a que la rehidratación se integre
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          deadline=$(( SECONDS + MERGE_TIMEOUT_SECONDS ))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            state="$(gh pr view "$NUMBER" --json state -q .state)"
+            if [ "$state" = "MERGED" ]; then
+              echo "✓ la rehidratación está integrada"
+              exit 0
+            fi
+            if [ "$state" = "CLOSED" ]; then
+              echo "✗ el PR de rehidratación se cerró sin integrarse." >&2
+              exit 1
+            fi
+            echo "… el PR sigue abierto (${state})"
+            sleep "$POLL_SECONDS"
+          done
+          echo "✗ el PR de rehidratación no se integró en el plazo." >&2
+          echo "  Sin esto, ${INTEGRATION_BRANCH} se queda sin el linaje de main" >&2
+          echo "  y la promoción siguiente choca." >&2
+          exit 1
+
+      - name: Borrar la rama y comprobar el invariante
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # La rama ya está integrada: no hace falta guardarla.
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$BRANCH" \
+            || echo "→ la rama ya no estaba"
+          echo "✓ rama $BRANCH borrada"
+
+          git fetch --no-tags origin \
+            "+refs/heads/*:refs/remotes/origin/*"
+          if git merge-base --is-ancestor "origin/main" "origin/${INTEGRATION_BRANCH}"; then
+            echo "✓ ${INTEGRATION_BRANCH} contiene a main: el ciclo está cerrado"
+          else
+            echo "✗ ${INTEGRATION_BRANCH} sigue sin contener a main." >&2
+            exit 1
+          fi

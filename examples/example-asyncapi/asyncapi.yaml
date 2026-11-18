@@ -1,0 +1,20 @@
+asyncapi: 2.6.0
+info:
+  title: Orders API
+  version: 1.0.0
+servers:
+  prod:
+    url: my-cluster.kafka.example.com:9092
+    protocol: kafka
+channels:
+    orders/created:
+        description: Orders placed by customers
+operations:
+    onOrderCreated:
+        action: send
+        channel:
+            $ref: '#/channels/orders~1created'
+    onOrderReceived:
+        action: receive
+        channel:
+            $ref: '#/channels/orders~1created'
