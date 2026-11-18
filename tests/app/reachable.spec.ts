@@ -170,7 +170,7 @@ describe("the diagnostics section", () => {
     expect(fixture.nativeElement.querySelectorAll("li.error").length).toBe(1);
   });
 
-  it("says so when there is nothing to report", () => {
+  it("says so when there are no scanner diagnostics", () => {
     const request = vi.fn(async () => {
       throw new Error("unexpected operation");
     });
@@ -186,7 +186,7 @@ describe("the diagnostics section", () => {
     const fixture = TestBed.createComponent(DiagnosticsComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain("Nothing to report");
+    expect(fixture.nativeElement.textContent).toContain("No scanner warnings or errors.");
   });
 });
 
