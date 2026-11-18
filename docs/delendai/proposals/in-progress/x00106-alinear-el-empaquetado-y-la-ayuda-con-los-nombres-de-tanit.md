@@ -2,10 +2,14 @@
 id: x00106
 title: "Alinear el empaquetado y la ayuda con los nombres de Tanit"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: desktop
 date: 2026-11-18
+last-transition-id: 46d75221-5e77-49b2-ab0a-bdcd93218984
+last-correlation-id: 46d75221-5e77-49b2-ab0a-bdcd93218984
+last-transition-from: ready
+last-transition-at: 2026-11-18T15:43:54.982Z
 ---
 
 # x00106 — Alinear el empaquetado y la ayuda con los nombres de Tanit
