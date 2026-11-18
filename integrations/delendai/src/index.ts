@@ -47,7 +47,7 @@ import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
 
 export default definePlugin({
   name: "tanit",
-  version: "0.1.1",
+  version: "0.2.0",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +
     "de cualquier proyecto de API. Pensado para ser invocado por agentes " +

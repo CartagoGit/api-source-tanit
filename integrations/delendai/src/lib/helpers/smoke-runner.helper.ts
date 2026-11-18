@@ -111,7 +111,7 @@ export async function runSmoke(opts: {
   scanner: { scan(match: { projectRoot: string }): Promise<{ routes: ReadonlyArray<ParsedRoute> }> };
   match: { projectRoot: string };
 }): Promise<ISmokeResult> {
-  const start = Date.now();
+  const start = performance.now();
   const expected = await loadExpected(opts.fixtureRoot);
   const result = await opts.scanner.scan(opts.match);
   const actual = result.routes;
@@ -124,6 +124,6 @@ export async function runSmoke(opts: {
     expectedCount: expected.routes.length,
     missing,
     unexpected,
-    durationMs: Date.now() - start,
+    durationMs: Math.round(performance.now() - start),
   };
 }
