@@ -64,15 +64,17 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-log: approved by openai-gpt-6 — verified at cad6fe6d1cb6, validate exit 0 and tests 75/75 claimed, no recorded run cited; acceptance 3/3: (1) Bounded existing parser handles multiple JSON/YAML docs and contained refs; cycle/depth/document/size/time limits explicit. Focused tests pass. (2) Static AST literal config only, credential-free HTTP(S) schema, dynamic configuration limitations; descriptions remain attributed evidence. (3) Operation-scoped sourceFile/sourcePointer/sourceReferences retained in contract and reconciliation projection; focused provenance tests pass. — Independent landed review cad6fe6d, matches fa6bfc1f except compatible runtime declarations. Directly ran bunx vitest run --project frameworks --project core tests/frameworks/openapi-scanner.spec.ts tests/frameworks/openapi-hybrid.spec.ts tests/core/contract-reconciliation.spec.ts: 75/75, 3 files, exit 0, 2026-11-18 18:56:34 local. Counts reviewer-reported, no journal run cited. Published #163 CI 44363182400 independently verified success. S2 only; S4 pending.
 
 ### S3 — Presentación del informe común
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/cli/commands/summary.script.ts`, `packages/ui/web/index.html.constant.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/app/reachable.spec.ts`, `tests/cli/contract-evidence-summary.spec.ts`
 - **Gate**: real carrier rendering, localized diagnostics and CLI report tests
 - acceptance:
   - "CLI, web y escritorio representan origen, punteros, comparaciones y conflictos del mismo informe, con JSON completo y vistas acotadas; el flujo de exportación se conserva."
   - "La presentación consume el snapshot compartido y renderiza texto sin hacer solicitudes de red de documentación."
 - shipped-in: `b0747b9bc82341dd21a83741f83c8659b79a3411`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6
+- review-log: approved by openai-gpt-6 — verified at cad6fe6d1cb6, validate exit 0 and tests 14/14 claimed, no recorded run cited; acceptance 2/2: (1) CLI, embedded web and Angular diagnostics consume shared evidence; origins/pointers/conflicts displayed with bounded operation views and full CLI JSON. Existin… (2) Angular reads ProjectStore shared snapshot; embedded web renders existing inspection response; textContent/interpolation render evidence without interpreting m… — Independent landed review cad6fe6d; carrier sources identical to b641fe9b. Directly ran bunx vitest run --project cli --project app tests/cli/contract-evidence-summary.spec.ts tests/app/diagnostics.spec.ts tests/app/reachable.spec.ts: 14/14, 3 files, exit 0, 2026-11-18 18:56:58 local. Counts reviewer-reported, no journal run cited. #165 published full CI checks/run 44266873071 successful. S3 only; no overall closure; S4 pending and S5 separately reviewed.
 
 ### S4 — Lectura explícita de documentación original
 - **Status**: pending
