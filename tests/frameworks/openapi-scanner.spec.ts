@@ -415,6 +415,68 @@ describe("OpenApiRouteScanner — scan() branches", () => {
     } finally { await project.cleanup(); }
   });
 
+  test("attributes each operation to its defining path item and excludes sibling operation references", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: { "/users": { $ref: "./paths/alias.json" } } }),
+      "paths/alias.json": JSON.stringify({
+        $ref: "./shared.json",
+        get: {
+          description: "GET declared in the alias",
+          externalDocs: { url: "https://docs.example/read" },
+          parameters: [{ $ref: "./read-parameter.json" }],
+        },
+      }),
+      "paths/shared.json": JSON.stringify({
+        parameters: [{ $ref: "./common-parameter.json" }],
+        post: { description: "POST declared in the shared path", parameters: [{ $ref: "./write-parameter.json" }] },
+      }),
+      "paths/read-parameter.json": JSON.stringify({ name: "page", in: "query" }),
+      "paths/write-parameter.json": JSON.stringify({ name: "dryRun", in: "query" }),
+      "paths/common-parameter.json": JSON.stringify({ name: "tenant", in: "query" }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      const get = result.routes.find(route => route.method === "GET");
+      const post = result.routes.find(route => route.method === "POST");
+      expect(get).toMatchObject({ sourceFile: "paths/alias.json", sourcePointer: "#/get" });
+      expect(post).toMatchObject({ sourceFile: "paths/shared.json", sourcePointer: "#/post" });
+      expect(get?.sourceReferences?.map(ref => ref.file)).toEqual([
+        "paths/alias.json", "paths/read-parameter.json", "paths/shared.json", "paths/common-parameter.json",
+      ]);
+      expect(post?.sourceReferences?.map(ref => ref.file)).toEqual([
+        "paths/alias.json", "paths/shared.json", "paths/write-parameter.json", "paths/common-parameter.json",
+      ]);
+      expect(result.evidence?.links).toEqual([
+        { url: "https://docs.example/read", file: "paths/alias.json", pointer: "#/get/externalDocs/url" },
+      ]);
+    } finally { await project.cleanup(); }
+  });
+
+  test("keeps operations declared beside an unresolved path reference", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({
+        paths: {
+          "/local": {
+            $ref: "./missing.json",
+            get: { parameters: [{ $ref: "#/components/parameters/Page" }] },
+          },
+        },
+        components: { parameters: { Page: { name: "page", in: "query", schema: { type: "integer" } } } },
+      }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      const route = result.routes[0];
+      if (!route) throw new Error("Missing locally declared operation");
+      expect(route.sourceReferences).toEqual([{ file: "openapi.json", pointer: "#/components/parameters/Page" }]);
+      expect((await new OpenApiValidationProvider().resolve(route, match, result)).fields)
+        .toMatchObject([{ fieldName: "page", type: "integer" }]);
+      expect(result.evidence?.limitations.some(item => item.includes("missing.json"))).toBe(true);
+    } finally { await project.cleanup(); }
+  });
+
   test("preserves a whole-file reference and resolves local schema siblings in their own document", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({

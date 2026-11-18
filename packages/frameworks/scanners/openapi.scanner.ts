@@ -487,8 +487,9 @@ export class OpenApiRouteScanner implements IRouteScanner {
       }
       for (const [pathTemplate, pathItemValue] of Object.entries(paths)) {
         if (!documents.withinTime()) break;
-        const resolvedPath = await documents.resolve(pathItemValue, document.file);
-        if (!isRecord(resolvedPath.value)) continue;
+        const pathPointer = `#/paths/${escapePointer(pathTemplate)}`;
+        const resolvedPath = await documents.resolvePathItem(pathItemValue, document.file, pathPointer);
+        const pathReferences = resolvedPath.members.get("parameters")?.references ?? [];
         for (const method of HTTP_METHODS) {
           const operation = resolvedPath.value[method];
           if (!isRecord(operation)) continue;
@@ -497,16 +498,14 @@ export class OpenApiRouteScanner implements IRouteScanner {
           const description = readString(operation, "description") ?? "";
           const operationId = readString(operation, "operationId") ?? "";
           const uri = join(basePath, pathTemplate).replace(/\/+/g, "/");
-          const ownsOperation = isRecord(pathItemValue) && Object.hasOwn(pathItemValue, method);
-          const origin = ownsOperation ? undefined : resolvedPath.origin;
-          const sourceFile = origin?.file ?? document.file;
-          const sourcePointer = origin
-            ? `${origin.pointer}/${method}`
-            : `#/paths/${escapePointer(pathTemplate)}/${method}`;
+          const member = resolvedPath.members.get(method);
+          if (!member) continue;
+          const { file: sourceFile, pointer: sourcePointer } = member;
+          const sourceReferences = uniqueReferences([...member.references, ...pathReferences]);
           routes.push({
             framework: "openapi", method: method.toUpperCase(), uri, rawUri: pathTemplate,
             sourceFile, sourcePointer, sourceDocument: document.file,
-            ...(resolvedPath.references.length ? { sourceReferences: resolvedPath.references } : {}),
+            ...(sourceReferences.length ? { sourceReferences } : {}),
             lineNumber: 0, prefixChain: basePath ? [basePath] : [],
             displayName: operationId || summary || `${method.toUpperCase()} ${pathTemplate}`,
             ...(tags.length ? { tags } : {}),
@@ -700,10 +699,20 @@ function dedupeLinks<T extends { readonly url: string; readonly file: string; re
 }
 
 interface LoadedOpenApiDocument { readonly file: string; readonly value: unknown; }
+interface OpenApiLocation { readonly file: string; readonly pointer: string; }
+
 interface ResolvedOpenApiValue {
   readonly value: unknown;
-  readonly references: ReadonlyArray<{ readonly file: string; readonly pointer: string }>;
-  readonly origin?: { readonly file: string; readonly pointer: string };
+  readonly references: readonly OpenApiLocation[];
+}
+
+interface ResolvedPathMember extends OpenApiLocation {
+  readonly references: readonly OpenApiLocation[];
+}
+
+interface ResolvedPathItem {
+  readonly value: Record<string, unknown>;
+  readonly members: ReadonlyMap<string, ResolvedPathMember>;
 }
 
 /** Per-scan parser cache and resource budget. Never shared between projects. */
@@ -767,59 +776,92 @@ function createOpenApiDocumentSet(root: string) {
     }
   }
 
-  async function resolveValue(value: unknown, file: string, depth = 0, stack: ReadonlySet<string> = new Set()): Promise<ResolvedOpenApiValue> {
-    if (!withinTime()) return { value, references: [] };
-    if (depth > MAX_OPENAPI_REF_DEPTH) {
-      addLimitation(`OpenAPI traversal/reference depth limit (${MAX_OPENAPI_REF_DEPTH}) reached.`);
-      return { value, references: [] };
+  function canResolve(depth: number): boolean {
+    if (!withinTime()) return false;
+    if (depth <= MAX_OPENAPI_REF_DEPTH) return true;
+    addLimitation(`OpenAPI traversal/reference depth limit (${MAX_OPENAPI_REF_DEPTH}) reached.`);
+    return false;
+  }
+
+  async function followReference(ref: string, file: string, stack: ReadonlySet<string>) {
+    if (++refVisits > MAX_OPENAPI_REF_VISITS) {
+      addLimitation(`OpenAPI reference visit limit (${MAX_OPENAPI_REF_VISITS}) reached.`);
+      return undefined;
     }
+    const target = splitLocalRef(ref, file);
+    if (!target) {
+      addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
+        ? `Reference escaped the project root and was ignored in ${file}.`
+        : `Non-local or invalid reference was not followed in ${file}.`);
+      return undefined;
+    }
+    const id = `${target.file}${target.pointer}`;
+    if (stack.has(id)) {
+      addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
+      return undefined;
+    }
+    const document = await load(target.file);
+    const value = document ? pointerValue(document.value, target.pointer) : undefined;
+    if (value === undefined) {
+      addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
+      return undefined;
+    }
+    return { target, value, stack: new Set([...stack, id]) };
+  }
+
+  async function resolvePathItem(
+    value: unknown, file: string, pointer: string, depth = 0, stack: ReadonlySet<string> = new Set(),
+  ): Promise<ResolvedPathItem> {
+    const output: Record<string, unknown> = Object.create(null);
+    const members = new Map<string, ResolvedPathMember>();
+    if (!canResolve(depth) || !isRecord(value)) return { value: output, members };
+
+    const ref = readString(value, "$ref");
+    const followed = ref === undefined ? undefined : await followReference(ref, file, stack);
+    if (followed) {
+      const { target } = followed;
+      const parent = await resolvePathItem(followed.value, target.file, target.pointer, depth + 1, followed.stack);
+      for (const [key, member] of parent.members) {
+        output[key] = parent.value[key];
+        members.set(key, { ...member, references: [target, ...member.references] });
+      }
+    }
+    for (const key of [...HTTP_METHODS, "parameters"]) {
+      if (!Object.hasOwn(value, key)) continue;
+      const child = await resolveValue(value[key], file, depth + 1, stack);
+      output[key] = child.value;
+      members.set(key, { file, pointer: `${pointer}/${key}`, references: child.references });
+    }
+    return { value: output, members };
+  }
+
+  async function resolveValue(
+    value: unknown, file: string, depth: number, stack: ReadonlySet<string>,
+  ): Promise<ResolvedOpenApiValue> {
+    if (!canResolve(depth)) return { value, references: [] };
+    const references: OpenApiLocation[] = [];
     if (Array.isArray(value)) {
       const out: unknown[] = [];
-      const references: { file: string; pointer: string }[] = [];
       for (const item of value) {
         const resolved = await resolveValue(item, file, depth + 1, stack);
-        out.push(resolved.value); references.push(...resolved.references);
+        out.push(resolved.value);
+        references.push(...resolved.references);
       }
       return { value: out, references: uniqueReferences(references) };
     }
-    if (!isRecord(value)) return { value, references: [] };
+    if (!isRecord(value)) return { value, references };
     const output: Record<string, unknown> = Object.create(null);
-    let references: { file: string; pointer: string }[] = [];
-    let origin: ResolvedOpenApiValue["origin"];
-    const ref = value["$ref"];
-    if (typeof ref === "string") {
-      if (++refVisits > MAX_OPENAPI_REF_VISITS) {
-        addLimitation(`OpenAPI reference visit limit (${MAX_OPENAPI_REF_VISITS}) reached.`);
-        return { value, references: [] };
-      }
-      const target = splitLocalRef(ref, file);
-      if (!target) {
-        addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
-          ? `Reference escaped the project root and was ignored: ${ref}.`
-          : `Non-local or invalid reference was not followed in ${file}.`);
-        return { value, references: [] };
-      }
-      const id = `${target.file}${target.pointer}`;
-      if (stack.has(id)) {
-        addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
-        return { value, references: [] };
-      }
-      const document = await load(target.file);
-      const referenced = document ? pointerValue(document.value, target.pointer) : undefined;
-      if (referenced === undefined) {
-        addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
-        return { value, references: [] };
-      }
-      const nextStack = new Set(stack);
-      nextStack.add(id);
-      const resolved = await resolveValue(referenced, target.file, depth + 1, nextStack);
+    const ref = readString(value, "$ref");
+    const followed = ref === undefined ? undefined : await followReference(ref, file, stack);
+    if (followed) {
+      const { target } = followed;
+      const resolved = await resolveValue(followed.value, target.file, depth + 1, followed.stack);
       if (isRecord(resolved.value)) {
         for (const [key, child] of Object.entries(resolved.value)) {
           if (key !== "$ref") output[key] = child;
         }
       }
-      references = [{ file: target.file, pointer: target.pointer }, ...resolved.references];
-      origin = resolved.origin ?? target;
+      references.push(target, ...resolved.references);
     }
     for (const [key, child] of Object.entries(value)) {
       if (key === "$ref") continue;
@@ -834,17 +876,17 @@ function createOpenApiDocumentSet(root: string) {
       }
       references.push(...resolved.references);
     }
-    return { value: output, references: uniqueReferences(references), ...(origin ? { origin } : {}) };
+    return { value: output, references: uniqueReferences(references) };
   }
 
   function artifacts(): string[] {
     return [...documents.values()].flatMap(document => document ? [document.file] : []);
   }
 
-  return { load, resolve: resolveValue, limitations, artifacts, withinTime };
+  return { load, resolvePathItem, limitations, artifacts, withinTime };
 }
 
-function uniqueReferences(references: ReadonlyArray<{ readonly file: string; readonly pointer: string }>): { file: string; pointer: string }[] {
+function uniqueReferences(references: readonly OpenApiLocation[]): OpenApiLocation[] {
   const seen = new Set<string>();
   return references.filter(reference => {
     const key = `${reference.file}#${reference.pointer}`;
@@ -853,7 +895,7 @@ function uniqueReferences(references: ReadonlyArray<{ readonly file: string; rea
   });
 }
 
-function splitLocalRef(ref: string, fromFile: string): { file: string; pointer: string } | undefined {
+function splitLocalRef(ref: string, fromFile: string): OpenApiLocation | undefined {
   if (/^[a-z][a-z\d+.-]*:/i.test(ref) || ref.startsWith("//") || ref.startsWith("\\") || ref.includes("?")) return undefined;
   const hashAt = ref.indexOf("#");
   const documentPart = hashAt < 0 ? ref : ref.slice(0, hashAt);
@@ -998,8 +1040,8 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
       const document = await documents.load(specRel);
       if (document) {
         const rawPath = readObject(readObject(document.value, "paths"), route.rawUri);
-        const resolved = await documents.resolve(rawPath, document.file);
-        if (isRecord(resolved.value)) pathItem = resolved.value;
+        const resolved = await documents.resolvePathItem(rawPath, document.file, `#/paths/${escapePointer(route.rawUri)}`);
+        pathItem = resolved.value;
         op = readObject(pathItem, method);
       }
     }
