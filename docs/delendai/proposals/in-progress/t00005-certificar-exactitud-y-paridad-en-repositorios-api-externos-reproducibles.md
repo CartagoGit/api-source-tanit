@@ -2,10 +2,14 @@
 id: t00005
 title: "Certificar exactitud y paridad en repositorios API externos reproducibles"
 kind: test
-status: ready
+status: in-progress
 type: proposal
 track: beta
 date: 2026-11-10
+last-transition-id: bb7216fe-6e94-4d42-bc62-06e105b5704b
+last-correlation-id: bb7216fe-6e94-4d42-bc62-06e105b5704b
+last-transition-from: ready
+last-transition-at: 2026-11-18T08:09:47.531Z
 ---
 
 # t00005 — Certificar exactitud y paridad en repositorios API externos reproducibles
