@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 451 símbolos en 178 módulos.
+> 452 símbolos en 178 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -931,6 +931,12 @@ Derives a stable id from a match. Two matches with the same
   introduced by a00010.
 - Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
   between single-framework services in different roots.
+
+#### `resolveServiceIdentity`
+
+```ts
+export function resolveServiceIdentity( matches: readonly IProjectMatch[], detectedMonorepo: boolean | undefined, ):
+```
 
 #### `collectFlatHybridRoutes`
 

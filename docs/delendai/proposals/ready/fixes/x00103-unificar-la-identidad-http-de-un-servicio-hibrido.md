@@ -29,7 +29,7 @@ En un proyecto Express con OpenAPI, GET /same produce dos operaciones porque el 
 
 ### S1 — Usar la identidad del grafo en la fusión HTTP
 - **Status**: pending
-- **Files**: `packages/core/discovery/group-by-service.helper.ts`, `packages/core/discovery/generation.pipeline.ts`, `tests/core/hybrid-service-identity.spec.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`, `docs/delendai/proposals/INDEX.md`
+- **Files**: `packages/core/discovery/group-by-service.helper.ts`, `packages/core/discovery/generation.pipeline.ts`, `tests/core/hybrid-service-identity.spec.ts`, `docs/API.md`, `docs/delendai/AGENT-BOOTSTRAP.md`, `docs/delendai/proposals/INDEX.md`
 - **Gate**: e2e
 - acceptance:
   - "Un proyecto real de prueba Express y OpenAPI con el mismo método y ruta entrega exactamente una operación en los resultados y la colección, con descripción documentada y ambas fuentes en el informe común."
