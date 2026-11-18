@@ -2,10 +2,14 @@
 id: x00104
 title: "Sustituir las copias afectadas de picomatch en la cadena de herramientas"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: dependencies
 date: 2026-11-18
+last-transition-id: 9707bfe2-57db-4af8-9c51-7327d1292452
+last-correlation-id: 9707bfe2-57db-4af8-9c51-7327d1292452
+last-transition-from: ready
+last-transition-at: 2026-11-18T07:43:45.881Z
 ---
 
 # x00104 — Sustituir las copias afectadas de picomatch en la cadena de herramientas
