@@ -15,9 +15,8 @@
  *
  * If no OpenAPI file exists, `detect()` returns 0.
  */
-import { constants, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
-import { open } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type {
   IProjectMatch,
@@ -30,6 +29,7 @@ import type {
 import { isRecord, parseJson, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
 import { rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
+import { readBoundedText } from "../../core/helpers/read-bounded-text.helper.js";
 import { ensureInside } from "../../core/helpers/path-containment.helper.js";
 import { parseWithProgram } from "../../core/language-frontends/typescript/index.js";
 import { ContractDocumentationUrlSchema } from "../../contracts/constants/core/contract-evidence.constant.js";
@@ -557,7 +557,7 @@ async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string
     try {
       const safe = await ensureInside(root, resolve(root, file));
       if (!safe.ok) { result.limitations.push(`Swagger config escaped the project root and was ignored: ${file}.`); continue; }
-      const { text: raw } = await readOpenApiText(safe.resolved, MAX_OPENAPI_FILE_BYTES);
+      const { text: raw } = await readBoundedText(safe.resolved, MAX_OPENAPI_FILE_BYTES);
       let configs: unknown[] = [];
       if (file.endsWith(".json")) {
         const parsed = parseJson(raw);
@@ -594,27 +594,6 @@ async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string
     }
   }
   return { ...result, localSpecs: [...new Set(result.localSpecs)], links: dedupeLinks(result.links) };
-}
-
-/** Read at most one byte over the limit, even if the file grows after stat. */
-async function readOpenApiText(path: string, limit: number): Promise<{ text: string; bytes: number }> {
-  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
-  try {
-    const details = await file.stat();
-    if (!details.isFile()) throw new Error("Expected a regular file");
-    if (details.size > limit) throw new Error(`file size limit (${limit} bytes) exceeded`);
-    const buffer = Buffer.alloc(limit + 1);
-    let bytes = 0;
-    while (bytes < buffer.length) {
-      const result = await file.read(buffer, bytes, buffer.length - bytes, bytes);
-      if (result.bytesRead === 0) break;
-      bytes += result.bytesRead;
-    }
-    if (bytes > limit) throw new Error(`file size limit (${limit} bytes) exceeded`);
-    return { text: new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, bytes)), bytes };
-  } finally {
-    await file.close();
-  }
 }
 
 function findSwaggerUiConfigs(program: unknown): unknown[] {
@@ -754,7 +733,7 @@ function createOpenApiDocumentSet(root: string) {
         addLimitation(`OpenAPI total size limit (${MAX_OPENAPI_TOTAL_BYTES} bytes) reached.`);
         return undefined;
       }
-      const { text: raw, bytes } = await readOpenApiText(contained.resolved, Math.min(remaining, MAX_OPENAPI_FILE_BYTES));
+      const { text: raw, bytes } = await readBoundedText(contained.resolved, Math.min(remaining, MAX_OPENAPI_FILE_BYTES));
       totalBytes += bytes;
       let value: unknown;
       if (/\.json$/i.test(normalized)) {

@@ -76,14 +76,14 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-reviewer: openai-gpt-6
 - review-log: approved by openai-gpt-6 — verified at cad6fe6d1cb6, validate exit 0 and tests 14/14 claimed, no recorded run cited; acceptance 2/2: (1) CLI, embedded web and Angular diagnostics consume shared evidence; origins/pointers/conflicts displayed with bounded operation views and full CLI JSON. Existin… (2) Angular reads ProjectStore shared snapshot; embedded web renders existing inspection response; textContent/interpolation render evidence without interpreting m… — Independent landed review cad6fe6d; carrier sources identical to b641fe9b. Directly ran bunx vitest run --project cli --project app tests/cli/contract-evidence-summary.spec.ts tests/app/diagnostics.spec.ts tests/app/reachable.spec.ts: 14/14, 3 files, exit 0, 2026-11-18 18:56:58 local. Counts reviewer-reported, no journal run cited. #165 published full CI checks/run 44266873071 successful. S3 only; no overall closure; S4 pending and S5 separately reviewed.
 
-### S4 — Lectura explícita de documentación original
+### S4 — Visor de documentación local
 - **Status**: pending
 - **DependsOn**: [S2, S3]
-- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/app/src/app/features/diagnostics`, `tests/app/diagnostics.spec.ts`
-- **Gate**: artifact containment, viewer rendering and explicit remote access tests
+- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/core/helpers/read-bounded-text.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/application-api/handlers.spec.ts`, `docs/API.md`
+- **Gate**: artifact containment, bounded UTF-8 and viewer rendering tests
 - acceptance:
   - "El usuario puede abrir como texto un artefacto listado en el informe activo del servicio, con ruta contenida y lectura acotada."
-  - "La lectura remota requiere URL o acción explícita y comprueba límites de tiempo, tamaño y redirecciones. El escaneo y el render no abren URLs ni referencias remotas."
+  - "La vista ignora respuestas de sesiones anteriores, no interpreta contenido como HTML y no abre enlaces ni referencias remotas."
 
 ### S5 — Paridad de la integración MCP opcional
 - **Status**: review
@@ -96,6 +96,16 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "La instalación independiente del plugin valida su lock con la misma remediación de picomatch que emplea Tanit y pasa la auditoría de severidad alta."
 - review-state: in_review
 - review-implementer: openai-gpt-6.2-sol
+
+### S6 — Lectura remota autorizada
+- **Status**: pending
+- **DependsOn**: [S4]
+- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/application-api/handlers.spec.ts`, `tests/app/diagnostics.spec.ts`
+- **Gate**: explicit remote authorization and bounded network tests
+- acceptance:
+  - "La lectura remota requiere URL o acción explícita y comprueba límites de tiempo, tamaño y redirecciones. El escaneo y el render no abren URLs ni referencias remotas."
+  - "Validar el destino de cada conexión autorizada y conservar el informe estático si la lectura se rechaza o falla."
+
 
 ## acceptance
 

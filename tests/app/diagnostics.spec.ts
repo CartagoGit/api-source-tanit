@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { DiagnosticsComponent } from "../../packages/app/src/app/features/diagnostics/diagnostics.component";
+import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 import { ProjectStore } from "../../packages/app/src/app/core/state/project.store";
 import { setLocale } from "../../packages/app/src/app/core/i18n/i18n.state";
 import { SnapshotSummarySchema } from "../../packages/contracts/constants/core/application-api.constant";
@@ -17,9 +18,14 @@ function summary(total = 1): ISnapshotSummary {
 
 describe("documentation evidence in browser and desktop diagnostics", () => {
   const state = signal<ISnapshotSummary | null>(null);
+  const request = vi.fn();
   beforeEach(() => {
     TestBed.resetTestingModule(); localStorage.clear(); setLocale("en"); state.set(null);
-    TestBed.configureTestingModule({ providers: [{ provide: ProjectStore, useValue: { summary: state } }] });
+    request.mockReset();
+    TestBed.configureTestingModule({ providers: [
+      { provide: ProjectStore, useValue: { summary: state } },
+      { provide: HostBridgeClient, useValue: { request } },
+    ] });
   });
   test("renders recorded contradictions, origins and localized severity safely without network calls", () => {
     state.set(summary());
@@ -46,9 +52,9 @@ describe("documentation evidence in browser and desktop diagnostics", () => {
     const fixture = TestBed.createComponent(DiagnosticsComponent); fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
     expect(root.querySelectorAll(".contract-operation")).toHaveLength(100);
-    root.querySelector<HTMLButtonElement>(".contracts button")!.click(); fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>(".contract-page-next")!.click(); fixture.detectChanges();
     expect(root.querySelectorAll(".contract-operation")).toHaveLength(150);
-    expect(root.querySelector(".contracts button")).toBeNull();
+    expect(root.querySelector(".contract-page-next")).toBeNull();
   });
   test("keeps unknown distinct, filters matches and clears data when the project closes", () => {
     const data = summary(2); const report = data.contractEvidence![0]!;
@@ -63,5 +69,40 @@ describe("documentation evidence in browser and desktop diagnostics", () => {
     expect(root.querySelectorAll(".contract-operation")).toHaveLength(2);
     state.set(null); fixture.detectChanges();
     expect(root.querySelector(".contracts")).toBeNull(); expect(root.textContent).not.toContain("openapi.json");
+  });
+  test("opens a listed document on demand and renders its markup as plain text", async () => {
+    state.set(summary());
+    const literal = '<script>original document</script>';
+    request.mockResolvedValue({ text: literal });
+    const fixture = TestBed.createComponent(DiagnosticsComponent);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(request).not.toHaveBeenCalled();
+    root.querySelector<HTMLButtonElement>(".artifact-open")!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(request).toHaveBeenCalledWith("read-contract-artifact", {
+      projectRoot: "/project", sessionId: "current", serviceId: "api", artifact: "openapi.json",
+    });
+    expect(root.querySelector(".artifact-preview pre")?.textContent).toBe(literal);
+    expect(root.querySelector("script")).toBeNull();
+    state.set(null);
+    fixture.detectChanges();
+    expect(root.querySelector(".artifact-preview")).toBeNull();
+  });
+
+  test("discards a document response after the snapshot changes", async () => {
+    state.set(summary());
+    let resolvePreview!: (value: { text: string }) => void;
+    request.mockReturnValue(new Promise(resolve => { resolvePreview = resolve; }));
+    const fixture = TestBed.createComponent(DiagnosticsComponent);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    root.querySelector<HTMLButtonElement>(".artifact-open")!.click();
+    state.set(summary());
+    resolvePreview({ text: "previous snapshot" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(root.querySelector(".artifact-preview")).toBeNull();
   });
 });
