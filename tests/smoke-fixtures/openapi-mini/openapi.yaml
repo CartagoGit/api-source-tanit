@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: Mini API
+  version: 1.0.0
+paths:
+  /api/users:
+    get:
+      summary: List users
+      responses:
+        "200":
+          description: OK
+    post:
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:  { type: string }
+                email: { type: string, format: email }
+      responses:
+        "201":
+          description: Created
+  /api/users/{id}:
+    get:
+      summary: Get user
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: OK
+    delete:
+      summary: Delete user
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204":
+          description: No Content
