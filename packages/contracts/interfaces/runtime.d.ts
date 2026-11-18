@@ -11,6 +11,8 @@
 
 // --- node:fs/promises ----------------------------------------------------
 declare module "node:fs/promises" {
+  /** Omitting encoding returns the original bytes, as in Node and Bun. */
+  export function readFile(path: string): Promise<IBufferLike>;
   export function readFile(
     path: string,
     encoding: "utf8" | "utf-8",
@@ -20,7 +22,7 @@ declare module "node:fs/promises" {
   // `writeFile(path, data)`.
   export function writeFile(
     path: string,
-    data: string,
+    data: string | Uint8Array,
     encoding?: "utf8" | "utf-8",
   ): Promise<void>;
   export function mkdir(
@@ -603,6 +605,7 @@ declare function fetch(
 
 /** Byte-to-text decoder, for reading stdin. */
 declare class TextDecoder {
+  constructor(label?: string, options?: { fatal?: boolean; ignoreBOM?: boolean });
   /**
    * `stream: true` keeps state across chunks, so a multibyte
    * character that straddles two `data` events is not split.
