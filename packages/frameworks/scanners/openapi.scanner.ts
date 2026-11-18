@@ -464,7 +464,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const root = rawProjectRoot(match);
-    const documents = new OpenApiDocumentSet(root);
+    const documents = createOpenApiDocumentSet(root);
     const configFiles = this.opts.specPath ? [] : match.artifacts.filter(file => SWAGGER_CONFIG_CANDIDATES.includes(file));
     const config = await readStaticSwaggerConfig(root, configFiles);
     const selected = this.opts.specPath ? [this.opts.specPath] : [
@@ -518,7 +518,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
         }
       }
     }
-    const artifacts = [...new Set([...documents.documents.keys(), ...configFiles])];
+    const artifacts = [...new Set([...documents.artifacts(), ...configFiles])];
     const limitations = [...new Set([
       ...documents.limitations, ...config.limitations,
       "The static JSON/YAML subset does not establish complete response/schema or runtime coverage.",
@@ -707,51 +707,46 @@ interface ResolvedOpenApiValue {
 }
 
 /** Per-scan parser cache and resource budget. Never shared between projects. */
-class OpenApiDocumentSet {
-  readonly documents = new Map<string, LoadedOpenApiDocument>();
-  readonly limitations: string[] = [];
-  private readonly attempted = new Set<string>();
-  private totalBytes = 0;
-  private refVisits = 0;
-  private readonly startedAt = Date.now();
+function createOpenApiDocumentSet(root: string) {
+  const documents = new Map<string, LoadedOpenApiDocument | undefined>();
+  const limitations: string[] = [];
+  let totalBytes = 0;
+  let refVisits = 0;
+  const startedAt = Date.now();
 
-  constructor(private readonly root: string) {}
-
-  withinTime(): boolean {
-    if (Date.now() - this.startedAt <= MAX_OPENAPI_SCAN_MS) return true;
-    this.addLimitation(`OpenAPI scan time budget (${MAX_OPENAPI_SCAN_MS}ms) reached.`);
+  function withinTime(): boolean {
+    if (Date.now() - startedAt <= MAX_OPENAPI_SCAN_MS) return true;
+    addLimitation(`OpenAPI scan time budget (${MAX_OPENAPI_SCAN_MS}ms) reached.`);
     return false;
   }
 
-  private addLimitation(message: string): void {
-    if (!this.limitations.includes(message)) this.limitations.push(message);
+  function addLimitation(message: string): void {
+    if (!limitations.includes(message)) limitations.push(message);
   }
 
-  async load(file: string): Promise<LoadedOpenApiDocument | undefined> {
-    const normalized = relative(this.root, resolve(this.root, file.replace(/\\/g, "/"))).replace(/\\/g, "/");
-    const cached = this.documents.get(normalized);
-    if (cached) return cached;
-    if (!this.withinTime()) return undefined;
-    if (this.attempted.has(normalized)) return undefined;
-    if (this.attempted.size >= MAX_OPENAPI_DOCUMENTS) {
-      this.addLimitation(`OpenAPI document limit (${MAX_OPENAPI_DOCUMENTS}) reached.`);
+  async function load(file: string): Promise<LoadedOpenApiDocument | undefined> {
+    const normalized = relative(root, resolve(root, file.replace(/\\/g, "/"))).replace(/\\/g, "/");
+    if (!withinTime()) return undefined;
+    if (documents.has(normalized)) return documents.get(normalized);
+    if (documents.size >= MAX_OPENAPI_DOCUMENTS) {
+      addLimitation(`OpenAPI document limit (${MAX_OPENAPI_DOCUMENTS}) reached.`);
       return undefined;
     }
-    this.attempted.add(normalized);
-    const abs = resolve(this.root, normalized);
-    const contained = await ensureInside(this.root, abs);
+    documents.set(normalized, undefined);
+    const abs = resolve(root, normalized);
+    const contained = await ensureInside(root, abs);
     if (!contained.ok) {
-      this.addLimitation(`Reference escaped the project root and was ignored: ${normalized}.`);
+      addLimitation(`Reference escaped the project root and was ignored: ${normalized}.`);
       return undefined;
     }
     try {
-      const remaining = MAX_OPENAPI_TOTAL_BYTES - this.totalBytes;
+      const remaining = MAX_OPENAPI_TOTAL_BYTES - totalBytes;
       if (remaining === 0) {
-        this.addLimitation(`OpenAPI total size limit (${MAX_OPENAPI_TOTAL_BYTES} bytes) reached.`);
+        addLimitation(`OpenAPI total size limit (${MAX_OPENAPI_TOTAL_BYTES} bytes) reached.`);
         return undefined;
       }
       const { text: raw, bytes } = await readOpenApiText(contained.resolved, Math.min(remaining, MAX_OPENAPI_FILE_BYTES));
-      this.totalBytes += bytes;
+      totalBytes += bytes;
       let value: unknown;
       if (/\.json$/i.test(normalized)) {
         const parsed = parseJson(raw);
@@ -759,30 +754,30 @@ class OpenApiDocumentSet {
         value = parsed.value;
       } else {
         const unsupported = unsupportedYamlFeatures(raw);
-        if (unsupported.length) this.addLimitation(`${normalized} uses unsupported YAML constructs: ${unsupported.join(", ")}.`);
+        if (unsupported.length) addLimitation(`${normalized} uses unsupported YAML constructs: ${unsupported.join(", ")}.`);
         value = parseYamlLite(raw);
       }
       const document = { file: normalized, value };
-      this.documents.set(normalized, document);
-      if (!this.withinTime()) return undefined;
+      documents.set(normalized, document);
+      if (!withinTime()) return undefined;
       return document;
     } catch (error) {
-      this.addLimitation(`Unable to read or parse ${normalized}: ${error instanceof Error ? error.message : String(error)}.`);
+      addLimitation(`Unable to read or parse ${normalized}: ${error instanceof Error ? error.message : String(error)}.`);
       return undefined;
     }
   }
 
-  async resolve(value: unknown, file: string, depth = 0, stack: ReadonlySet<string> = new Set()): Promise<ResolvedOpenApiValue> {
-    if (!this.withinTime()) return { value, references: [] };
+  async function resolveValue(value: unknown, file: string, depth = 0, stack: ReadonlySet<string> = new Set()): Promise<ResolvedOpenApiValue> {
+    if (!withinTime()) return { value, references: [] };
     if (depth > MAX_OPENAPI_REF_DEPTH) {
-      this.addLimitation(`OpenAPI traversal/reference depth limit (${MAX_OPENAPI_REF_DEPTH}) reached.`);
+      addLimitation(`OpenAPI traversal/reference depth limit (${MAX_OPENAPI_REF_DEPTH}) reached.`);
       return { value, references: [] };
     }
     if (Array.isArray(value)) {
       const out: unknown[] = [];
       const references: { file: string; pointer: string }[] = [];
       for (const item of value) {
-        const resolved = await this.resolve(item, file, depth + 1, stack);
+        const resolved = await resolveValue(item, file, depth + 1, stack);
         out.push(resolved.value); references.push(...resolved.references);
       }
       return { value: out, references: uniqueReferences(references) };
@@ -793,31 +788,31 @@ class OpenApiDocumentSet {
     let origin: ResolvedOpenApiValue["origin"];
     const ref = value["$ref"];
     if (typeof ref === "string") {
-      if (++this.refVisits > MAX_OPENAPI_REF_VISITS) {
-        this.addLimitation(`OpenAPI reference visit limit (${MAX_OPENAPI_REF_VISITS}) reached.`);
+      if (++refVisits > MAX_OPENAPI_REF_VISITS) {
+        addLimitation(`OpenAPI reference visit limit (${MAX_OPENAPI_REF_VISITS}) reached.`);
         return { value, references: [] };
       }
       const target = splitLocalRef(ref, file);
       if (!target) {
-        this.addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
+        addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
           ? `Reference escaped the project root and was ignored: ${ref}.`
           : `Non-local or invalid reference was not followed in ${file}.`);
         return { value, references: [] };
       }
       const id = `${target.file}${target.pointer}`;
       if (stack.has(id)) {
-        this.addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
+        addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
         return { value, references: [] };
       }
-      const document = await this.load(target.file);
+      const document = await load(target.file);
       const referenced = document ? pointerValue(document.value, target.pointer) : undefined;
       if (referenced === undefined) {
-        this.addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
+        addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
         return { value, references: [] };
       }
       const nextStack = new Set(stack);
       nextStack.add(id);
-      const resolved = await this.resolve(referenced, target.file, depth + 1, nextStack);
+      const resolved = await resolveValue(referenced, target.file, depth + 1, nextStack);
       if (isRecord(resolved.value)) {
         for (const [key, child] of Object.entries(resolved.value)) {
           if (key !== "$ref") output[key] = child;
@@ -828,7 +823,7 @@ class OpenApiDocumentSet {
     }
     for (const [key, child] of Object.entries(value)) {
       if (key === "$ref") continue;
-      const resolved = await this.resolve(child, file, depth + 1, stack);
+      const resolved = await resolveValue(child, file, depth + 1, stack);
       const inherited = output[key];
       if (key === "properties" && isRecord(inherited) && isRecord(resolved.value)) {
         output[key] = { ...inherited, ...resolved.value };
@@ -841,6 +836,12 @@ class OpenApiDocumentSet {
     }
     return { value: output, references: uniqueReferences(references), ...(origin ? { origin } : {}) };
   }
+
+  function artifacts(): string[] {
+    return [...documents.values()].flatMap(document => document ? [document.file] : []);
+  }
+
+  return { load, resolve: resolveValue, limitations, artifacts, withinTime };
 }
 
 function uniqueReferences(references: ReadonlyArray<{ readonly file: string; readonly pointer: string }>): { file: string; pointer: string }[] {
@@ -993,7 +994,7 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     let pathItem = cached?.pathItem;
     let op = cached?.operation;
     if (!cached && !operations) {
-      const documents = new OpenApiDocumentSet(rawProjectRoot(match));
+      const documents = createOpenApiDocumentSet(rawProjectRoot(match));
       const document = await documents.load(specRel);
       if (document) {
         const rawPath = readObject(readObject(document.value, "paths"), route.rawUri);
