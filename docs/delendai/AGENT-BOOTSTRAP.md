@@ -252,6 +252,10 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
+The [proposal index](proposals/INDEX.md) tracks x00104. The temporary
+`picomatch` replacement must stay pinned to reviewed bytes until an official
+patched release passes the existing dependency audit and full validation.
+
 ### 3.7 MCP server launch and project identity
 
 The canonical project registration is **`DelendAI:Tanit`**, following
