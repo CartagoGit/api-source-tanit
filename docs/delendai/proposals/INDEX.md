@@ -248,6 +248,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `t00002` — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento — `6d37cca`
 - `t00003` — El presupuesto de forma del scan, vigilado de verdad — `f967468`
 - `t00004` — branches de scanners: fixtures dirigidos para subir el suelo (62→70) — `0ac222e`
+- `t00005` — Certificar exactitud y paridad en repositorios API externos reproducibles — `—`
 - `t00006` — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj — `—`
 - `x00046` — x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local) — `1f42832`
 
