@@ -183,11 +183,14 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00084` — Configuración de sesión efectiva, parcial y atómica — `—`
 - `x00085` — La exportación devuelve el destino real que se ha escrito — `—`
 - `x00086` — Actualizaciones Live comunes y cancelación sin listeners retenidos — `—`
+- `x00087` — Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas — `—`
 - `x00088` — Auto-merge real de PR con permisos correctos y fallos visibles — `—`
 - `x00089` — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop — `—`
 - `x00090` — Preserve identical history appends as distinct occurrences — `—`
 - `x00091` — Eliminar deriva de runtime y protecciones en workflows auxiliares — `—`
+- `x00092` — Arrancar la web compilada con recursos del mismo origen y navegación válida — `—`
 - `x00093` — Make the Linux signing fixture deterministic and headless — `—`
+- `x00094` — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI — `—`
 - `x00095` — Include Bun-owned tests in source proof planning — `—`
 - `x00096` — Lint canonical shipped-in proposal metadata — `—`
 - `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
