@@ -2,14 +2,14 @@
 id: x00104
 title: "Sustituir las copias afectadas de picomatch en la cadena de herramientas"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: dependencies
 date: 2026-11-18
-last-transition-id: 9707bfe2-57db-4af8-9c51-7327d1292452
-last-correlation-id: 9707bfe2-57db-4af8-9c51-7327d1292452
-last-transition-from: ready
-last-transition-at: 2026-11-18T07:43:45.881Z
+last-transition-id: b6d46827-0ecf-4282-8011-111abc667363
+last-correlation-id: b6d46827-0ecf-4282-8011-111abc667363
+last-transition-from: in-progress
+last-transition-at: 2026-11-18T07:48:58.820Z
 ---
 
 # x00104 — Sustituir las copias afectadas de picomatch en la cadena de herramientas
@@ -47,13 +47,16 @@ version, then run the same frozen installation, audit and full validation.
 - global_gate: e2e
 
 ### S1 — Fijar y verificar el reemplazo temporal
-- **Status**: pending
+- **Status**: review
 - **Files**: `package.json`, `bun.lock`, `docs/delendai/AGENT-BOOTSTRAP.md`, `docs/delendai/proposals/INDEX.md`
 - **Gate**: e2e
 - acceptance:
   - "La instalación congelada resuelve cada copia de picomatch al reemplazo exacto y el lock conserva el hash de integridad del paquete revisado."
   - "Comprobar el código e integridad contra el commit publicado, ejecutar la auditoría actual sin cambiar su alcance y ejecutar pruebas y build Angular."
   - "Registrar el criterio para retirar el reemplazo cuando el paquete oficial ofrezca una versión corregida, y conservar el mismo control de auditoría para todos los PR."
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+- shipped-in: `8ab94839b03d`
 
 ## acceptance
 
