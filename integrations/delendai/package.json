@@ -32,6 +32,9 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
+  "overrides": {
+    "picomatch": "npm:@ryotsu/picomatch@4.0.7"
+  },
   "engines": {
     "bun": ">=1.1.0"
   },
