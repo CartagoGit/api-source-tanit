@@ -6,3 +6,14 @@ li.error { border-color: var(--color-copper); }
 strong { color: var(--color-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 li.error strong { color: var(--color-copper-strong); }
 small, .empty { color: var(--color-muted); }
+
+.contracts { display: grid; gap: 12px; margin-top: 24px; }
+.contract-source { padding: 10px 12px; border: 1px solid var(--color-border); }
+.contract-source summary { cursor: pointer; }
+.contract-source code { display: block; margin-top: 6px; }
+.contract-filter { display: flex; align-items: center; gap: 8px; }
+.contract-operation p { margin: 4px 0; }
+.contract-operation code { overflow-wrap: anywhere; }
+.contract-operation.conflict { border-color: var(--color-copper); }
+.contract-conflict { color: var(--color-copper-strong); }
+.muted { color: var(--color-muted); }

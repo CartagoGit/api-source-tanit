@@ -60,16 +60,33 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-state: in_review
 - review-implementer: openai-gpt-6.2-sol
 
-### S3 — Presentación común y controles de acceso remoto
+### S3 — Presentación del informe común
 - **Status**: review
-- **Files**: `packages/cli`, `packages/ui`, `packages/app`, `packages/core/application-api`, `tests/contracts`
-- **Gate**: carrier rendering and explicit remote authorization tests
+- **Files**: `packages/cli/commands/summary.script.ts`, `packages/ui/web/index.html.constant.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/app/diagnostics.spec.ts`, `tests/app/reachable.spec.ts`, `tests/cli/contract-evidence-summary.spec.ts`
+- **Gate**: real carrier rendering, localized diagnostics and CLI report tests
 - acceptance:
-  - "CLI, web y escritorio representan documentación original, comparación y exportación a partir del mismo informe; conservan conflictos visibles."
-  - "Red únicamente por URL/autorización explícita con límites de tiempo, tamaño, redirecciones y referencias."
-- shipped-in: `bc02a49eb276`
+  - "CLI, web y escritorio representan origen, punteros, comparaciones y conflictos del mismo informe, con JSON completo y vistas acotadas; el flujo de exportación se conserva."
+  - "La presentación consume el snapshot compartido y renderiza texto sin hacer solicitudes de red de documentación."
+- shipped-in: `60f41f7ceb7fc567e19b29cff5761146b933c221`
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
+
+### S4 — Lectura explícita de documentación original
+- **Status**: pending
+- **DependsOn**: [S2, S3]
+- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/app/src/app/features/diagnostics`, `tests/app/diagnostics.spec.ts`
+- **Gate**: artifact containment, viewer rendering and explicit remote access tests
+- acceptance:
+  - "El usuario puede abrir como texto un artefacto listado en el informe activo del servicio, con ruta contenida y lectura acotada."
+  - "La lectura remota requiere URL o acción explícita y comprueba límites de tiempo, tamaño y redirecciones. El escaneo y el render no abren URLs ni referencias remotas."
+
+### S5 — Paridad de la integración MCP opcional
+- **Status**: pending
+- **Files**: `integrations/delendai/src/lib/contracts/plugin.interface.ts`, `integrations/delendai/src/lib/tools/summary.tool.ts`, `integrations/delendai/package.json`, `integrations/delendai/tests`
+- **Gate**: pinned optional integration tests and schema validation
+- acceptance:
+  - "La herramienta summary opcional expone el mismo informe compartido reutilizando su schema, sin reconstruir hechos ni introducir dependencias DelendAI en el producto."
+  - "Versionar la superficie pública del plugin y comprobar su salida contra el runtime inmutable 0.3.0."
 
 ## acceptance
 
