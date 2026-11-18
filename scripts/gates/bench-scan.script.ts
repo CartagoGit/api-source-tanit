@@ -119,7 +119,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const workDir = await mkdtemp(join(tmpdir(), "expostman-bench-"));
+  const workDir = await mkdtemp(join(tmpdir(), "tanit-bench-"));
   try {
     console.log("bench:scan — proyecto Express sintético, mediana de 3 pasadas\n");
     console.log("  ficheros   specs      total    lectura(par)  lectura(seq)   µs/fichero");
