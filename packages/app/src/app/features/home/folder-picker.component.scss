@@ -1,0 +1,11 @@
+.picker { display: grid; gap: var(--space-4); max-width: 760px; }
+.picker-heading { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; }
+h2 { margin: 0; font-size: 24px; } p { color: var(--color-muted); margin: var(--space-1) 0 0; }
+.drop-zone { display: grid; gap: var(--space-2); min-height: 112px; place-content: center; border: 1px dashed var(--color-border); border-radius: var(--radius-md); text-align: center; cursor: pointer; }
+.drop-zone.hovering, .drop-zone:focus-visible { border-color: var(--color-copper); background: color-mix(in srgb, var(--color-copper) 8%, transparent); outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.drop-zone span, small { color: var(--color-muted); } .browse { display: grid; gap: var(--space-1); }
+.breadcrumbs { display: flex; align-items: center; gap: var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); overflow: hidden; }
+.breadcrumbs span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } button { font: inherit; }
+.entry { display: flex; justify-content: space-between; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-ink); padding: var(--space-2); text-align: left; } .entry:hover { background: color-mix(in srgb, var(--color-copper) 8%, transparent); }
+.notice, .error { font-size: 13px; } .error { color: #a33; }
+@media (max-width: 640px) { .picker-heading { display: grid; } }
