@@ -131,6 +131,12 @@ export interface ParsedRoute {
   rawUri: string;
   /** Origin: routes file or spec name (e.g. "openapi.yaml#/paths/~1users"). */
   sourceFile: string;
+  /** RFC 6901 source pointer inside `sourceFile`, when the scanner has one. */
+  sourcePointer?: string;
+  /** Top-level document whose paths entry produced this operation. */
+  sourceDocument?: string;
+  /** Local reference chain that contributed to this route. */
+  sourceReferences?: ReadonlyArray<{ readonly file: string; readonly pointer: string }>;
   /** 1-based line number in `sourceFile` (0 if not applicable). */
   lineNumber: number;
   /** Chain of prefixes active when declaring the route. */
@@ -228,6 +234,8 @@ export interface ParsedRoute {
 export interface IScanResult {
   /** Explicit observation limits; omission never proves that routes are absent. */
   readonly evidence?: import("./contract-evidence.interface.js").IContractScanEvidence;
+  /** Opaque, scan-scoped parsed data shared with validation providers. */
+  readonly providerContext?: ReadonlyMap<string, unknown>;
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**
    * Map `${method} ${uri}` → auxiliary descriptor.

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider, parseYamlLite } from "../../packages/frameworks/scanners/openapi.scanner";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface";
 
@@ -213,7 +213,8 @@ describe("OpenApiRouteScanner — scan() branches", () => {
       expect(match.artifacts[0]).toBe("openapi.json");
       const routes = (await new OpenApiRouteScanner({ specPath: "docs/openapi.json" }).scan(match)).routes;
       expect(routes.map((r) => r.uri)).toEqual(["/docs"]);
-      expect(routes[0]?.sourceFile).toBe("docs/openapi.json#GET/docs");
+      expect(routes[0]?.sourceFile).toBe("docs/openapi.json");
+      expect(routes[0]?.sourcePointer).toBe("#/paths/~1docs/get");
     } finally {
       await project.cleanup();
     }
@@ -241,28 +242,29 @@ describe("OpenApiRouteScanner — scan() branches", () => {
     expect(result.routes).toEqual([]);
   });
 
-  test("invalid JSON throws with a clear message", async () => {
+  test("invalid JSON leaves an explicit partial-scan limitation", async () => {
     const project = await createTempProject({ "openapi.json": "{no es json" });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      await expect(new OpenApiRouteScanner().scan(match)).rejects.toThrow("cannot parse");
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toEqual([]);
+      expect(result.evidence?.completeness).toBe("partial");
+      expect(result.evidence?.limitations.some(item => /Unable to read or parse openapi.json/.test(item))).toBe(true);
     } finally {
       await project.cleanup();
     }
   });
 
-  test("YAML with anchors warns via console.warn but does not throw", async () => {
+  test("YAML with anchors is reported as an unsupported limitation", async () => {
     const project = await createTempProject({
       "openapi.yaml": "paths:\n  /a:\n    get:\n      summary: &s hola\n",
     });
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
-      expect(warn).toHaveBeenCalled();
-      expect(routes.map((r) => r.uri)).toEqual(["/a"]);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes.map((r) => r.uri)).toEqual(["/a"]);
+      expect(result.evidence?.limitations.some(item => /unsupported YAML constructs: anchors/.test(item))).toBe(true);
     } finally {
-      warn.mockRestore();
       await project.cleanup();
     }
   });
@@ -379,6 +381,214 @@ describe("OpenApiRouteScanner — scan() branches", () => {
     } finally {
       await project.cleanup();
     }
+  });
+
+  test("scans every discovered JSON/YAML specification and keeps per-route pointers", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: { "/one": { get: { summary: "one" } } } }),
+      "docs/openapi.yaml": "paths:\n  /two:\n    post:\n      description: second\n",
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes.map(route => route.sourceFile)).toEqual(["openapi.json", "docs/openapi.yaml"]);
+      expect(result.routes.map(route => route.sourcePointer)).toEqual(["#/paths/~1one/get", "#/paths/~1two/post"]);
+      expect(result.evidence?.artifacts).toContain("docs/openapi.yaml");
+    } finally { await project.cleanup(); }
+  });
+
+  test("resolves a contained external Path Item reference with source provenance", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: { "/users": { "$ref": "./paths/users.yaml#/UserPath" } } }),
+      "paths/users.yaml": "UserPath:\n  get:\n    description: Reused user path\n",
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toHaveLength(1);
+      expect(result.routes[0]).toMatchObject({
+        sourceFile: "paths/users.yaml", sourcePointer: "#/UserPath/get",
+        sourceReferences: [{ file: "paths/users.yaml", pointer: "#/UserPath" }],
+        description: "Reused user path",
+      });
+      expect(result.evidence?.artifacts).toContain("paths/users.yaml");
+    } finally { await project.cleanup(); }
+  });
+
+  test("attributes each operation to its defining path item and excludes sibling operation references", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: { "/users": { $ref: "./paths/alias.json" } } }),
+      "paths/alias.json": JSON.stringify({
+        $ref: "./shared.json",
+        get: {
+          description: "GET declared in the alias",
+          externalDocs: { url: "https://docs.example/read" },
+          parameters: [{ $ref: "./read-parameter.json" }],
+        },
+      }),
+      "paths/shared.json": JSON.stringify({
+        parameters: [{ $ref: "./common-parameter.json" }],
+        post: { description: "POST declared in the shared path", parameters: [{ $ref: "./write-parameter.json" }] },
+      }),
+      "paths/read-parameter.json": JSON.stringify({ name: "page", in: "query" }),
+      "paths/write-parameter.json": JSON.stringify({ name: "dryRun", in: "query" }),
+      "paths/common-parameter.json": JSON.stringify({ name: "tenant", in: "query" }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      const get = result.routes.find(route => route.method === "GET");
+      const post = result.routes.find(route => route.method === "POST");
+      expect(get).toMatchObject({ sourceFile: "paths/alias.json", sourcePointer: "#/get" });
+      expect(post).toMatchObject({ sourceFile: "paths/shared.json", sourcePointer: "#/post" });
+      expect(get?.sourceReferences?.map(ref => ref.file)).toEqual([
+        "paths/alias.json", "paths/read-parameter.json", "paths/shared.json", "paths/common-parameter.json",
+      ]);
+      expect(post?.sourceReferences?.map(ref => ref.file)).toEqual([
+        "paths/alias.json", "paths/shared.json", "paths/write-parameter.json", "paths/common-parameter.json",
+      ]);
+      expect(result.evidence?.links).toEqual([
+        { url: "https://docs.example/read", file: "paths/alias.json", pointer: "#/get/externalDocs/url" },
+      ]);
+    } finally { await project.cleanup(); }
+  });
+
+  test("keeps operations declared beside an unresolved path reference", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({
+        paths: {
+          "/local": {
+            $ref: "./missing.json",
+            get: { parameters: [{ $ref: "#/components/parameters/Page" }] },
+          },
+        },
+        components: { parameters: { Page: { name: "page", in: "query", schema: { type: "integer" } } } },
+      }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      const route = result.routes[0];
+      if (!route) throw new Error("Missing locally declared operation");
+      expect(route.sourceReferences).toEqual([{ file: "openapi.json", pointer: "#/components/parameters/Page" }]);
+      expect((await new OpenApiValidationProvider().resolve(route, match, result)).fields)
+        .toMatchObject([{ fieldName: "page", type: "integer" }]);
+      expect(result.evidence?.limitations.some(item => item.includes("missing.json"))).toBe(true);
+    } finally { await project.cleanup(); }
+  });
+
+  test("preserves a whole-file reference and resolves local schema siblings in their own document", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({
+        externalDocs: { url: "https://docs.example/guide" },
+        paths: {
+          "/external": { $ref: "./path.json" },
+          "/local": {
+            get: { parameters: [{ $ref: "./parameter.json", schema: { $ref: "#/components/schemas/Encoded%20name" } }] },
+          },
+        },
+        components: { schemas: { "Encoded name": { type: "integer" } } },
+      }),
+      "path.json": JSON.stringify({ get: { description: "From the referenced file" } }),
+      "parameter.json": JSON.stringify({ name: "page", in: "query", schema: { type: "string" } }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes[0]).toMatchObject({
+        sourceFile: "path.json", sourcePointer: "#/get",
+        sourceReferences: [{ file: "path.json", pointer: "#" }],
+      });
+      expect(result.evidence?.links).toEqual([
+        { url: "https://docs.example/guide", file: "openapi.json", pointer: "#/externalDocs/url" },
+      ]);
+      const route = result.routes.find(item => item.uri === "/local");
+      if (!route) throw new Error("Missing /local");
+      expect((await new OpenApiValidationProvider().resolve(route, match, result)).fields)
+        .toMatchObject([{ fieldName: "page", type: "integer" }]);
+    } finally { await project.cleanup(); }
+  });
+
+  test("reports cyclic and escaping refs instead of treating them as complete", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: {
+        "/cycle": { "$ref": "#/paths/~1cycle" },
+        "/escape": { "$ref": "../outside.yaml#/Path" },
+      } }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toEqual([]);
+      expect(result.evidence?.completeness).toBe("partial");
+      expect(result.evidence?.limitations.some(item => /Cyclic OpenAPI reference/.test(item))).toBe(true);
+      expect(result.evidence?.limitations.some(item => /escaped the project root/.test(item))).toBe(true);
+    } finally { await project.cleanup(); }
+  });
+
+  test("reads literal Swagger UI configuration without evaluating it or accepting credential URLs", async () => {
+    const urlWithUserInfo = new URL("https://example.invalid/spec.json");
+    urlWithUserInfo.username = "fixture-user";
+    urlWithUserInfo.password = "fixture-password";
+    const config = {
+      url: "./specs/api.yaml",
+      urls: [
+        { url: "https://docs.example/openapi.json" },
+        { url: String(urlWithUserInfo) },
+        { url: String(urlWithUserInfo).replace("https://", "https:") },
+      ],
+    };
+    const project = await createTempProject({
+      "swagger-initializer.js": `window.onload = function () { SwaggerUIBundle(${JSON.stringify(config)}); };`,
+      "specs/api.yaml": "paths:\n  /from-config:\n    get:\n      summary: config\n",
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes.map(route => route.uri)).toEqual(["/from-config"]);
+      expect(result.evidence?.links).toEqual([{ url: "https://docs.example/openapi.json", file: "swagger-initializer.js", pointer: "#/urls/0/url" }]);
+    } finally { await project.cleanup(); }
+  });
+
+  test("ignores dynamic Swagger configuration expressions", async () => {
+    const project = await createTempProject({
+      "swagger-initializer.js": `SwaggerUIBundle({ url: getSpecPath() });`,
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toEqual([]);
+      expect(result.evidence?.limitations.some(item => /not a recognized static literal/.test(item))).toBe(true);
+    } finally { await project.cleanup(); }
+  });
+
+  test("stops reference chains at the configured depth bound", async () => {
+    const files: Record<string, string> = {
+      "openapi.json": JSON.stringify({ paths: { "/bounded": { "$ref": "./refs/1.json#/Path" } } }),
+    };
+    for (let index = 1; index <= 18; index++) {
+      const path = index < 18 ? { "$ref": `./${index + 1}.json#/Path` } : { get: { summary: "last" } };
+      files[`refs/${index}.json`] = JSON.stringify({ Path: path });
+    }
+    const project = await createTempProject(files);
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toEqual([]);
+      expect(result.evidence?.limitations.some(item => /traversal\/reference depth limit/.test(item))).toBe(true);
+    } finally { await project.cleanup(); }
+  });
+
+  test("skips documents above the explicit size limit", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({ paths: { "/large": { get: { description: "x".repeat(2 * 1024 * 1024) } } } }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes).toEqual([]);
+      expect(result.evidence?.limitations.some(item => /file size limit/.test(item))).toBe(true);
+    } finally { await project.cleanup(); }
   });
 });
 

@@ -102,7 +102,7 @@ describe("shared documentation evidence through real generation", () => {
       const report = result.contractEvidence;
       expect(report).toBeDefined();
       expect(report?.sources.every(source => source.serviceId === result.serviceId)).toBe(true);
-      expect(report?.operations.find(operation => operation.path === "/users/{id}")).toMatchObject({ status: "matched", documented: [{ file: "openapi.json#GET/users/{id}" }], observed: [{ file: expect.stringContaining("main.js") }] });
+      expect(report?.operations.find(operation => operation.path === "/users/{id}")).toMatchObject({ status: "matched", documented: [{ file: "openapi.json", pointer: "#/paths/~1users~1{id}/get" }], observed: [{ file: expect.stringContaining("main.js") }] });
       expect(report?.operations.find(operation => operation.path === "/doc-only")?.status).toBe("unknown");
       expect(report?.operations.find(operation => operation.path === "/code-only")?.status).toBe("unknown");
       const summary = summarizeGenerationResults([result], result.frameworks);
