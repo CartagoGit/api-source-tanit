@@ -252,6 +252,10 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
+The [proposal index](proposals/INDEX.md) tracks x00104. The temporary
+`picomatch` replacement must stay pinned to reviewed bytes until an official
+patched release passes the existing dependency audit and full validation.
+
 ### 3.7 MCP server launch and project identity
 
 The canonical project registration is **`DelendAI:Tanit`**, following
@@ -345,6 +349,11 @@ The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
 opening fix required by the delivery gate: tests isolate launchers and the CLI
 opens the generated output using its injected context.
 
+The [external corpus](../../tests/acceptance/external-corpus/README.md) records
+reviewed upstream revisions and hashes; its offline runner compares the actual
+CLI and Application API without executing third-party project scripts. Unknown
+response/schema claims must remain separate from endpoint accuracy.
+
 The [beta acceptance record](../BETA.md) links the canonical follow-ups for
 external accuracy measurements, Swagger reconciliation, optional anonymous
 enrichment and the Linux desktop dependency gate. Their acceptance criteria
@@ -363,6 +372,10 @@ permissions, and failures that remain visible to the delivery workflow.
 The [proposal index](proposals/INDEX.md) tracks native Swagger reconciliation: raw
 scanner observations retain source files and declared coverage limits before
 merger precedence. Missing scanner coverage never establishes route absence.
+
+The [proposal index](proposals/INDEX.md) tracks x00103. Endpoint fusion and the
+service graph must use the same service identity for overlapping HTTP
+observations, while keeping workspaces and scanner evidence distinguishable.
 
 ## 4. Project invariants — local additions
 

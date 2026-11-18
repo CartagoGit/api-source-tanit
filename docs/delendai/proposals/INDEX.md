@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `t00005` | `test` | [`ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md`](ready/tests/t00005-certificar-exactitud-y-paridad-en-repositorios-api-externos-reproducibles.md) |
 
 ## Bloqueadas
 
