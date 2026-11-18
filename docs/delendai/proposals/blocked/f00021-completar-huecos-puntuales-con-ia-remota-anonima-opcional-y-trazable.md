@@ -2,14 +2,14 @@
 id: f00021
 title: "Completar huecos puntuales con IA remota anónima opcional y trazable"
 kind: feat
-status: in-progress
+status: blocked
 type: proposal
 track: enrichment
 date: 2026-11-10
-last-transition-id: 8cdf2a4f-4aa7-4101-a87d-cfc3791e950e
-last-correlation-id: 8cdf2a4f-4aa7-4101-a87d-cfc3791e950e
-last-transition-from: ready
-last-transition-at: 2026-11-11T00:43:23.527Z
+last-transition-id: 90b47654-b973-4f01-8f27-2dc81d339d82
+last-correlation-id: 90b47654-b973-4f01-8f27-2dc81d339d82
+last-transition-from: in-progress
+last-transition-at: 2026-11-18T17:51:52.942Z
 ---
 
 # f00021 — Completar huecos puntuales con IA remota anónima opcional y trazable
