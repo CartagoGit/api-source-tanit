@@ -58,7 +58,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "Transportar el archivo relativo, pointer RFC 6901 y referencias locales resueltas por el contrato común y la proyección de reconciliación, sin perder procedencia."
 - shipped-in: `dc881f5c12261588e6abc4e78bf4e07a39c484cf`
 - review-state: in_review
-- review-implementer: openai-gpt-6.1-sol
+- review-implementer: openai-gpt-6.2-sol
 
 ### S3 — Presentación común y controles de acceso remoto
 - **Status**: review
