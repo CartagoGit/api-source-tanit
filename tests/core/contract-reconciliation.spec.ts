@@ -37,9 +37,12 @@ describe("shared static contract reconciliation", () => {
     });
     expect(result?.sources[1]?.links).toEqual([{ url: "https://docs.example/api", file: "swagger-initializer.js", pointer: "#/url" }]);
     expect(ContractEvidenceReportSchema.parse(result)).toEqual(result);
+    const urlWithUserInfo = new URL("https://example.invalid/api");
+    urlWithUserInfo.username = "fixture-user";
+    urlWithUserInfo.password = "fixture-password";
     expect(() => ContractScanEvidenceSchema.parse({
       kind: "documentation", completeness: "partial", artifacts: [], limitations: [],
-      links: [{ url: "https://user:secret@example.test/api", file: "swagger.js", pointer: "#/url" }],
+      links: [{ url: urlWithUserInfo.href, file: "swagger.js", pointer: "#/url" }],
     })).toThrow();
     if (!result) throw new Error("Expected a report for documentation scans");
     expect(() => ContractEvidenceReportSchema.parse({

@@ -465,8 +465,19 @@ describe("OpenApiRouteScanner — scan() branches", () => {
   });
 
   test("reads literal Swagger UI configuration without evaluating it or accepting credential URLs", async () => {
+    const urlWithUserInfo = new URL("https://example.invalid/spec.json");
+    urlWithUserInfo.username = "fixture-user";
+    urlWithUserInfo.password = "fixture-password";
+    const config = {
+      url: "./specs/api.yaml",
+      urls: [
+        { url: "https://docs.example/openapi.json" },
+        { url: urlWithUserInfo.href },
+        { url: urlWithUserInfo.href.replace("https://", "https:") },
+      ],
+    };
     const project = await createTempProject({
-      "swagger-initializer.js": `window.onload = function () { SwaggerUIBundle({ url: "./specs/api.yaml", urls: [{ url: "https://docs.example/openapi.json" }, { url: "https://user:secret@bad.example/spec.json" }, { url: "https:user:secret@bad.example/spec.json" }] }); };`,
+      "swagger-initializer.js": `window.onload = function () { SwaggerUIBundle(${JSON.stringify(config)}); };`,
       "specs/api.yaml": "paths:\n  /from-config:\n    get:\n      summary: config\n",
     });
     try {
