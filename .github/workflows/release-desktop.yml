@@ -242,11 +242,11 @@ jobs:
       - name: Empaquetar
         run: bun run desktop:build
         env:
-          # `EXPOSTMAN_BUNDLES` es la variable que lee
+          # `TANIT_BUNDLES` es la variable que lee
           # `scripts/build/desktop-build.script.ts` para acotar los
           # formatos. La matriz dice lo mismo, pero escribirlo aquí
           # deja el recorte explícito en el workflow.
-          EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}
+          TANIT_BUNDLES: ${{ matrix.tauri_bundles }}
 
       # El staging tiene una forma fija: <os>/<arch>/<bundle>/. El
       # manifest dice qué debería haber; la ruta dice qué hay.

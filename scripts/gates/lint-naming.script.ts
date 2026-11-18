@@ -186,7 +186,7 @@ const RULES: readonly INamingRule[] = [
   },
   {
     path: "packages/ui/server/",
-    what: "el servidor de `expostman ui`: rutas y transporte, separados",
+    what: "el servidor de `apisrc ui`: rutas y transporte, separados",
     suffixes: [".service.ts"],
   },
   {

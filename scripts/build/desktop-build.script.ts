@@ -128,7 +128,8 @@ async function main(): Promise<number> {
 
     console.log(`→ Platform: ${objetivo.label}`);
     console.log(`→ Target:   ${triple}`);
-    console.log(`→ Bundles:  ${objetivo.bundles.join(", ")}\n`);
+    const bundles = process.env["TANIT_BUNDLES"] ?? objetivo.bundles.join(",");
+    console.log(`→ Bundles:  ${bundles}\n`);
 
     // 1. El binario del CLI, que es el sidecar.
     const binarios = join(DESKTOP, "binaries");
@@ -147,13 +148,11 @@ async function main(): Promise<number> {
 
     // 2. El empaquetado.
     //
-    // `EXPOSTMAN_BUNDLES` acota los formatos por encima de la
+    // `TANIT_BUNDLES` acota los formatos por encima de la
     // plataforma. El contenedor pide solo `deb`: el `.AppImage` lo monta
     // `linuxdeploy` con FUSE, y dentro de un contenedor falla incluso
     // dándole `/dev/fuse` y `SYS_ADMIN` —se probó—. El error que da,
     // `failed to run linuxdeploy`, no menciona FUSE por ninguna parte.
-    const forzados = process.env["EXPOSTMAN_BUNDLES"];
-    const bundles = forzados ?? objetivo.bundles.join(",");
     console.log(`\n→ Packaging with Tauri (${bundles})…`);
     await ejecutar(["cargo", "tauri", "build", "--bundles", bundles], DESKTOP);
 
