@@ -2,6 +2,18 @@ import { z } from "zod";
 
 const Rfc6901PointerSchema = z.string().regex(/^#(?:\/(?:[^~]|~[01])*)*$/, "Expected an RFC 6901 JSON pointer fragment");
 
+/** A literal absolute HTTP(S) URL with no user information. */
+export const ContractDocumentationUrlSchema = z.string().refine(value => {
+  if (!/^https?:\/\/[^/?#]+/i.test(value) || /[\\\s]/.test(value)) return false;
+  if (value.match(/^https?:\/\/([^/?#]*)/i)?.[1]?.includes("@")) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname !== "" && parsed.username === "" && parsed.password === "";
+  } catch {
+    return false;
+  }
+}, "Expected a credential-free HTTP(S) URL");
+
 /** One runtime contract for every carrier; omission means no comparison was run. */
 export const ContractScanEvidenceSchema = z.object({
   kind: z.enum(["code", "documentation"]),
@@ -9,14 +21,7 @@ export const ContractScanEvidenceSchema = z.object({
   artifacts: z.array(z.string()),
   limitations: z.array(z.string()),
   links: z.array(z.object({
-    url: z.string().url().refine(value => {
-      try {
-        const parsed = new URL(value);
-        const authority = value.match(/^https?:\/\/([^/?#]*)/i)?.[1] ?? "";
-        return ["http:", "https:"].includes(parsed.protocol) && !authority.includes("@");
-      }
-      catch { return false; }
-    }, "Links must be credential-free HTTP(S) URLs"),
+    url: ContractDocumentationUrlSchema,
     file: z.string(), pointer: Rfc6901PointerSchema,
   })).optional(),
 });

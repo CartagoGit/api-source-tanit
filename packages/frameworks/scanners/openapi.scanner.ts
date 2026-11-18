@@ -15,10 +15,10 @@
  *
  * If no OpenAPI file exists, `detect()` returns 0.
  */
-import { existsSync } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
-import { readFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { open } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -32,7 +32,7 @@ import { rawProjectRoot } from "../../core/discovery/effective-project-root.help
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 import { ensureInside } from "../../core/helpers/path-containment.helper.js";
 import { parseWithProgram } from "../../core/language-frontends/typescript/index.js";
-import { stat } from "node:fs/promises";
+import { ContractDocumentationUrlSchema } from "../../contracts/constants/core/contract-evidence.constant.js";
 
 /** Look for OpenAPI in the most common locations. */
 const OPENAPI_CANDIDATES = [
@@ -481,8 +481,13 @@ export class OpenApiRouteScanner implements IRouteScanner {
       const spec = document.value;
       const basePath = this.opts.basePath ?? readString(spec, "basePath") ?? serverPath(readArray(spec, "servers"));
       const paths = readObject(spec, "paths") ?? {};
+      const specDocsUrl = readString(readObject(spec, "externalDocs"), "url");
+      if (specDocsUrl && ContractDocumentationUrlSchema.safeParse(specDocsUrl).success) {
+        links.push({ url: specDocsUrl, file: document.file, pointer: "#/externalDocs/url" });
+      }
       for (const [pathTemplate, pathItemValue] of Object.entries(paths)) {
-        const resolvedPath = await documents.resolve(pathItemValue, specRel);
+        if (!documents.withinTime()) break;
+        const resolvedPath = await documents.resolve(pathItemValue, document.file);
         if (!isRecord(resolvedPath.value)) continue;
         for (const method of HTTP_METHODS) {
           const operation = resolvedPath.value[method];
@@ -492,22 +497,24 @@ export class OpenApiRouteScanner implements IRouteScanner {
           const description = readString(operation, "description") ?? "";
           const operationId = readString(operation, "operationId") ?? "";
           const uri = join(basePath, pathTemplate).replace(/\/+/g, "/");
-          const sourceFile = resolvedPath.origin?.file ?? specRel;
-          const sourcePointer = resolvedPath.origin
-            ? `${resolvedPath.origin.pointer}/${method}`
+          const ownsOperation = isRecord(pathItemValue) && Object.hasOwn(pathItemValue, method);
+          const origin = ownsOperation ? undefined : resolvedPath.origin;
+          const sourceFile = origin?.file ?? document.file;
+          const sourcePointer = origin
+            ? `${origin.pointer}/${method}`
             : `#/paths/${escapePointer(pathTemplate)}/${method}`;
           routes.push({
             framework: "openapi", method: method.toUpperCase(), uri, rawUri: pathTemplate,
-            sourceFile, sourcePointer, sourceDocument: specRel,
+            sourceFile, sourcePointer, sourceDocument: document.file,
             ...(resolvedPath.references.length ? { sourceReferences: resolvedPath.references } : {}),
             lineNumber: 0, prefixChain: basePath ? [basePath] : [],
             displayName: operationId || summary || `${method.toUpperCase()} ${pathTemplate}`,
             ...(tags.length ? { tags } : {}),
             ...(description ? { description } : summary ? { description: summary } : {}),
           });
-          operationCache.set(`${specRel}\0${method}\0${pathTemplate}`, { pathItem: resolvedPath.value, operation });
+          operationCache.set(`${document.file}\0${method}\0${pathTemplate}`, { pathItem: resolvedPath.value, operation });
           const docsUrl = readString(readObject(operation, "externalDocs"), "url");
-          if (docsUrl && isSafeHttpUrl(docsUrl)) links.push({ url: docsUrl, file: sourceFile, pointer: `${sourcePointer}/externalDocs/url` });
+          if (docsUrl && ContractDocumentationUrlSchema.safeParse(docsUrl).success) links.push({ url: docsUrl, file: sourceFile, pointer: `${sourcePointer}/externalDocs/url` });
         }
       }
     }
@@ -518,7 +525,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
     ])];
     return {
       routes,
-      providerContext: new Map<string, unknown>([["openapi.documents", documents.documents], ["openapi.operations", operationCache]]),
+      providerContext: new Map<string, unknown>([["openapi.operations", operationCache]]),
       evidence: {
         kind: "documentation", completeness: "partial", artifacts, limitations,
         ...(links.length ? { links: dedupeLinks(links) } : {}),
@@ -551,9 +558,7 @@ async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string
     try {
       const safe = await ensureInside(root, resolve(root, file));
       if (!safe.ok) { result.limitations.push(`Swagger config escaped the project root and was ignored: ${file}.`); continue; }
-      const details = await stat(safe.resolved);
-      if (details.size > MAX_OPENAPI_FILE_BYTES) { result.limitations.push(`Swagger config size limit exceeded: ${file}.`); continue; }
-      const raw = await readFile(safe.resolved, "utf8");
+      const { text: raw } = await readOpenApiText(safe.resolved, MAX_OPENAPI_FILE_BYTES);
       let configs: unknown[] = [];
       if (file.endsWith(".json")) {
         const parsed = parseJson(raw);
@@ -575,7 +580,7 @@ async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string
         });
         for (const candidate of candidates) {
           const value = candidate.value as string;
-          if (isSafeHttpUrl(value)) result.links.push({ url: value, file, pointer: candidate.pointer });
+          if (ContractDocumentationUrlSchema.safeParse(value).success) result.links.push({ url: value, file, pointer: candidate.pointer });
           else if (isLocalSpecPath(value)) {
             const local = projectRelativePath(file, value);
             if (local) result.localSpecs.push(local);
@@ -590,6 +595,27 @@ async function readStaticSwaggerConfig(root: string, files: ReadonlyArray<string
     }
   }
   return { ...result, localSpecs: [...new Set(result.localSpecs)], links: dedupeLinks(result.links) };
+}
+
+/** Read at most one byte over the limit, even if the file grows after stat. */
+async function readOpenApiText(path: string, limit: number): Promise<{ text: string; bytes: number }> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
+  try {
+    const details = await file.stat();
+    if (!details.isFile()) throw new Error("Expected a regular file");
+    if (details.size > limit) throw new Error(`file size limit (${limit} bytes) exceeded`);
+    const buffer = Buffer.alloc(limit + 1);
+    let bytes = 0;
+    while (bytes < buffer.length) {
+      const result = await file.read(buffer, bytes, buffer.length - bytes, bytes);
+      if (result.bytesRead === 0) break;
+      bytes += result.bytesRead;
+    }
+    if (bytes > limit) throw new Error(`file size limit (${limit} bytes) exceeded`);
+    return { text: new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, bytes)), bytes };
+  } finally {
+    await file.close();
+  }
 }
 
 function findSwaggerUiConfigs(program: unknown): unknown[] {
@@ -644,14 +670,6 @@ function staticLiteral(node: unknown, depth: number): unknown {
   }
 }
 
-function isSafeHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    const authority = value.match(/^https?:\/\/([^/?#]*)/i)?.[1] ?? "";
-    return ["http:", "https:"].includes(url.protocol) && !authority.includes("@");
-  } catch { return false; }
-}
-
 function isLocalSpecPath(value: string): boolean {
   return !value.startsWith("/") && !value.startsWith("\\") && !/^[A-Za-z]:/.test(value) &&
     !/^[a-z][a-z\d+.-]*:/i.test(value) && !/[?#]/.test(value) && /\.(?:json|ya?ml)$/i.test(value);
@@ -692,13 +710,14 @@ interface ResolvedOpenApiValue {
 class OpenApiDocumentSet {
   readonly documents = new Map<string, LoadedOpenApiDocument>();
   readonly limitations: string[] = [];
+  private readonly attempted = new Set<string>();
   private totalBytes = 0;
   private refVisits = 0;
   private readonly startedAt = Date.now();
 
   constructor(private readonly root: string) {}
 
-  private withinTime(): boolean {
+  withinTime(): boolean {
     if (Date.now() - this.startedAt <= MAX_OPENAPI_SCAN_MS) return true;
     this.addLimitation(`OpenAPI scan time budget (${MAX_OPENAPI_SCAN_MS}ms) reached.`);
     return false;
@@ -709,14 +728,16 @@ class OpenApiDocumentSet {
   }
 
   async load(file: string): Promise<LoadedOpenApiDocument | undefined> {
-    const normalized = file.replace(/\\/g, "/");
+    const normalized = relative(this.root, resolve(this.root, file.replace(/\\/g, "/"))).replace(/\\/g, "/");
     const cached = this.documents.get(normalized);
     if (cached) return cached;
     if (!this.withinTime()) return undefined;
-    if (this.documents.size >= MAX_OPENAPI_DOCUMENTS) {
+    if (this.attempted.has(normalized)) return undefined;
+    if (this.attempted.size >= MAX_OPENAPI_DOCUMENTS) {
       this.addLimitation(`OpenAPI document limit (${MAX_OPENAPI_DOCUMENTS}) reached.`);
       return undefined;
     }
+    this.attempted.add(normalized);
     const abs = resolve(this.root, normalized);
     const contained = await ensureInside(this.root, abs);
     if (!contained.ok) {
@@ -724,17 +745,13 @@ class OpenApiDocumentSet {
       return undefined;
     }
     try {
-      const details = await stat(contained.resolved);
-      if (details.size > MAX_OPENAPI_FILE_BYTES) {
-        this.addLimitation(`OpenAPI file size limit (${MAX_OPENAPI_FILE_BYTES} bytes) exceeded: ${normalized}.`);
-        return undefined;
-      }
-      if (this.totalBytes + details.size > MAX_OPENAPI_TOTAL_BYTES) {
+      const remaining = MAX_OPENAPI_TOTAL_BYTES - this.totalBytes;
+      if (remaining === 0) {
         this.addLimitation(`OpenAPI total size limit (${MAX_OPENAPI_TOTAL_BYTES} bytes) reached.`);
         return undefined;
       }
-      const raw = await readFile(contained.resolved, "utf8");
-      this.totalBytes += details.size;
+      const { text: raw, bytes } = await readOpenApiText(contained.resolved, Math.min(remaining, MAX_OPENAPI_FILE_BYTES));
+      this.totalBytes += bytes;
       let value: unknown;
       if (/\.json$/i.test(normalized)) {
         const parsed = parseJson(raw);
@@ -771,7 +788,7 @@ class OpenApiDocumentSet {
       return { value: out, references: uniqueReferences(references) };
     }
     if (!isRecord(value)) return { value, references: [] };
-    let source: Record<string, unknown> = value;
+    const output: Record<string, unknown> = Object.create(null);
     let references: { file: string; pointer: string }[] = [];
     let origin: ResolvedOpenApiValue["origin"];
     const ref = value["$ref"];
@@ -784,31 +801,42 @@ class OpenApiDocumentSet {
       if (!target) {
         this.addLimitation(ref.startsWith("../") || ref.startsWith("..\\") || isAbsolute(ref)
           ? `Reference escaped the project root and was ignored: ${ref}.`
-          : `Non-local or invalid reference was not followed: ${ref}.`);
+          : `Non-local or invalid reference was not followed in ${file}.`);
         return { value, references: [] };
       }
-      const id = `${target.file}#${target.pointer}`;
+      const id = `${target.file}${target.pointer}`;
       if (stack.has(id)) {
         this.addLimitation(`Cyclic OpenAPI reference was stopped: ${id}.`);
-        return { value, references: [{ file: target.file, pointer: target.pointer }] };
+        return { value, references: [] };
       }
       const document = await this.load(target.file);
       const referenced = document ? pointerValue(document.value, target.pointer) : undefined;
       if (referenced === undefined) {
         this.addLimitation(`OpenAPI reference could not be resolved: ${id}.`);
-        return { value, references: [{ file: target.file, pointer: target.pointer }] };
+        return { value, references: [] };
       }
-      const nextStack = new Set(stack); nextStack.add(id);
+      const nextStack = new Set(stack);
+      nextStack.add(id);
       const resolved = await this.resolve(referenced, target.file, depth + 1, nextStack);
-      source = { ...(isRecord(resolved.value) ? resolved.value : {}), ...value };
-      delete source["$ref"];
+      if (isRecord(resolved.value)) {
+        for (const [key, child] of Object.entries(resolved.value)) {
+          if (key !== "$ref") output[key] = child;
+        }
+      }
       references = [{ file: target.file, pointer: target.pointer }, ...resolved.references];
-      origin = { file: target.file, pointer: target.pointer };
+      origin = resolved.origin ?? target;
     }
-    const output: Record<string, unknown> = {};
-    for (const [key, child] of Object.entries(source)) {
-      const resolved = await this.resolve(child, origin?.file ?? file, depth + 1, stack);
-      output[key] = resolved.value;
+    for (const [key, child] of Object.entries(value)) {
+      if (key === "$ref") continue;
+      const resolved = await this.resolve(child, file, depth + 1, stack);
+      const inherited = output[key];
+      if (key === "properties" && isRecord(inherited) && isRecord(resolved.value)) {
+        output[key] = { ...inherited, ...resolved.value };
+      } else if (key === "required" && Array.isArray(inherited) && Array.isArray(resolved.value)) {
+        output[key] = [...new Set([...inherited, ...resolved.value])];
+      } else {
+        output[key] = resolved.value;
+      }
       references.push(...resolved.references);
     }
     return { value: output, references: uniqueReferences(references), ...(origin ? { origin } : {}) };
@@ -828,8 +856,13 @@ function splitLocalRef(ref: string, fromFile: string): { file: string; pointer: 
   if (/^[a-z][a-z\d+.-]*:/i.test(ref) || ref.startsWith("//") || ref.startsWith("\\") || ref.includes("?")) return undefined;
   const hashAt = ref.indexOf("#");
   const documentPart = hashAt < 0 ? ref : ref.slice(0, hashAt);
-  const pointer = hashAt < 0 ? "" : ref.slice(hashAt + 1);
-  if (pointer && !pointer.startsWith("/")) return undefined;
+  let pointer: string;
+  try {
+    pointer = hashAt < 0 ? "" : decodeURIComponent(ref.slice(hashAt + 1));
+  } catch {
+    return undefined;
+  }
+  if ((pointer && !pointer.startsWith("/")) || /~(?![01])/.test(pointer)) return undefined;
   let file = fromFile;
   if (documentPart) {
     if (isAbsolute(documentPart) || /^[A-Za-z]:/.test(documentPart)) return undefined;
@@ -837,7 +870,7 @@ function splitLocalRef(ref: string, fromFile: string): { file: string; pointer: 
     if (!resolvedFile) return undefined;
     file = resolvedFile;
   }
-  return { file, pointer: pointer ? `#${pointer}` : "" };
+  return { file, pointer: `#${pointer}` };
 }
 
 function pointerValue(root: unknown, pointer: string): unknown {
@@ -847,7 +880,7 @@ function pointerValue(root: unknown, pointer: string): unknown {
   for (const encoded of pointer.slice(2).split("/")) {
     const part = encoded.replace(/~1/g, "/").replace(/~0/g, "~");
     if (Array.isArray(current) && /^\d+$/.test(part)) current = current[Number(part)];
-    else if (isRecord(current)) current = current[part];
+    else if (isRecord(current) && Object.hasOwn(current, part)) current = current[part];
     else return undefined;
   }
   return current;
@@ -955,32 +988,19 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     const operations = _scanResult.providerContext?.get("openapi.operations") as
       | ReadonlyMap<string, { pathItem: Record<string, unknown>; operation: Record<string, unknown> }>
       | undefined;
-    let spec: unknown;
-    let pathItem: Record<string, unknown> | undefined;
-    let op: Record<string, unknown> | undefined;
-    const cached = operations?.get(`${specRel}\0${route.method.toLowerCase()}\0${route.rawUri}`);
-    if (cached) {
-      pathItem = cached.pathItem;
-      op = cached.operation;
-      const docs = _scanResult.providerContext?.get("openapi.documents") as
-        | ReadonlyMap<string, { readonly value: unknown }> | undefined;
-      spec = docs?.get(specRel)?.value;
-    } else {
-      // Compatibility for callers that invoke the provider directly without a scan result.
-      const absPath = resolve(rawProjectRoot(match), specRel);
-      let raw: string;
-      try { raw = await readFile(absPath, "utf8"); }
-      catch { return { endpointKey: keyOf(route), fields: [] }; }
-      if (specRel.endsWith(".json")) {
-        const parsed = parseJson(raw);
-        if (!parsed.ok) return { endpointKey: keyOf(route), fields: [] };
-        spec = parsed.value;
-      } else {
-        try { spec = parseYamlLite(raw); }
-        catch { return { endpointKey: keyOf(route), fields: [] }; }
+    const method = route.method.toLowerCase();
+    const cached = operations?.get(`${specRel}\0${method}\0${route.rawUri}`);
+    let pathItem = cached?.pathItem;
+    let op = cached?.operation;
+    if (!cached && !operations) {
+      const documents = new OpenApiDocumentSet(rawProjectRoot(match));
+      const document = await documents.load(specRel);
+      if (document) {
+        const rawPath = readObject(readObject(document.value, "paths"), route.rawUri);
+        const resolved = await documents.resolve(rawPath, document.file);
+        if (isRecord(resolved.value)) pathItem = resolved.value;
+        op = readObject(pathItem, method);
       }
-      pathItem = readObject(readObject(spec, "paths"), route.rawUri);
-      op = readObject(pathItem, route.method.toLowerCase());
     }
     if (!pathItem || !op) return { endpointKey: keyOf(route), fields: [] };
     const fields: IValidationSpec[] = [];
@@ -990,28 +1010,17 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     ];
     for (const p of params) {
       if (!isRecord(p)) continue;
-      // Resolve $ref in parameters (e.g. `{$ref: '#/components/parameters/X'}`).
-      const resolvedRaw = resolveRef(p, spec);
-      const resolvedP = isRecord(resolvedRaw) ? resolvedRaw : p;
-      // name, in, required can be in the resolved $ref or in the original.
-      const name = readString(resolvedP, "name") ?? readString(p, "name") ?? "";
-      const inLoc = (readString(resolvedP, "in") ??
-        readString(p, "in") ??
-        "query") as IValidationSpec["location"];
-      const required = Boolean(resolvedP["required"] ?? p["required"]);
-      const schema = (readObject(resolvedP, "schema") ?? {}) as OpenApiSchema;
-      fields.push(schemaToField(name, inLoc, required, schema));
+      const name = readString(p, "name");
+      if (!name) continue;
+      const location = (readString(p, "in") ?? "query") as IValidationSpec["location"];
+      const schema = (readObject(p, "schema") ?? {}) as OpenApiSchema;
+      fields.push(schemaToField(name, location, p["required"] === true, schema));
     }
     // Request body (JSON)
     const content = readObject(op, "requestBody");
     const json = readObject(readObject(content, "content"), "application/json");
     if (json) {
-      const raw = readObject(json, "schema") ?? {};
-      // Resolve top-level $ref (e.g. `{$ref: '#/components/schemas/X'}`).
-      const resolved = resolveRef(raw, spec);
-      const schema = (resolved ?? raw) as OpenApiSchema;
-      // allOf: merge properties + required from each subschema.
-      const merged = mergeAllOf(schema, spec);
+      const merged = mergeAllOf(readObject(json, "schema"));
       const required = new Set(merged.required ?? []);
       for (const [name, sub] of Object.entries(merged.properties ?? {})) {
         fields.push(schemaToField(name, "body", required.has(name), sub as OpenApiSchema));
@@ -1029,62 +1038,14 @@ function keyOf(route: ParsedRoute): string {
   return `${route.method} ${route.uri}`.toLowerCase();
 }
 
-/**
- * Resolves a local `$ref` (`#/components/schemas/X`) in the spec.
- * Supports one level of indirection. Returns `null` if it can't resolve.
- */
-function resolveRef(obj: unknown, spec: unknown): unknown {
-  if (!isRecord(obj)) return null;
-  const ref = obj["$ref"];
-  if (typeof ref !== "string" || !ref.startsWith("#/")) return null;
-  let current: unknown = spec;
-  for (const part of ref.slice(2).split("/")) {
-    if (!isRecord(current) || !(part in current)) return null;
-    current = current[part];
-  }
-  return current;
-}
-
-/**
- * Combines an OpenAPI schema with deeper `allOf: [...]`.
- *
- * Supports:
- * - `allOf: [{schemaBody}, {schemaBody2}]` → merges properties and required.
- * - `$ref` in `allOf` items: resolved if `spec` is passed.
- * - `oneOf`/`anyOf`: NOT merged (better to omit than to guess).
- */
+/** Merge allOf branches already resolved by the bounded document reader. */
 function mergeAllOf(
   schema: unknown,
-  spec?: unknown,
-  /**
-   * The `$ref`s already visited on this branch.
-   *
-   * The recursion is **unbounded by construction**: an `allOf` with
-   * a `$ref` leads to `resolveRef`, and what it returns enters here
-   * again. `A → allOf: [$ref B]` with `B → allOf: [$ref A]` would call
-   * itself forever, and this reads other people's specs. A hang
-   * hasn't been reproduced — the path here requires the spec to parse
-   * and the route to carry a body — but unbounded recursion on
-   * external input doesn't need a reproduction to deserve a bound.
-   *
-   * The branch is cut, not everything: a `$ref` repeated on two
-   * different branches is legitimate and common — a shared error
-   * response — and marking it globally would cause the second to be
-   * lost.
-   */
-  visitados: ReadonlySet<string> = new Set(),
+  depth = 0,
 ): { properties: Record<string, OpenApiSchema>; required: string[] } {
   const properties: Record<string, OpenApiSchema> = {};
   const required: string[] = [];
-  if (!isRecord(schema)) return { properties, required };
-
-  // Resolve $ref in the root schema.
-  const ref = schema["$ref"];
-  if (typeof ref === "string" && spec) {
-    if (visitados.has(ref)) return { properties, required };
-    const resolved = resolveRef(schema, spec);
-    if (resolved) return mergeAllOf(resolved, spec, new Set([...visitados, ref]));
-  }
+  if (depth > MAX_OPENAPI_REF_DEPTH || !isRecord(schema)) return { properties, required };
 
   // Properties of the root schema.
   const props = schema["properties"];
@@ -1104,7 +1065,7 @@ function mergeAllOf(
   const allOf = schema["allOf"];
   if (Array.isArray(allOf)) {
     for (const sub of allOf) {
-      const merged = mergeAllOf(sub, spec, visitados);
+      const merged = mergeAllOf(sub, depth + 1);
       for (const [k, v] of Object.entries(merged.properties)) {
         properties[k] = v;
       }

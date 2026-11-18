@@ -11,6 +11,11 @@
 
 // --- node:fs/promises ----------------------------------------------------
 declare module "node:fs/promises" {
+  export function open(path: string, flags: number): Promise<{
+    stat(): Promise<{ isFile(): boolean; size: number }>;
+    read(buffer: Uint8Array, offset: number, length: number, position: number): Promise<{ bytesRead: number }>;
+    close(): Promise<void>;
+  }>;
   export function readFile(
     path: string,
     encoding: "utf8" | "utf-8",
@@ -143,6 +148,7 @@ declare module "node:path" {
 
 // --- node:fs (sync) ------------------------------------------------------
 declare module "node:fs" {
+  export const constants: { O_RDONLY: number; O_NONBLOCK: number; O_NOFOLLOW: number };
   /**
    * What this repo uses from a filesystem watcher: closing it.
    *
@@ -387,6 +393,7 @@ declare module "node:crypto" {
 
 /** Subset of `Buffer` used by the package (UUID v5, byte reads). */
 declare const Buffer: {
+  alloc(size: number): IBufferLike;
   from(value: string, encoding?: string): BufferLike;
   from(value: IBufferLike): BufferLike;
 };
@@ -603,6 +610,7 @@ declare function fetch(
 
 /** Byte-to-text decoder, for reading stdin. */
 declare class TextDecoder {
+  constructor(label?: string, options?: { fatal?: boolean });
   /**
    * `stream: true` keeps state across chunks, so a multibyte
    * character that straddles two `data` events is not split.
@@ -613,6 +621,8 @@ declare type Uint8Array = { readonly length: number };
 declare const URL: {
   new (url: string, base?: string): {
     hostname: string;
+    username: string;
+    password: string;
     protocol: string;
     port: string;
     pathname: string;

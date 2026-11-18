@@ -415,6 +415,38 @@ describe("OpenApiRouteScanner — scan() branches", () => {
     } finally { await project.cleanup(); }
   });
 
+  test("preserves a whole-file reference and resolves local schema siblings in their own document", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({
+        externalDocs: { url: "https://docs.example/guide" },
+        paths: {
+          "/external": { $ref: "./path.json" },
+          "/local": {
+            get: { parameters: [{ $ref: "./parameter.json", schema: { $ref: "#/components/schemas/Encoded%20name" } }] },
+          },
+        },
+        components: { schemas: { "Encoded name": { type: "integer" } } },
+      }),
+      "path.json": JSON.stringify({ get: { description: "From the referenced file" } }),
+      "parameter.json": JSON.stringify({ name: "page", in: "query", schema: { type: "string" } }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const result = await new OpenApiRouteScanner().scan(match);
+      expect(result.routes[0]).toMatchObject({
+        sourceFile: "path.json", sourcePointer: "#/get",
+        sourceReferences: [{ file: "path.json", pointer: "#" }],
+      });
+      expect(result.evidence?.links).toEqual([
+        { url: "https://docs.example/guide", file: "openapi.json", pointer: "#/externalDocs/url" },
+      ]);
+      const route = result.routes.find(item => item.uri === "/local");
+      if (!route) throw new Error("Missing /local");
+      expect((await new OpenApiValidationProvider().resolve(route, match, result)).fields)
+        .toMatchObject([{ fieldName: "page", type: "integer" }]);
+    } finally { await project.cleanup(); }
+  });
+
   test("reports cyclic and escaping refs instead of treating them as complete", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({ paths: {
@@ -434,7 +466,7 @@ describe("OpenApiRouteScanner — scan() branches", () => {
 
   test("reads literal Swagger UI configuration without evaluating it or accepting credential URLs", async () => {
     const project = await createTempProject({
-      "swagger-initializer.js": `window.onload = function () { SwaggerUIBundle({ url: "./specs/api.yaml", urls: [{ url: "https://docs.example/openapi.json" }, { url: "https://user:secret@bad.example/spec.json" }] }); };`,
+      "swagger-initializer.js": `window.onload = function () { SwaggerUIBundle({ url: "./specs/api.yaml", urls: [{ url: "https://docs.example/openapi.json" }, { url: "https://user:secret@bad.example/spec.json" }, { url: "https:user:secret@bad.example/spec.json" }] }); };`,
       "specs/api.yaml": "paths:\n  /from-config:\n    get:\n      summary: config\n",
     });
     try {
