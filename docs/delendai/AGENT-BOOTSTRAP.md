@@ -366,6 +366,10 @@ The [proposal index](proposals/INDEX.md) tracks native Swagger reconciliation: r
 scanner observations retain source files and declared coverage limits before
 merger precedence. Missing scanner coverage never establishes route absence.
 
+The [proposal index](proposals/INDEX.md) tracks x00103. Endpoint fusion and the
+service graph must use the same service identity for overlapping HTTP
+observations, while keeping workspaces and scanner evidence distinguishable.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the
