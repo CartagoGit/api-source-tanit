@@ -56,7 +56,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "Reutilizar el parser para múltiples especificaciones JSON/YAML y referencias locales contenidas, con ciclos y límites explícitos; sin ejecutar código ni red automática."
   - "Detectar configuración Swagger estáticamente resoluble y enlaces declarados literales HTTP(S), sin credenciales ni URLs inventadas; conservar límites de resolución y completar descripciones compatibles con procedencia."
   - "Transportar el archivo relativo, pointer RFC 6901 y referencias locales resueltas por el contrato común y la proyección de reconciliación, sin perder procedencia."
-- shipped-in: `bc02a49eb276`
+- shipped-in: `dc881f5c12261588e6abc4e78bf4e07a39c484cf`
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-sol
 
