@@ -81,7 +81,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "La lectura remota requiere URL o acción explícita y comprueba límites de tiempo, tamaño y redirecciones. El escaneo y el render no abren URLs ni referencias remotas."
 
 ### S5 — Paridad de la integración MCP opcional
-- **Status**: pending
+- **Status**: review
 - **Files**: `integrations/delendai/src/lib/contracts/plugin.interface.ts`, `integrations/delendai/src/lib/tools/summary.tool.ts`, `integrations/delendai/src/index.ts`, `integrations/delendai/package.json`, `integrations/delendai/bun.lock`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/src/lib/tools/test.tool.ts`, `integrations/delendai/src/lib/helpers/runner.helper.ts`, `integrations/delendai/src/lib/helpers/smoke-runner.helper.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`
 - **Gate**: pinned optional integration tests and schema validation
 - acceptance:
@@ -89,6 +89,8 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "Versionar la superficie pública del plugin y comprobar su salida contra el runtime inmutable 0.3.0."
   - "La validación del plugin conserva las duraciones válidas aunque cambie el reloj del sistema."
   - "La instalación independiente del plugin valida su lock con la misma remediación de picomatch que emplea Tanit y pasa la auditoría de severidad alta."
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ## acceptance
 
