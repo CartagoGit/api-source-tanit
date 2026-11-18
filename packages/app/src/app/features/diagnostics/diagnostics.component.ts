@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@a
 
 import type { IContractSource, IContractComparison } from "../../../../../contracts/interfaces/core/contract-evidence.interface";
 
+import type { ISnapshotSummary } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { HostBridgeClient } from "../../core/api/host-bridge.client";
 import { ProjectStore } from "../../core/state/project.store";
 import { I18nService } from "../../core/i18n/i18n.service";
 
@@ -34,6 +36,17 @@ import { I18nService } from "../../core/i18n/i18n.service";
 export class DiagnosticsComponent {
   readonly i18n = inject(I18nService);
   private readonly project = inject(ProjectStore);
+  private readonly bridge = inject(HostBridgeClient);
+  readonly preview = signal<{
+    snapshot: ISnapshotSummary;
+    artifact: string;
+    text?: string;
+    failed?: boolean;
+  } | null>(null);
+  readonly currentPreview = computed(() => {
+    const preview = this.preview();
+    return preview?.snapshot === this.project.summary() ? preview : null;
+  });
 
   /**
    * The diagnostics of the open project.
@@ -50,6 +63,25 @@ export class DiagnosticsComponent {
     .filter(operation => this.showMatches() || operation.status !== "matched"));
   readonly visibleComparisons = computed(() => this.comparisons().slice(0, this.operationLimit()));
   readonly comparisonCount = computed(() => this.contractReports().reduce((total, report) => total + report.operations.length, 0));
+
+  async openArtifact(serviceId: string, artifact: string): Promise<void> {
+    const snapshot = this.project.summary();
+    if (!snapshot) return;
+    const pending = { snapshot, artifact };
+    this.preview.set(pending);
+    const isCurrent = (): boolean => this.preview() === pending && this.project.summary() === snapshot;
+    try {
+      const { text } = await this.bridge.request("read-contract-artifact", {
+        projectRoot: snapshot.projectRoot,
+        sessionId: snapshot.sessionId,
+        serviceId,
+        artifact,
+      });
+      if (isCurrent()) this.preview.set({ ...pending, text });
+    } catch {
+      if (isCurrent()) this.preview.set({ ...pending, failed: true });
+    }
+  }
 
   coverageLabel(value: IContractSource["completeness"]): string {
     if (value === "complete") return this.i18n.translate("contracts.coverage.complete");

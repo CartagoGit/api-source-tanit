@@ -14,6 +14,10 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
+import { mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { defaultOrchestrator } from "../../packages/frameworks/framework.registry.js";
 
 import { dispatch, type IRequestContext } from "../../packages/core/application-api/dispatcher.js";
 import { buildRegistry } from "../../packages/core/application-api/handlers.js";
@@ -123,6 +127,7 @@ describe("buildRegistry()", () => {
       "list-endpoints",
       "get-endpoint",
       "get-schema",
+      "read-contract-artifact",
       "list-services",
       "dry-run",
       "export",
@@ -649,5 +654,51 @@ describe("core barrel (sanity)", () => {
   test("openSession + closeAllSessions are exported from the core session layer", () => {
     expect(typeof openSession).toBe("function");
     expect(typeof closeAllSessions).toBe("function");
+  });
+});
+describe("read-contract-artifact", () => {
+  test("reads only active, bounded local documentation as UTF-8", async () => {
+    const folder = await mkdtemp(join(tmpdir(), "tanit-contract-preview-"));
+    const outer = await mkdtemp(join(tmpdir(), "tanit-contract-preview-outside-"));
+    const artifact = "openapi.json";
+    const text = JSON.stringify({
+      openapi: "3.0.3",
+      info: { title: "Preview", version: "1" },
+      paths: { "/ping": { get: { responses: { 200: { description: "OK" } } } } },
+    });
+    const ctx = makeCtx({ orchestrator: defaultOrchestrator() });
+    try {
+      await writeFile(join(folder, artifact), text);
+      await writeFile(join(folder, "private.txt"), "not part of the report");
+      const project = await dispatchAs<OpenProjectOutput>("open-project", { projectRoot: folder, watch: false }, ctx);
+      expect(project.ok).toBe(true);
+      if (!project.ok) throw new Error(project.error.message);
+      const summary = project.value.summary;
+      const source = summary.contractEvidence?.flatMap(report => report.sources)
+        .find(entry => entry.kind === "documentation" && entry.artifacts.includes(artifact));
+      expect(source).toBeDefined();
+      const input = { projectRoot: summary.projectRoot, sessionId: summary.sessionId, serviceId: source!.serviceId, artifact };
+      const read = (override: Partial<typeof input> = {}) => dispatchAs<{ text: string }>(
+        "read-contract-artifact", { ...input, ...override }, ctx,
+      );
+      await expect(read()).resolves.toEqual({ ok: true, value: { text } });
+      await expect(read({ sessionId: "previous" })).resolves.toMatchObject({ ok: false, error: { code: "SESSION_NOT_FOUND" } });
+      await expect(read({ serviceId: "another-service" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+      await expect(read({ artifact: "private.txt" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+      await expect(read({ artifact: "https://example.invalid/openapi.json" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+
+      await writeFile(join(folder, artifact), Buffer.alloc(256 * 1024 + 1, 0x61));
+      await expect(read()).resolves.toMatchObject({ ok: false, error: { code: "EXECUTION_FAILED" } });
+      await writeFile(join(folder, artifact), Buffer.from([0xff]));
+      await expect(read()).resolves.toMatchObject({ ok: false, error: { code: "EXECUTION_FAILED" } });
+
+      await writeFile(join(outer, artifact), "outside this project");
+      await unlink(join(folder, artifact));
+      await symlink(join(outer, artifact), join(folder, artifact));
+      await expect(read()).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+    } finally {
+      closeAllSessions();
+      await Promise.all([rm(folder, { recursive: true, force: true }), rm(outer, { recursive: true, force: true })]);
+    }
   });
 });

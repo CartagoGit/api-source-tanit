@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 452 símbolos en 178 módulos.
+> 454 símbolos en 180 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -408,6 +408,14 @@ Reads a collection, or says why it could not be read.
 
 ```ts
 export function createPushHandler(): IHandler<PushInput, PushOutput>
+```
+
+### `packages/core/application-api/read-contract-artifact.handler.ts`
+
+#### `createReadContractArtifactHandler`
+
+```ts
+export function createReadContractArtifactHandler(): IHandler<ReadContractArtifactInput, ReadContractArtifactOutput>
 ```
 
 ### `packages/core/application-api/service-detail.handler.ts`
@@ -2732,6 +2740,14 @@ If `folder` is passed, it's used as the prefix of the folder path.
 
 ```ts
 export function countItems(collection: PostmanCollection):
+```
+
+### `packages/core/helpers/read-bounded-text.helper.ts`
+
+#### `readBoundedText`
+
+```ts
+export async function readBoundedText(path: string, limit: number): Promise<
 ```
 
 ### `packages/core/helpers/read-files.helper.ts`

@@ -17,3 +17,9 @@ small, .empty { color: var(--color-muted); }
 .contract-operation.conflict { border-color: var(--color-copper); }
 .contract-conflict { color: var(--color-copper-strong); }
 .muted { color: var(--color-muted); }
+
+.artifact-open { display: block; margin-top: 6px; max-width: 100%; text-align: start; }
+.contract-source .artifact-open code { display: inline; margin: 0; overflow-wrap: anywhere; }
+.artifact-preview { padding: 12px; border: 1px solid var(--color-border); }
+.artifact-preview h3 { margin: 0; overflow-wrap: anywhere; }
+.artifact-preview pre { max-height: 28rem; margin-bottom: 0; padding: 12px; overflow: auto; background: var(--color-panel); }

@@ -47,6 +47,12 @@ export const GetEndpointInputSchema = z.object({
   uri: z.string().min(1),
 });
 export const GetSchemaInputSchema = GetEndpointInputSchema;
+export const ReadContractArtifactInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  sessionId: SessionIdSchema,
+  serviceId: z.string().min(1).max(4096),
+  artifact: z.string().min(1).max(4096),
+});
 export const ListServicesInputSchema = SnapshotInputSchema;
 export const DryRunInputSchema = z.object({
   projectRoot: ProjectRootSchema,
@@ -275,7 +281,7 @@ export const ProjectEntrySchema = z.object({
 
 export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
-  "get-schema", "list-services", "service-detail", "dry-run", "export",
+  "get-schema", "read-contract-artifact", "list-services", "service-detail", "dry-run", "export",
   "history", "history-list", "history-diff", "history-compare-config",
   "history-re-export", "history-restore",
   "watch", "cancel", "settings", "list-projects", "close", "browse",

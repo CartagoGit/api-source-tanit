@@ -23,10 +23,31 @@
       @for (source of report.sources; track $index) {
         <details class="contract-source">
           <summary>{{ source.framework }} · {{ source.serviceId }} · {{ coverageLabel(source.completeness) }}</summary>
-          @for (artifact of source.artifacts; track artifact) { <code>{{ artifact }}</code> }
+          @for (artifact of source.artifacts; track artifact) {
+            @if (source.kind === "documentation") {
+              <button class="artifact-open" type="button" (click)="openArtifact(source.serviceId, artifact)">{{ i18n.translate("contracts.openArtifact") }} <code>{{ artifact }}</code></button>
+            } @else {
+              <code>{{ artifact }}</code>
+            }
+          }
           @for (limitation of source.limitations; track $index) { <p class="muted">{{ limitation }}</p> }
         </details>
       }
+    }
+    @if (currentPreview(); as document) {
+      <section class="artifact-preview" aria-labelledby="artifact-title">
+        <header>
+          <h3 id="artifact-title">{{ document.artifact }}</h3>
+          <button type="button" (click)="preview.set(null)">{{ i18n.translate("contracts.closeArtifact") }}</button>
+        </header>
+        @if (document.failed) {
+          <p role="alert">{{ i18n.translate("contracts.artifactUnavailable") }}</p>
+        } @else if (document.text !== undefined) {
+          <pre tabindex="0">{{ document.text }}</pre>
+        } @else {
+          <p role="status">{{ i18n.translate("contracts.artifactLoading") }}</p>
+        }
+      </section>
     }
     <label class="contract-filter"><input type="checkbox" [checked]="showMatches()" (change)="showMatches.set(!showMatches()); operationLimit.set(100)" />{{ i18n.translate("contracts.showMatches") }}</label>
     @if (comparisons().length === 0) { <p class="muted">{{ i18n.translate("contracts.noDifferences") }}</p> }
@@ -51,7 +72,7 @@
       }
     </ul>
     @if (visibleComparisons().length < comparisons().length) {
-      <button type="button" (click)="operationLimit.update(addPage)">{{ i18n.translate("contracts.showMore") }}</button>
+      <button class="contract-page-next" type="button" (click)="operationLimit.update(addPage)">{{ i18n.translate("contracts.showMore") }}</button>
     }
   </section>
 }
