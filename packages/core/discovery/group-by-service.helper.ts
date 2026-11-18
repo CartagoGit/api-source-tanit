@@ -81,6 +81,22 @@ export function deriveServiceId(match: IProjectMatch): string {
   return normalizeServiceId(base);
 }
 
+/** Resolve the service identity used by both the descriptor and HTTP fusion. */
+export function resolveServiceIdentity(
+  matches: readonly IProjectMatch[],
+  detectedMonorepo: boolean | undefined,
+): { flatHybrid: boolean; idFor: (match: IProjectMatch) => string } {
+  const flatHybrid =
+    matches.length > 1 &&
+    detectedMonorepo === false &&
+    matches.every(match => !match.frameworkSearchRoot);
+
+  return {
+    flatHybrid,
+    idFor: flatHybrid ? match => normalizeServiceId(match.projectRoot) : deriveServiceId,
+  };
+}
+
 /**
  * x00039: collect routes for a flat-hybrid match.
  *
@@ -163,21 +179,7 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
 
   const services: IServiceGraphNode[] = [];
   const byId = new Map<string, IServiceGraphNode>();
-  // Flat hybrid project: several frameworks over the SAME root (no
-  // monorepo, no `frameworkSearchRoot`). They are ONE service with
-  // several capabilities, not N services — the legacy
-  // `generateCollection()` contract must keep returning one
-  // collection for them. Keyed by projectRoot in that case; keyed by
-  // the derived id otherwise (workspaces keep their per-service
-  // split).
-  const flatHybrid =
-    input.matches.length > 1 &&
-    input.detectedMonorepo === false &&
-    input.matches.every(
-      (m) => m.frameworkSearchRoot === undefined || m.frameworkSearchRoot === "",
-    );
-  const serviceKeyOf = (match: IProjectMatch): string =>
-    flatHybrid ? normalizeServiceId(match.projectRoot) : deriveServiceId(match);
+  const { flatHybrid, idFor: serviceKeyOf } = resolveServiceIdentity(input.matches, input.detectedMonorepo);
   // x00039: tracks which per-match route entries have already been
   // folded into a descriptor in flat-hybrid mode. The first match
   // in the loop claims the full set; subsequent matches contribute
