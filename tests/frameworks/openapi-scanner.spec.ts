@@ -472,8 +472,8 @@ describe("OpenApiRouteScanner — scan() branches", () => {
       url: "./specs/api.yaml",
       urls: [
         { url: "https://docs.example/openapi.json" },
-        { url: urlWithUserInfo.href },
-        { url: urlWithUserInfo.href.replace("https://", "https:") },
+        { url: String(urlWithUserInfo) },
+        { url: String(urlWithUserInfo).replace("https://", "https:") },
       ],
     };
     const project = await createTempProject({

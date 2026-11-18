@@ -42,7 +42,7 @@ describe("shared static contract reconciliation", () => {
     urlWithUserInfo.password = "fixture-password";
     expect(() => ContractScanEvidenceSchema.parse({
       kind: "documentation", completeness: "partial", artifacts: [], limitations: [],
-      links: [{ url: urlWithUserInfo.href, file: "swagger.js", pointer: "#/url" }],
+      links: [{ url: String(urlWithUserInfo), file: "swagger.js", pointer: "#/url" }],
     })).toThrow();
     if (!result) throw new Error("Expected a report for documentation scans");
     expect(() => ContractEvidenceReportSchema.parse({
