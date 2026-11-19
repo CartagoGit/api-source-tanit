@@ -13,14 +13,15 @@
  *
  * Uso:
  *   bun run build:binary              # solo la plataforma actual
- *   bun run build:binary --all        # las cuatro
+ *   bun run build:binary --all        # todos los destinos
  *   bun run build:binary --out ./dist
  */
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { arch as osArch } from "node:os";
 import { join, resolve } from "node:path";
 import { BIN_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
+import { hasFlag, readFlag } from "../../packages/core/helpers/argv.helper.js";
 import { CLI_ENTRYPOINT, DIST_DIR, REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Targets de `bun build --compile`, con el sufijo del artefacto. */
@@ -43,9 +44,7 @@ function currentTarget(): (typeof TARGETS)[number] {
   // macOS — Intel vs Apple Silicon must be distinguished by
   // `process.arch`, not just the platform. Without this branch an
   // Intel Mac would pick up the arm64 binary and silently fail at
-  // boot (`Bad CPU type in executable`). Windows and Linux are
-  // single-arch today; expand this branch if Bun ever ships a
-  // second Windows / Linux target.
+  // boot (`Bad CPU type in executable`). Windows targets x64.
   const suffix =
     platform === "darwin"
       ? arch === "x64"
@@ -53,7 +52,7 @@ function currentTarget(): (typeof TARGETS)[number] {
         : "darwin-arm64"
       : platform === "win32"
         ? "windows-x64.exe"
-        : "linux-x64";
+        : arch === "arm64" ? "linux-arm64" : "linux-x64";
   return TARGETS.find((t) => t.suffix === suffix) ?? TARGETS[0]!;
 }
 
@@ -72,33 +71,95 @@ async function compile(
   return { ok: (await proc.exited) === 0, output: stdout + stderr };
 }
 
+async function launchUi(
+  outfile: string,
+  outDir: string,
+  target: (typeof TARGETS)[number],
+  windowsInterop: boolean,
+  port: string | undefined,
+): Promise<number> {
+  const angularDir = join(outDir, `angular-${target.target}`);
+  const staticDir = join(angularDir, "browser");
+  const uiDir = windowsInterop
+    ? Bun.spawnSync(["wslpath", "-w", staticDir])
+    : undefined;
+  if (uiDir && uiDir.exitCode !== 0) {
+    console.error(`No se pudo convertir la ruta para Windows: ${staticDir}`);
+    return 1;
+  }
+
+  const app = Bun.spawn(
+    ["bun", "run", "build:app", "--output-path", angularDir],
+    { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await app.exited) !== 0 || !existsSync(join(staticDir, "index.html"))) {
+    console.error(`No se encontró el build de Angular: ${staticDir}`);
+    return 1;
+  }
+
+  const nativeDir = uiDir ? uiDir.stdout.toString().trim() : staticDir;
+  const args = ["ui", "--no-open", "--static-dir", nativeDir];
+  if (port !== undefined) args.push("--port", port);
+  return Bun.spawn([outfile, ...args], {
+    cwd: outDir,
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  }).exited;
+}
+
 async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const all = argv.includes("--all");
-  const outIdx = argv.indexOf("--out");
-  const outDir = resolve(
-    outIdx !== -1 && argv[outIdx + 1] ? argv[outIdx + 1]! : DIST_DIR,
-  );
+  const ui = argv.includes("--ui");
+  const name = readFlag(argv, "--target");
+  const out = readFlag(argv, "--out");
+  const port = readFlag(argv, "--port");
+  const target = name ? TARGETS.find((entry) => entry.target === name) : currentTarget();
+  if (!target || (all && (name || ui))
+    || (hasFlag(argv, "--target") && !name)
+    || (hasFlag(argv, "--out") && !out)
+    || (hasFlag(argv, "--port") && !port)) {
+    console.error("Uso: build:binary [--all | --target <target>] [--out <carpeta>] [--ui [--port <puerto>]]");
+    return 1;
+  }
 
-  await rm(outDir, { recursive: true, force: true });
+  const windowsInterop = target.target === "bun-windows-x64"
+    && process.platform === "linux"
+    && Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
+  if (ui && !windowsInterop && target.target !== currentTarget().target) {
+    console.error("El ejecutable de la interfaz debe corresponder al sistema donde se ejecuta.");
+    return 1;
+  }
+  const windowsDownloads = "/mnt/c/Users/Public/Downloads";
+  const targetOut = windowsInterop && existsSync(windowsDownloads)
+    ? join(windowsDownloads, "Tanit-dev")
+    : join(REPO_ROOT, ".cache", "tanit", "binaries");
+  const outDir = resolve(out ?? (name || ui ? targetOut : DIST_DIR));
   await mkdir(outDir, { recursive: true });
-
-  const targets = all ? TARGETS : [currentTarget()];
+  const targets = all ? TARGETS : [target];
   console.log(`→ Compilando ${targets.length} binario(s) en ${outDir}\n`);
 
   let failed = 0;
-  for (const { target, suffix } of targets) {
-    const outfile = join(outDir, `${BIN_NAME}-${suffix}`);
+  for (const entry of targets) {
+    const filename = `${BIN_NAME}-${entry.suffix}`;
+    const outfile = join(outDir, filename);
+    const staging = await mkdtemp(join(outDir, ".apisrc-build-"));
+    const staged = join(staging, filename);
     const started = Date.now();
-    const result = await compile(target, outfile);
-    const seconds = ((Date.now() - started) / 1000).toFixed(1);
-
-    if (!result.ok || !existsSync(outfile)) {
-      failed += 1;
-      console.error(`  FAIL ${suffix.padEnd(18)} ${result.output.trim().slice(-300)}`);
-      continue;
+    try {
+      const result = await compile(entry.target, staged);
+      if (!result.ok || !existsSync(staged)) {
+        failed += 1;
+        console.error(`  FAIL ${entry.suffix.padEnd(18)} ${result.output.trim().slice(-300)}`);
+        continue;
+      }
+      await rename(staged, outfile);
+      const seconds = ((Date.now() - started) / 1000).toFixed(1);
+      const sizeMb = (Bun.file(outfile).size / 1024 / 1024).toFixed(0);
+      console.log(`  ok   ${entry.suffix.padEnd(18)} ${sizeMb} MB   ${seconds}s`);
+    } finally {
+      await rm(staging, { recursive: true, force: true });
     }
-    const sizeMb = (Bun.file(outfile).size / 1024 / 1024).toFixed(0);
-    console.log(`  ok   ${suffix.padEnd(18)} ${sizeMb} MB   ${seconds}s`);
   }
 
   if (failed > 0) {
@@ -106,7 +167,9 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
     return 1;
   }
   console.log(`\n${targets.length} binario(s) listos en ${outDir}`);
-  return 0;
+  return ui
+    ? launchUi(join(outDir, `${BIN_NAME}-${target.suffix}`), outDir, target, windowsInterop, port)
+    : 0;
 }
 
 if (import.meta.main) {
