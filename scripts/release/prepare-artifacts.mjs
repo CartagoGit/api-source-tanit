@@ -52,7 +52,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
@@ -403,6 +403,23 @@ function assetForTriple(assets, kind, os, arch) {
   return global.length === 1 ? global[0] : null;
 }
 
+/** A GPG receipt describes a detached signature, never the signed file itself. */
+async function requireGpgSignature(stage, relPath) {
+  const signaturePath = `${relPath}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`;
+  let regular = false;
+  try {
+    regular = (await lstat(join(stage, signaturePath))).isFile();
+  } catch {
+    // Report the receipt invariant with its canonical path, including missing files.
+  }
+  if (!regular) {
+    throw new ReleaseError(
+      `The GPG receipt for ${relPath} requires a regular detached signature file: ${signaturePath}`,
+    );
+  }
+  return signaturePath;
+}
+
 /**
  * Construye el manifest a partir del staging.
  *
@@ -424,10 +441,6 @@ async function buildManifest(stage, version, filters) {
     );
   }
 
-  const receipts = new Map();
-  for (const entry of entries.filter((e) => e.kind === "receipt")) {
-    receipts.set(ownerPath(entry), entry.relPath);
-  }
   const detached = new Map();
   for (const entry of entries.filter((e) => e.kind === "signature")) {
     detached.set(ownerPath(entry), entry.relPath);
@@ -444,7 +457,9 @@ async function buildManifest(stage, version, filters) {
 
     let signature = null;
     if (receipt !== null) {
-      const signaturePath = detached.get(entry.relPath) ?? entry.relPath;
+      const signaturePath = receipt.kind === "gpg-detached"
+        ? await requireGpgSignature(stage, entry.relPath)
+        : detached.get(entry.relPath) ?? entry.relPath;
       signature = {
         kind: receipt.kind,
         path: signaturePath,
@@ -453,7 +468,7 @@ async function buildManifest(stage, version, filters) {
         timestamped: receipt.timestamped === true,
         ...(receipt.notarized === undefined ? {} : { notarized: receipt.notarized }),
         ...(receipt.stapled === undefined ? {} : { stapled: receipt.stapled }),
-        receipt: receipts.get(entry.relPath) ?? null,
+        receipt: `${entry.relPath}${RELEASE_RECEIPT_SUFFIX}`,
       };
     }
 
@@ -483,10 +498,13 @@ async function buildManifest(stage, version, filters) {
       const signaturePath = `${entry.relPath}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`;
       const receiptPath = `${entry.relPath}${RELEASE_RECEIPT_SUFFIX}`;
       const receipt = await readReceipt(stage, entry.relPath);
-      if (receipt !== null && present.has(signaturePath)) {
+      if (receipt !== null && (receipt.kind === "gpg-detached" || present.has(signaturePath))) {
+        const receiptSignaturePath = receipt.kind === "gpg-detached"
+          ? await requireGpgSignature(stage, entry.relPath)
+          : signaturePath;
         signature = {
           kind: receipt.kind,
-          path: signaturePath,
+          path: receiptSignaturePath,
           signer: receipt.signer,
           keyId: receipt.keyId,
           timestamped: receipt.timestamped === true,

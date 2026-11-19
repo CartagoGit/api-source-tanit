@@ -366,6 +366,10 @@ keep static facts, documented evidence, unknowns and AI suggestions distinct.
 Before continuing optional enrichment work, read the current provider findings
 and eligibility limits in [AI-ENRICHMENT.md](../AI-ENRICHMENT.md).
 
+The [proposal index](proposals/INDEX.md) tracks x00107: a GPG detached receipt
+requires its canonical regular `.sig` file when preparing artifact and checksum
+metadata; it must never fall back to the installer or silently omit the signature.
+
 The [proposal index](proposals/INDEX.md) tracks the signing-fixture clock
 stability fix: freeze only ephemeral test key creation; product signing and
 verification retain real time and isolated temporary key homes.
