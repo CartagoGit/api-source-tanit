@@ -31,12 +31,14 @@ TODO: why this work matters now.
 - global_gate: lint
 
 ### S1 — Actualizar evidencia y límites beta
-- **Status**: pending
+- **Status**: review
 - **Files**: `docs/BETA.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: none
 - acceptance:
   - "Registrar corpus, interfaz y CI verificados sin afirmar aceptación humana ni escritorio firmado."
   - "Conservar trabajo remoto y bloqueos pendientes."
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-terra
 
 ## acceptance
 
