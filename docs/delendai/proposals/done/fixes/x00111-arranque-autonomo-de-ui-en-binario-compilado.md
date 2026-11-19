@@ -2,14 +2,14 @@
 id: x00111
 title: "Arranque autónomo de UI en binario compilado"
 kind: fix
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-19
-last-transition-id: 7799a7df-77de-4026-a236-443624c2abb5
-last-correlation-id: 7799a7df-77de-4026-a236-443624c2abb5
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T15:05:53.737Z
+last-transition-id: 9ff4da33-5dda-4dd1-a876-3d35292de6c7
+last-correlation-id: 9ff4da33-5dda-4dd1-a876-3d35292de6c7
+last-transition-from: review
+last-transition-at: 2026-11-19T15:25:33.089Z
 shipped-in:
   - "4961ed70795d0eedddf63bddc8cf8cb30fa17b3e"
 ---
