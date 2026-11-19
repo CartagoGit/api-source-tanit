@@ -312,6 +312,10 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) tracks the per-platform binary scripts.
+They build Linux or Windows directly, and the compiled UI scripts build Angular
+into the same output directory and launch the bundled CLI.
+
 The [proposal index](proposals/INDEX.md) tracks Windows OpenAPI route parity.
 HTTP paths use POSIX separators across platforms. Filesystem resolution keeps
 using the native path implementation.
