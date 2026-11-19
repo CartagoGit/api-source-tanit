@@ -51,7 +51,7 @@ import { browseDirectory } from "../../core/application-api/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
 import { readHistory } from "../../core/session/history-run.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
-import { fromRoot } from "../../../scripts/helpers/root.helper.js";
+import { findRepoRoot } from "../../core/helpers/module-path.helper.js";
 
 /** Opens the browser, and if it cannot, stays quiet: the URL is already printed. */
 function abrirNavegador(url: string): void {
@@ -86,8 +86,10 @@ function abrirNavegador(url: string): void {
  * one name, and the tests cannot tell which one they are talking to.
  */
 function staticDirDeLaApp(argv: readonly string[]): string | undefined {
-  const dist = readFlag(argv, "--static-dir") ?? fromRoot("packages", "app", "dist");
-  return existsSync(join(dist, "index.html")) ? dist : undefined;
+  const explicit = readFlag(argv, "--static-dir");
+  const root = explicit === undefined ? findRepoRoot(import.meta.url) : null;
+  const dist = explicit ?? (root === null ? undefined : join(root, "packages", "app", "dist"));
+  return dist !== undefined && existsSync(join(dist, "index.html")) ? dist : undefined;
 }
 
 /**
