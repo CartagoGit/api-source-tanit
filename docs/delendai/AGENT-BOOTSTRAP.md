@@ -85,6 +85,7 @@ Tanit tools derive their qualified names from `ctx.namespacePrefix` and their
 short tool IDs. The [plugin registration](../../integrations/delendai/src/index.ts)
 provides the implementation. Activate `tanit` and consult the live server
 catalog for the currently available tools and their qualified names.
+The [proposal index](proposals/INDEX.md) tracks d00005 for this documentation.
 
 ### 3.2 Tool `registerTool` shape — **project-specific**
 
