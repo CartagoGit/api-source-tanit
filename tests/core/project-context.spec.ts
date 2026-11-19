@@ -30,6 +30,20 @@ describe("resolveProjectContext — where the root comes from", () => {
     expect(context.projectRoot).toBe("/tmp/desde-env");
   });
 
+  test("uses the canonical environment for the project and output directory", () => {
+    const context = resolveProjectContext({
+      argv: [],
+      env: {
+        TANIT_PROJECT_ROOT: "/tmp/tanit-project",
+        TANIT_OUTPUT_DIR: "/tmp/tanit-output",
+        POSTMAN_PROJECT_ROOT: "/tmp/legacy-project",
+        POSTMAN_OUTPUT_DIR: "/tmp/legacy-output",
+      },
+    });
+    expect(context.projectRoot).toBe(resolve("/tmp/tanit-project"));
+    expect(context.outputDir).toBe(resolve("/tmp/tanit-output"));
+  });
+
   test("the parameter wins over argv and the environment", () => {
     const context = resolveProjectContext({
       projectRoot: "/tmp/gana",

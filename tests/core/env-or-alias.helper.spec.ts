@@ -50,6 +50,15 @@ describe("x00067 — envOrAlias()", () => {
     expect(envOrAlias("TANIT_FOO", "POSTMAN_FOO")).toBeUndefined();
   });
 
+  test("uses the injected environment and treats a blank canonical value as unset", () => {
+    process.env["TANIT_FOO"] = "process value";
+    expect(envOrAlias("TANIT_FOO", "POSTMAN_FOO", {
+      TANIT_FOO: "  ",
+      POSTMAN_FOO: " injected ",
+      TANIT_SUPPRESS_DEPRECATION: "1",
+    })).toBe("injected");
+  });
+
   test("(6) emits deprecation warning once per deprecated key", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {

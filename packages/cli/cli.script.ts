@@ -111,8 +111,8 @@ PUSH FLAGS
   --no-environments       Upload the collection only.
 
 ENVIRONMENT VARIABLES
-  POSTMAN_PROJECT_ROOT    Same as --project-root.
-  POSTMAN_OUTPUT_DIR      Same as --output-dir.
+  TANIT_PROJECT_ROOT      Same as --project-root. POSTMAN_PROJECT_ROOT is a deprecated alias.
+  TANIT_OUTPUT_DIR        Same as --output-dir. POSTMAN_OUTPUT_DIR is a deprecated alias.
   POSTMAN_API_KEY         Same as --api-key.
 
 EXAMPLES

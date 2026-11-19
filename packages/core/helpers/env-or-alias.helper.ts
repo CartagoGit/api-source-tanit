@@ -18,10 +18,6 @@
  */
 const warned = new Set<string>();
 
-function isSuppressed(): boolean {
-  return process.env["TANIT_SUPPRESS_DEPRECATION"] === "1";
-}
-
 /**
  * Resolves `canonical` (preferred) with `deprecated` (alias) as
  * fallback. Returns the trimmed value or `undefined`.
@@ -29,14 +25,15 @@ function isSuppressed(): boolean {
 export function envOrAlias(
   canonical: string,
   deprecated: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
 ): string | undefined {
-  const canonicalValue = process.env[canonical];
-  if (canonicalValue !== undefined && canonicalValue.length > 0) {
-    return canonicalValue.trim();
+  const canonicalValue = env[canonical]?.trim();
+  if (canonicalValue) {
+    return canonicalValue;
   }
-  const deprecatedValue = process.env[deprecated];
-  if (deprecatedValue !== undefined && deprecatedValue.length > 0) {
-    if (!isSuppressed() && !warned.has(deprecated)) {
+  const deprecatedValue = env[deprecated]?.trim();
+  if (deprecatedValue) {
+    if (env["TANIT_SUPPRESS_DEPRECATION"] !== "1" && !warned.has(deprecated)) {
       warned.add(deprecated);
       console.warn(
         `[tanit] env var '${deprecated}' is deprecated; use '${canonical}' instead. ` +
@@ -44,7 +41,7 @@ export function envOrAlias(
           `Set TANIT_SUPPRESS_DEPRECATION=1 to silence this warning.`,
       );
     }
-    return deprecatedValue.trim();
+    return deprecatedValue;
   }
   return undefined;
 }
