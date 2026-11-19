@@ -25,6 +25,8 @@
   "contracts.scope": "Observations statiques du même rapport du backend. Inconnu ne signifie pas absent ; des routes concordantes ne certifient ni les schémas complets ni le comportement en exécution.",
   "contracts.showMatches": "Inclure les routes concordantes",
   "contracts.openArtifact": "Ouvrir le document",
+  "contracts.openRemote": "Lire le document distant",
+  "contracts.remoteUnavailable": "Le document distant est indisponible. Le rapport d’analyse reste accessible.",
   "contracts.closeArtifact": "Fermer le document",
   "contracts.artifactUnavailable": "Ce document est illisible. Sélectionnez un fichier UTF-8 de 256 Kio maximum.",
   "contracts.artifactLoading": "Chargement du document…",

@@ -23,6 +23,7 @@ import { createListEndpointsHandler } from "./list-endpoints.handler.js";
 import { createGetEndpointHandler } from "./get-endpoint.handler.js";
 import { createGetSchemaHandler } from "./get-schema.handler.js";
 import { createReadContractArtifactHandler } from "./read-contract-artifact.handler.js";
+import { createReadRemoteContractHandler } from "./read-remote-contract.handler.js";
 import { createListServicesHandler } from "./list-services.handler.js";
 import { createServiceDetailHandler } from "./service-detail.handler.js";
 import { createDryRunHandler } from "./dry-run.handler.js";
@@ -73,6 +74,7 @@ export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unkno
     "get-endpoint": widenHandler(createGetEndpointHandler()),
     "get-schema": widenHandler(createGetSchemaHandler()),
     "read-contract-artifact": widenHandler(createReadContractArtifactHandler()),
+    "read-remote-contract": widenHandler(createReadRemoteContractHandler()),
     "list-services": widenHandler(createListServicesHandler()),
     "service-detail": widenHandler(createServiceDetailHandler()),
     "dry-run": widenHandler(createDryRunHandler()),

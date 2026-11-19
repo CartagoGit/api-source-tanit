@@ -620,9 +620,53 @@ declare class TextDecoder {
   decode(input?: Uint8Array, options?: { stream?: boolean }): string;
 }
 declare type Uint8Array = { readonly length: number };
+interface IRuntimeAbortSignal {
+  readonly aborted: boolean;
+  addEventListener(event: "abort", listener: () => void, options?: { once?: boolean }): void;
+}
+declare class AbortController {
+  readonly signal: IRuntimeAbortSignal;
+  abort(): void;
+}
+declare module "node:dns/promises" {
+  export function lookup(hostname: string, options: { all: true }): Promise<{ address: string }[]>;
+}
+declare module "node:net" {
+  export function isIP(address: string): 0 | 4 | 6;
+  export class BlockList {
+    addSubnet(address: string, prefix: number, family: "ipv4" | "ipv6"): void;
+    check(address: string, family: "ipv4" | "ipv6"): boolean;
+  }
+}
+declare module "node:http" {
+  export interface IncomingMessage extends AsyncIterable<Uint8Array> {
+    readonly statusCode?: number;
+    readonly headers: Readonly<Record<string, string | string[] | undefined>>;
+    destroy(): void;
+  }
+  export interface RequestOptions {
+    readonly hostname: string;
+    readonly port: number;
+    readonly path: string;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly agent: false;
+    readonly signal: IRuntimeAbortSignal;
+    readonly servername?: string;
+    readonly rejectUnauthorized: true;
+  }
+  export function get(options: RequestOptions, callback: (response: IncomingMessage) => void): {
+    once(event: "error", listener: (error: Error) => void): void;
+  };
+}
+declare module "node:https" {
+  export { get } from "node:http";
+}
 declare const URL: {
   new (url: string, base?: string): {
     hostname: string;
+    host: string;
+    origin: string;
+    href: string;
     username: string;
     password: string;
     protocol: string;
