@@ -1,0 +1,27 @@
+"""Un usuario de la plataforma."""
+type User {
+  id: ID!
+  name: String!
+  email: String!
+}
+
+type Order {
+  id: ID!
+  total: Float!
+}
+
+type Query {
+  # Todos los usuarios.
+  users(page: Int, search: String): [User!]!
+  user(id: ID!): User
+  orders: [Order!]!
+}
+
+type Mutation {
+  createUser(name: String!, email: String!): User!
+  deleteUser(id: ID!): Boolean!
+}
+
+type Subscription {
+  orderPlaced: Order!
+}

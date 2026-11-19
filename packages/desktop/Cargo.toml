@@ -1,0 +1,60 @@
+# La ventana nativa. Nada más.
+#
+# No hay lógica de producto aquí y no debe haberla: la interfaz es la
+# misma que sirve `apisrc ui`, y el pipeline es el mismo binario. Esta
+# capa solo abre una ventana y la apunta a `localhost`.
+#
+# Si algún día esto crece, algo se ha duplicado.
+[package]
+name = "tanit-desktop"
+# La versión de la app es la del CLI que lleva dentro: el smoke del
+# updater comprueba que el sidecar del instalador dice la misma
+# versión que la app. Si se separan, la app y su sidecar dejan de
+# hablar del mismo producto.
+version = "1.0.0"
+edition = "2021"
+description = "Ventana nativa para Tanit"
+license = "MIT"
+# El binario de la app no puede llamarse igual que el sidecar
+# `apisrc`, o Tauri se lía al empaquetar.
+[[bin]]
+name = "tanit-desktop"
+path = "src/main.rs"
+
+# El contrato del updater firmado vive fuera del crate, en la carpeta
+# de tests del repo, para que el test y el código que verifica sean
+# el mismo fichero y no dos copias que se desincronizan. Cargo acepta
+# un destino fuera del paquete; `cargo package` se quejaría, y esta
+# app no se publica como paquete de crates.io.
+[[test]]
+name = "updater_contract"
+path = "../../tests/desktop/updater-contract.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+keyring = "3"
+# El updater firmado: verificar es criptografía, no una llamada a una
+# API. `ring` firma y verifica Ed25519, `sha2` calcula el hash,
+# `semver` ordena versiones y `ureq` es el único que sale a la red —
+# y solo por HTTPS.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+ring = "0.17"
+semver = "1"
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
+
+[profile.release]
+# El binario de la ventana es un envoltorio: lo que pesa es el sidecar.
+# Optimizar por tamaño aquí ahorra megas sin costar nada de velocidad,
+# porque esta capa no hace trabajo.
+opt-level = "s"
+lto = true
+strip = true
