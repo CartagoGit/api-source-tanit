@@ -2,10 +2,14 @@
 id: d00005
 title: "Consultar el catálogo vivo de herramientas Tanit"
 kind: docs
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-19
+last-transition-id: 08406b91-ab6b-44fd-97c6-8e052847877d
+last-correlation-id: 08406b91-ab6b-44fd-97c6-8e052847877d
+last-transition-from: ready
+last-transition-at: 2026-11-19T07:53:07.002Z
 ---
 
 # d00005 — Consultar el catálogo vivo de herramientas Tanit
