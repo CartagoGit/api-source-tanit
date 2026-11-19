@@ -342,6 +342,11 @@ The [proposal index](proposals/INDEX.md) tracks the compiled browser carrier.
 the bridge's same-origin assets and request token. Without an Angular build it
 serves the embedded interface with its existing routes.
 
+The [proposal index](proposals/INDEX.md) tracks the CLI environment fix.
+The project context, root selection and Watch use the shared alias resolver.
+Explicit paths take precedence over `TANIT_PROJECT_ROOT` and
+`TANIT_OUTPUT_DIR`, and inherited aliases remain valid.
+
 The [proposal index](proposals/INDEX.md) tracks the external TypeScript
 acceptance fix: ambient declarations have null initializers and must not
 abort shared LanguageIR analysis or invent constant values.
