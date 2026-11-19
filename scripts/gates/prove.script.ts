@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createProofPlan, executeProof } from "../helpers/proof-plan.helper.js";
 import { executeAggregateFallback, runChangedFileCoverage } from "./changed-file-coverage.script.js";
-import type { IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
+import type { IProofInput, IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -21,12 +21,16 @@ export function collectProof(baseRef: string, forceFull = false): IProofPlan {
   let base = baseRef;
   let uncertainty: string | undefined;
   let changes: { path: string; status: string }[] = [];
+  let packageManifests: IProofInput["packageManifests"];
   const files: Record<string, string> = {};
   try {
     base = git(["merge-base", baseRef, "HEAD"]);
     const diff = git(["diff", "--name-status", "--no-renames", `${base}...HEAD`]);
     changes = diff ? diff.split("\n").map(line => { const [status, ...name] = line.split("\t"); return { path: name.join("\t"), status: status ?? "?" }; }) : [];
     if (git(["status", "--porcelain"])) uncertainty = "Dirty checkout requires full proof.";
+    if (!forceFull && !uncertainty && changes.some(({ path, status }) => path === "package.json" && status === "M")) {
+      packageManifests = { base: git(["show", `${base}:package.json`]), head: git(["show", `${head}:package.json`]) };
+    }
     for (const file of git(["ls-files"]).split("\n")) {
       if (!file || !/\.(?:[cm]?[jt]sx?|html|scss|css)$/.test(file)) continue;
       if (!file.startsWith("packages/") && !file.startsWith("tests/") && !file.startsWith("scripts/")) continue;
@@ -35,7 +39,7 @@ export function collectProof(baseRef: string, forceFull = false): IProofPlan {
   } catch (error) {
     uncertainty = `Repository analysis unavailable: ${error instanceof Error ? error.message : String(error)}`;
   }
-  return createProofPlan({ base, head, changes, files, forceFull, uncertainty });
+  return createProofPlan({ base, head, changes, files, packageManifests, forceFull, uncertainty });
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {

@@ -6,6 +6,33 @@ import { SECTIONS, GLOBAL_PATHS, bestSectionFor, sectionsForFiles, withDependent
 
 const isSpec = (file: string): boolean => /\.(?:spec|test)\.ts$/.test(file);
 const isBunSpec = (file: string): boolean => file.startsWith("tests/core/state/sqlite/") || file.startsWith("tests/transport/");
+const PACKLIST_SPEC = "tests/scripts-gates/package-packlist.spec.ts";
+
+/** The distribution allowlist has a proof of its own. Other manifest edits stay global. */
+function onlyPacklistChanged(input: IProofInput): boolean {
+  if (!input.packageManifests || !Object.hasOwn(input.files, PACKLIST_SPEC)) return false;
+  if (!input.changes.some(({ path, status }) => path === "package.json" && status === "M")) return false;
+  if (!input.changes.every(({ path, status }) => {
+    if (path === "package.json") return status === "M";
+    if (path === PACKLIST_SPEC) return status === "M" || status === "A";
+    return path.startsWith("docs/") && path.endsWith(".md") && ["A", "M", "D"].includes(status);
+  })) return false;
+
+  try {
+    const base: unknown = JSON.parse(input.packageManifests.base);
+    const head: unknown = JSON.parse(input.packageManifests.head);
+    if (!base || !head || typeof base !== "object" || typeof head !== "object" || Array.isArray(base) || Array.isArray(head)) {
+      return false;
+    }
+    const { files: baseFiles, ...baseFields } = base as Record<string, unknown>;
+    const { files: headFiles, ...headFields } = head as Record<string, unknown>;
+    return [baseFiles, headFiles].every(value => Array.isArray(value) && value.every(entry => typeof entry === "string")) &&
+      JSON.stringify(baseFiles) !== JSON.stringify(headFiles) &&
+      JSON.stringify(baseFields) === JSON.stringify(headFields);
+  } catch {
+    return false;
+  }
+}
 
 function sectionOf(file: string): string | undefined {
   if (file.startsWith("tests/application-api/") || file.startsWith("tests/core/")) return "core";
@@ -18,11 +45,14 @@ function sectionOf(file: string): string | undefined {
 /** Import, barrel and resource closure. Unknown dynamic readers widen the plan. */
 export function createProofPlan(input: IProofInput): IProofPlan {
   const changedFiles = input.changes.map(({ path }) => path).sort();
+  const packlistOnly = onlyPacklistChanged(input);
+  const selectionRoots = packlistOnly ? [PACKLIST_SPEC] : changedFiles;
   const reasons: string[] = [];
   if (input.forceFull) reasons.push("Full proof requested (integration or promotion).");
   if (input.uncertainty) reasons.push(input.uncertainty);
   if (!changedFiles.length) reasons.push("No reliable changed-file scope.");
   for (const change of input.changes) {
+    if (packlistOnly && (change.path === "package.json" || change.path === PACKLIST_SPEC)) continue;
     const isDocumentation = change.path.startsWith("docs/") || change.path.endsWith(".md");
     if (change.status !== "M" && !isDocumentation) reasons.push(`Structural change: ${change.path}`);
     if (GLOBAL_PATHS.some(prefix => change.path.startsWith(prefix)) || PROOF_GLOBAL_PREFIXES.some(prefix => change.path.startsWith(prefix))) reasons.push(`Global or measured disk reader: ${change.path}`);
@@ -70,12 +100,12 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     };
     visit(ast);
   }
-  const reached = new Set(changedFiles);
-  const queue = [...changedFiles];
+  const reached = new Set(selectionRoots);
+  const queue = [...selectionRoots];
   for (const dependency of queue) for (const reader of reverse.get(dependency) ?? []) {
     if (!reached.has(reader)) { reached.add(reader); queue.push(reader); }
   }
-  let sections = withDependents(sectionsForFiles(changedFiles));
+  let sections = packlistOnly ? SECTIONS.filter(section => section.name === "cli") : withDependents(sectionsForFiles(changedFiles));
   // Unknown import/resource edges prevent proving the consumer closure. Widen
   // to full validation instead of guessing which tests can observe the change.
   const uncertainInScope = [...uncertainReaders].filter(file => reached.has(file));
@@ -114,6 +144,12 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     jobs["bench-check"] = sections.some(section => ["contracts", "core", "frameworks"].includes(section.name));
     jobs["desktop-tests"] = sections.some(section => ["contracts", "core", "cli", "app"].includes(section.name)) || changedFiles.some(file => file.startsWith("packages/desktop/"));
     jobs["validate-package"] = changedFiles.some(file => file.startsWith("packages/") && !file.startsWith("packages/app/") && !file.startsWith("packages/desktop/"));
+    if (packlistOnly) {
+      jobs["validate-examples"] = false;
+      jobs["desktop-tests"] = false;
+      jobs["security-audit"] = true;
+      jobs["validate-package"] = true;
+    }
   }
   const steps: IProofStep[] = [];
   const step = (id: string, job: string, argv: readonly string[]): void => { if (jobs[job]) steps.push({ id, job, argv }); };
