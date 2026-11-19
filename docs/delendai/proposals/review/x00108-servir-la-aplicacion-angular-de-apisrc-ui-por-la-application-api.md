@@ -10,6 +10,8 @@ last-transition-id: 30c446b2-c8a5-410e-b82c-fc7b5c421d05
 last-correlation-id: 30c446b2-c8a5-410e-b82c-fc7b5c421d05
 last-transition-from: in-progress
 last-transition-at: 2026-11-19T00:36:57.725Z
+shipped-in:
+  - "4b1204034a56d2e05745fccefc6691556a61a4db"
 ---
 
 # x00108 — Servir la aplicación Angular de apisrc ui por la Application API
@@ -31,7 +33,7 @@ Navegador real: apisrc ui bloqueó los módulos y la hoja de estilos. El servido
 - global_gate: none
 
 ### S1 — Conectar apisrc ui al puente HTTP de la aplicación compilada
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/cli/commands/ui.script.ts`, `packages/ui/server/ui-server.service.ts`, `packages/contracts/interfaces/cli/ui.interface.ts`, `tests/cli/ui-static-assets.spec.ts`, `tests/cli/ui-command-branches.spec.ts`, `tests/cli/ui-deps-branches.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -39,8 +41,10 @@ Navegador real: apisrc ui bloqueó los módulos y la hoja de estilos. El servido
   - "Sin una compilación Angular disponible, apisrc ui sirve la interfaz integrada."
   - "El recorrido en Chromium abre un fixture y ejercita Diagnósticos, visor local, Endpoints, Live, exportación Postman e Historial."
 - shipped-in: `e462d3bcc617`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-terra
+- review-log: approved by openai-gpt-6.1-terra — verified at 4b1204034a56, validate exit 0 and tests 8/8 claimed, no recorded run cited; acceptance 3/3: (1) tests/cli/ui-static-assets.spec.ts y PR 178 CI verde (2) tests/cli/ui-command-branches.spec.ts y ui-deps-branches.spec.ts verdes (3) evidencia integrada PR 178 y docs/BETA.md — CI PR 178 y Vitest focal verdes.
 
 ## acceptance
 
