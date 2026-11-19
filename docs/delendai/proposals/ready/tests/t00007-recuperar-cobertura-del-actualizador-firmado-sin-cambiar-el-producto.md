@@ -16,11 +16,16 @@ Recuperar las pruebas útiles omitidas en los squash de i00003: firma del instal
 
 ## why
 
-TODO: why this work matters now.
+La auditoría del archivo `refs/retired/minimax-m3/implement/i00003-S3-g1/updater-firmado` (`c552cfad`) encontró cobertura útil que no entró en los squash #37 (`27e27258`) y #39 (`03aaef88`). Los commits `96f0f602`, `09d6c760` y `e796a463` añaden pruebas de cableado y de la firma del instalador; el producto equivalente ya está integrado. Los tests actuales llaman las funciones Rust de hash/firma y corrompen la firma del manifest, pero no prueban la rama de firma del instalador del verificador ni atan todas las comprobaciones al comando que descarga.
+
+La recuperación debe ser mínima: reutilizar `main_source` y `cuerpo_de_funcion`, mantener fixtures locales y añadir aserciones de orden o comportamiento donde aporten evidencia. La tabla histórica de 16 anclas y los helpers duplicados no son necesarios.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No cambiar código de producto, formatos, claves, versiones, releases ni reglas de validación.
+- No ejecutar D-Bus, keyring, servicios externos ni proyectos de terceros.
+- No recuperar en bloque tablas, índices de superficie o las 395 líneas históricas.
+- No modificar `f00020` ni propuestas archivadas.
 
 ## slices
 
