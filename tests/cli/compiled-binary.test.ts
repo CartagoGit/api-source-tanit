@@ -12,8 +12,10 @@
  * dependency left over.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { join, } from "node:path";
 import { tmpdir } from "node:os";
 import { runProcess } from "../helpers/run-process";
@@ -91,6 +93,43 @@ describe("compiled binary", () => {
     expect(countRequests(collection.item)).toBe(9);
   });
 
+  test("serves the built-in UI and an explicit static directory outside the repository", async () => {
+    const staticDir = join(workDir, "static");
+    await mkdir(staticDir);
+    await writeFile(join(staticDir, "index.html"), "<h1>compiled fixture</h1>");
+    for (const [args, expected] of [
+      [[], "Serving the built-in interface."],
+      [["--static-dir", staticDir], "compiled fixture"],
+    ] as const) {
+      const port = await freePort();
+      const child = spawn(binary, ["ui", "--no-open", "--port", String(port), ...args], {
+        cwd: workDir,
+        env: { PATH: "/usr/bin:/bin", HOME: workDir },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "";
+      child.stdout.on("data", (data: Buffer) => { output += data.toString(); });
+      child.stderr.on("data", (data: Buffer) => { output += data.toString(); });
+      try {
+        let response: Response | undefined;
+        for (let attempt = 0; attempt < 100 && !response; attempt++) {
+          if (child.exitCode !== null) throw new Error(`UI exited: ${output}`);
+          try { response = await fetch(`http://127.0.0.1:${port}/`); }
+          catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+        }
+        expect(response?.status, output).toBe(200);
+        const html = await response!.text();
+        expect(args.length ? html : output).toContain(expected);
+      } finally {
+        child.kill("SIGTERM");
+        await new Promise<void>((resolve) => {
+          if (child.exitCode !== null) resolve();
+          else child.once("exit", () => resolve());
+        });
+      }
+    }
+  });
+
   test("rejects an unknown command with exit code 1", async () => {
     const { code, output } = await runWithoutRuntime(["comando-inventado"]);
     expect(code).toBe(1);
@@ -103,4 +142,13 @@ function countRequests(items: ReadonlyArray<Record<string, any>>): number {
     (total, item) => total + (item["item"] ? countRequests(item["item"]) : 1),
     0,
   );
+}
+
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("No TCP port");
+  await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return address.port;
 }

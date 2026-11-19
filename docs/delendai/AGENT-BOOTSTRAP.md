@@ -326,6 +326,8 @@ remain unchanged when repairing malformed metadata. Terminal storage follows
 the stable ID family used by the runtime reconciler; legacy IDs retain their
 recorded kind. Semantic historical kinds are preserved.
 
+The [proposal index](proposals/INDEX.md) tracks the standalone compiled UI startup fix.
+
 The [proposal index](proposals/INDEX.md) tracks the compiled browser carrier.
 `apisrc ui` serves Angular through the Application API HTTP bridge, including
 the bridge's same-origin assets and request token. Without an Angular build it
