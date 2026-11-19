@@ -2,14 +2,14 @@
 id: t00007
 title: "Recuperar cobertura del actualizador firmado sin cambiar el producto"
 kind: test
-status: in-progress
+status: review
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: 584cb0ed-25fa-4e1d-ad19-8b4121cfbb10
-last-correlation-id: 584cb0ed-25fa-4e1d-ad19-8b4121cfbb10
-last-transition-from: ready
-last-transition-at: 2026-11-19T00:38:48.422Z
+last-transition-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
+last-correlation-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
+last-transition-from: in-progress
+last-transition-at: 2026-11-19T07:17:31.795Z
 ---
 
 # t00007 — Recuperar cobertura del actualizador firmado sin cambiar el producto
@@ -36,13 +36,16 @@ La recuperación debe ser mínima: reutilizar `main_source` y `cuerpo_de_funcion
 - global_gate: none
 
 ### S1 — Cubrir firma del instalador y contrato de los comandos reales
-- **Status**: pending
+- **Status**: review
 - **Files**: `tests/release/updater.spec.ts`, `tests/desktop/updater-contract.rs`, `docs/UPDATER.md`
 - **Gate**: none
 - acceptance:
   - "El verificador rechaza firma inválida del instalador con hash del artefacto y firma del manifest válidos, distinguiendo el error de los del manifest y hash."
   - "Los tests atan comandos reales a manifest firmado, versión aprobada antes de descargar y verificación de hash y firma antes de escribir. Reutilizan helpers actuales sin recuperar tablas ni las 395 líneas históricas duplicadas."
   - "Los gates TypeScript y Rust existentes pasan con fixtures locales sin red ni D-Bus/keyring, sin modificar reglas, producto ni releases. Documentación concisa solo si aporta evidencia."
+- shipped-in: `1c6bd1bfb104`
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ## acceptance
 
