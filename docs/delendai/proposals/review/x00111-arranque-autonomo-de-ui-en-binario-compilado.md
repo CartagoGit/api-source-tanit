@@ -2,14 +2,14 @@
 id: x00111
 title: "Arranque autónomo de UI en binario compilado"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-19
-last-transition-id: 6c7edc58-3d39-49ab-a379-ed675832cbe5
-last-correlation-id: 6c7edc58-3d39-49ab-a379-ed675832cbe5
-last-transition-from: ready
-last-transition-at: 2026-11-19T15:04:06.854Z
+last-transition-id: 7799a7df-77de-4026-a236-443624c2abb5
+last-correlation-id: 7799a7df-77de-4026-a236-443624c2abb5
+last-transition-from: in-progress
+last-transition-at: 2026-11-19T15:05:53.737Z
 ---
 
 # x00111 — Arranque autónomo de UI en binario compilado
@@ -31,13 +31,16 @@ El helper de scripts falla al buscar la raíz dentro del sistema virtual del bin
 - global_gate: none
 
 ### S1 — Resolver assets sin depender del árbol del repositorio
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/cli/commands/ui.script.ts`, `tests/cli/compiled-binary.test.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: none
 - acceptance:
   - "El binario arranca con UI integrada fuera del repositorio."
   - "El binario sirve un directorio estático explícito."
   - "La autodetección en checkout sigue funcionando."
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-terra
+- shipped-in: `4dd1374feed8`
 
 ## acceptance
 
