@@ -1,0 +1,13 @@
+<form class="filters" (submit)="$event.preventDefault()" [attr.aria-label]="i18n.translate('filters.label')">
+  <label class="search">{{ i18n.translate("filters.search") }} <input [value]="draft().search ?? ''" (input)="type({ search: inputValue($event) })" [placeholder]="i18n.translate('filters.searchPlaceholder')" /></label>
+  <label>{{ i18n.translate("filters.service") }} <input [value]="draft().service ?? ''" (input)="type({ service: inputValue($event) || undefined })" /></label>
+  <label>{{ i18n.translate("filters.framework") }} <input [value]="draft().framework ?? ''" (input)="type({ framework: inputValue($event) || undefined })" /></label>
+  <label>{{ i18n.translate("filters.source") }} <input [value]="draft().sourceFile ?? ''" (input)="type({ sourceFile: inputValue($event) || undefined })" /></label>
+  <label>{{ i18n.translate("filters.transport") }} <select [value]="draft().transport ?? ''" (change)="choose({ transport: transportValue($event) })"><option value="">{{ i18n.translate("filters.all") }}</option>@for (transport of transports; track transport) { <option [value]="transport">{{ transport }}</option> }</select></label>
+  <label>{{ i18n.translate("filters.method") }} <input [value]="draft().method ?? ''" (input)="type({ method: inputValue($event) || undefined })" /></label>
+  <label>{{ i18n.translate("filters.auth") }} <input [value]="draft().auth ?? ''" (input)="type({ auth: inputValue($event) || undefined })" [placeholder]="i18n.translate('filters.authPlaceholder')" /></label>
+  <label>{{ i18n.translate("filters.validation") }} <input [value]="draft().validation ?? ''" (input)="type({ validation: inputValue($event) || undefined })" [placeholder]="i18n.translate('filters.validationPlaceholder')" /></label>
+  <label>{{ i18n.translate("filters.responses") }} <input [value]="draft().responses ?? ''" (input)="type({ responses: inputValue($event) || undefined })" [placeholder]="i18n.translate('filters.responsesPlaceholder')" /></label>
+  <label>{{ i18n.translate("filters.confidence") }} <select [value]="draft().confidence ?? ''" (change)="choose({ confidence: confidenceValue($event) })"><option value="">{{ i18n.translate("filters.all") }}</option>@for (level of confidences; track level) { <option [value]="level">{{ level }}</option> }</select></label>
+  <button type="button" (click)="clear()">{{ i18n.translate("filters.clear") }}</button>
+</form>
