@@ -15,6 +15,7 @@ shipped-in:
   - "cad6fe6d1cb66b11301a2dc50860ce443deb8323"
   - "5042bdd249e49a74249255fbd4e67da8aac35e7d"
   - "9116cc33b348f3ff5f6b93691b2236c232a651da"
+  - "49c309eb31e7846aa0eacbe8076123c7ef45ea35"
 ---
 
 # f00020 — Descubrir Swagger existente y reconciliar contratos con evidencia del código
@@ -106,7 +107,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-log: approved by openai-gpt-6.1-sol — verified at 9116cc33b348, validate exit 0 and tests 152/152 claimed, no recorded run cited; acceptance 4/4: (1) SummaryOutputSchema importa ContractEvidenceReportSchema; summary proyecta summarizeWithAllFrameworks y test compara informe completo y pointers con resumen co… (2) Plugin version0.2.0 y peer0.3.0; runtime --verify confirma f8ab95e8caf66128f8cd18cbf5b3035f74172ba4; salida parseada con schema; typecheck fuente/tests y suite… (3) test.tool y runners usan performance.now; prueba reports valid elapsed durations when the wall clock moves backward valida TestOutputSchema y duraciones no neg… (4) Manifest y bun.lock independientes fijan npm:@ryotsu/picomatch@4.0.7 con integridad; workflow instala frozen-lockfile. bun audit --audit-level high ejecutado e… — Revision independiente de codigo aterrizado 6f05b02a. Desde integrations/delendai: ../../node_modules/.bin/vitest run --config vitest.config.ts:152/152,14 archivos,exit0; tsc --noEmit tsconfig.json y tsconfig.test.json exit0; bun audit --audit-level high exit0/0 vulnerabilidades95 paquetes. Runtime --verify correcto pin0.3.0. Recuentos ejecutados directamente sin journal. S5 solamente; S6 pendiente y propuesta global abierta.
 
 ### S6 — Lectura remota autorizada
-- **Status**: review
+- **Status**: done
 - **DependsOn**: [S4]
 - **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/contracts/interfaces/runtime.d.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/application-api/handlers.spec.ts`, `tests/core/remote-contract-text.spec.ts`, `tests/app/diagnostics.spec.ts`, `docs/API.md`
 - **Gate**: explicit remote authorization and bounded network tests
@@ -120,8 +121,10 @@ La vista previa admite HTTP(S) en puertos por defecto con IP
 públicas verificadas en cada salto y TLS normal para HTTPS. El límite es de
 cinco segundos, tres redirecciones del mismo origen y 256 KiB de texto UTF-8.
 La lectura deja disponible el informe estático, incluidos sus orígenes.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-terra
+- review-log: approved by openai-gpt-6.1-terra — verified at 49c309eb31e7, validate exit 0 and tests 160/160 claimed, no recorded run cited; acceptance 2/2: (1) inspección de Diagnostics y remote-contract-text; tests app/core; CI 44549773172 verde (2) validación DNS e IP por salto y captura de error revisadas; smoke MCP y Chromium fuente reportado con 127.0.0.1 rechazado y artefacto conservado — Revisión estática de red y UI; CI 44549773172 verde. Equipo reporta 119 Vitest, 41 Bun y smoke Chromium fuente.
 
 ## acceptance
 
