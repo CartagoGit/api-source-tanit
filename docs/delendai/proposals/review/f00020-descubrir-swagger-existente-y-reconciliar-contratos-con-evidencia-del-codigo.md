@@ -14,6 +14,7 @@ shipped-in:
   - "9f10a99e38a8ea5975db6fe2dcb0a74f8a8dfc5c"
   - "cad6fe6d1cb66b11301a2dc50860ce443deb8323"
   - "5042bdd249e49a74249255fbd4e67da8aac35e7d"
+  - "9116cc33b348f3ff5f6b93691b2236c232a651da"
 ---
 
 # f00020 — Descubrir Swagger existente y reconciliar contratos con evidencia del código
@@ -91,7 +92,7 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 - review-log: approved by openai-gpt-6.1-sol — verified at 5042bdd249e4, validate exit 0 and tests 115/115 claimed, no recorded run cited; acceptance 2/2: (1) Handler valida sessionId, servicio y artefacto del informe activo; ensureInside resuelve symlinks; lector exige archivo regular, O_NOFOLLOW, limite 256KiB y UT… (2) Handler revalida snapshot tras await; UI compara identidad de peticion y snapshot e interpola texto en pre. Tests diagnostics verifican HTML literal y descarte… — Revision independiente de codigo aterrizado 6f05b02a; 2026-11-20 01:02 local: vitest core/app/frameworks handlers.spec.ts diagnostics.spec.ts openapi-scanner.spec.ts 105/105; path-containment.helper.spec.ts 10/10, exit0. Recuentos ejecutados directamente, sin journal. S4 solamente; S6 pendiente y propuesta global abierta.
 
 ### S5 — Paridad de la integración MCP opcional
-- **Status**: review
+- **Status**: done
 - **Files**: `integrations/delendai/src/lib/contracts/plugin.interface.ts`, `integrations/delendai/src/lib/tools/summary.tool.ts`, `integrations/delendai/src/index.ts`, `integrations/delendai/package.json`, `integrations/delendai/bun.lock`, `integrations/delendai/tests/integration/summary.tool.spec.ts`, `integrations/delendai/src/lib/tools/test.tool.ts`, `integrations/delendai/src/lib/helpers/runner.helper.ts`, `integrations/delendai/src/lib/helpers/smoke-runner.helper.ts`, `integrations/delendai/tests/integration/test.tool.spec.ts`
 - **Gate**: pinned optional integration tests and schema validation
 - acceptance:
@@ -99,8 +100,10 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
   - "Versionar la superficie pública del plugin y comprobar su salida contra el runtime inmutable 0.3.0."
   - "La validación del plugin conserva las duraciones válidas aunque cambie el reloj del sistema."
   - "La instalación independiente del plugin valida su lock con la misma remediación de picomatch que emplea Tanit y pasa la auditoría de severidad alta."
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-sol
+- review-log: approved by openai-gpt-6.1-sol — verified at 9116cc33b348, validate exit 0 and tests 152/152 claimed, no recorded run cited; acceptance 4/4: (1) SummaryOutputSchema importa ContractEvidenceReportSchema; summary proyecta summarizeWithAllFrameworks y test compara informe completo y pointers con resumen co… (2) Plugin version0.2.0 y peer0.3.0; runtime --verify confirma f8ab95e8caf66128f8cd18cbf5b3035f74172ba4; salida parseada con schema; typecheck fuente/tests y suite… (3) test.tool y runners usan performance.now; prueba reports valid elapsed durations when the wall clock moves backward valida TestOutputSchema y duraciones no neg… (4) Manifest y bun.lock independientes fijan npm:@ryotsu/picomatch@4.0.7 con integridad; workflow instala frozen-lockfile. bun audit --audit-level high ejecutado e… — Revision independiente de codigo aterrizado 6f05b02a. Desde integrations/delendai: ../../node_modules/.bin/vitest run --config vitest.config.ts:152/152,14 archivos,exit0; tsc --noEmit tsconfig.json y tsconfig.test.json exit0; bun audit --audit-level high exit0/0 vulnerabilidades95 paquetes. Runtime --verify correcto pin0.3.0. Recuentos ejecutados directamente sin journal. S5 solamente; S6 pendiente y propuesta global abierta.
 
 ### S6 — Lectura remota autorizada
 - **Status**: pending
