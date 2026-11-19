@@ -108,24 +108,29 @@ describe("compiled binary", () => {
         stdio: ["ignore", "pipe", "pipe"],
       });
       let output = "";
-      child.stdout.on("data", (data: Buffer) => { output += data.toString(); });
-      child.stderr.on("data", (data: Buffer) => { output += data.toString(); });
+      let stopped = false;
+      let spawnError: Error | undefined;
+      const closed = new Promise<void>((resolve) => {
+        child.on("close", () => { stopped = true; resolve(); });
+        child.on("error", (error) => { spawnError = error; stopped = true; resolve(); });
+      });
+      child.stdout?.on("data", (data: Uint8Array) => { output += Buffer.from(data).toString(); });
+      child.stderr?.on("data", (data: Uint8Array) => { output += Buffer.from(data).toString(); });
       try {
-        let response: Response | undefined;
-        for (let attempt = 0; attempt < 100 && !response; attempt++) {
-          if (child.exitCode !== null) throw new Error(`UI exited: ${output}`);
-          try { response = await fetch(`http://127.0.0.1:${port}/`); }
-          catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
+        let url: string | undefined;
+        for (let attempt = 0; attempt < 100 && !url; attempt++) {
+          if (stopped) throw spawnError ?? new Error(`UI exited: ${output}`);
+          url = output.match(/Interface at (https?:\/\/\S+)/)?.[1];
+          if (!url) await new Promise((resolve) => setTimeout(resolve, 50));
         }
-        expect(response?.status, output).toBe(200);
-        const html = await response!.text();
+        expect(url, output).toBeDefined();
+        const response = await fetch(url!);
+        expect(response.status, output).toBe(200);
+        const html = await response.text();
         expect(args.length ? html : output).toContain(expected);
       } finally {
-        child.kill("SIGTERM");
-        await new Promise<void>((resolve) => {
-          if (child.exitCode !== null) resolve();
-          else child.once("exit", () => resolve());
-        });
+        if (!stopped) child.kill("SIGTERM");
+        await closed;
       }
     }
   });
