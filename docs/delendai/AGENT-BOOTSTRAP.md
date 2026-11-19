@@ -79,30 +79,13 @@ These rules apply **only** in this workspace. They extend or replace
 the corresponding universal rule on purpose. Each override cites the
 universal rule it replaces, so the divergence is auditable.
 
-### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
+### 3.1 Plugin tool naming
 
-The 4 plugin tools in `integrations/delendai/src/lib/tools/`
-register themselves as `` `${ctx.namespacePrefix}_${TOOL_ID}` ``, where
-`namespacePrefix` comes from the host and `TOOL_ID` is the short,
-stable id declared at the top of each `*.tool.ts`:
-
-| Tool id (short, in `id:`) | Qualified name on the MCP surface |
-| --- | --- |
-| `generate` | `delendai_tanit_generate` |
-| `validate` | `delendai_tanit_validate` |
-| `summary` | `delendai_tanit_summary` |
-| `test` | `delendai_tanit_test` |
-
-Hardcoding these four qualified names here is **permitted** because they
-are the **public MCP surface** the host dispatches on. Other tool ids
-must still come from the server (universal §6).
-
-> **This section used to be wrong.** It described a `${NAMESPACE}_exporter_<verb>`
-> shape built from a `NAMESPACE = "postman"` constant it called the
-> single source of truth. No tool ever registered that way, the constant
-> was imported by nobody, and following this section produced a name the
-> host does not dispatch. Corrected in the 2026-08-08 audit (`a00001`,
-> finding 4); the dead constant is gone.
+Tanit tools derive their qualified names from `ctx.namespacePrefix` and their
+short tool IDs. The [plugin registration](../../integrations/delendai/src/index.ts)
+provides the implementation. Activate `tanit` and consult the live server
+catalog for the currently available tools and their qualified names.
+The [proposal index](proposals/INDEX.md) tracks d00005 for this documentation.
 
 ### 3.2 Tool `registerTool` shape — **project-specific**
 
