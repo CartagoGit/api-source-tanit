@@ -19,7 +19,7 @@
  *     or a screen reader notices nothing.
  *   · `prefers-reduced-motion` and `prefers-color-scheme` are honoured.
  */
-import { TANIT_LOGO_URL } from "./tanit-brand.constant.js";
+import { TANIT_LOGO_URL } from "../../contracts/constants/cli/tanit-brand.constant.js";
 
 export const UI_HTML = String.raw`<!doctype html>
 <html lang="es">
