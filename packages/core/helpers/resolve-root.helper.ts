@@ -24,18 +24,15 @@
 import { resolve } from "node:path";
 
 import { readFlag } from "./argv.helper.js";
+import { envOrAlias } from "./env-or-alias.helper.js";
 import type {
   IResolveRootOptions,
   IResolvedRoot,
 } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * The project root: `--project-root`, then `POSTMAN_PROJECT_ROOT`, and
- * as a last resort the current directory.
- *
- * The order is the one two of the three commands already had, so it
- * changes nobody's behavior — it just makes it consistent across all
- * of them and adds where it came from.
+ * Resolves the project root from `--project-root`, `TANIT_PROJECT_ROOT`
+ * (with its deprecated alias), or the current directory.
  */
 export function resolveRoot(options: IResolveRootOptions = {}): IResolvedRoot {
   const argv = options.argv ?? process.argv;
@@ -46,8 +43,8 @@ export function resolveRoot(options: IResolveRootOptions = {}): IResolvedRoot {
     return { root: resolve(fromFlag), origin: "flag", explicit: true };
   }
 
-  const fromEnv = env["POSTMAN_PROJECT_ROOT"];
-  if (fromEnv !== undefined && fromEnv !== "") {
+  const fromEnv = envOrAlias("TANIT_PROJECT_ROOT", "POSTMAN_PROJECT_ROOT", env);
+  if (fromEnv !== undefined) {
     return { root: resolve(fromEnv), origin: "env", explicit: true };
   }
 

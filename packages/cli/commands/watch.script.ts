@@ -23,6 +23,7 @@ import { exportTo, parseFormats } from "../../core/exporters/export-registry.ser
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
+import { envOrAlias } from "../../core/helpers/env-or-alias.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
@@ -117,7 +118,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // resolves its own root with a `cwd` fallback instead of delegating
   // the decision to `resolveProjectContext`, which is strict on purpose.
   const explicitRoot =
-    readFlag(argv, "--project-root") ?? process.env["POSTMAN_PROJECT_ROOT"];
+    readFlag(argv, "--project-root") ?? envOrAlias("TANIT_PROJECT_ROOT", "POSTMAN_PROJECT_ROOT");
   const root = explicitRoot ?? process.cwd();
   if (explicitRoot === undefined) {
     console.log(`→ No --project-root: watching the current directory (${root}).`);

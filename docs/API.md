@@ -1175,7 +1175,7 @@ export function resolveProjectContext( options: IResolveContextOptions =
 Builds a project context.
 
 Root priority: explicit parameter → `--project-root` in argv →
-`POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+`TANIT_PROJECT_ROOT` in env (with its deprecated alias). Throws if none is present because continuing
 with a guessed root produces empty collections without explaining why (this
 was exactly the CLI bug with `--project-root`).
 
@@ -2518,7 +2518,7 @@ Centralized environment-variable resolver (x00067).
 #### `envOrAlias`
 
 ```ts
-export function envOrAlias( canonical: string, deprecated: string, ): string | undefined
+export function envOrAlias( canonical: string, deprecated: string, env: Readonly<Record<string, string | undefined>> = process.env, ): string | undefined
 ```
 
 Resolves `canonical` (preferred) with `deprecated` (alias) as
@@ -2792,12 +2792,8 @@ Where the project root comes from, in one place.
 export function resolveRoot(options: IResolveRootOptions =
 ```
 
-The project root: `--project-root`, then `POSTMAN_PROJECT_ROOT`, and
-as a last resort the current directory.
-
-The order is the one two of the three commands already had, so it
-changes nobody's behavior — it just makes it consistent across all
-of them and adds where it came from.
+Resolves the project root from `--project-root`, `TANIT_PROJECT_ROOT`
+(with its deprecated alias), or the current directory.
 
 #### `guessedRootNotice`
 

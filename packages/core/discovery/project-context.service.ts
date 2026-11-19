@@ -18,6 +18,7 @@ import type {
 import { findRepoRoot, moduleDir } from "../helpers/module-path.helper.js";
 import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 import { readFlag } from "../helpers/argv.helper.js";
+import { envOrAlias } from "../helpers/env-or-alias.helper.js";
 import type { IResolveContextOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 // `findRepoRoot`, not `repoRoot`: this module ends up INSIDE the compiled
@@ -30,7 +31,7 @@ const PACKAGE_ROOT = findRepoRoot(import.meta.url) ?? moduleDir(import.meta.url)
  * Builds a project context.
  *
  * Root priority: explicit parameter → `--project-root` in argv →
- * `POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+ * `TANIT_PROJECT_ROOT` in env (with its deprecated alias). Throws if none is present because continuing
  * with a guessed root produces empty collections without explaining why (this
  * was exactly the CLI bug with `--project-root`).
  */
@@ -43,12 +44,12 @@ export function resolveProjectContext(
   const root =
     options.projectRoot ??
     readFlag(argv, "--project-root") ??
-    env["POSTMAN_PROJECT_ROOT"];
+    envOrAlias("TANIT_PROJECT_ROOT", "POSTMAN_PROJECT_ROOT", env);
 
   if (!root) {
     throw new Error(
       "No se pudo determinar la raíz del proyecto. Pasa `--project-root <ruta>` " +
-        "o define POSTMAN_PROJECT_ROOT.",
+        "o define TANIT_PROJECT_ROOT.",
     );
   }
 
@@ -56,7 +57,7 @@ export function resolveProjectContext(
   const outputDir = resolve(
     options.outputDir ??
       readFlag(argv, "--output-dir") ??
-      env["POSTMAN_OUTPUT_DIR"] ??
+      envOrAlias("TANIT_OUTPUT_DIR", "POSTMAN_OUTPUT_DIR", env) ??
       join(projectRoot, OUTPUT_DIR_NAME),
   );
 
