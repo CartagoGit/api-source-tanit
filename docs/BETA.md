@@ -1,4 +1,4 @@
-# Beta readiness — evidence through 2026-11-10
+# Beta readiness — evidence through 2026-11-19
 
 Tanit has a locally verified technical beta candidate for Linux x64,
 Express and Laravel. The package version remains `0.1.0-alpha.2`;
@@ -22,6 +22,23 @@ The local measurements are smoke-test observations, not performance
 budgets or guarantees for other machines. OpenAPI checks cover structure,
 operation counts and resolution of local references; they are not a claim
 that every inferred response or schema is complete.
+
+## Integrated technical evidence — 2026-11-19
+
+The external corpus acceptance is complete for its pinned samples: Express
+20/20 and Laravel 21/21 method/path pairs, with CLI/Application API parity
+([#173](https://github.com/CartagoGit/api-source-tanit/pull/173)).
+This does not measure full response or schema accuracy.
+
+Angular served by `apisrc ui` uses the common Application API. A headless
+Chromium check opened a fixture and exercised Diagnostics, the byte-for-byte
+viewer, Endpoints, Live, Postman export and History ([#178](https://github.com/CartagoGit/api-source-tanit/pull/178)).
+This is a technical browser check; human usability evaluation remains pending.
+The develop CI run [44478195851](https://github.com/CartagoGit/api-source-tanit/actions/runs/44478195851) passed.
+
+The f00020 work formalized S4 and S5 ([#174](https://github.com/CartagoGit/api-source-tanit/pull/174));
+remote S6 remains pending. The optional enrichment follow-up f00021 remains
+blocked.
 
 ## Reproduction
 
@@ -121,7 +138,7 @@ Before an externally distributed beta, finish:
 - Acceptance on representative real repositories, beyond reference examples,
   including unsupported and ambiguous routes with honest diagnostics.
 - Smoke tests of the desktop installers on the supported operating systems,
-  including signature and installation checks.
+  including signature and installation checks; signed desktop acceptance remains pending.
 - Usability evaluation of opening a project, endpoint inspection, Live,
   export approval and history in the visible browser/desktop UI.
 
