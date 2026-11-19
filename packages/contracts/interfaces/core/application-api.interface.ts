@@ -12,6 +12,7 @@ import type {
   GetEndpointInputSchema,
   GetSchemaInputSchema,
   ReadContractArtifactInputSchema,
+  ReadRemoteContractInputSchema,
   HistoryCompareConfigInputSchema,
   HistoryDiffInputSchema,
   HistoryInputSchema,
@@ -79,6 +80,7 @@ export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 export type GetEndpointInput = z.infer<typeof GetEndpointInputSchema>;
 export type GetSchemaInput = z.infer<typeof GetSchemaInputSchema>;
 export type ReadContractArtifactInput = z.infer<typeof ReadContractArtifactInputSchema>;
+export type ReadRemoteContractInput = z.infer<typeof ReadRemoteContractInputSchema>;
 export interface ReadContractArtifactOutput {
   readonly text: string;
 }

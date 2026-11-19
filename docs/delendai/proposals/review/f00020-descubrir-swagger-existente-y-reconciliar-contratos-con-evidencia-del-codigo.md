@@ -108,11 +108,18 @@ Reutilizar scanner/importador existente con enlaces e informe común de discrepa
 ### S6 — Lectura remota autorizada
 - **Status**: pending
 - **DependsOn**: [S4]
-- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/application-api/handlers.spec.ts`, `tests/app/diagnostics.spec.ts`
+- **Files**: `packages/core/application-api`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/contracts/interfaces/runtime.d.ts`, `packages/app/src/app/features/diagnostics`, `packages/app/src/app/core/i18n/locales`, `tests/application-api/handlers.spec.ts`, `tests/core/remote-contract-text.spec.ts`, `tests/app/diagnostics.spec.ts`, `docs/API.md`
 - **Gate**: explicit remote authorization and bounded network tests
 - acceptance:
   - "La lectura remota requiere URL o acción explícita y comprueba límites de tiempo, tamaño y redirecciones. El escaneo y el render no abren URLs ni referencias remotas."
   - "Validar el destino de cada conexión autorizada y conservar el informe estático si la lectura se rechaza o falla."
+
+Diagnósticos ofrece una acción explícita para los enlaces declarados por el
+servicio del snapshot activo. El puente HTTP comprueba el origen y el token.
+La vista previa admite HTTP(S) en puertos por defecto con IP
+públicas verificadas en cada salto y TLS normal para HTTPS. El límite es de
+cinco segundos, tres redirecciones del mismo origen y 256 KiB de texto UTF-8.
+La lectura deja disponible el informe estático, incluidos sus orígenes.
 
 
 ## acceptance

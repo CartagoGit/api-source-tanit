@@ -25,6 +25,8 @@
   "contracts.scope": "Observaciones estáticas del mismo informe del backend. Desconocido no significa ausente; rutas coincidentes no certifican esquemas completos ni comportamiento en ejecución.",
   "contracts.showMatches": "Incluir rutas coincidentes",
   "contracts.openArtifact": "Abrir documento",
+  "contracts.openRemote": "Leer documento remoto",
+  "contracts.remoteUnavailable": "El documento remoto no está disponible. Puedes seguir consultando el informe del escaneo.",
   "contracts.closeArtifact": "Cerrar documento",
   "contracts.artifactUnavailable": "No se pudo leer este documento. Selecciona un archivo UTF-8 de hasta 256 KiB.",
   "contracts.artifactLoading": "Cargando documento…",

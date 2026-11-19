@@ -25,6 +25,8 @@
   "contracts.scope": "Static observations from the same backend report. Unknown does not mean absent; matching routes do not certify complete schemas or runtime behavior.",
   "contracts.showMatches": "Include matching routes",
   "contracts.openArtifact": "Open document",
+  "contracts.openRemote": "Read remote document",
+  "contracts.remoteUnavailable": "The remote document is unavailable. The scan report is still available.",
   "contracts.closeArtifact": "Close document",
   "contracts.artifactUnavailable": "This document could not be read. Select a UTF-8 file up to 256 KiB.",
   "contracts.artifactLoading": "Loading document…",
