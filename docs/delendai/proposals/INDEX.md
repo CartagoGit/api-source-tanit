@@ -198,6 +198,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00100` — Parse legacy Laravel resource and match routes — `—`
 - `x00101` — Fail CI when the canonical proposal index is stale — `—`
 - `x00102` — Keep response coverage diagnostics off JSON stdout — `—`
+- `x00108` — Servir la aplicación Angular de apisrc ui por la Application API — `—`
+- `x00109` — Respetar las variables canónicas de Tanit al resolver proyectos y destinos — `—`
 
 ### infra
 
@@ -208,6 +210,7 @@ propuesta con sus SHAs (`shippedIn`).
 
 - `v00001` — Aperturas concurrentes y rescaneos compartidos por raíz canónica — `—`
 - `v00002` — Scope-aware proof uses one conservative plan in local work and CI — `—`
+- `v00003` — Acotar la validación de cambios aislados del packlist npm — `—`
 
 ### refactor
 
@@ -250,5 +253,6 @@ propuesta con sus SHAs (`shippedIn`).
 - `t00004` — branches de scanners: fixtures dirigidos para subir el suelo (62→70) — `0ac222e`
 - `t00005` — Certificar exactitud y paridad en repositorios API externos reproducibles — `—`
 - `t00006` — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj — `—`
+- `t00007` — Recuperar cobertura del actualizador firmado sin cambiar el producto — `—`
 - `x00046` — x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local) — `1f42832`
 
