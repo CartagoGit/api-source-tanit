@@ -661,9 +661,11 @@ describe("read-contract-artifact", () => {
     const folder = await mkdtemp(join(tmpdir(), "tanit-contract-preview-"));
     const outer = await mkdtemp(join(tmpdir(), "tanit-contract-preview-outside-"));
     const artifact = "openapi.json";
+    const remoteUrl = "http://127.0.0.1/swagger";
     const text = JSON.stringify({
       openapi: "3.0.3",
       info: { title: "Preview", version: "1" },
+      externalDocs: { url: remoteUrl },
       paths: { "/ping": { get: { responses: { 200: { description: "OK" } } } } },
     });
     const ctx = makeCtx({ orchestrator: defaultOrchestrator() });
@@ -686,6 +688,12 @@ describe("read-contract-artifact", () => {
       await expect(read({ serviceId: "another-service" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
       await expect(read({ artifact: "private.txt" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
       await expect(read({ artifact: "https://example.invalid/openapi.json" })).resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+      const remote = { ...input, url: remoteUrl };
+      await expect(dispatchAs("read-remote-contract", { ...remote, url: "https://example.invalid/unknown" }, ctx))
+        .resolves.toMatchObject({ ok: false, error: { code: "ARTIFACT_NOT_FOUND" } });
+      await expect(dispatchAs("read-remote-contract", remote, ctx))
+        .resolves.toMatchObject({ ok: false, error: { code: "EXECUTION_FAILED" } });
+      await expect(read()).resolves.toEqual({ ok: true, value: { text } });
 
       await writeFile(join(folder, artifact), Buffer.alloc(256 * 1024 + 1, 0x61));
       await expect(read()).resolves.toMatchObject({ ok: false, error: { code: "EXECUTION_FAILED" } });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ContractEvidenceReportSchema } from "./contract-evidence.constant.js";
+import { ContractDocumentationUrlSchema, ContractEvidenceReportSchema } from "./contract-evidence.constant.js";
 
 export const ProjectRootSchema = z.string().min(1, "projectRoot must not be empty");
 export const SessionIdSchema = z.string().min(1, "sessionId must not be empty");
@@ -47,11 +47,16 @@ export const GetEndpointInputSchema = z.object({
   uri: z.string().min(1),
 });
 export const GetSchemaInputSchema = GetEndpointInputSchema;
+export const CONTRACT_PREVIEW_MAX_BYTES = 256 * 1024;
+export const CONTRACT_PREVIEW_MAX_URL_LENGTH = 4096;
 export const ReadContractArtifactInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   sessionId: SessionIdSchema,
   serviceId: z.string().min(1).max(4096),
   artifact: z.string().min(1).max(4096),
+});
+export const ReadRemoteContractInputSchema = ReadContractArtifactInputSchema.omit({ artifact: true }).extend({
+  url: ContractDocumentationUrlSchema.max(CONTRACT_PREVIEW_MAX_URL_LENGTH),
 });
 export const ListServicesInputSchema = SnapshotInputSchema;
 export const DryRunInputSchema = z.object({
@@ -281,7 +286,7 @@ export const ProjectEntrySchema = z.object({
 
 export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
-  "get-schema", "read-contract-artifact", "list-services", "service-detail", "dry-run", "export",
+  "get-schema", "read-contract-artifact", "read-remote-contract", "list-services", "service-detail", "dry-run", "export",
   "history", "history-list", "history-diff", "history-compare-config",
   "history-re-export", "history-restore",
   "watch", "cancel", "settings", "list-projects", "close", "browse",

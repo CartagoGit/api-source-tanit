@@ -40,6 +40,7 @@ export class DiagnosticsComponent {
   readonly preview = signal<{
     snapshot: ISnapshotSummary;
     artifact: string;
+    remote: boolean;
     text?: string;
     failed?: boolean;
   } | null>(null);
@@ -64,19 +65,30 @@ export class DiagnosticsComponent {
   readonly visibleComparisons = computed(() => this.comparisons().slice(0, this.operationLimit()));
   readonly comparisonCount = computed(() => this.contractReports().reduce((total, report) => total + report.operations.length, 0));
 
-  async openArtifact(serviceId: string, artifact: string): Promise<void> {
+  openArtifact(serviceId: string, artifact: string): Promise<void> {
+    return this.loadPreview(artifact, false, snapshot => this.bridge.request("read-contract-artifact", {
+      projectRoot: snapshot.projectRoot, sessionId: snapshot.sessionId, serviceId, artifact,
+    }));
+  }
+
+  openRemoteContract(serviceId: string, url: string): Promise<void> {
+    return this.loadPreview(url, true, snapshot => this.bridge.request("read-remote-contract", {
+      projectRoot: snapshot.projectRoot, sessionId: snapshot.sessionId, serviceId, url,
+    }));
+  }
+
+  private async loadPreview(
+    artifact: string,
+    remote: boolean,
+    read: (snapshot: ISnapshotSummary) => Promise<{ text: string }>,
+  ): Promise<void> {
     const snapshot = this.project.summary();
     if (!snapshot) return;
-    const pending = { snapshot, artifact };
+    const pending = { snapshot, artifact, remote };
     this.preview.set(pending);
     const isCurrent = (): boolean => this.preview() === pending && this.project.summary() === snapshot;
     try {
-      const { text } = await this.bridge.request("read-contract-artifact", {
-        projectRoot: snapshot.projectRoot,
-        sessionId: snapshot.sessionId,
-        serviceId,
-        artifact,
-      });
+      const { text } = await read(snapshot);
       if (isCurrent()) this.preview.set({ ...pending, text });
     } catch {
       if (isCurrent()) this.preview.set({ ...pending, failed: true });

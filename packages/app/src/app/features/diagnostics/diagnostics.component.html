@@ -30,6 +30,11 @@
               <code>{{ artifact }}</code>
             }
           }
+          @if (source.kind === "documentation") {
+            @for (link of source.links ?? []; track link.url + link.file + link.pointer) {
+              <button class="artifact-open remote-artifact-open" type="button" (click)="openRemoteContract(source.serviceId, link.url)">{{ i18n.translate("contracts.openRemote") }} <code>{{ link.url }}</code></button>
+            }
+          }
           @for (limitation of source.limitations; track $index) { <p class="muted">{{ limitation }}</p> }
         </details>
       }
@@ -41,7 +46,7 @@
           <button type="button" (click)="preview.set(null)">{{ i18n.translate("contracts.closeArtifact") }}</button>
         </header>
         @if (document.failed) {
-          <p role="alert">{{ i18n.translate("contracts.artifactUnavailable") }}</p>
+          <p role="alert">{{ i18n.translate(document.remote ? "contracts.remoteUnavailable" : "contracts.artifactUnavailable") }}</p>
         } @else if (document.text !== undefined) {
           <pre tabindex="0">{{ document.text }}</pre>
         } @else {
