@@ -380,6 +380,39 @@ describe("el updater firmado", () => {
     }
   });
 
+  test("una firma corrupta del instalador falla con manifest firmado y hash válidos", async () => {
+    const built = await buildEverything();
+    try {
+      const manifest = JSON.parse(await readFile(built.manifest, "utf8")) as IUpdateManifestJson;
+      const target = manifest.targets[0];
+      if (target === undefined) throw new Error("the manifest has no target");
+      // Only the installer's signature changes: the bytes and their hash stay valid.
+      const signature = target.signature;
+      target.signature = `${signature.slice(0, 10)}${signature[10] === "A" ? "B" : "A"}${signature.slice(11)}`;
+      await writeFile(built.manifest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      await writeFile(built.signature, `${sign(built.key.private, built.manifest)}\n`, "utf8");
+
+      const result = verify({
+        manifest: built.manifest,
+        signature: built.signature,
+        publicKey: built.key.public,
+        platform: PLATFORM,
+        currentVersion: INSTALLED,
+        stage: built.stage,
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.output).toContain("update.signature.invalid");
+      expect(result.output).toContain("the artifact signature does not verify against the public key");
+      expect(result.output).toContain("the manifest signature verifies");
+      expect(result.output).toContain("the artifact size and digest match the manifest");
+      expect(result.output).not.toContain("the manifest signature does not verify");
+      expect(result.output).not.toContain("update.hash.mismatch");
+      expect(result.output).not.toContain("update.size.mismatch");
+    } finally {
+      await rm(built.root, { recursive: true, force: true });
+    }
+  });
+
   test("un hash corrupto hace fallar al verificador", async () => {
     const built = await buildEverything();
     try {

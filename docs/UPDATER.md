@@ -173,6 +173,11 @@ aborto tiene tres cosas: un **código** estable, un **mensaje** que ve
 la persona, y un evento de **seguridad** cuando el motivo es un
 intento de sustitución.
 
+Los contratos de escritorio comprueban que los comandos reales verifican el
+manifest firmado, fijan la versión aprobada antes de descargar y verifican hash
+y firma antes de escribir. La prueba del verificador de consola altera solo la
+firma del instalador y vuelve a firmar el manifest: un hash correcto no basta.
+
 ### Los códigos de aborto
 
 | Código | Qué pasó | ¿Evento de seguridad? |
