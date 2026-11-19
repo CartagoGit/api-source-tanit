@@ -17,7 +17,7 @@
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, posix, relative, resolve } from "node:path";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -497,7 +497,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
           const summary = readString(operation, "summary") ?? "";
           const description = readString(operation, "description") ?? "";
           const operationId = readString(operation, "operationId") ?? "";
-          const uri = join(basePath, pathTemplate).replace(/\/+/g, "/");
+          const uri = posix.join(basePath, pathTemplate);
           const member = resolvedPath.members.get(method);
           if (!member) continue;
           const { file: sourceFile, pointer: sourcePointer } = member;

@@ -125,6 +125,7 @@ declare module "node:path" {
   export function basename(p: string, ext?: string): string;
   export function extname(p: string): string;
   export function join(...segments: string[]): string;
+  export const posix: { readonly join: typeof join };
   export function relative(from: string, to: string): string;
   export function isAbsolute(p: string): boolean;
   export const sep: string;
