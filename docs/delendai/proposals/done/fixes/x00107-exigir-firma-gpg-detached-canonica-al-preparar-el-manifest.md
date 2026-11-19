@@ -2,14 +2,14 @@
 id: x00107
 title: "Exigir firma GPG detached canónica al preparar el manifest"
 kind: fix
-status: review
+status: done
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: 1384525e-9a7e-4134-868f-aef8da4fba94
-last-correlation-id: 1384525e-9a7e-4134-868f-aef8da4fba94
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T00:22:05.989Z
+last-transition-id: 22480434-50dc-454e-af4e-3e6431239058
+last-correlation-id: 22480434-50dc-454e-af4e-3e6431239058
+last-transition-from: review
+last-transition-at: 2026-11-19T20:44:51.758Z
 shipped-in:
   - "1f2e10d642dd921974160de1d216f4d097b3d8e4"
 ---
