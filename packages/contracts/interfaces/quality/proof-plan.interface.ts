@@ -25,6 +25,7 @@ export interface IProofInput {
   readonly head: string;
   readonly changes: readonly { readonly path: string; readonly status: string }[];
   readonly files: Readonly<Record<string, string>>;
+  readonly packageManifests?: { readonly base: string; readonly head: string };
   readonly forceFull?: boolean;
   readonly uncertainty?: string;
 }

@@ -24,7 +24,7 @@ El PR #182 cambió la lista files y su prueba, pero el planner clasificó packag
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Cambios de permisos, políticas de publicación y cobertura agregada de ramas de integración.
 
 ## slices
 

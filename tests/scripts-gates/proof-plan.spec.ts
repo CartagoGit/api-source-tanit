@@ -16,7 +16,53 @@ const baseInput: IProofInput = {
   },
 };
 
+const packlistSpec = "tests/scripts-gates/package-packlist.spec.ts";
+const originalManifest = { scripts: { build: "bun build" }, files: ["packages/"] };
+const correctedManifest = { ...originalManifest, files: ["packages/", "!packages/desktop/target"] };
+const packlistInput: IProofInput = {
+  ...baseInput,
+  changes: [
+    { path: "package.json", status: "M" },
+    { path: packlistSpec, status: "A" },
+    { path: "docs/delendai/proposals/review/package.md", status: "A" },
+  ],
+  files: { ...baseInput.files, [packlistSpec]: "test('packlist', () => {});" },
+  packageManifests: { base: JSON.stringify(originalManifest), head: JSON.stringify(correctedManifest) },
+};
+
 describe("scope-aware proof plan", () => {
+  test("checks the tarball and its regression for an isolated npm files change", () => {
+    const plan = createProofPlan(packlistInput);
+    expect(plan.mode).toBe("affected");
+    expect(plan.specs).toEqual([packlistSpec]);
+    expect(plan.sections).toEqual(["cli"]);
+    expect(Object.keys(plan.jobs).filter(job => plan.jobs[job])).toEqual([
+      "typecheck", "lint", "affected-tests", "security-audit", "validate-package", "integration-verifier",
+    ]);
+  });
+
+  test.each([
+    { ...packlistInput, packageManifests: undefined },
+    { ...packlistInput, files: baseInput.files },
+    { ...packlistInput, forceFull: true },
+    { ...packlistInput, uncertainty: "dirty checkout" },
+    { ...packlistInput, changes: [...packlistInput.changes, { path: "bun.lock", status: "M" }] },
+    { ...packlistInput, changes: [...packlistInput.changes, ...baseInput.changes] },
+    { ...packlistInput, packageManifests: { base: "malformed", head: JSON.stringify(correctedManifest) } },
+    {
+      ...packlistInput,
+      packageManifests: {
+        base: JSON.stringify(originalManifest),
+        head: JSON.stringify({ ...correctedManifest, scripts: { build: "bun run changed" } }),
+      },
+    },
+  ])("keeps full proof if a package change has other effects or uncertain scope (case %#)", (input) => {
+    const plan = createProofPlan(input);
+    expect(plan.mode).toBe("full");
+    expect(plan.jobs["desktop-tests"]).toBe(true);
+    expect(plan.jobs["test-coverage"]).toBe(true);
+  });
+
   test("follows transitive imports and declared dependent sections and scopes coverage to changed files", () => {
     const plan = createProofPlan({
       ...baseInput,
