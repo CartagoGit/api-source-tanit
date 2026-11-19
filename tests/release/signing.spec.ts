@@ -422,6 +422,33 @@ async function workflowDocument(): Promise<IWorkflow> {
 // ---------------------------------------------------------------------------
 
 describe("the release manifest", () => {
+  test.each([
+    ["linux/x64/deb/Tanit_0.1.0-alpha.2_x64.deb", "missing"],
+    ["linux/x64/deb/Tanit_0.1.0-alpha.2_x64.deb", "directory"],
+    ["linux/x64/checksums/SHA256SUMS", "missing"],
+    ["linux/x64/checksums/SHA256SUMS", "directory"],
+  ])("a GPG receipt for %s rejects a %s signature sidecar", async (owner, sidecar) => {
+    const stage = await tempDir("tanit-release-detached-contract");
+    try {
+      const directory = join(stage, owner.slice(0, owner.lastIndexOf("/")));
+      await mkdir(directory, { recursive: true });
+      await writeFile(join(stage, owner), "local unsigned fixture\n", "utf8");
+      await writeFile(join(stage, `${owner}${RELEASE_RECEIPT_SUFFIX}`), JSON.stringify({
+        kind: "gpg-detached", signer: "local fixture", keyId: "fixture", timestamped: false,
+      }), "utf8");
+      const signature = `${owner}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`;
+      if (sidecar === "directory") await mkdir(join(stage, signature));
+
+      const result = run("bun", ["run", PREPARE, "--stage", stage]);
+      expect(result.status, result.output).not.toBe(0);
+      expect(result.output).toContain("requires a regular detached signature file");
+      expect(result.output).toContain(signature);
+      expect(existsSync(join(stage, "release-manifest.json"))).toBe(false);
+    } finally {
+      await rm(stage, { recursive: true, force: true });
+    }
+  });
+
   test("the dry run produces every artifact the matrix declares", async () => {
     const stage = await dryRunStaging("tanit-release-dryrun");
     const manifest = await readManifest(stage);
@@ -604,7 +631,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     for (const artifact of linux) {
       expect(artifact.signature, artifact.path).not.toBeNull();
       expect(artifact.signature?.kind).toBe("gpg-detached");
-      expect(artifact.signature?.path.endsWith(".sig")).toBe(true);
+      expect(artifact.signature?.path).toBe(`${artifact.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
       expect(artifact.signature?.receipt).not.toBeNull();
       expect(existsSync(join(stage, artifact.signature?.path ?? ""))).toBe(true);
       expect(existsSync(join(stage, artifact.signature?.receipt ?? ""))).toBe(true);
@@ -624,7 +651,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(checksums, "the checksums are an asset of the release").toBeDefined();
     expect(checksums?.signature, "SHA256SUMS goes signed").not.toBeNull();
     expect(checksums?.signature?.kind).toBe("gpg-detached");
-    expect(checksums?.signature?.path.endsWith("SHA256SUMS.sig")).toBe(true);
+    expect(checksums?.signature?.path).toBe(`${checksums?.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
     expect(checksums?.signature?.receipt).not.toBeNull();
     expect(checksums?.signature?.keyId.length ?? 0).toBeGreaterThan(0);
 
