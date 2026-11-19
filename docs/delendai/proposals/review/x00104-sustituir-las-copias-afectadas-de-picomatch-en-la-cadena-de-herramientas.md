@@ -10,6 +10,8 @@ last-transition-id: b6d46827-0ecf-4282-8011-111abc667363
 last-correlation-id: b6d46827-0ecf-4282-8011-111abc667363
 last-transition-from: in-progress
 last-transition-at: 2026-11-18T07:48:58.820Z
+shipped-in:
+  - "3359658d039fe33ded1ab224e9a1f402951209e5"
 ---
 
 # x00104 — Sustituir las copias afectadas de picomatch en la cadena de herramientas
@@ -47,16 +49,18 @@ version, then run the same frozen installation, audit and full validation.
 - global_gate: e2e
 
 ### S1 — Fijar y verificar el reemplazo temporal
-- **Status**: review
+- **Status**: done
 - **Files**: `package.json`, `bun.lock`, `docs/delendai/AGENT-BOOTSTRAP.md`, `docs/delendai/proposals/INDEX.md`
 - **Gate**: e2e
 - acceptance:
   - "La instalación congelada resuelve cada copia de picomatch al reemplazo exacto y el lock conserva el hash de integridad del paquete revisado."
   - "Comprobar el código e integridad contra el commit publicado, ejecutar la auditoría actual sin cambiar su alcance y ejecutar pruebas y build Angular."
   - "Registrar el criterio para retirar el reemplazo cuando el paquete oficial ofrezca una versión corregida, y conservar el mismo control de auditoría para todos los PR."
-- review-state: in_review
-- review-implementer: openai-gpt-6.2-sol
 - shipped-in: `8ab94839b03d`
+- review-state: done
+- review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-terra
+- review-log: approved by openai-gpt-6.1-terra — verified at 3359658d039f, validate exit 0 and tests 1/1 claimed, no recorded run cited; acceptance 3/3: (1) override y bun.lock revisados; frozen install CI #161 (2) evidencia /tmp/tanit-review-picomatch.QKi6JL/result.json siete archivos y SHA512; CI #161 audit tests desktop build verdes (3) sección dependency resolution de propuesta y diff #161 sin cambios CI — CI #161 verde; evidencia de comparación de tarball y commit verificada por equipo.
 
 ## acceptance
 
