@@ -10,6 +10,8 @@ last-transition-id: 2db180dc-6cf2-482b-8983-7716a1287753
 last-correlation-id: 2db180dc-6cf2-482b-8983-7716a1287753
 last-transition-from: in-progress
 last-transition-at: 2026-11-18T15:47:51.542Z
+shipped-in:
+  - "76a51069cb34ec6c918f60f86f2954c031b2d046"
 ---
 
 # x00106 — Alinear el empaquetado y la ayuda con los nombres de Tanit
@@ -31,15 +33,17 @@ Compose declara TANIT_BUNDLES y el empaquetador lee EXPOSTMAN_BUNDLES. El valor 
 - global_gate: e2e
 
 ### S1 — Usar TANIT_BUNDLES y apisrc en los productores activos
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/build/desktop-build.script.ts`, `.github/workflows/release-desktop.yml`, `tests/release/signing.spec.ts`, `scripts/build/api-reference.script.ts`, `docs/API.md`, `scripts/gates/lint-naming.script.ts`, `scripts/gates/bench-scan.script.ts`
 - **Gate**: e2e
 - acceptance:
   - "El empaquetador consume TANIT_BUNDLES, la matriz CI lo emite y Compose sigue limitando su servicio de empaquetado a deb."
   - "docs/API.md se genera con apisrc --help y los diagnósticos de herramientas activas usan el nombre actual."
-- review-state: in_review
-- review-implementer: openai-gpt-6.2-sol
 - shipped-in: `d8250fcdf4ee`
+- review-state: done
+- review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-terra
+- review-log: approved by openai-gpt-6.1-terra — verified at 76a51069cb34, validate exit 0 and tests 1/1 claimed, no recorded run cited; acceptance 2/2: (1) signing.spec.ts test de matriz y compose 1/1; script y workflow revisados (2) diff api-reference, lint-naming y bench-scan revisado; CI #169 verde — CI #169 verde; test focal bundles 1/1.
 
 ## acceptance
 
