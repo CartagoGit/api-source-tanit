@@ -2,10 +2,14 @@
 id: x00107
 title: "Exigir firma GPG detached canónica al preparar el manifest"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: beta
 date: 2026-11-19
+last-transition-id: fd162e57-b878-433d-896e-cf19411354d4
+last-correlation-id: fd162e57-b878-433d-896e-cf19411354d4
+last-transition-from: ready
+last-transition-at: 2026-11-19T00:20:32.472Z
 ---
 
 # x00107 — Exigir firma GPG detached canónica al preparar el manifest
@@ -16,11 +20,16 @@ Impedir que un recibo GPG produzca un manifest que apunta al instalador u omite 
 
 ## why
 
-TODO: why this work matters now.
+La ejecución de CI `44426868409` falló en `it does not write into the staging it verifies`: el manifest describía un recibo GPG del `.deb`, pero el verificador encontró su `.deb.sig` sin describir. El código permitía `detached.get(entry.relPath) ?? entry.relPath`; para `SHA256SUMS` omitía la firma si el listado previo no la incluía. Esto demuestra una degradación silenciosa permitida por el constructor, no la causa de una carrera de archivos.
+
+El recibo real tiene `kind: gpg-detached`. Su ruta se deriva del propietario y se comprueba con `lstat` directamente, sin depender de que aparezca en el listado. La ausencia o un objeto no regular deben impedir escribir el nuevo manifest. Las firmas embebidas conservan su comportamiento.
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- No modificar verificadores, reglas de validación, versiones ni publicación de releases.
+- No tocar staging ajeno, keyring del usuario, credenciales o D-Bus.
+- No implementar `t00007` ni modificar `f00020`.
+- No atribuir el incidente a una carrera sin evidencia.
 
 ## slices
 
