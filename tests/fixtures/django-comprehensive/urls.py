@@ -1,0 +1,9 @@
+from django.urls import path, include
+from views import health
+
+urlpatterns = [
+    path("health/", health, name="health"),
+    path("api/users/", include("app.users.urls")),
+    path("api/orders/", include("app.orders.urls")),
+    path("api/auth/", include("app.auth.urls")),
+]
