@@ -364,6 +364,9 @@ from the npm package while preserving distributable sources and UI assets.
 
 The [proposal index](proposals/INDEX.md) tracks the beta evidence update, which
 distinguishes technical checks from human evaluation and signed desktop acceptance.
+The [beta evidence](../BETA.md) also records integrated remote documentation
+reading and compiled UI startup, while distinguishing product delivery from
+formal proposal closure and external acceptance.
 
 The [beta acceptance record](../BETA.md) links the canonical follow-ups for
 external accuracy measurements, Swagger reconciliation, optional anonymous

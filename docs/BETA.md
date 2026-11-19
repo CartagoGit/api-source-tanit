@@ -37,8 +37,29 @@ This is a technical browser check. Human usability evaluation remains pending.
 The develop CI run [44478195851](https://github.com/CartagoGit/api-source-tanit/actions/runs/44478195851) passed.
 
 The f00020 work formalized S4 and S5 ([#174](https://github.com/CartagoGit/api-source-tanit/pull/174)).
-Remote S6 remains pending. The optional enrichment follow-up f00021 remains
-blocked.
+Remote S6 is also integrated ([#187](https://github.com/CartagoGit/api-source-tanit/pull/187),
+independent review [#188](https://github.com/CartagoGit/api-source-tanit/pull/188)):
+reading declared remote documentation requires an explicit action, returns bounded
+text, rejects private destinations and retains the static report when the request
+fails. CI [44549773172](https://github.com/CartagoGit/api-source-tanit/actions/runs/44549773172)
+passed. An isolated Chromium check against the compiled carrier exercised the
+text preview and rejected a private destination while preserving the report,
+without a desktop keyring. This is technical browser evidence; human acceptance
+remains pending.
+
+Product delivery is distinct from formal proposal closure. The pinned DelendAI
+parser truncates `integrations/delendai/src/...` paths to `src/...`, blocking the
+formal closure of f00020; its status has not been forced. The optional anonymous
+enrichment follow-up f00021 remains blocked and is separate from S6's authorized
+reading of declared documentation.
+
+The compiled UI startup correction is integrated
+([#190](https://github.com/CartagoGit/api-source-tanit/pull/190)). Outside the
+repository, the standalone binary serves the embedded interface without Bun;
+`--static-dir` selects an explicit Angular build. Source execution in a checkout
+still autodetects the built Angular assets. Independent verification passed
+11/11 tests and repeated the compiled fallback, isolated Chromium and checkout
+autodetection checks. These checks do not certify signed desktop installers.
 
 ## Reproduction
 
