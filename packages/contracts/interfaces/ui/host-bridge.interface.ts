@@ -57,6 +57,7 @@ import type {
   GetSchemaOutput,
   ReadContractArtifactInput,
   ReadContractArtifactOutput,
+  ReadRemoteContractInput,
   HistoryInput,
   HistoryOutput,
   HistoryCompareConfigInput,
@@ -110,6 +111,7 @@ export interface IHostRequestMap {
   "get-endpoint": GetEndpointInput;
   "get-schema": GetSchemaInput;
   "read-contract-artifact": ReadContractArtifactInput;
+  "read-remote-contract": ReadRemoteContractInput;
   "list-services": ListServicesInput;
   /** One service, with everything known about it. */
   "service-detail": ServiceDetailInput;
@@ -158,6 +160,7 @@ export interface IHostResponseMap {
   "get-endpoint": GetEndpointOutput;
   "get-schema": GetSchemaOutput;
   "read-contract-artifact": ReadContractArtifactOutput;
+  "read-remote-contract": ReadContractArtifactOutput;
   "list-services": ListServicesOutput;
   "service-detail": ServiceDetailOutput;
   "dry-run": DryRunOutput;

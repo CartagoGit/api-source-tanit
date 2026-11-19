@@ -105,4 +105,25 @@ describe("documentation evidence in browser and desktop diagnostics", () => {
     fixture.detectChanges();
     expect(root.querySelector(".artifact-preview")).toBeNull();
   });
+
+  test("opens a remote link only on request and keeps the static report if it fails", async () => {
+    const data = summary();
+    const url = "https://docs.example.invalid/openapi.json";
+    data.contractEvidence![0]!.sources[0]!.links = [{ url, file: "openapi.json", pointer: "#/externalDocs/url" }];
+    state.set(data);
+    request.mockRejectedValue(new Error("Unavailable"));
+    const fixture = TestBed.createComponent(DiagnosticsComponent);
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    expect(root.querySelector("a[href]")).toBeNull();
+    expect(request).not.toHaveBeenCalled();
+    root.querySelector<HTMLButtonElement>(".remote-artifact-open")!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(request).toHaveBeenCalledWith("read-remote-contract", {
+      projectRoot: "/project", sessionId: "current", serviceId: "api", url,
+    });
+    expect(root.querySelector(".artifact-preview [role=alert]")?.textContent).toContain("scan report");
+    expect(root.querySelector(".contract-operation")).not.toBeNull();
+  });
 });
