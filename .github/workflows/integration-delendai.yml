@@ -1,0 +1,51 @@
+name: integration-delendai
+
+# Optional development integration; product builds do not require DelendAI.
+# The same immutable pin as local MCP is the sole runtime source.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      DELENDAI_RUNTIME_DIR: ${{ github.workspace }}/.cache/delendai/pinned-runtime
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Tanit dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Read canonical runtime pin
+        id: pin
+        run: |
+          bun -e '
+            const pin = await Bun.file("scripts/integrations/delendai-runtime.json").json();
+            if (!/^[a-f0-9]{40}$/.test(pin.commit)) throw new Error("Invalid runtime commit");
+            const repository = pin.repository.replace(/^https:\/\/github.com\//, "").replace(/\.git$/, "");
+            await Bun.write(process.env.GITHUB_OUTPUT, `repository=${repository}\ncommit=${pin.commit}\n`);
+          '
+      - name: Checkout immutable DelendAI runtime
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.pin.outputs.repository }}
+          ref: ${{ steps.pin.outputs.commit }}
+          path: .cache/delendai/pinned-runtime
+          persist-credentials: false
+      - name: Build pinned core
+        run: |
+          bun install --frozen-lockfile --ignore-scripts --cwd "$DELENDAI_RUNTIME_DIR"
+          bun run --cwd "$DELENDAI_RUNTIME_DIR/packages/core" build
+      - name: Install plugin dependencies
+        run: bun install --frozen-lockfile --ignore-scripts --cwd integrations/delendai
+      - name: Verify runtime and plugin resolution
+        run: bash scripts/integrations/delendai-runtime.sh --link --verify
+      - name: Validate plugin
+        working-directory: integrations/delendai
+        run: bun run validate

@@ -1,0 +1,22 @@
+<section class="services-list">
+  <header><h2>{{ i18n.translate("services.title") }}</h2><span>{{ services().length }}</span></header>
+  @if (error(); as message) { <p role="alert">{{ message }}</p> }
+  @if (loading() && !services().length) {
+    <p role="status">{{ i18n.translate("services.loading") }}</p>
+  } @else {
+    @for (service of services(); track service.serviceId) {
+      <article>
+        <button type="button" class="row" (click)="select(service.serviceId)">
+          <strong>{{ service.serviceId }}</strong><tanit-badge>{{ service.framework }}</tanit-badge>
+          <small>{{ service.operationCount }} {{ i18n.translate("services.operations") }}</small>
+        </button>
+        @if (service.transports.length) {
+          <div class="badges">
+            @for (transport of service.transports; track transport) { <tanit-badge>{{ transport }}</tanit-badge> }
+          </div>
+        }
+        @if (selected() === service.serviceId) { <tanit-service-detail [serviceId]="service.serviceId" /> }
+      </article>
+    } @empty { <p>{{ i18n.translate("services.empty") }}</p> }
+  }
+</section>
