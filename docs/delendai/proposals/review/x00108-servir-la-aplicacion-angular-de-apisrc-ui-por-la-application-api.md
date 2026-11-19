@@ -34,10 +34,16 @@ Navegador real: apisrc ui bloqueó los módulos y la hoja de estilos. El servido
 - **Status**: review
 - **Files**: `packages/cli/commands/ui.script.ts`, `packages/ui/server/ui-server.service.ts`, `packages/contracts/interfaces/cli/ui.interface.ts`, `tests/cli/ui-static-assets.spec.ts`, `tests/cli/ui-command-branches.spec.ts`, `tests/cli/ui-deps-branches.spec.ts`
 - **Gate**: e2e
+- acceptance:
+  - "La aplicación Angular compilada arranca mediante apisrc ui y comparte origen, token y Application API a través del puente HTTP."
+  - "Sin una compilación Angular disponible, apisrc ui sirve la interfaz integrada."
+  - "El recorrido en Chromium abre un fixture y ejercita Diagnósticos, visor local, Endpoints, Live, exportación Postman e Historial."
 - shipped-in: `e462d3bcc617`
 - review-state: in_review
 - review-implementer: openai-gpt-6.2-sol
 
 ## acceptance
 
-- TODO: observable acceptance criteria.
+- La aplicación Angular compilada arranca mediante apisrc ui y comparte origen, token y Application API a través del puente HTTP.
+- Sin una compilación Angular disponible, apisrc ui sirve la interfaz integrada.
+- El recorrido en Chromium abre un fixture y ejercita Diagnósticos, visor local, Endpoints, Live, exportación Postman e Historial.

@@ -34,10 +34,16 @@ Una ejecución real de generate --inspect falló usando solo TANIT_PROJECT_ROOT 
 - **Status**: review
 - **Files**: `packages/core/helpers/env-or-alias.helper.ts`, `packages/core/helpers/resolve-root.helper.ts`, `packages/core/discovery/project-context.service.ts`, `packages/cli/commands/watch.script.ts`, `packages/cli/cli.script.ts`, `tests/core/env-or-alias.helper.spec.ts`, `tests/core/resolve-root.helper.spec.ts`, `tests/core/project-context.spec.ts`, `tests/cli/cli-canonical-env.spec.ts`, `docs/API.md`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
+- acceptance:
+  - "Las opciones explícitas prevalecen sobre las variables TANIT, que prevalecen sobre sus alias POSTMAN para raíz y destino."
+  - "generate y watch resuelven la raíz y el destino con variables TANIT y conservan compatibilidad con los alias."
+  - "La ayuda CLI documenta las variables canónicas y sus alias obsoletos."
 - shipped-in: `3ffb695dcdca`
 - review-state: in_review
 - review-implementer: openai-gpt-6.2-sol
 
 ## acceptance
 
-- TODO: observable acceptance criteria.
+- Las opciones explícitas prevalecen sobre las variables TANIT, que prevalecen sobre sus alias POSTMAN para raíz y destino.
+- generate y watch resuelven la raíz y el destino con variables TANIT y conservan compatibilidad con los alias.
+- La ayuda CLI documenta las variables canónicas y sus alias obsoletos.
