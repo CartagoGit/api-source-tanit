@@ -21,7 +21,7 @@ que explica qué lo destraba.
 ## Done
 
 `status: done` vive en `done/<kind>/`. Una sola línea por
-propuesta con sus SHAs (`shippedIn`).
+propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 
 ### audit
 
@@ -44,26 +44,26 @@ propuesta con sus SHAs (`shippedIn`).
 - `a00017` — i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa — `fa98d36`
 - `a00018` — Auditoría exhaustiva 2026-09-06 — LanguageIR universal, transport generalization, SymbolGraph y response inference — `2994687, 6b2fcda, 728abea, 1b4c1af, bda0c14, 0285f7f, 13676c4, ef73349`
 - `a00019` — Auditoría 2026-09-07 — consolidación post-158 propuestas y plan de productización Tanit — `—`
-- `a00020` — Verificar una beta local instalable y delimitar los pendientes reales — `—`
+- `a00020` — Verificar una beta local instalable y delimitar los pendientes reales — `e68c48cef4b942c50ef5b70eeafc22f92e21ea1c`
 
 ### breaking
 
-- `b00001` — rebrand Tanit — el proyecto pasa de export-to-postman a Tanit (API Source Discovery) — `25a111c, be7c3e7, 04049f1, abc6b91, dde37f1, 66ca1e2, 6c3754e, 151886f`
+- `b00001` — rebrand Tanit — el proyecto pasa de export-to-postman a Tanit (API Source Discovery) — `25a111c, be7c3e7, 04049f1, abc6b91, dde37f1, 66ca1e2, 6c3754e, 151886f, 536608a`
 
 ### chore
 
 - `c00002` — release automatizada de npm desde CI — `adf267f`
 - `c00003` — Fijar Bun y hacer reproducible la CI — `fb8cfe5`
-- `c00004` — Configurar agent-orchestrator portFactory en delendai.config.json para que los bounded agents puedan delegar — `07fe602`
+- `c00004` — Configurar agent-orchestrator portFactory en delendai.config.json para que los bounded agents puedan delegar — `07fe602, c566050`
 - `c00005` — Higiene de worktree: residuos de agencia fuera del repo + gate de árbol limpio — `6de99fb`
 - `c00006` — integration verifier y validate package con if always — `9afed13`
 - `c00007` — prohibir sync_proposals automático en Tanit — `eb6981c`
 - `c00010` — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados — `f77f8e1`
-- `c00011` — Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto — `—`
+- `c00011` — Exponer regeneración canónica para los hooks de DelendAI sin dependencias del producto — `e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d`
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
-- `x00047` — x00047: allowlist de ficheros en la raíz del repo — anti-residuos (los agentes no pueden dejar basura) — `d554d1f`
+- `x00047` — x00047: allowlist de ficheros en la raíz del repo — anti-residuos (los agentes no pueden dejar basura) — `d554d1f, d554d1f`
 - `x00067` — TANIT_* env vars are canonical; POSTMAN_* kept as deprecated alias — `befa555`
 - `x00068` — CI: parallel jobs, always-on security audit, develop branch protection — `9712c9c`
 - `x00069` — Intel Mac (darwin-x64) single-binary launcher — `a4e5fe2`
@@ -86,7 +86,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
 - `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
 - `f00016` — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic — `6be589b, a647b8e, 4d959bc, 07cfa5f, 5e32cb9`
-- `f00017` — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage — `167fd5e, c6e4be3`
+- `f00017` — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage — `167fd5e, c6e4be3, 167fd5e, c6e4be3`
 - `f00018` — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS — `686dc80b, 7a98dac4, 641f6c08`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
@@ -135,16 +135,16 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00007` — param-inferrer: sufijos camelCase muertos y query vacia que bloquea la inferencia — `adf267f`
 - `x00008` — corregir bugs silenciosos de scanners y rutas de salida — `052031d`
 - `x00009` — Resolver el arranque MCP portable sin checkout hermano — `52042da`
-- `x00010` — Evitar bloqueos y escrituras inseguras en desktop y init MCP — `52042da`
-- `x00011` — Dejar de ocultar fallos de instalación en el release desktop — `52042da`
+- `x00010` — Evitar bloqueos y escrituras inseguras en desktop y init MCP — `47785ab, 09fd7a5, 52042da`
+- `x00011` — Dejar de ocultar fallos de instalación en el release desktop — `109bd1f, 7e95e27, 52042da`
 - `x00012` — fix(scanners): enrutar JSON.parse de 4 scanners por parse-json.helper y añadir lint — `10b6fb7`
 - `x00013` — fix(plugin): arreglar build del plugin delendai (rootDir + validate:package cubre el plugin) — `fb8cfe5`
 - `x00014` — fix(plugin): extender lint:tools a src/lib/helpers/** (cierra el agujero process.cwd en el plugin) — `fb8cfe5`
 - `x00020` — fix(cli): generate --open invoca runOpenPostman directamente + test focalizado — `fb8cfe5`
 - `x00021` — fix(gates): test-all.script.ts guard de import.meta.main + extender lint:command-coverage a scripts/ — `fb8cfe5`
-- `x00022` — path containment correcto en toProjectRelative — relative() en lugar de startsWith() — `cc134ce`
-- `x00023` — API key casing en countKeyUsage — clave canónica lowercase + displayName original — `3f6b533`
-- `x00024` — generateCollection() estricto — error explícito cuando hay >1 servicio y no se pidió combinar — `ea904d4`
+- `x00022` — path containment correcto en toProjectRelative — relative() en lugar de startsWith() — `cc134ce, c566050`
+- `x00023` — API key casing en countKeyUsage — clave canónica lowercase + displayName original — `3f6b533, c566050`
+- `x00024` — generateCollection() estricto — error explícito cuando hay >1 servicio y no se pidió combinar — `ea904d4, c566050`
 - `x00025` — routesByService acumula en lugar de sobrescribir + dedupe por OperationId — `c6bfb3d, a1d3f0a, 7ea3a5d, 91334a8`
 - `x00027` — CI verde end-to-end - fix delendai sibling checkout en validate.yml — `6e68467, 1ee3942, c45fcb6, 1da0d10, 01aefd1, 0b313a3, b2a3cf2`
 - `x00028` — Multi-service spec isolation - buildForService() aísla specs por service.endpoints — `f780653`
@@ -177,29 +177,29 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00079` — el typecheck no puede depender de la version de TypeScript que se descarga al vuelo — `598883ae2a25`
 - `x00080` — el fichero de configuracion MCP tiene que ser JSON estricto para que todo el mundo lo pueda leer — `1ae1577b`
 - `x00081` — el servidor MCP se llama delendai-tanit y ningun agente se queda sin sus tools por olvido — `ac8994246c4b1e08a5bfb23414dfd1365b76e3f2`
-- `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
-- `x00083` — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup — `—`
-- `x00084` — Configuración de sesión efectiva, parcial y atómica — `—`
-- `x00085` — La exportación devuelve el destino real que se ha escrito — `—`
-- `x00086` — Actualizaciones Live comunes y cancelación sin listeners retenidos — `—`
-- `x00087` — Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas — `—`
-- `x00088` — Auto-merge real de PR con permisos correctos y fallos visibles — `—`
-- `x00089` — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop — `—`
-- `x00090` — Preserve identical history appends as distinct occurrences — `—`
-- `x00091` — Eliminar deriva de runtime y protecciones en workflows auxiliares — `—`
-- `x00092` — Arrancar la web compilada con recursos del mismo origen y navegación válida — `—`
-- `x00093` — Make the Linux signing fixture deterministic and headless — `—`
-- `x00094` — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI — `—`
-- `x00095` — Include Bun-owned tests in source proof planning — `—`
-- `x00096` — Lint canonical shipped-in proposal metadata — `—`
-- `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `—`
-- `x00098` — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript — `—`
-- `x00099` — Conservar prefijos de routers Express encadenados y exportados entre módulos — `—`
-- `x00100` — Parse legacy Laravel resource and match routes — `—`
-- `x00101` — Fail CI when the canonical proposal index is stale — `—`
-- `x00102` — Keep response coverage diagnostics off JSON stdout — `—`
-- `x00108` — Servir la aplicación Angular de apisrc ui por la Application API — `—`
-- `x00109` — Respetar las variables canónicas de Tanit al resolver proyectos y destinos — `—`
+- `x00082` — Las ramas y los refs que ya estan integrados se borran solos, y un gate lo vigila — `88cfb72e78244cbd4a4a34b6a901ac24fafa79ca, 88cfb72e78244cbd4a4a34b6a901ac24fafa79ca`
+- `x00083` — Canonical DelendAI:Tanit identity, portable MCP configuration and active rename residue cleanup — `44a9237b01db93db8f15bc57e734c4ae2b9de684`
+- `x00084` — Configuración de sesión efectiva, parcial y atómica — `44a9237b01db93db8f15bc57e734c4ae2b9de684`
+- `x00085` — La exportación devuelve el destino real que se ha escrito — `44a9237b01db93db8f15bc57e734c4ae2b9de684`
+- `x00086` — Actualizaciones Live comunes y cancelación sin listeners retenidos — `44a9237b01db93db8f15bc57e734c4ae2b9de684`
+- `x00087` — Abrir colecciones sin bloquear el CLI ni lanzar aplicaciones reales desde las pruebas — `bcf04e22c26af4f82af4a6191d59f29243a9a98e`
+- `x00088` — Auto-merge real de PR con permisos correctos y fallos visibles — `44a9237b01db93db8f15bc57e734c4ae2b9de684`
+- `x00089` — Fijar el runtime DelendAI 0.3.0 sin depender del checkout develop — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `x00090` — Preserve identical history appends as distinct occurrences — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `x00091` — Eliminar deriva de runtime y protecciones en workflows auxiliares — `bebadb7005b46141961d4924c96e8a97268ad2d5, fa48eeec5015a9c4853d4812f5e39d4948a3fb05`
+- `x00092` — Arrancar la web compilada con recursos del mismo origen y navegación válida — `bcf04e22c26af4f82af4a6191d59f29243a9a98e`
+- `x00093` — Make the Linux signing fixture deterministic and headless — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `x00094` — Instalar las dependencias de Tanit antes de validar el plugin opcional en CI — `9f10a99e38a8ea5975db6fe2dcb0a74f8a8dfc5c`
+- `x00095` — Include Bun-owned tests in source proof planning — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `x00096` — Lint canonical shipped-in proposal metadata — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `x00097` — La validación de desarrollos comparte el plan conservador y deja evidencia journaled — `e6a3d0dd89c5`
+- `x00098` — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript — `e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d`
+- `x00099` — Conservar prefijos de routers Express encadenados y exportados entre módulos — `e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d`
+- `x00100` — Parse legacy Laravel resource and match routes — `b918c6ba`
+- `x00101` — Fail CI when the canonical proposal index is stale — `94bacf8b`
+- `x00102` — Keep response coverage diagnostics off JSON stdout — `c502f7e0`
+- `x00108` — Servir la aplicación Angular de apisrc ui por la Application API — `4b1204034a56d2e05745fccefc6691556a61a4db`
+- `x00109` — Respetar las variables canónicas de Tanit al resolver proyectos y destinos — `17490bc78e6ef2d94f04d6a0cd8a50fcb967b1e9`
 
 ### infra
 
@@ -208,9 +208,9 @@ propuesta con sus SHAs (`shippedIn`).
 
 ### perf
 
-- `v00001` — Aperturas concurrentes y rescaneos compartidos por raíz canónica — `—`
-- `v00002` — Scope-aware proof uses one conservative plan in local work and CI — `—`
-- `v00003` — Acotar la validación de cambios aislados del packlist npm — `—`
+- `v00001` — Aperturas concurrentes y rescaneos compartidos por raíz canónica — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `v00002` — Scope-aware proof uses one conservative plan in local work and CI — `bebadb7005b46141961d4924c96e8a97268ad2d5`
+- `v00003` — Acotar la validación de cambios aislados del packlist npm — `9e7539a6f4b001fcdfd50496604679e885969284`
 
 ### refactor
 
@@ -227,8 +227,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00006` — Las 35 anotaciones `: any`, casi todas sobre JSON.parse — `d8ea7fe`
 - `r00007` — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él — `613f1fd`
 - `r00008` — contexto explicito en los lectores residuales del singleton — `0ac222e`
-- `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
-- `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
+- `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `50f248c, 97b8625, 52042da`
+- `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `5936178, fceb2e1, 3aac5af, 39e5042`
 - `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
 - `r00013` — LanguageIR universal — migrate Fastify and Hono scanners off regex/balanced-text — `a6f40f6`
 - `r00014` — SymbolGraph cross-file resolver — foundation for Express/Fastify/Hono mounts and TS imports — `2a602bc, 77c9cf3, 610953e, d63aedc`
@@ -237,7 +237,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00018` — Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4 — `e00a395`
 - `r00019` — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más — `51b95717de9a1cee10e78db5d0d9265150777173, b27ffebaf3e754cd4651a062f13e70e186039e8c, 73ec169e4a7c0c969511ef913b144d2c967fd731`
 - `r00020` — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers) — `d30b85ef49c592f9201924462e4cef39f2153189, 0e932f0308afea2ab64efc3957e24d54def17d57, 3d7496f9fe51fa98f47c0b1f3cd71eb72a466715, d61a0b9d95560bfb53b5a70a92cba2bc40a273c8`
-- `r00021` — Generación e historial compartidos entre CLI, web y app — `—`
+- `r00021` — Generación e historial compartidos entre CLI, web y app — `bebadb7005b46141961d4924c96e8a97268ad2d5`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 - `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`
@@ -251,8 +251,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `t00002` — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento — `6d37cca`
 - `t00003` — El presupuesto de forma del scan, vigilado de verdad — `f967468`
 - `t00004` — branches de scanners: fixtures dirigidos para subir el suelo (62→70) — `0ac222e`
-- `t00005` — Certificar exactitud y paridad en repositorios API externos reproducibles — `—`
-- `t00006` — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj — `—`
-- `t00007` — Recuperar cobertura del actualizador firmado sin cambiar el producto — `—`
+- `t00005` — Certificar exactitud y paridad en repositorios API externos reproducibles — `05aab32c592366603a93e6a3d678252a996f1a8f`
+- `t00006` — Fijar el tiempo de creación de claves GPG efímeras frente a saltos de reloj — `e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d`
+- `t00007` — Recuperar cobertura del actualizador firmado sin cambiar el producto — `d98765f9`
 - `x00046` — x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local) — `1f42832`
 

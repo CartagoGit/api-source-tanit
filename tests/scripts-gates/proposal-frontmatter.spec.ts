@@ -1,4 +1,8 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { collect, render } from "../../scripts/gates/gen-index.script.js";
 import { doneFolderFor, frontmatterProblem, isReachableSha, parseShippedIn } from "../../scripts/gates/lint-proposals.script.js";
 
 describe("proposal frontmatter boundaries", () => {
@@ -57,4 +61,26 @@ describe("proposal storage matches DelendAI reconciliation", () => {
   test("keeps the recorded kind for legacy ids", () => {
     expect(doneFolderFor("p12345", "chore")).toBe("done/chores");
   });
+});
+
+test("the generated index shows canonical and historical delivery SHAs", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "tanit-proposal-index-"));
+  try {
+    const canonical = "abcdef012345";
+    const legacy = "0123456789ab";
+    const documents = [
+      ["x00090", ["shipped-in:", `  - "${canonical}" # delivery`]],
+      ["x00091", [`shippedIn: [${legacy}]`]],
+    ] as const;
+    for (const [id, delivery] of documents) {
+      const text = ["---", `id: ${id}`, `title: Proposal ${id}`, "kind: fix",
+        "status: done", ...delivery, "---", ""].join("\n");
+      await writeFile(join(dir, `${id}.md`), text);
+    }
+    const index = await render(await collect(dir));
+    expect(index).toContain(`- \`x00090\` — Proposal x00090 — \`${canonical}\``);
+    expect(index).toContain(`- \`x00091\` — Proposal x00091 — \`${legacy}\``);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

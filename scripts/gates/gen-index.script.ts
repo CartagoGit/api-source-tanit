@@ -31,7 +31,7 @@
  *   - **Bloqueadas**: `status: blocked` proposals with their
  *     `blockedReason` (frontmatter) summarised.
  *   - **Done**:     `status: done` proposals, grouped by kind, one
- *     short bullet per proposal with its `shippedIn` SHAs.
+ *     short bullet per proposal with its delivery SHAs.
  *
  * Why we don't render "Done" as a table
  * - With 100+ closed proposals, a flat table of all of them would
@@ -51,6 +51,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
+import { parseShippedIn } from "../helpers/proposal-frontmatter.helper.js";
 import { PROPOSALS_DIR, REPO_ROOT } from "../helpers/root.helper.js";
 
 export interface IProposal {
@@ -95,28 +96,6 @@ function readField(frontmatter: string, name: string): string {
   return m?.[1]?.trim().replace(/^["']|["']$/g, "") ?? "";
 }
 
-function readArrayField(frontmatter: string, name: string): string[] {
-  // Read either the `key:\n  - a\n  - b` block form or `key: [a, b]`.
-  const block = frontmatter.match(
-    new RegExp(`^${name}:\\s*\\n((?:\\s*-\\s*.+\\s*\\n?)+)`, "m"),
-  );
-  if (block && block[1] !== undefined) {
-    return block[1]
-      .split("\n")
-      .map((line) => line.match(/-\s*(.+?)\s*(?:#.*)?$/)?.[1] ?? "")
-      .map((s) => s.trim().replace(/^["']|["']$/g, ""))
-      .filter(Boolean);
-  }
-  const inline = frontmatter.match(new RegExp(`^${name}:\\s*\\[([^\\]]+)\\]`, "m"));
-  if (inline) {
-    return (inline[1] ?? "")
-      .split(",")
-      .map((s) => s.trim().replace(/^["']|["']$/g, ""))
-      .filter(Boolean);
-  }
-  return [];
-}
-
 function parseFrontmatter(text: string): { frontmatter: string; body: string } {
   if (!text.startsWith("---")) return { frontmatter: "", body: text };
   const parts = text.split("---");
@@ -148,7 +127,7 @@ export async function readProposal(
     kind: readField(frontmatter, "kind"),
     status: readField(frontmatter, "status"),
     blockedReason: readField(frontmatter, "blockedReason"),
-    shippedIn: readArrayField(frontmatter, "shippedIn"),
+    shippedIn: parseShippedIn(frontmatter),
     path: absPath,
     relPath: relative(proposalsDir, absPath),
   };
@@ -228,7 +207,7 @@ function renderDone(proposals: ReadonlyArray<IProposal>): string {
     "## Done",
     "",
     "`status: done` vive en `done/<kind>/`. Una sola línea por",
-    "propuesta con sus SHAs (`shippedIn`).",
+    "propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).",
     "",
   ];
   if (proposals.length === 0) {
