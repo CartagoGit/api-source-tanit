@@ -2,10 +2,14 @@
 id: x00110
 title: "Excluir artefactos Rust del paquete npm"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-19
+last-transition-id: ceceb351-e353-4987-a79e-37c4e9ea9868
+last-correlation-id: ceceb351-e353-4987-a79e-37c4e9ea9868
+last-transition-from: ready
+last-transition-at: 2026-11-19T07:38:52.412Z
 ---
 
 # x00110 — Excluir artefactos Rust del paquete npm
