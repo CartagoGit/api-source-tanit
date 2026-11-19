@@ -74,6 +74,8 @@ propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 - `d00001` — Documentación y configuración al día con el código que existe — `2f5fe5f`
 - `d00002` — Corregir enlaces rotos tras renombrar auditorías archivadas — `52042da`
 - `d00003` — corregir acceptance de x00050 a Install dependencies supera con Bun 1.4.2 — `a1e8ad8`
+- `d00004` — Actualizar el estado beta con evidencia integrada — `7d210128a81474bf50f67be1229aff6b42721b09`
+- `d00005` — Consultar el catálogo vivo de herramientas Tanit — `fa64a8055c30e066ec0990f1e6fa40d30c5a342c`
 - `p00019` — p00019 — documentación de instalación, uso e import en Postman — `a758c22`
 
 ### feat
@@ -200,6 +202,8 @@ propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 - `x00102` — Keep response coverage diagnostics off JSON stdout — `c502f7e0`
 - `x00108` — Servir la aplicación Angular de apisrc ui por la Application API — `4b1204034a56d2e05745fccefc6691556a61a4db`
 - `x00109` — Respetar las variables canónicas de Tanit al resolver proyectos y destinos — `17490bc78e6ef2d94f04d6a0cd8a50fcb967b1e9`
+- `x00110` — Excluir artefactos Rust del paquete npm — `9f1de060c47c96616704467aa639e1707587f8f3`
+- `x00111` — Arranque autónomo de UI en binario compilado — `4961ed70795d0eedddf63bddc8cf8cb30fa17b3e`
 
 ### infra
 
