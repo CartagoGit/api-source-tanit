@@ -1259,3 +1259,36 @@ fn persistir_el_evento_de_seguridad_llega_al_log() {
         "persisting the security event does not reach the security log"
     );
 }
+
+#[test]
+fn los_comandos_de_comprobacion_verifican_el_manifest_firmado() {
+    let source = main_source();
+    let command = cuerpo_de_funcion(&source, "check_for_updates").expect("check command exists");
+    assert!(command.contains("run_update_check("), "the command must use the signed-manifest check");
+    let check = cuerpo_de_funcion(&source, "run_update_check").expect("update check exists");
+    assert!(check.contains("updater::check_for_update("), "the shared check must verify the signed manifest");
+}
+
+#[test]
+fn la_descarga_fija_la_version_aprobada_antes_de_descargar() {
+    let source = main_source();
+    let download = cuerpo_de_funcion(&source, "download_update").expect("download command exists");
+    let manifest = download.find("updater::check_for_update(").expect("verify the signed manifest");
+    let approved = download.find("plan.version != version").expect("pin the approved version");
+    let fetch = download.find("updater::fetch_with_retry(").expect("download the approved installer");
+    assert!(download.contains("return Err(updater::UpdateRejection::VersionNotNewer"), "reject a different version");
+    assert!(manifest < approved && approved < fetch, "verify manifest, pin approval, then download");
+}
+
+#[test]
+fn la_descarga_verifica_hash_y_firma_antes_de_escribir() {
+    let source = main_source();
+    let download = cuerpo_de_funcion(&source, "download_update").expect("download command exists");
+    let fetch = download.find("updater::fetch_with_retry(").expect("download the installer");
+    let hash = download.find("updater::verify_artifact_hash(&plan.target, &bytes)?;")
+        .expect("abort when the installer hash does not verify");
+    let signature = download.find("updater::verify_artifact_signature(&working, &plan.target, &bytes)?;")
+        .expect("abort when the installer signature does not verify");
+    let write = download.find("std::fs::write(").expect("write the verified installer");
+    assert!(fetch < hash && hash < signature && signature < write, "verify downloaded bytes before writing");
+}

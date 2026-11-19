@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `t00007` | `test` | [`ready/tests/t00007-recuperar-cobertura-del-actualizador-firmado-sin-cambiar-el-producto.md`](ready/tests/t00007-recuperar-cobertura-del-actualizador-firmado-sin-cambiar-el-producto.md) |
 
 ## Bloqueadas
 
