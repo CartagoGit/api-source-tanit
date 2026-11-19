@@ -1,5 +1,7 @@
 # Tanit
 
+![Tanit · API Source Discovery](assets/images/tanit-banner.png)
+
 **API Source Discovery** — descubre tu API desde el código fuente, genera
 artefactos y sincroniza con Postman y otros. Sin anotaciones, sin
 decoradores extra, sin levantar el servidor. Apuntas al directorio del

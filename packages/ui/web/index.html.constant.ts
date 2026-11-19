@@ -19,12 +19,15 @@
  *     or a screen reader notices nothing.
  *   · `prefers-reduced-motion` and `prefers-color-scheme` are honoured.
  */
+import { TANIT_LOGO_URL } from "./tanit-brand.generated.js";
+
 export const UI_HTML = String.raw`<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tanit</title>
+<link rel="icon" type="image/svg+xml" href="${TANIT_LOGO_URL}">
 <style>
   /*
    * El tema, en variables y con los mismos nombres que la hoja de
@@ -68,7 +71,7 @@ export const UI_HTML = String.raw`<!doctype html>
     font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   main { max-width: 46rem; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h1 { display: flex; align-items: center; gap: .5rem; font-size: 1.5rem; margin: 0 0 .25rem; }
   p.sub { color: var(--tenue); margin: 0 0 2rem; }
   fieldset { border: 1px solid var(--borde); border-radius: 8px; padding: 1rem 1.25rem 1.25rem; margin: 0 0 1.25rem; }
   legend { padding: 0 .4rem; font-weight: 600; }
@@ -280,7 +283,7 @@ export const UI_HTML = String.raw`<!doctype html>
 <main>
   <div class="cabecera">
     <div>
-      <h1 data-i18n="app.title">Tanit</h1>
+      <h1><img src="${TANIT_LOGO_URL}" width="32" height="32" alt=""><span data-i18n="app.title">Tanit</span></h1>
       <p class="sub">Apunta a la carpeta de tu API y mira lo detectado antes de escribir nada.</p>
     </div>
     <button type="button" id="ajustes" class="tuerca" aria-haspopup="dialog" data-i18n-attr="aria-label:nav.settings" title="Ajustes" aria-label="Ajustes">&#9881;</button>

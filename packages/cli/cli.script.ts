@@ -67,7 +67,11 @@ function wrap(text: string, width: number, indent: string): string {
   return lines.join("\n");
 }
 
-const HELP_TEMPLATE = `apisrc — Tanit (generate Postman collections from your API's source)
+const HELP_LOGO = "       \\  |  /\n      .-  O  -.\n     (  \\___/  )\n    o----/ \\----o\n     (  /   \\  )\n      \\/_____\\/\n       `-----'";
+
+const HELP_TEMPLATE = `${HELP_LOGO}
+
+apisrc — Tanit (generate Postman collections from your API's source)
 
 USAGE
   apisrc                  Interactive wizard (no flags needed)
