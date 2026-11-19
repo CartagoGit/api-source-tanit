@@ -10,6 +10,8 @@ last-transition-id: 1384525e-9a7e-4134-868f-aef8da4fba94
 last-correlation-id: 1384525e-9a7e-4134-868f-aef8da4fba94
 last-transition-from: in-progress
 last-transition-at: 2026-11-19T00:22:05.989Z
+shipped-in:
+  - "1f2e10d642dd921974160de1d216f4d097b3d8e4"
 ---
 
 # x00107 — Exigir firma GPG detached canónica al preparar el manifest
@@ -36,7 +38,7 @@ El recibo real tiene `kind: gpg-detached`. Su ruta se deriva del propietario y s
 - global_gate: none
 
 ### S1 — Exigir sidecar GPG regular y cubrir ausencia y dry run
-- **Status**: review
+- **Status**: done
 - **Files**: `scripts/release/prepare-artifacts.mjs`, `tests/release/signing.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -44,8 +46,10 @@ El recibo real tiene `kind: gpg-detached`. Su ruta se deriva del propietario y s
   - "El dry run positivo describe las firmas GPG como archivos .sig canónicos y pasa la verificación portable existente sin escribir en el staging."
   - "La regresión usa fixtures locales sin secretos ni staging ajeno; no atribuye una carrera no probada, no debilita verificación ni modifica reglas, releases o t00007."
 - shipped-in: `08108e8f29e4`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6.2-sol
+- review-log: approved by openai-gpt-6.2-sol — verified at 1f2e10d642dd, validate exit 0 and tests 50/50 claimed, no recorded run cited; acceptance 3/3: (1) Los casos de signing.spec.ts comprueban recibos de artefacto y SHA256SUMS con .sig ausente o directorio, y verifican el fallo explícito sin manifest engañoso. (2) Los casos de dry run real comprueban sidecars .sig regulares y pasan el verificador Linux ya existente con inventario de staging estable. (3) Revisión del commit funcional 08108e8f y ejecución focal: solo preparación, tests y guía; el firmante usa GNUPGHOME desechable y pinentry loopback. Publicación… — Revisé el diff y ejecuté bunx vitest run --project cli tests/release/signing.spec.ts. Coinciden byte a byte las rutas de código y test con #176. Pasaron los 50 casos ejecutados y se omitió 1 de 51. CI exacta sin rebajar gates.
 
 ## acceptance
 
