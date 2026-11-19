@@ -32,7 +32,7 @@ Los binarios nativos 9e75e663 exportan /api/users en Linux y /\api\users en Wind
 
 ### S1 — Resolver rutas OpenAPI con la misma semántica HTTP en ambos sistemas
 - **Status**: review
-- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`
+- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `packages/contracts/interfaces/runtime.d.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
 - acceptance:
   - "El fixture OpenAPI exporta las mismas rutas HTTP y la misma agrupación de Postman con binarios nativos Linux y Windows."
