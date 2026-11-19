@@ -337,6 +337,11 @@ remain unchanged when repairing malformed metadata. Terminal storage follows
 the stable ID family used by the runtime reconciler; legacy IDs retain their
 recorded kind. Semantic historical kinds are preserved.
 
+The [proposal index](proposals/INDEX.md) tracks the compiled browser carrier.
+`apisrc ui` serves Angular through the Application API HTTP bridge, including
+the bridge's same-origin assets and request token. Without an Angular build it
+serves the embedded interface with its existing routes.
+
 The [proposal index](proposals/INDEX.md) tracks the external TypeScript
 acceptance fix: ambient declarations have null initializers and must not
 abort shared LanguageIR analysis or invent constant values.

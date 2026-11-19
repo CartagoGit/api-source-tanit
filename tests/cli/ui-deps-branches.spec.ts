@@ -99,7 +99,7 @@ describe("ui dependencies branch surface", () => {
       return process;
     });
     try {
-      expect(await uiMain(["--no-open", "--port", "1"])).toBe(0);
+      expect(await uiMain(["--no-open", "--static-dir", "tests/smoke-fixtures/openapi-mini", "--port", "1"])).toBe(0);
       const options = mock(startUiServer).mock.calls.at(-1)?.[0];
       expect(options?.port).toBe(1);
       const deps = options?.deps;

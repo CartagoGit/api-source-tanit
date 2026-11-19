@@ -188,7 +188,5 @@ export interface IUiServerOptions {
   readonly deps: IUiDeps;
   /** Legacy fallback HTML, already embedded in the binary. */
   readonly html: string;
-  /** Optional compiled UI directory used by the workspace command. */
-  readonly staticDir?: string | undefined;
   readonly port?: number | undefined;
 }

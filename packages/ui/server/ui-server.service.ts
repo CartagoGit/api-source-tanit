@@ -18,7 +18,6 @@
  *      release the port forces you to track down the process and
  *      kill it by hand.
  */
-import { isInsideRoot, readAsset, plantToken } from "../../core/transport/static-asset.server.js";
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
@@ -53,36 +52,6 @@ function nuevoTestigo(): string {
   return crypto.randomUUID();
 }
 
-export async function staticAsset(
-  directory: string,
-  pathname: string,
-  testigo: string,
-) {
-  const asset = await readAsset(directory, pathname);
-  if (asset === null) {
-    // A path that climbs out of the served folder is not a file that
-    // happens to be missing: it is an attempt, and it gets a flat 404
-    // instead of the page the server would serve for a route.
-    if (!isInsideRoot(directory, pathname)) {
-      return new Response("not found", { status: 404 });
-    }
-    return null;
-  }
-  const contents = asset.isPage ? plantToken(asset.contents, testigo, "script") : asset.contents;
-  return new Response(contents, {
-    status: 200,
-    headers: {
-      "content-type": asset.type,
-      ...(asset.isPage
-        ? {
-            "content-security-policy":
-              "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
-          }
-        : {}),
-    },
-  });
-}
-
 /** Starts the interface and returns where it ended up listening. */
 export function startUiServer(options: IUiServerOptions): IUiServer {
   const desde = options.port ?? DEFAULT_UI_PORT;
@@ -106,11 +75,6 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
           // is only read by whoever can read the HTML, and that is
           // exactly what same-origin policy blocks for a third
           // party.
-          if (options.staticDir && !pathname.startsWith("/api/")) {
-            const asset = await staticAsset(options.staticDir, pathname, testigo);
-            if (asset) return asset;
-          }
-
           if (pathname === "/" || pathname === "/index.html") {
             return new Response(
               options.html.replace("<script>", `<script data-token="${testigo}">`),

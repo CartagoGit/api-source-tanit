@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import { main as uiMain } from "../../packages/cli/commands/ui.script";
 
 const startUiServer = vi.fn();
+const embeddedArgs = ["--no-open", "--static-dir", "tests/smoke-fixtures/openapi-mini"];
 
 vi.mock("../../packages/ui/server/ui-server.service.js", () => ({
   startUiServer: (...args: unknown[]) => startUiServer(...args),
@@ -24,7 +25,7 @@ describe("ui command branch surfaces", () => {
       return process;
     });
     try {
-      expect(await uiMain(["--no-open", "--port", "4317"])).toBe(0);
+      expect(await uiMain([...embeddedArgs, "--port", "4317"])).toBe(0);
       expect(onceSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
     } finally {
       onceSpy.mockRestore();
@@ -39,7 +40,7 @@ describe("ui command branch surfaces", () => {
     });
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      expect(await uiMain(["--no-open", "--port", "4317"])).toBe(1);
+      expect(await uiMain([...embeddedArgs, "--port", "4317"])).toBe(1);
       expect(error).toHaveBeenCalled();
     } finally {
       error.mockRestore();
@@ -55,7 +56,7 @@ describe("ui command branch surfaces", () => {
       return process;
     });
     try {
-      expect(await uiMain(["--no-open"])).toBe(0);
+      expect(await uiMain(embeddedArgs)).toBe(0);
       expect(startUiServer).toHaveBeenCalledWith(expect.not.objectContaining({ port: expect.anything() }));
       expect(stop).toHaveBeenCalledOnce();
     } finally {
