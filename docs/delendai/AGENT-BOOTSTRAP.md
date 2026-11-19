@@ -312,6 +312,10 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) tracks Windows OpenAPI route parity.
+HTTP paths use POSIX separators across platforms. Filesystem resolution keeps
+using the native path implementation.
+
 The [proposal index](proposals/INDEX.md) uses the same delivery SHA reader as
 proposal lint. DelendAI records new deliveries in `shipped-in`, and the reader
 also preserves historical `shippedIn` entries.
