@@ -27,18 +27,22 @@ import { join } from "node:path";
 import { stat } from "node:fs/promises";
 
 import {
+  defaultOrchestrator,
   generateWithAllFrameworks,
   summarizeWithAllFrameworks,
 } from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
 
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
+import { buildRegistry } from "../../core/application-api/handlers.js";
+import { startHttpBridge } from "../../core/transport/http-bridge.server.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
 
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
-import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
+import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
+import type { IUiDeps, IUiServer } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface.js";
 import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
 import { userLocalesDir } from "../../ui/config-dir.helper.js";
@@ -81,8 +85,8 @@ function abrirNavegador(url: string): void {
  * depending on what happens to be on disk is two products wearing
  * one name, and the tests cannot tell which one they are talking to.
  */
-function staticDirDeLaApp(): string | undefined {
-  const dist = fromRoot("packages", "app", "dist");
+function staticDirDeLaApp(argv: readonly string[]): string | undefined {
+  const dist = readFlag(argv, "--static-dir") ?? fromRoot("packages", "app", "dist");
   return existsSync(join(dist, "index.html")) ? dist : undefined;
 }
 
@@ -191,14 +195,7 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
   };
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  const puertoTexto = readFlag(argv, "--port");
-  const puerto = puertoTexto === undefined ? undefined : Number(puertoTexto);
-  if (puerto !== undefined && (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)) {
-    console.error("`--port` espera un número entre 1 y 65535.");
-    return 1;
-  }
-
+async function startEmbeddedUi(port: number | undefined): Promise<IUiServer> {
   // Languages are seeded to disk the first time and reloaded from there:
   // that is what makes them editable and what makes adding one as easy
   // as dropping in a file. If the folder cannot be written —permissions,
@@ -220,18 +217,28 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.warn(`⚠ Language file ${roto.file} was ignored: ${roto.reason}`);
   }
 
+  return startUiServer({ deps: dependencias(catalogo), html: UI_HTML, port });
+}
+
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const puertoTexto = readFlag(argv, "--port");
+  const puerto = puertoTexto === undefined ? undefined : Number(puertoTexto);
+  if (puerto !== undefined && (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)) {
+    console.error("`--port` espera un número entre 1 y 65535.");
+    return 1;
+  }
+
+  const staticDir = staticDirDeLaApp(argv);
   let server;
-  // `--static-dir` says where the compiled app is. Without it, the
-  // app is looked for where the build puts it — and when it is not
-  // there, the embedded interface is served instead.
-  const staticDir = readFlag(argv, "--static-dir") ?? staticDirDeLaApp();
   try {
-    server = startUiServer({
-      deps: dependencias(catalogo),
-      html: UI_HTML,
-      staticDir,
-      ...(puerto !== undefined ? { port: puerto } : {}),
-    });
+    server = staticDir === undefined
+      ? await startEmbeddedUi(puerto)
+      : startHttpBridge({
+        registry: buildRegistry(),
+        orchestrator: defaultOrchestrator(),
+        port: puerto ?? DEFAULT_UI_PORT,
+        staticDir,
+      });
   } catch (error) {
     console.error(`\n✗ Could not start the interface.\n  · ${(error as Error).message}`);
     return 1;
