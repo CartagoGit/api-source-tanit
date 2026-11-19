@@ -2,14 +2,14 @@
 id: t00007
 title: "Recuperar cobertura del actualizador firmado sin cambiar el producto"
 kind: test
-status: review
+status: done
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
-last-correlation-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T07:17:31.795Z
+last-transition-id: bc5ec2a8-3657-4a9f-b4dd-b3df933ff565
+last-correlation-id: bc5ec2a8-3657-4a9f-b4dd-b3df933ff565
+last-transition-from: review
+last-transition-at: 2026-11-19T15:08:55.096Z
 shipped-in:
   - "d98765f9"
 ---
