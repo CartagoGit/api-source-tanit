@@ -312,6 +312,12 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) tracks the scoped npm packlist proof.
+The planner compares the Git manifests at the base and head. An isolated
+`files` change runs the packlist regression, package validation, lint,
+integration verification and audit. Other manifest fields and promotions
+retain full validation.
+
 The [2026-11-08 audit](AUDIT-2026-11-08.md) records the current architecture,
 verified rename cleanup, and follow-up proposals for effective settings,
 export destinations, Live subscriptions, shared generation/history and scan
