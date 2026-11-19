@@ -16,6 +16,7 @@
  *   bun run build:binary --all        # todos los destinos
  *   bun run build:binary --out ./dist
  */
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { arch as osArch } from "node:os";
@@ -81,9 +82,9 @@ async function launchUi(
   const angularDir = join(outDir, `angular-${target.target}`);
   const staticDir = join(angularDir, "browser");
   const uiDir = windowsInterop
-    ? Bun.spawnSync(["wslpath", "-w", staticDir])
+    ? spawnSync("wslpath", ["-w", staticDir], { encoding: "utf8" })
     : undefined;
-  if (uiDir && uiDir.exitCode !== 0) {
+  if (uiDir && uiDir.status !== 0) {
     console.error(`No se pudo convertir la ruta para Windows: ${staticDir}`);
     return 1;
   }
@@ -97,12 +98,11 @@ async function launchUi(
     return 1;
   }
 
-  const nativeDir = uiDir ? uiDir.stdout.toString().trim() : staticDir;
+  const nativeDir = uiDir ? uiDir.stdout.trim() : staticDir;
   const args = ["ui", "--no-open", "--static-dir", nativeDir];
   if (port !== undefined) args.push("--port", port);
   return Bun.spawn([outfile, ...args], {
     cwd: outDir,
-    stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
   }).exited;
