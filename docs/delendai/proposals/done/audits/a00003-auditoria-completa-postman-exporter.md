@@ -1,0 +1,353 @@
+---
+id: a00003
+title: "Auditoría completa — postman-exporter"
+kind: audit
+date: 2026-08-06
+status: done
+type: proposal
+track: postman-exporter
+---
+
+# a00003 — Auditoría completa — `postman-exporter`
+
+Estado del repo al arrancar: `main` y `develop` divergentes, la suite de
+tests **no terminaba nunca**, `tsc --noEmit` con 8 errores, y 9 tests en
+rojo. Este documento recoge lo encontrado, lo ya corregido y lo que queda
+como propuesta.
+
+---
+
+## 1. Estado inicial medido
+
+| Gate | Antes | Después |
+|---|---|---|
+| `bun test` | no terminaba (cuelgue infinito) | 1008 pass / 0 fail |
+| `bunx tsc --noEmit` | 8 errores | limpio |
+| Gate del proyecto | `bun run check`, rojo en un clone limpio | `bun run validate`, verde |
+| Ramas | `main` 21 commits por delante, `develop` 10 | idénticas |
+| Frameworks con smoke verde | 6 / 12 | 12 / 12 |
+| Ejemplos que generan colección válida | sin medir | 11 / 11 |
+| Ejemplos con login que guarda el token | 0 / 11 | 7 / 11 (los 4 restantes no tienen login) |
+| `_postman_id` estable entre ejecuciones | no | sí |
+| Módulos de `services/` y `helpers/` con tests propios | 31 / 38 | 38 / 38 |
+| Propuestas abiertas | 11 | 0 (1 bloqueada por otro repo) |
+
+---
+
+## 2. Bugs encontrados y corregidos
+
+### 2.1 Cuelgue infinito en el scanner de Next.js — **crítico**
+
+`NextJsZodProvider.resolve()` llamaba a una copia local de
+`findAllBalanced` que iteraba `regex.exec()` sobre una regex declarada
+**sin flag `g`**. En una regex no global `lastIndex` no avanza, así que el
+`while` no terminaba nunca.
+
+Disparo: cualquier proyecto Next.js con un `z.object(` en un route
+handler. Es decir, el caso normal. Bloqueaba tanto `bun test` como al
+usuario final.
+
+Corregido en `82c4c25`. La causa raíz no era la regex sino la
+**duplicación**: Express tenía la versión correcta y Next.js una copia
+degradada. Ahora ambos usan `helpers/source-scan.helper.ts`.
+
+### 2.2 Laravel no expandía `Route::apiResource` — **crítico**
+
+Existían **dos implementaciones de Laravel divergentes**:
+
+- `services/scanners/laravel.scanner.ts` — expande `resource`/`apiResource`,
+  entiende `where()`, resuelve FormRequests.
+- `services/route-parser.service.ts` + `endpoint-discovery.service.ts` —
+  el camino legacy, que no conoce resource routes.
+
+Y el pipeline mandaba Laravel **al legacy** a propósito:
+
+```ts
+if (match && scanner && match.framework !== "laravel") { /* scanner */ }
+else { /* legacy */ }
+```
+
+Resultado medido sobre el fixture comprehensive: **7 rutas de 17**. Un
+proyecto Laravel que use `apiResource` (lo idiomático) perdía el 60 % de
+sus endpoints en la colección.
+
+Corregido: todos los frameworks van por el scanner; el legacy queda solo
+como fallback zero-config cuando no hay match. Efecto lateral positivo:
+los overrides manuales de `endpoints.constant.ts` pasan a aplicar a
+cualquier framework, no solo a Laravel.
+
+### 2.3 El provider de FormRequests ignoraba `match.projectRoot`
+
+`LaravelFormRequestValidationProvider` recibía el `IProjectMatch` pero
+resolvía la raíz leyendo el singleton de `paths.service`, alimentado por
+`POSTMAN_PROJECT_ROOT` / `--project-root`.
+
+Dos consecuencias: sin la variable de entorno no resolvía **ni un**
+FormRequest, y dos proyectos escaneados en el mismo proceso se pisaban.
+Ahora la raíz se pasa explícita a `findFormRequestForController` y
+`parseFormRequest`.
+
+### 2.4 OpenAPI: el parser YAML no soportaba flow mappings
+
+`parseYamlLite` manejaba secuencias inline (`[a, b]`) pero no mappings
+inline:
+
+```yaml
+properties:
+  email: { type: string, format: email }
+```
+
+Todo el schema quedaba como literal y los campos salían con
+`type: "any"`, sin formato. Es una sintaxis muy habitual en specs
+escritos a mano.
+
+### 2.5 Symfony: endpoints duplicados y `sourceFile` absoluto
+
+Dos fallos encadenados:
+
+- `parseRoutesYamlFile` pasaba `relPath` (un YAML) donde
+  `parseControllerAttributes` esperaba `projectRoot`. `sourceFile`
+  quedaba absoluto y el provider de `#[Assert\…]` construía
+  `join(projectRoot, sourceFile)` → ruta inexistente → cero campos.
+- `scan()` recorría `src/Controller` **además** de seguir los
+  `resource:` del YAML, emitiendo cada endpoint dos veces. 26 rutas
+  donde el fixture tiene 14. En Postman salían requests duplicadas.
+
+### 2.6 El tool `test` cargaba scanners por reflexión sobre nombres
+
+`loadScannerPair()` derivaba el nombre de clase capitalizando el id:
+`fastapi` → `FastapiProjectScanner`. Las clases reales son `FastApi…`,
+`NestJs…`, `NextJs…`, `SpringBoot…`, `AspNet…`, `OpenApi…`. **Fallaba en
+6 de 12 frameworks** y nada lo detectaba en compilación.
+
+Ahora sale del registry vía `scannerBundleFor()` + `SUPPORTED_FRAMEWORKS`.
+Añadir un scanner ya no exige tocar tres listas paralelas.
+
+### 2.7 Errores de tipos que tapaban un bug real
+
+`django.scanner.ts` declaraba `let entries: string[]` y le asignaba el
+resultado de `readdir(..., { withFileTypes: true })` mediante
+`as unknown as Array<{ name; isFile(); parentPath }>`. El cast mentía y
+`tsc` protestaba desde hacía tiempo.
+
+El mismo patrón estaba copiado en cuatro sitios. Extraído a
+`helpers/fs-walk.helper.ts`.
+
+---
+
+## 3. Tests que estaban mal, no el código
+
+Merece capítulo aparte porque son el motivo de que estos bugs
+sobrevivieran:
+
+- **Los e2e de Symfony asertaban la duplicación como comportamiento
+  correcto**: `expect(eps.length).toBeGreaterThanOrEqual(2); // YAML + PHP
+  attribute`. El test defendía el bug.
+- **`if (!x) return;` en mitad del test**: al menos 6 tests hacían
+  `const post = routes.find(...); if (!post) return;`. Si el scanner
+  dejaba de encontrar la ruta, el test **pasaba en verde**. Sustituidos
+  por asserts.
+- **El test de OpenAPI esperaba `type === "email"`**, un valor que no
+  existe en la unión `IValidationSpec["type"]`. El contrato separa tipo
+  lógico (`string`) de formato semántico (`email`).
+- **Fixture de Laravel irreal**: envolvía `routes/api.php` en un
+  `Route::prefix('api')`, cosa que ningún proyecto real hace porque el
+  prefijo lo aplica el RouteServiceProvider.
+- **`mkdir(join(dir, "artisan"))`** creaba `artisan` como directorio y
+  luego intentaba escribir en él (EISDIR).
+
+---
+
+## 4. Hallazgos abiertos → propuestas
+
+Lo que queda no son bugs de una línea sino decisiones de diseño. Cada uno
+tiene propuesta propia:
+
+| # | Hallazgo | Propuesta | Estado |
+|---|---|---|---|
+| 1 | `_postman_id` es un UUID aleatorio en cada ejecución: re-importar duplica la colección en Postman en vez de actualizarla | p00014 | cerrada |
+| 2 | No hay flujo de login configurable: el token se copia a mano en cada request | p00015 | cerrada |
+| 3 | Las suites por framework cubren cosas distintas y repiten setup en lugar de compartir mocks | p00016 | cerrada |
+| 4 | `paths.service` es un singleton de proceso: hace el paquete no reentrante | p00017 | parcial |
+| 5 | `bun run check` no es autocontenido (exige un `build` previo) y no cubre lint ni typecheck | p00018 | cerrada |
+| 6 | No hay documentación de instalación ni de import en Postman | p00019 | cerrada |
+
+También se cerró **p00011** (lint de `process.env` en los tools del
+plugin), que llevaba desde julio sin implementar y que el gate necesitaba.
+
+### Detalle del hallazgo 1 (identidad de colección)
+
+Medido: generando dos veces el mismo proyecto sin tocar nada,
+
+```
+run1  example-express.postman_collection.json  id=bdca0bc1-18e8-4bb0-a59b-297a600ccfd3
+run2  example-express.postman_collection.json  id=5b525031-c526-4d7c-980d-197f8fcd20c0
+```
+
+Postman usa `info._postman_id` para decidir si un import actualiza una
+colección existente o crea una nueva. Con un UUID nuevo cada vez, **cada
+regeneración deja una colección más** en el workspace. El ID debe
+derivarse de forma determinista de la identidad del proyecto.
+
+### Detalle del hallazgo 4 (`paths.service` como singleton)
+
+```ts
+let cache: Discovered | null = null;
+```
+
+`projectRoot()` se resuelve una vez por proceso desde `POSTMAN_PROJECT_ROOT`
+o `--project-root`. Funciona para el CLI (un proceso por proyecto) pero:
+
+- Obliga a los tests a hacer `resetPathCache()` y a manosear
+  `process.env` (ver `tests/helpers/run-scanner.ts`).
+- Hace que un servidor MCP de larga vida que escanee dos proyectos
+  distintos devuelva resultados del primero.
+- Es la razón por la que existía el bug 2.3.
+
+---
+
+## 5. Verificación empírica
+
+Generación real contra los 11 proyectos de ejemplo, uno por framework:
+
+| Ejemplo | Schema | Requests | Carpetas |
+|---|---|---:|---:|
+| example-aspnet | v2.1.0 | 8 | 1 |
+| example-django | v2.1.0 | 4 | 2 |
+| example-express | v2.1.0 | 9 | 3 |
+| example-fastapi | v2.1.0 | 9 | 3 |
+| example-flask | v2.1.0 | 10 | 4 |
+| example-gin | v2.1.0 | 10 | 2 |
+| example-nestjs | v2.1.0 | 7 | 2 |
+| example-nextjs | v2.1.0 | 8 | 3 |
+| example-openapi-headers | v2.1.0 | 2 | 2 |
+| example-springboot | v2.1.0 | 8 | 1 |
+| example-symfony | v2.1.0 | 6 | 4 |
+
+Los 12 mini-fixtures de smoke (incluido Laravel) casan exactamente con su
+`expected.json`.
+
+
+---
+
+## 6. Bugs encontrados DESPUÉS de la auditoría inicial
+
+Salieron al implementar las propuestas. Se listan porque cada uno lo
+destapó una herramienta que no existía antes, lo cual es el argumento a
+favor de haberlas construido.
+
+### 6.1 `--project-root` generaba una colección VACÍA — **crítico**
+
+El caso de uso principal del paquete. `cli.script.ts` spawnea el
+generador con `cwd: packageRoot`, y el pipeline resolvía la raíz como
+`process.env.POSTMAN_PROJECT_ROOT ?? "."`. Sin la variable de entorno,
+el `.` apuntaba al propio postman-exporter: 0 requests. El flag se
+ignoraba por completo, aunque `paths.service` sí lo respetaba para
+decidir dónde ESCRIBIR — de ahí que el fichero apareciese en el sitio
+correcto pero vacío.
+
+Lo destapó escribir `docs/INSTALL.md` y ejecutar de verdad los comandos
+que se documentaban.
+
+### 6.2 `inferCollectionVariables` borraba los valores del host
+
+Sobrescribía a `""` el valor de toda variable declarada en el config. Un
+proyecto con `baseUrl: "https://api.prod.com"` lo perdía.
+
+### 6.3 El pipeline estaba triplicado y ya divergía
+
+`generate.script.ts`, `tests/helpers/run-scanner.ts` y el gate tenían
+cada uno su copia del orden de los pasos. La del gate se saltaba el merge
+de variables, con lo que las `{{pathParam}}` salían sin declarar. Un gate
+que ejecuta un pipeline distinto al del CLI no valida nada. Extraído a
+`services/generation.pipeline.ts`.
+
+### 6.4 El flujo de auth vivía solo en el script
+
+Los 12 e2e daban `auth: no` porque `runGenerate` —y por tanto el gate—
+no lo ejecutaban nunca. Misma clase de problema que 6.3: lo que solo hace
+el script, nada lo prueba. Movido al pipeline.
+
+### 6.5 Barra final: artefacto en cuatro frameworks, requisito en Django
+
+`@Controller("orders")` + `@Get()` concatenaba `"orders" + "/" + ""` y
+producía `orders/` en NestJS, Spring Boot, ASP.NET y Flask. El adapter la
+borraba después, lo que tapaba el artefacto pero **rompía Django**:
+`path("users/", …)` la declara a propósito y, con `APPEND_SLASH` (el
+defecto), llamar sin ella devuelve un 301 en el que **un POST pierde el
+body**. Ahora `joinRoutePath()` la conserva solo si el segmento la
+declaraba.
+
+### 6.6 El scanner de Gin no descartaba comentarios
+
+Un `// r.GET("/x", h)` acababa como request en la colección del usuario.
+
+---
+
+## 7. Segunda tanda de bugs
+
+Encontrados al cerrar las propuestas. Igual que los del §6, los destapó
+una herramienta o un test que antes no existía.
+
+### 7.1 `--project-root` daba una colección VACÍA — **crítico**
+
+Ver §6.1. Lo encontré ejecutando los comandos que estaba documentando.
+
+### 7.2 El binario compilado no funcionaba
+
+`bun build --compile` producía un ejecutable que fallaba en ejecución con
+`Module not found "/scripts/generate.script.ts"`: el CLI spawneaba
+`bun run <script>` y dentro de un binario no hay ficheros que resolver.
+El bundle salía con "1 modules". Corregido haciendo que el CLI importe
+sus comandos; ahora son 42 módulos y el binario corre sin bun ni node.
+
+### 7.3 Los ejemplos de Laravel eran todos fechas
+
+`exampleValueForRule` metía `string`, `email`, `url`, `uuid`, `ip`,
+`mac_address` y `json` en la misma rama que `date`. Un body de ejemplo de
+cualquier proyecto Laravel salía con `"email": "2024-01-15"` y
+`"name": "2024-01-15"`.
+
+### 7.4 `derivePathParams` era código muerto y dañino
+
+Buscaba `{{x}}` en la URI **sin convertir**, así que nunca casaba. Si
+hubiera funcionado, habría emitido los parámetros de path como query
+string: `/users/{{id}}?id=1`.
+
+### 7.5 El enricher abortaba en proyectos no-Laravel
+
+Exigía una raíz para buscar `app/Http/Requests` incluso con el índice de
+FormRequests vacío, que es el caso de los 11 frameworks restantes.
+
+### 7.6 El DTO de ASP.NET se resolvía por fichero, no por endpoint
+
+El primer `[FromBody]` del archivo ganaba, así que en un controlador con
+varios POST todos recibían el mismo body.
+
+### 7.7 ASP.NET no detectaba minimal APIs
+
+`app.MapGet(...)` es la forma por defecto desde .NET 6 —lo que genera
+`dotnet new webapi`— y no la cubría nada: un proyecto que solo las usara
+producía una colección vacía.
+
+### 7.8 Flask no resolvía ni un body
+
+Su provider era un stub con `supports: false`. Los 14 endpoints del
+fixture recibían bodies inventados por la inferencia heurística.
+
+---
+
+## 8. Qué queda abierto
+
+- **Dos consumidores del singleton**: `loadProject()` y
+  `summary.service` siguen leyendo `paths.service` en lugar de recibir
+  contexto. Están cubiertos por `withProjectRoot()`, así que la
+  reentrancia está resuelta; queda la limpieza.
+- **`npm publish`**: el paquete está listo y verificado
+  (`bun run validate:package`), pero publicar es irreversible y necesita
+  credenciales. Es decisión del dueño del repo.
+- **p00007**: publicar `@delendai/core` corresponde al repositorio
+  delendai. Aquí solo habrá que cambiar el `file:` del plugin.
+- **Capturas reales en `docs/POSTMAN.md`**: los diagramas son ASCII. No
+  se pueden hacer capturas de Postman en este entorno, y fabricar
+  imágenes que imiten su interfaz induciría a error.

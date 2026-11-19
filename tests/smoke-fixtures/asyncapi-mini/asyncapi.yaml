@@ -1,0 +1,25 @@
+asyncapi: "2.6.0"
+info:
+  title: mini-asyncapi
+  version: "1.0.0"
+servers:
+  production:
+    url: kafka://broker:9092
+    protocol: kafka
+channels:
+  user/signedup:
+    subscribe:
+      message:
+        payload:
+          type: object
+          properties:
+            id:
+              type: string
+  order/created:
+    publish:
+      message:
+        payload:
+          type: object
+          properties:
+            total:
+              type: number
