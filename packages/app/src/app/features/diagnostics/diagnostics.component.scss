@@ -1,0 +1,25 @@
+.diagnostics { display: grid; gap: 12px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } h2 { margin: 0; font-size: 20px; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+li { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--color-border); background: var(--color-panel); }
+li.error { border-color: var(--color-copper); }
+strong { color: var(--color-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+li.error strong { color: var(--color-copper-strong); }
+small, .empty { color: var(--color-muted); }
+
+.contracts { display: grid; gap: 12px; margin-top: 24px; }
+.contract-source { padding: 10px 12px; border: 1px solid var(--color-border); }
+.contract-source summary { cursor: pointer; }
+.contract-source code { display: block; margin-top: 6px; }
+.contract-filter { display: flex; align-items: center; gap: 8px; }
+.contract-operation p { margin: 4px 0; }
+.contract-operation code { overflow-wrap: anywhere; }
+.contract-operation.conflict { border-color: var(--color-copper); }
+.contract-conflict { color: var(--color-copper-strong); }
+.muted { color: var(--color-muted); }
+
+.artifact-open { display: block; margin-top: 6px; max-width: 100%; text-align: start; }
+.contract-source .artifact-open code { display: inline; margin: 0; overflow-wrap: anywhere; }
+.artifact-preview { padding: 12px; border: 1px solid var(--color-border); }
+.artifact-preview h3 { margin: 0; overflow-wrap: anywhere; }
+.artifact-preview pre { max-height: 28rem; margin-bottom: 0; padding: 12px; overflow: auto; background: var(--color-panel); }
