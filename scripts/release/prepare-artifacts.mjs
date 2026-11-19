@@ -441,10 +441,6 @@ async function buildManifest(stage, version, filters) {
     );
   }
 
-  const receipts = new Map();
-  for (const entry of entries.filter((e) => e.kind === "receipt")) {
-    receipts.set(ownerPath(entry), entry.relPath);
-  }
   const detached = new Map();
   for (const entry of entries.filter((e) => e.kind === "signature")) {
     detached.set(ownerPath(entry), entry.relPath);
@@ -472,7 +468,7 @@ async function buildManifest(stage, version, filters) {
         timestamped: receipt.timestamped === true,
         ...(receipt.notarized === undefined ? {} : { notarized: receipt.notarized }),
         ...(receipt.stapled === undefined ? {} : { stapled: receipt.stapled }),
-        receipt: receipts.get(entry.relPath) ?? null,
+        receipt: `${entry.relPath}${RELEASE_RECEIPT_SUFFIX}`,
       };
     }
 

@@ -632,7 +632,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
       expect(artifact.signature, artifact.path).not.toBeNull();
       expect(artifact.signature?.kind).toBe("gpg-detached");
       expect(artifact.signature?.path).toBe(`${artifact.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
-      expect(artifact.signature?.receipt).not.toBeNull();
+      expect(artifact.signature?.receipt).toBe(`${artifact.path}${RELEASE_RECEIPT_SUFFIX}`);
       expect(existsSync(join(stage, artifact.signature?.path ?? ""))).toBe(true);
       expect(existsSync(join(stage, artifact.signature?.receipt ?? ""))).toBe(true);
     }
@@ -652,7 +652,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(checksums?.signature, "SHA256SUMS goes signed").not.toBeNull();
     expect(checksums?.signature?.kind).toBe("gpg-detached");
     expect(checksums?.signature?.path).toBe(`${checksums?.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
-    expect(checksums?.signature?.receipt).not.toBeNull();
+    expect(checksums?.signature?.receipt).toBe(`${checksums?.path}${RELEASE_RECEIPT_SUFFIX}`);
     expect(checksums?.signature?.keyId.length ?? 0).toBeGreaterThan(0);
 
     await rm(stage, { recursive: true, force: true });
