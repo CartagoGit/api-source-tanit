@@ -2,14 +2,14 @@
 id: x00107
 title: "Exigir firma GPG detached canónica al preparar el manifest"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: fd162e57-b878-433d-896e-cf19411354d4
-last-correlation-id: fd162e57-b878-433d-896e-cf19411354d4
-last-transition-from: ready
-last-transition-at: 2026-11-19T00:20:32.472Z
+last-transition-id: 1384525e-9a7e-4134-868f-aef8da4fba94
+last-correlation-id: 1384525e-9a7e-4134-868f-aef8da4fba94
+last-transition-from: in-progress
+last-transition-at: 2026-11-19T00:22:05.989Z
 ---
 
 # x00107 — Exigir firma GPG detached canónica al preparar el manifest
@@ -36,13 +36,16 @@ El recibo real tiene `kind: gpg-detached`. Su ruta se deriva del propietario y s
 - global_gate: none
 
 ### S1 — Exigir sidecar GPG regular y cubrir ausencia y dry run
-- **Status**: pending
+- **Status**: review
 - **Files**: `scripts/release/prepare-artifacts.mjs`, `tests/release/signing.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Con recibo GPG y sin sidecar .sig regular canónico, preparar el manifest falla claramente sin apuntar al instalador, para artefactos y SHA256SUMS."
   - "El dry run positivo describe las firmas GPG como archivos .sig canónicos y pasa la verificación portable existente sin escribir en el staging."
   - "La regresión usa fixtures locales sin secretos ni staging ajeno; no atribuye una carrera no probada, no debilita verificación ni modifica reglas, releases o t00007."
+- shipped-in: `08108e8f29e4`
+- review-state: in_review
+- review-implementer: openai-gpt-6.1-sol
 
 ## acceptance
 
