@@ -2,14 +2,14 @@
 id: d00006
 title: "Actualizar la evidencia beta tras integrar S6 y el arranque compilado"
 kind: docs
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-11-19
-last-transition-id: 50a382c2-2bf5-4d4c-a76e-81f0f91e1a4a
-last-correlation-id: 50a382c2-2bf5-4d4c-a76e-81f0f91e1a4a
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T20:48:27.274Z
+last-transition-id: 049cc35e-f810-482f-9dfe-5f7a336274a5
+last-correlation-id: 049cc35e-f810-482f-9dfe-5f7a336274a5
+last-transition-from: review
+last-transition-at: 2026-11-19T20:51:15.659Z
 shipped-in:
   - "d5ffeef3df4f4b52ef8cc7e33ee1efec87750649"
 ---
