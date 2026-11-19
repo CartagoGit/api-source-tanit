@@ -364,6 +364,9 @@ reviewed upstream revisions and hashes; its offline runner compares the actual
 CLI and Application API without executing third-party project scripts. Unknown
 response/schema claims must remain separate from endpoint accuracy.
 
+The [proposal index](proposals/INDEX.md) tracks the beta evidence update, which
+distinguishes technical checks from human evaluation and signed desktop acceptance.
+
 The [beta acceptance record](../BETA.md) links the canonical follow-ups for
 external accuracy measurements, Swagger reconciliation, optional anonymous
 enrichment and the Linux desktop dependency gate. Their acceptance criteria
