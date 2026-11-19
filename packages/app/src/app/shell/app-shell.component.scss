@@ -1,0 +1,8 @@
+.shell { display: flex; min-height: 100vh; background: var(--color-surface); color: var(--color-ink); }
+.content { flex: 1; min-width: 0; padding: clamp(24px, 5vw, 64px); }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.eyebrow { color: var(--color-muted); font-size: 12px; }
+h1 { margin-top: var(--space-2); font-size: clamp(28px, 4vw, 48px); line-height: 1.05; }
+.error { margin: var(--space-4) 0 0; padding: 10px 12px; border: 1px solid var(--color-copper); background: color-mix(in srgb, var(--color-copper) 10%, transparent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+@media (max-width: 720px) { .shell { display: block; } .content { padding: var(--space-5); } }
