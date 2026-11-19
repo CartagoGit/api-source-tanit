@@ -2,14 +2,14 @@
 id: x00112
 title: "Proyectar en el índice las entregas canónicas de propuestas"
 kind: fix
-status: review
+status: done
 type: proposal
 track: workflow
 date: 2026-11-19
-last-transition-id: a1804d55-3900-49e5-8dfa-18a5f11cf90f
-last-correlation-id: a1804d55-3900-49e5-8dfa-18a5f11cf90f
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T15:16:23.886Z
+last-transition-id: cc34fa8a-5022-491b-8e1e-3a1253e08f26
+last-correlation-id: cc34fa8a-5022-491b-8e1e-3a1253e08f26
+last-transition-from: review
+last-transition-at: 2026-11-19T20:44:54.880Z
 shipped-in:
   - "9b801474d2489138d4497db1e417e84ef608930a"
 ---
