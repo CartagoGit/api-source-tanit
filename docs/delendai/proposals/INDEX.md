@@ -76,6 +76,7 @@ propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 - `d00003` — corregir acceptance de x00050 a Install dependencies supera con Bun 1.4.2 — `a1e8ad8`
 - `d00004` — Actualizar el estado beta con evidencia integrada — `7d210128a81474bf50f67be1229aff6b42721b09`
 - `d00005` — Consultar el catálogo vivo de herramientas Tanit — `fa64a8055c30e066ec0990f1e6fa40d30c5a342c`
+- `d00006` — Actualizar la evidencia beta tras integrar S6 y el arranque compilado — `d5ffeef3df4f4b52ef8cc7e33ee1efec87750649`
 - `p00019` — p00019 — documentación de instalación, uso e import en Postman — `a758c22`
 
 ### feat
