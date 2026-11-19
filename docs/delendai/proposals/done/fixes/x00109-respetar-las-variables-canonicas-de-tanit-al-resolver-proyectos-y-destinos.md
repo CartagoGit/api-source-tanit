@@ -2,14 +2,14 @@
 id: x00109
 title: "Respetar las variables canónicas de Tanit al resolver proyectos y destinos"
 kind: fix
-status: review
+status: done
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: 39744b02-2312-452b-b0d2-cf29a1e3c4a7
-last-correlation-id: 39744b02-2312-452b-b0d2-cf29a1e3c4a7
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T07:24:07.845Z
+last-transition-id: dcf26324-2847-448f-add5-dae4c0d5fa44
+last-correlation-id: dcf26324-2847-448f-add5-dae4c0d5fa44
+last-transition-from: review
+last-transition-at: 2026-11-19T15:10:01.707Z
 shipped-in:
   - "17490bc78e6ef2d94f04d6a0cd8a50fcb967b1e9"
 ---
