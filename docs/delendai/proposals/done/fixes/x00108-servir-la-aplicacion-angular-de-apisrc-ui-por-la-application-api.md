@@ -2,14 +2,14 @@
 id: x00108
 title: "Servir la aplicación Angular de apisrc ui por la Application API"
 kind: fix
-status: review
+status: done
 type: proposal
 track: beta
 date: 2026-11-19
-last-transition-id: 30c446b2-c8a5-410e-b82c-fc7b5c421d05
-last-correlation-id: 30c446b2-c8a5-410e-b82c-fc7b5c421d05
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T00:36:57.725Z
+last-transition-id: 421c5b5d-1254-488c-8fab-71f422eee254
+last-correlation-id: 421c5b5d-1254-488c-8fab-71f422eee254
+last-transition-from: review
+last-transition-at: 2026-11-19T15:09:49.021Z
 shipped-in:
   - "4b1204034a56d2e05745fccefc6691556a61a4db"
 ---

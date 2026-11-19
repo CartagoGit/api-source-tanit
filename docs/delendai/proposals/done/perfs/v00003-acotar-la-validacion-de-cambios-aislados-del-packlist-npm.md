@@ -2,14 +2,14 @@
 id: v00003
 title: "Acotar la validación de cambios aislados del packlist npm"
 kind: perf
-status: review
+status: done
 type: proposal
 track: integration
 date: 2026-11-19
-last-transition-id: 237adf14-84b6-48ac-a1e6-38b6a34b09d1
-last-correlation-id: 237adf14-84b6-48ac-a1e6-38b6a34b09d1
-last-transition-from: in-progress
-last-transition-at: 2026-11-19T14:45:27.075Z
+last-transition-id: f41a2fd1-ee11-41ef-b574-99280a770d0a
+last-correlation-id: f41a2fd1-ee11-41ef-b574-99280a770d0a
+last-transition-from: review
+last-transition-at: 2026-11-19T15:09:35.571Z
 shipped-in:
   - "9e7539a6f4b001fcdfd50496604679e885969284"
 ---
