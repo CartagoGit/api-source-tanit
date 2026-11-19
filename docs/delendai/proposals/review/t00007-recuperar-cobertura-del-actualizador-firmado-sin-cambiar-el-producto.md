@@ -10,6 +10,8 @@ last-transition-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
 last-correlation-id: b886d0d4-d945-44a4-91a9-e5809251e0fa
 last-transition-from: in-progress
 last-transition-at: 2026-11-19T07:17:31.795Z
+shipped-in:
+  - "d98765f9"
 ---
 
 # t00007 — Recuperar cobertura del actualizador firmado sin cambiar el producto
@@ -36,7 +38,7 @@ La recuperación debe ser mínima: reutilizar `main_source` y `cuerpo_de_funcion
 - global_gate: none
 
 ### S1 — Cubrir firma del instalador y contrato de los comandos reales
-- **Status**: review
+- **Status**: done
 - **Files**: `tests/release/updater.spec.ts`, `tests/desktop/updater-contract.rs`, `docs/UPDATER.md`
 - **Gate**: none
 - acceptance:
@@ -44,8 +46,10 @@ La recuperación debe ser mínima: reutilizar `main_source` y `cuerpo_de_funcion
   - "Los tests atan comandos reales a manifest firmado, versión aprobada antes de descargar y verificación de hash y firma antes de escribir. Reutilizan helpers actuales sin recuperar tablas ni las 395 líneas históricas duplicadas."
   - "Los gates TypeScript y Rust existentes pasan con fixtures locales sin red ni D-Bus/keyring, sin modificar reglas, producto ni releases. Documentación concisa solo si aporta evidencia."
 - shipped-in: `1c6bd1bfb104`
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6.1-terra
+- review-log: approved by openai-gpt-6.1-terra — verified at d98765f9, validate exit 0 and tests 59/59 claimed, no recorded run cited; acceptance 3/3: (1) tests/release/updater.spec.ts; CI 44481136868 test-coverage 19/19 (2) tests/desktop/updater-contract.rs diff 1c6bd1b; CI updater_contract 40/40 (3) CI 44481136868 typecheck, test-coverage, desktop-tests y clippy verdes; diff solo tests y docs — CI 44481136868: updater Vitest 19/19, updater_contract 40/40 y clippy exitosos; diff revisado.
 
 ## acceptance
 
