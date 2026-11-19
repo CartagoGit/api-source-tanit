@@ -1,0 +1,14 @@
+<section class="picker" aria-labelledby="folder-picker-title">
+  <div class="picker-heading"><div><h2 id="folder-picker-title">{{ i18n.translate("home.open") }}</h2><p>{{ i18n.translate("home.pickerHelp") }}</p></div><tanit-button primary (click)="openNative()">{{ i18n.translate("home.pickerOpen") }}</tanit-button></div>
+  <div class="drop-zone" [class.hovering]="hovering()" role="button" tabindex="0" (click)="browseRoot()" (keydown.enter)="browseRoot()" (dragenter)="hovering.set(true)" (dragleave)="hovering.set(false)" (drop)="onBrowserDrop($event)">
+    <strong>{{ i18n.translate("home.pickerDrop") }}</strong><span>{{ i18n.translate("home.pickerBrowse") }}</span>
+  </div>
+  @if (listing(); as current) {
+    <div class="browse" aria-live="polite">
+      <div class="breadcrumbs"><button type="button" [disabled]="!current.parent" (click)="open(current.parent)">{{ i18n.translate("home.pickerUp") }}</button><span>{{ current.path }}</span></div>
+      @for (entry of current.entries; track entry.path) { <button class="entry" type="button" [disabled]="!entry.readable" (click)="open(entry.path)"><span>{{ entry.name }}</span><small>{{ i18n.translate("home.pickerFolder") }}</small></button> }
+      @if (current.truncated) { <p class="notice">{{ current.reason }}</p> }
+    </div>
+  }
+  @if (error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+</section>
