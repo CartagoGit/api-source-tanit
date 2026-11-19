@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { fromRoot } from "../helpers/root.helper.js";
 
 const source = fromRoot("assets", "icons", "tanit.svg");
-const destination = fromRoot("packages", "ui", "web", "tanit-brand.generated.ts");
+const destination = fromRoot("packages", "ui", "web", "tanit-brand.constant.ts");
 
 const svg = await readFile(source);
 const url = `data:image/svg+xml;base64,${svg.toString("base64")}`;
