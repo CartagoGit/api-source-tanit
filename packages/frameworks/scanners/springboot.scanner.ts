@@ -1,0 +1,499 @@
+/**
+ * `SpringBootScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Spring Boot (Java / Kotlin).
+ *
+ * Detection:
+ *   - `pom.xml` with `spring-boot-starter-web` or `build.gradle` with
+ *     `org.springframework.boot`.
+ *   - `Application.java` with `@SpringBootApplication` annotation.
+ *
+ * Parsing:
+ *   - `@RequestMapping("/api/v1")` or `@RestController` (on the class)
+ *     — captures the controller's prefix.
+ *   - `@GetMapping("/users")`, `@PostMapping(...)`, etc. (on the method).
+ *   - `@PathVariable`, `@RequestParam`, `@RequestBody` for path/query/body.
+ *
+ * Validation:
+ *   - `SpringBootBeanValidationProvider` (best-effort): extracts
+ *     `jakarta.validation.constraints.*` from DTOs.
+ *   - Limited: only inline constraints in the local package.
+ */
+import { existsSync } from "node:fs";
+import { emptyResult, withEvidence } from "./detect-result.helper";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
+import { readFile, readdir } from "node:fs/promises";
+import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { join } from "node:path";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
+import type {
+  IProjectMatch,
+  IProjectScanner,
+  IRouteScanner,
+  IScanResult,
+  IValidationSpec,
+  IValidationSpecProvider,
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
+
+
+async function isSpringBootProject(projectRoot: string): Promise<boolean> {
+  for (const file of ["pom.xml", "build.gradle", "build.gradle.kts"]) {
+    const p = join(projectRoot, file);
+    if (!existsSync(p)) continue;
+    let raw: string;
+    try {
+      raw = await readFile(p, "utf8");
+    } catch {
+      continue;
+    }
+    if (/spring-boot/i.test(raw)) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Project detection
+// ---------------------------------------------------------------------------
+
+export class SpringBootProjectScanner implements IProjectScanner {
+  readonly framework = "springboot" as const;
+
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
+    const isSpring = await isSpringBootProject(projectRoot);
+    if (!isSpring) return emptyResult(0);
+    // a00010 / B-05: distinguishing Java vs Kotlin changes the entry
+    // paths (`src/main/java` vs `src/main/kotlin`) and the evidence
+    // shown to the user.
+    const hasJava = existsSync(join(projectRoot, "src", "main", "java"));
+    const hasKotlin = existsSync(join(projectRoot, "src", "main", "kotlin"));
+    const hasSrc = hasJava || hasKotlin;
+    const score = hasSrc ? 1 : 0.7;
+    const langSignal = hasKotlin && hasJava
+      ? "src/main/{java,kotlin}/ presente (Java + Kotlin)"
+      : hasKotlin
+        ? "src/main/kotlin/ presente (proyecto Kotlin)"
+        : hasJava
+          ? "src/main/java/ presente (proyecto Java)"
+          : "src/ presente (estructura canónica de Maven/Gradle)";
+    return withEvidence(score, [
+      { signal: "pom.xml o build.gradle con spring-boot-starter", weight: 0.7 },
+      ...(hasSrc
+        ? [{ signal: langSignal, weight: 0.3, artifact: hasKotlin ? "src/main/kotlin/" : "src/main/java/" }]
+        : []),
+    ]);
+  }
+
+  async resolve(projectRoot: string): Promise<IProjectMatch> {
+    const artifacts: string[] = [];
+    if (existsSync(join(projectRoot, "pom.xml"))) artifacts.push("pom.xml");
+    if (existsSync(join(projectRoot, "build.gradle"))) artifacts.push("build.gradle");
+    if (existsSync(join(projectRoot, "src", "main", "java"))) artifacts.push("src/main/java");
+    // a00010 / B-05: register Kotlin as a canonical artifact.
+    if (existsSync(join(projectRoot, "src", "main", "kotlin"))) artifacts.push("src/main/kotlin");
+    return { framework: "springboot", projectRoot, artifacts };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route scanner
+// ---------------------------------------------------------------------------
+
+const CLASS_MAPPING_RE =
+  /@(RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|Controller|RestController)\s*(\([^)]*\))?/g;
+
+const METHOD_MAPPING_RE =
+  /@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*(\([^)]*\))?/g;
+
+function extractPaths(args: string): string[] {
+  // `value = "/path"` o `path = "/path"` o `"/path"`.
+  const out: string[] = [];
+  const slashRe = /["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = slashRe.exec(args)) !== null) {
+    out.push(m[1] ?? "");
+  }
+  return out;
+}
+
+export class SpringBootRouteScanner implements IRouteScanner {
+  readonly framework = "springboot" as const;
+
+  matches(match: IProjectMatch): boolean {
+    return match.framework === "springboot";
+  }
+
+  async scan(match: IProjectMatch): Promise<IScanResult> {
+    const out: ParsedRoute[] = [];
+    const projectRoot = effectiveProjectRoot(match);
+    // a00010 / B-05: scan BOTH canonical roots — Java and Kotlin.
+    // A standard Kotlin project lives in `src/main/kotlin/`; before it
+    // was ignored entirely because `scan()` only entered through `java`.
+    const roots = [
+      join(projectRoot, "src", "main", "java"),
+      join(projectRoot, "src", "main", "kotlin"),
+    ];
+    for (const srcMain of roots) {
+      if (!existsSync(srcMain)) continue;
+      await walkJava(srcMain, projectRoot, out);
+    }
+    return { routes: out };
+  }
+}
+
+async function walkJava(
+  dir: string,
+  projectRoot: string,
+  out: ParsedRoute[],
+): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = join(dir, entry);
+    if ((entry.endsWith(".java") || entry.endsWith(".kt")) && !entry.endsWith(".bak")) {
+      const rel = full.startsWith(projectRoot)
+        ? full.slice(projectRoot.length + 1).split("/").join("/")
+        : full;
+      out.push(...(await parseJavaFile(full, rel)));
+    } else if (!entry.includes(".")) {
+      await walkJava(full, projectRoot, out);
+    }
+  }
+}
+
+async function parseJavaFile(
+  absPath: string,
+  relPath: string,
+): Promise<ParsedRoute[]> {
+  const out: ParsedRoute[] = [];
+  let raw: string;
+  try {
+    raw = await readFile(absPath, "utf8");
+  } catch {
+    return [];
+  }
+  const text = stripJavaComments(raw);
+  // a00011 C-6: multi-line annotations are normal Java:
+  //
+  //   @GetMapping(
+  //       path = "/users",
+  //       produces = "application/json"
+  //   )
+  //
+  // The regex `\([^)]*\)` requires the close on the same line, so this
+  // form was lost entirely and with it the the endpoint. The solution
+  // is **pre-merge**: join lines until the parentheses balance before
+  // splitting into lines for matching. The `lineNumber` reported is
+  // the FIRST line of the annotation, where a user would look for it
+  // in the source.
+  const lines = mergeBalancedParens(text.split("\n"));
+
+  /**
+   * Merges each line with the following ones until its content
+   * balances parentheses. An already-balanced line passes through
+   * as-is.
+   */
+  function mergeBalancedParens(source: string[]): string[] {
+    const merged: string[] = [];
+    let buffer = "";
+    let depth = 0;
+    let startLine = 0;
+    for (let i = 0; i < source.length; i++) {
+      const line = source[i] ?? "";
+      if (buffer === "") {
+        buffer = line;
+        startLine = i;
+      } else {
+        buffer += `\n${line}`;
+      }
+      for (const ch of line) {
+        if (ch === "(") depth += 1;
+        else if (ch === ")") depth -= 1;
+      }
+      if (depth <= 0) {
+        merged.push(buffer);
+        buffer = "";
+        depth = 0;
+        void startLine;
+      }
+    }
+    if (buffer !== "") merged.push(buffer);
+    return merged;
+  }
+
+  // 1) Detect controller prefix.
+  //    Pass 1: find @RequestMapping with args (preferring one with path).
+  //    Pass 2: fallback to @RestController/@Controller (no prefix).
+  let classPrefix = "";
+  let classStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    let m: RegExpExecArray | null;
+    const classMappingRe = ownRegex(CLASS_MAPPING_RE);
+    while ((m = classMappingRe.exec(line)) !== null) {
+      const decorator = m[1] ?? "";
+      const args = m[2] ?? "";
+      if (decorator === "RequestMapping") {
+        const paths = extractPaths(args);
+        if (paths.length > 0) {
+          classPrefix = paths[0] ?? "";
+          classStart = i;
+          break;
+        }
+      }
+    }
+    if (classStart >= 0) break;
+  }
+  // Pass 2: if there is no @RequestMapping with path, look for @RestController/@Controller.
+  if (classStart < 0) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? "";
+      let m: RegExpExecArray | null;
+      const classMappingRe = ownRegex(CLASS_MAPPING_RE);
+      while ((m = classMappingRe.exec(line)) !== null) {
+        const decorator = m[1] ?? "";
+        if (["Controller", "RestController"].includes(decorator)) {
+          classStart = i;
+          break;
+        }
+      }
+      if (classStart >= 0) break;
+    }
+  }
+  if (classStart < 0) return out;
+
+  // 2) Look for method mappings.
+  for (let i = classStart + 1; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    let m: RegExpExecArray | null;
+    const methodMappingRe = ownRegex(METHOD_MAPPING_RE);
+    while ((m = methodMappingRe.exec(line)) !== null) {
+      const decorator = m[1] ?? "";
+      const args = m[2] ?? "";
+      const paths = extractPaths(args);
+      const subPath = paths[0] ?? "";
+      const fullPath = joinRoutePath(classPrefix, subPath);
+      let methods: string[] = [];
+      switch (decorator) {
+        case "GetMapping":
+          methods = ["get"];
+          break;
+        case "PostMapping":
+          methods = ["post"];
+          break;
+        case "PutMapping":
+          methods = ["put"];
+          break;
+        case "DeleteMapping":
+          methods = ["delete"];
+          break;
+        case "PatchMapping":
+          methods = ["patch"];
+          break;
+        case "RequestMapping":
+          methods = parseMethodsFromArgs(args);
+          if (methods.length === 0) methods = ["get"];
+          break;
+      }
+      // Look for the method signature.
+      let methodName = "";
+      for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
+        const sig = /\b([a-zA-Z_][\w]*)\s*\(\s*(@?\w+)?\s*\)/.exec(lines[j] ?? "");
+        if (sig?.[1] && !["if", "for", "while"].includes(sig[1])) {
+          methodName = sig[1];
+          break;
+        }
+      }
+      for (const method of methods) {
+        out.push({
+          method: method.toUpperCase(),
+          uri: fullPath,
+          rawUri: fullPath,
+          sourceFile: relPath,
+          lineNumber: i + 1,
+          prefixChain: classPrefix ? [classPrefix] : [],
+          displayName: methodName || `${method.toUpperCase()} ${fullPath}`,
+          ...(methodName ? { description: methodName } : {}),
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function parseMethodsFromArgs(args: string): string[] {
+  const m = /method\s*=\s*\{?\s*RequestMethod\.(\w+)/i.exec(args);
+  if (m?.[1]) return [m[1].toLowerCase()];
+  const ar = /methods\s*=\s*\{?\s*RequestMethod\.(\w+)/i.exec(args);
+  if (ar?.[1]) return [ar[1].toLowerCase()];
+  return [];
+}
+
+function stripJavaComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
+// ---------------------------------------------------------------------------
+// Validation spec provider (no-op; bodies via inference)
+// ---------------------------------------------------------------------------
+
+export class SpringBootBeanValidationProvider implements IValidationSpecProvider {
+  readonly framework = "springboot" as const;
+
+  async supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
+    if (match.framework !== "springboot") return false;
+    return route.sourceFile !== undefined;
+  }
+
+  async resolve(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
+    const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
+    if (!route.sourceFile) return { endpointKey, fields: [] };
+    const abs = join(rawProjectRoot(match), route.sourceFile);
+    let raw: string;
+    try {
+      raw = await readFile(abs, "utf8");
+    } catch {
+      return { endpointKey, fields: [] };
+    }
+    // Detect `@RequestBody @Valid <DtoType> body` in the file.
+    const m = /@RequestBody\s+@?[A-Za-z]+\s+(\w+)\s+\w+/.exec(raw);
+    let dtoType = m?.[1];
+    if (!dtoType) return { endpointKey, fields: [] };
+    let fields = parseJavaDto(raw, dtoType);
+    if (fields.length === 0) {
+      // Fallback: look for the DTO in other Java files.
+      fields = await findDtoInProject(effectiveProjectRoot(match), dtoType, route.uri);
+    }
+    if (fields.length === 0) return { endpointKey, fields: [] };
+    return { endpointKey, fields };
+  }
+}
+
+/**
+ * Parses a Java class from the file and extracts fields with their
+ * validation annotations.
+ */
+function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
+  const out: IValidationSpec[] = [];
+  // Find the class.
+  const classRe = new RegExp(`class\\s+${dtoType}\\s*\\{`, "g");
+  const classMatch = classRe.exec(raw);
+  if (!classMatch) return out;
+  // Capture the class body.
+  const start = classMatch.index + classMatch[0].length;
+  let depth = 1;
+  let end = start;
+  for (let i = start; i < raw.length; i++) {
+    if (raw[i] === "{") depth++;
+    else if (raw[i] === "}") depth--;
+    if (depth === 0) { end = i; break; }
+  }
+  const body = raw.slice(start, end);
+  // Capture field with annotations:
+  //   @NotBlank
+  //   @Size(min = 1, max = 100)
+  //   private String name;
+  // Multiline regex with DOTALL.
+  const fieldRe = /(@\w+(?:\([^)]*\))?)\s+(?:@\w+(?:\([^)]*\))?\s+)*\s*(?:private|public|protected)?\s*([\w<>,\s]+?)\s+(\w+)\s*;/g;
+  let m: RegExpExecArray | null;
+  while ((m = fieldRe.exec(body)) !== null) {
+    const fieldType = (m[2] ?? "").trim();
+    const fieldName = m[3] ?? "";
+    const allAnnotations = m[0];
+    const required = /@NotBlank|@NotNull|@NotEmpty/.test(allAnnotations);
+    const isEmail = /@Email/.test(allAnnotations);
+    const sizeMatch = /@Size\s*\(\s*min\s*=\s*(\d+)\s*,\s*max\s*=\s*(\d+)\s*\)/.exec(allAnnotations);
+    const minMatch = /@Min\s*\(\s*(?:value\s*=\s*)?(\d+)\s*\)/.exec(allAnnotations);
+    const maxMatch = /@Max\s*\(\s*(?:value\s*=\s*)?(\d+)\s*\)/.exec(allAnnotations);
+    const patternMatch = /@Pattern\s*\(\s*regexp\s*=\s*"([^"]+)"\s*\)/.exec(allAnnotations);
+    const spec: IValidationSpec = {
+      fieldName,
+      location: "body",
+      type: inferJavaFieldType(fieldType, isEmail),
+      required,
+    };
+    if (isEmail) spec.format = "email";
+    if (sizeMatch) {
+      spec.minLength = Number(sizeMatch[1]);
+      spec.maxLength = Number(sizeMatch[2]);
+    }
+    if (minMatch) spec.minimum = Number(minMatch[1]);
+    if (maxMatch) spec.maximum = Number(maxMatch[1]);
+    if (patternMatch?.[1] !== undefined) {
+      const vals = patternMatch[1].split("|").map((s) => s.trim()).filter(Boolean);
+      if (vals.length > 1) {
+        spec.enumValues = vals;
+        spec.type = "enum";
+      }
+    }
+    out.push(spec);
+  }
+  return out;
+}
+
+/**
+ * Infers the IValidationSpec type from the Java type.
+ */
+function inferJavaFieldType(javaType: string, isEmail: boolean): IValidationSpec["type"] {
+  if (isEmail) return "string";
+  if (/int|Integer|Long|Short|Byte/.test(javaType)) return "integer";
+  if (/double|float|Double|Float|BigDecimal/.test(javaType)) return "number";
+  if (/boolean|Boolean/.test(javaType)) return "boolean";
+  if (/Date|LocalDate|LocalDateTime|Instant/.test(javaType)) return "datetime";
+  if (/List<|Set<|Collection</.test(javaType)) return "array";
+  return "string";
+}
+
+/**
+ * Searches for a DTO in other Java files of the project.
+ */
+async function findDtoInProject(
+  projectRoot: string,
+  dtoType: string,
+  uri?: string,
+): Promise<IValidationSpec[]> {
+  const javaFiles: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = await readdir(dir);
+    } catch { return; }
+    for (const e of entries) {
+      const full = join(dir, e);
+      if (e.endsWith(".java")) javaFiles.push(full);
+      else if (!e.includes(".")) await walk(full);
+    }
+  }
+  const srcMain = join(projectRoot, "src", "main", "java");
+  if (existsSync(srcMain)) await walk(srcMain);
+  // Filter by file name related to the URI.
+  const uriWords = (uri ?? "")
+    .split("/")
+    .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"))
+    .map((w) => w.toLowerCase().replace(/s$/, ""));
+  const ranked = javaFiles
+    .map((f) => ({
+      f,
+      score: uriWords.reduce((acc, w) => (w && f.toLowerCase().includes(w) ? acc + 1 : acc), 0),
+    }))
+    .sort((a, b) => b.score - a.score);
+  for (const { f } of ranked) {
+    let raw: string;
+    try { raw = await readFile(f, "utf8"); } catch { continue; }
+    const fields = parseJavaDto(raw, dtoType);
+    if (fields.length > 0) return fields;
+  }
+  return [];
+}
