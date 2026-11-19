@@ -1,0 +1,12 @@
+<cdk-virtual-scroll-viewport
+  class="viewport"
+  [itemSize]="itemHeight()"
+  [style.height.px]="height()"
+  role="list"
+  [attr.aria-label]="label()"
+  (scroll)="onScroll($event)"
+>
+  <div *cdkVirtualFor="let item of items(); let index = index; trackBy: trackBy()" role="listitem">
+    <ng-container *ngTemplateOutlet="itemTemplate(); context: { $implicit: item, index }" />
+  </div>
+</cdk-virtual-scroll-viewport>
