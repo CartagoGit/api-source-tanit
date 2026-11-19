@@ -2,14 +2,14 @@
 id: d00004
 title: "Actualizar el estado beta con evidencia integrada"
 kind: docs
-status: in-progress
+status: review
 type: proposal
 track: general
 date: 2026-11-19
-last-transition-id: 38808a1a-8db6-4539-8964-a67cdd41b8bd
-last-correlation-id: 38808a1a-8db6-4539-8964-a67cdd41b8bd
-last-transition-from: ready
-last-transition-at: 2026-11-19T07:30:16.997Z
+last-transition-id: 1d52d231-48f8-4b55-ab6c-b4198c8a6fe4
+last-correlation-id: 1d52d231-48f8-4b55-ab6c-b4198c8a6fe4
+last-transition-from: in-progress
+last-transition-at: 2026-11-19T07:32:47.433Z
 ---
 
 # d00004 — Actualizar el estado beta con evidencia integrada
@@ -39,6 +39,7 @@ TODO: why this work matters now.
   - "Conservar trabajo remoto y bloqueos pendientes."
 - review-state: in_review
 - review-implementer: openai-gpt-6.1-terra
+- shipped-in: `9aed6090fb73`
 
 ## acceptance
 
