@@ -2,14 +2,14 @@
 id: x00104
 title: "Sustituir las copias afectadas de picomatch en la cadena de herramientas"
 kind: fix
-status: review
+status: done
 type: proposal
 track: dependencies
 date: 2026-11-18
-last-transition-id: b6d46827-0ecf-4282-8011-111abc667363
-last-correlation-id: b6d46827-0ecf-4282-8011-111abc667363
-last-transition-from: in-progress
-last-transition-at: 2026-11-18T07:48:58.820Z
+last-transition-id: 73b8f94e-1e22-44a2-917b-7321f668f01b
+last-correlation-id: 73b8f94e-1e22-44a2-917b-7321f668f01b
+last-transition-from: review
+last-transition-at: 2026-11-19T20:45:15.383Z
 shipped-in:
   - "3359658d039fe33ded1ab224e9a1f402951209e5"
 ---

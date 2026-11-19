@@ -200,10 +200,16 @@ propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 - `x00100` — Parse legacy Laravel resource and match routes — `b918c6ba`
 - `x00101` — Fail CI when the canonical proposal index is stale — `94bacf8b`
 - `x00102` — Keep response coverage diagnostics off JSON stdout — `c502f7e0`
+- `x00103` — Unificar la identidad HTTP de un servicio híbrido — `f9b8b9c5be4f26c42744b83037f87236c5e22f58`
+- `x00104` — Sustituir las copias afectadas de picomatch en la cadena de herramientas — `3359658d039fe33ded1ab224e9a1f402951209e5`
+- `x00105` — Actualizar Tokio a una versión corregida en el escritorio — `486d66d098f9c0d661d034876ba74b2035ca583e`
+- `x00106` — Alinear el empaquetado y la ayuda con los nombres de Tanit — `76a51069cb34ec6c918f60f86f2954c031b2d046`
+- `x00107` — Exigir firma GPG detached canónica al preparar el manifest — `1f2e10d642dd921974160de1d216f4d097b3d8e4`
 - `x00108` — Servir la aplicación Angular de apisrc ui por la Application API — `4b1204034a56d2e05745fccefc6691556a61a4db`
 - `x00109` — Respetar las variables canónicas de Tanit al resolver proyectos y destinos — `17490bc78e6ef2d94f04d6a0cd8a50fcb967b1e9`
 - `x00110` — Excluir artefactos Rust del paquete npm — `9f1de060c47c96616704467aa639e1707587f8f3`
 - `x00111` — Arranque autónomo de UI en binario compilado — `4961ed70795d0eedddf63bddc8cf8cb30fa17b3e`
+- `x00112` — Proyectar en el índice las entregas canónicas de propuestas — `9b801474d2489138d4497db1e417e84ef608930a`
 
 ### infra
 

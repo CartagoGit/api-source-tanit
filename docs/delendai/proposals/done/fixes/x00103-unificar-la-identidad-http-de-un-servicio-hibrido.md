@@ -2,14 +2,14 @@
 id: x00103
 title: "Unificar la identidad HTTP de un servicio híbrido"
 kind: fix
-status: review
+status: done
 type: proposal
 track: discovery
 date: 2026-11-18
-last-transition-id: e163b042-6737-4955-a6a5-d9b9a75db439
-last-correlation-id: e163b042-6737-4955-a6a5-d9b9a75db439
-last-transition-from: in-progress
-last-transition-at: 2026-11-18T07:54:33.872Z
+last-transition-id: fa887048-0f1b-4c39-bb1a-e4c1667d77a8
+last-correlation-id: fa887048-0f1b-4c39-bb1a-e4c1667d77a8
+last-transition-from: review
+last-transition-at: 2026-11-19T20:45:04.053Z
 shipped-in:
   - "f9b8b9c5be4f26c42744b83037f87236c5e22f58"
 ---

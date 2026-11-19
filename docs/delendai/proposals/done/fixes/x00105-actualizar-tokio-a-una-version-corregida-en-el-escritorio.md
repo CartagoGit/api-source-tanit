@@ -2,14 +2,14 @@
 id: x00105
 title: "Actualizar Tokio a una versión corregida en el escritorio"
 kind: fix
-status: review
+status: done
 type: proposal
 track: desktop
 date: 2026-11-18
-last-transition-id: d2457922-9fba-4a32-9d5c-02ee302246dc
-last-correlation-id: d2457922-9fba-4a32-9d5c-02ee302246dc
-last-transition-from: in-progress
-last-transition-at: 2026-11-18T15:30:38.553Z
+last-transition-id: fdba6e06-223b-4e22-91dc-6e9a3a737893
+last-correlation-id: fdba6e06-223b-4e22-91dc-6e9a3a737893
+last-transition-from: review
+last-transition-at: 2026-11-19T20:45:58.875Z
 shipped-in:
   - "486d66d098f9c0d661d034876ba74b2035ca583e"
 ---
