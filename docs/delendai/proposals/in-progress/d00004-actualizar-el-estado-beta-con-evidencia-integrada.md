@@ -2,10 +2,14 @@
 id: d00004
 title: "Actualizar el estado beta con evidencia integrada"
 kind: docs
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-11-19
+last-transition-id: 38808a1a-8db6-4539-8964-a67cdd41b8bd
+last-correlation-id: 38808a1a-8db6-4539-8964-a67cdd41b8bd
+last-transition-from: ready
+last-transition-at: 2026-11-19T07:30:16.997Z
 ---
 
 # d00004 — Actualizar el estado beta con evidencia integrada
