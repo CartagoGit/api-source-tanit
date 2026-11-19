@@ -312,6 +312,10 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) uses the same delivery SHA reader as
+proposal lint. DelendAI records new deliveries in `shipped-in`, and the reader
+also preserves historical `shippedIn` entries.
+
 The [proposal index](proposals/INDEX.md) tracks the scoped npm packlist proof.
 The planner compares the Git manifests at the base and head. An isolated
 `files` change runs the packlist regression, package validation, lint,
