@@ -102,13 +102,22 @@ mkdir -p "$(dirname "${OUTPUT}")"
 rm -f "${OUTPUT}"
 
 note "Packaging: ${APP} → ${OUTPUT}"
-hdiutil create \
-  -volname "${VOLUME}" \
-  -srcfolder "${STAGE_DIR}" \
-  -format UDZO \
-  -ov \
-  -quiet \
-  "${OUTPUT}" || die "hdiutil could not build the image"
+for attempt in 1 2 3; do
+  if result="$(LC_ALL=C hdiutil create \
+    -volname "${VOLUME}" \
+    -srcfolder "${STAGE_DIR}" \
+    -format UDZO \
+    -ov \
+    "${OUTPUT}" 2>&1)"; then
+    break
+  fi
+  printf '%s\n' "${result}" >&2
+  if [[ "${result}" != *"Resource busy"* || "${attempt}" -eq 3 ]]; then
+    die "hdiutil could not build the image"
+  fi
+  note "The disk image is busy. Retrying (attempt ${attempt} of 3 failed)."
+  sleep "${attempt}"
+done
 
 [[ -s "${OUTPUT}" ]] || die "The image came out empty: ${OUTPUT}"
 
