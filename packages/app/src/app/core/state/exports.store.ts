@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from "@angular/core";
+import { Injectable, computed, inject, signal } from "@angular/core";
 
 import {
   EXPORT_FORMATS,
@@ -12,130 +12,151 @@ import {
 import { ProjectStore } from "./project.store";
 import { I18nService } from "../i18n/i18n.service";
 
-/**
- * The Export Center's state.
- *
- * The preview is a **signal**, not a computed value: it comes from
- * the backend, and the backend has to be asked. It used to be a
- * `computed()` over a `request` the app built itself — a request
- * whose answer was invented, so the preview was invented too, and it
- * changed the moment the user picked a format, with no round trip
- * and no truth behind it.
- */
+interface IExportSession {
+  readonly root: string | null;
+  readonly id: string | null;
+}
+
+interface IExportSelection {
+  readonly session: IExportSession;
+  readonly directory: string;
+  readonly formats: readonly ExportFormat[];
+}
+
+interface IExportView {
+  readonly preview: ExportDryRun;
+  readonly result: ExportResult | null;
+  readonly overwriteConfirmed: boolean;
+  readonly outsideWorkspaceConfirmed: boolean;
+  readonly previewLoading: boolean;
+  readonly error: string | null;
+}
+
+const EMPTY_VIEW: IExportView = {
+  preview: {
+    files: [],
+    diagnostics: [],
+    canGenerate: false,
+    requiresOverwriteConfirmation: false,
+    requiresOutsideWorkspaceConfirmation: false,
+  },
+  result: null,
+  overwriteConfirmed: false,
+  outsideWorkspaceConfirmed: false,
+  previewLoading: false,
+  error: null,
+};
+
+/** Holds the backend's preview and write result for the current export selection. */
 @Injectable({ providedIn: "root" })
 export class ExportsStore {
   private readonly i18n = inject(I18nService);
   private readonly client = inject(ExportsClient);
   private readonly project = inject(ProjectStore);
 
-  /** The formats the user picked. */
   readonly formats = signal<readonly ExportFormat[]>([EXPORT_FORMATS[0]]);
-  /** Where the files will go. */
-  readonly outputDirectory = signal("");
-  /** The project's root — the workspace the files should stay in. */
   readonly workspaceRoot = computed(() => this.project.projectRoot() ?? "");
-  /** What the backend would do. */
-  readonly preview = signal<ExportDryRun>(emptyPreview());
-  /** What the backend can do with each format. */
-  readonly capabilities = signal<readonly ExportCapabilities[]>([]);
-  /** What was written. */
-  readonly result = signal<ExportResult | null>(null);
-  readonly overwriteConfirmed = signal(false);
-  readonly outsideWorkspaceConfirmed = signal(false);
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
 
+  private readonly session = computed<IExportSession>(() => ({
+    root: this.project.projectRoot(),
+    id: this.project.sessionId(),
+  }));
+  private readonly destination = signal<{ session: IExportSession; path: string } | null>(null);
+  readonly outputDirectory = computed(() => {
+    const destination = this.destination();
+    return destination?.session === this.session() ? destination.path : "";
+  });
+
+  private readonly selection = computed<IExportSelection>(() => ({
+    session: this.session(),
+    directory: this.outputDirectory() || `${this.workspaceRoot()}/tanit`,
+    formats: this.formats(),
+  }));
+  private readonly state = signal<{ selection: IExportSelection; view: IExportView } | null>(null);
+  private readonly availableFormats = signal<{ session: IExportSession; formats: readonly ExportCapabilities[] } | null>(null);
+  private readonly view = computed(() => {
+    const state = this.state();
+    return state?.selection === this.selection() ? state.view : EMPTY_VIEW;
+  });
+  private readonly writing = signal(false);
+  private refreshId = 0;
+
+  readonly preview = computed(() => this.view().preview);
+  readonly capabilities = computed(() => {
+    const available = this.availableFormats();
+    return available?.session === this.session() ? available.formats : [];
+  });
+  readonly result = computed(() => this.view().result);
+  readonly overwriteConfirmed = computed(() => this.view().overwriteConfirmed);
+  readonly outsideWorkspaceConfirmed = computed(() => this.view().outsideWorkspaceConfirmed);
+  readonly loading = computed(() => this.view().previewLoading || this.writing());
+  readonly error = computed(() => this.view().error);
   readonly diagnostics = computed<readonly ExportDiagnostic[]>(() => this.preview().diagnostics);
-
-  constructor() {
-    // The state belongs to **a** project. When the open project
-    // changes, the preview of the previous one is a lie: the Export
-    // Center used to keep showing it, with the files of a project
-    // that was no longer open.
-    let previous: string | null | undefined;
-    effect(() => {
-      const root = this.project.projectRoot();
-      if (root === previous) return;
-      previous = root;
-      this.preview.set(emptyPreview());
-      this.capabilities.set([]);
-      this.result.set(null);
-      this.overwriteConfirmed.set(false);
-      this.outsideWorkspaceConfirmed.set(false);
-      this.error.set(null);
-    });
-  }
 
   toggleFormat(format: ExportFormat): void {
     const selected = new Set(this.formats());
     if (selected.has(format)) selected.delete(format);
     else selected.add(format);
     this.formats.set(EXPORT_FORMATS.filter((item) => selected.has(item)));
-    this.result.set(null);
-    // The confirmations were about the previous preview. Carrying
-    // them over would let a consent given for one set of files
-    // authorise another.
-    this.overwriteConfirmed.set(false);
-    this.outsideWorkspaceConfirmed.set(false);
     void this.refresh();
   }
 
   setOutputDirectory(path: string): void {
-    this.outputDirectory.set(path);
-    this.overwriteConfirmed.set(false);
-    this.outsideWorkspaceConfirmed.set(false);
-    this.result.set(null);
+    this.destination.set({ session: this.session(), path });
     void this.refresh();
   }
 
   confirmOverwrite(value: boolean): void {
-    this.overwriteConfirmed.set(value);
+    this.update(this.selection(), { overwriteConfirmed: value });
   }
 
   confirmOutsideWorkspace(value: boolean): void {
-    this.outsideWorkspaceConfirmed.set(value);
+    this.update(this.selection(), { outsideWorkspaceConfirmed: value });
   }
 
-  /**
-   * Asks the backend what it would write.
-   *
-   * Nothing happens without a project: the API needs a session, and
-   * a session needs a root.
-   */
-  async refresh(): Promise<void> {
-    const projectRoot = this.project.projectRoot();
-    if (projectRoot === null) return;
-    if (this.formats().length === 0) {
-      this.preview.set(emptyPreview());
-      return;
-    }
-    this.loading.set(true);
-    this.error.set(null);
+  /** Returns true when this call prepared the current selection. */
+  async refresh(): Promise<boolean> {
+    const selection = this.selection();
+    const { session, directory, formats } = selection;
+    const root = session.root;
+    if (root === null) return false;
+
+    const id = ++this.refreshId;
+    const current = (): boolean => id === this.refreshId && selection === this.selection();
+    this.update(selection, {
+      preview: EMPTY_VIEW.preview,
+      previewLoading: true,
+      overwriteConfirmed: false,
+      outsideWorkspaceConfirmed: false,
+      error: null,
+    });
+
     try {
-      const directory = this.outputDirectory() || `${this.workspaceRoot()}/tanit`;
-      const previews = await Promise.all(
-        this.formats().map((format) =>
-          this.client.preview(projectRoot, format, directory),
-        ),
-      );
-      this.preview.set(merge(previews));
-      this.capabilities.set(await this.client.capabilities(projectRoot));
+      const previews = await Promise.all(formats.map((format) => this.client.preview(root, format, directory)));
+      if (!current()) return false;
+      this.update(selection, { preview: merge(previews) });
+
+      if (this.availableFormats()?.session !== session) {
+        const capabilities = await this.client.capabilities(root);
+        if (!current()) return false;
+        this.availableFormats.set({ session, formats: capabilities });
+      }
+      return formats.length > 0;
     } catch (error) {
-      this.error.set(describe(error));
+      if (current()) this.update(selection, { error: describe(error) });
+      return false;
     } finally {
-      this.loading.set(false);
+      if (current()) this.update(selection, { previewLoading: false });
     }
   }
 
   /** Regenerate previously approved artifacts through the normal preview/write path. */
   async regenerate(): Promise<void> {
-    const root = this.project.projectRoot();
-    const directory = this.outputDirectory();
-    const formats = this.formats().join(",");
+    if (this.writing()) return;
+    const selection = this.selection();
     const previous = new Set(this.result()?.files.map((file) => file.path) ?? []);
-    await this.refresh();
-    if (this.error() !== null || root !== this.project.projectRoot() ||
-        directory !== this.outputDirectory() || formats !== this.formats().join(",")) return;
+    if (!(await this.refresh()) || selection !== this.selection()) return;
+
     const files = this.preview().files;
     if (files.length > 0 && files.every((file) => previous.has(file.path))) {
       this.confirmOverwrite(true);
@@ -144,63 +165,44 @@ export class ExportsStore {
     await this.generate();
   }
 
-  /**
-   * Writes the files.
-   *
-   * The overwrite is confirmed **here**, not in the backend: the
-   * backend is asked to write what the preview showed, and the app
-   * is the one that asked the user.
-   *
-   * And the confirmation is **honoured**: the two checkboxes were
-   * drawn, the preview said "existing files may be overwritten", and
-   * `generate()` wrote anyway. A checkbox that asks permission and
-   * ignores the answer is worse than no checkbox: it teaches the
-   * user that the warning does not matter.
-   */
+  /** Writes the formats covered by the current preview and consumes consent. */
   async generate(): Promise<void> {
-    const projectRoot = this.project.projectRoot();
-    if (projectRoot === null) return;
-    const preview = this.preview();
-    if (preview.requiresOverwriteConfirmation && !this.overwriteConfirmed()) {
-      this.error.set(this.i18n.translate("common.confirmOverwrite"));
+    const selection = this.selection();
+    const { session, directory, formats } = selection;
+    const { preview, overwriteConfirmed, outsideWorkspaceConfirmed } = this.view();
+    const root = session.root;
+    if (root === null || this.loading() || !preview.canGenerate) return;
+    if (preview.requiresOverwriteConfirmation && !overwriteConfirmed) {
+      this.update(selection, { error: this.i18n.translate("common.confirmOverwrite") });
       return;
     }
-    if (preview.requiresOutsideWorkspaceConfirmation && !this.outsideWorkspaceConfirmed()) {
-      this.error.set(this.i18n.translate("common.confirmOutside"));
+    if (preview.requiresOutsideWorkspaceConfirmation && !outsideWorkspaceConfirmed) {
+      this.update(selection, { error: this.i18n.translate("common.confirmOutside") });
       return;
     }
-    this.loading.set(true);
-    this.error.set(null);
+
+    this.writing.set(true);
+    this.update(selection, { error: null, overwriteConfirmed: false, outsideWorkspaceConfirmed: false });
+
     try {
-      const directory = this.outputDirectory() || `${this.workspaceRoot()}/tanit`;
       const written: Array<{ path: string }> = [];
-      for (const format of this.formats()) {
-        const result = await this.client.generate(projectRoot, format, directory);
+      for (const format of formats) {
+        if (selection !== this.selection()) return;
+        const result = await this.client.generate(root, format, directory);
         written.push(...result.files);
       }
-      this.result.set({ files: written, outputDirectory: directory });
-      // The confirmation was about **these** files. Asking again
-      // for the next one is the difference between a consent and a
-      // habit.
-      this.overwriteConfirmed.set(false);
-      this.outsideWorkspaceConfirmed.set(false);
+      this.update(selection, { result: { files: written, outputDirectory: directory } });
     } catch (error) {
-      this.error.set(describe(error));
+      this.update(selection, { error: describe(error) });
     } finally {
-      this.loading.set(false);
+      this.writing.set(false);
     }
   }
-}
 
-/** A preview with nothing in it. */
-function emptyPreview(): ExportDryRun {
-  return {
-    files: [],
-    diagnostics: [],
-    canGenerate: false,
-    requiresOverwriteConfirmation: false,
-    requiresOutsideWorkspaceConfirmation: false,
-  };
+  private update(selection: IExportSelection, changes: Partial<IExportView>): void {
+    if (selection !== this.selection()) return;
+    this.state.set({ selection, view: { ...this.view(), ...changes } });
+  }
 }
 
 /** The previews of several formats, as one. */
