@@ -51,21 +51,16 @@ export class ProjectStore {
   /** Whether a project is really open — a session, not a name. */
   readonly isOpen = computed(() => this.sessionId() !== null);
 
-  /**
-   * Opens a project: scans it, and remembers the session.
-   *
-   * A failure leaves the app **closed** rather than half-open. A
-   * project with a name on the screen and no session behind it is
-   * the state this store used to be in all the time, and every
-   * operation from it failed.
-   */
+  /** Opens a session and keeps any previously open project if the request fails. */
   async open(path: string): Promise<boolean> {
+    const requestedPath = path.trim();
+    if (!requestedPath || this.loading()) return false;
     this.loading.set(true);
     this.error.set(null);
     const previous = this.projectRoot();
     try {
       const answer: OpenProjectOutput = await this.bridge.request("open-project", {
-        projectRoot: path,
+        projectRoot: requestedPath,
       });
       // The previous session is closed **after** the new one opens:
       // if the new one fails, the old project is still open and
@@ -80,7 +75,6 @@ export class ProjectStore {
       this.projectName.set(nameOf(answer.summary.projectRoot));
       return true;
     } catch (error) {
-      this.closeLocally();
       this.error.set(describe(error));
       return false;
     } finally {

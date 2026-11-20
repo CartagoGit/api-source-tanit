@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 /** Puts a Tauri-shaped global in place, and hands back its pieces. */
-function fakeTauri(): {
+function fakeTauri(v2 = false): {
   invoke: ReturnType<typeof vi.fn>;
   emit(payload: unknown): void;
   listeners: Listener[];
@@ -40,7 +40,7 @@ function fakeTauri(): {
   const listeners: Listener[] = [];
   const invoke = vi.fn().mockResolvedValue(undefined);
   globals.__TAURI__ = {
-    invoke,
+    ...(v2 ? { core: { invoke } } : { invoke }),
     event: {
       listen: vi.fn(async (_name: string, callback: Listener) => {
         listeners.push(callback);
@@ -74,6 +74,16 @@ describe("the connector", () => {
       }),
     );
 
+    await expect(pending).resolves.toEqual({ services: [] });
+  });
+
+  test("uses core.invoke in a Tauri 2 window", async () => {
+    originalTauri = globals.__TAURI__;
+    const tauri = fakeTauri(true);
+    const client = new HostBridgeClient();
+    const pending = client.request("list-services", { projectRoot: "/workspace" });
+    expect(tauri.invoke).toHaveBeenCalledWith("send_to_sidecar", expect.anything());
+    tauri.emit(JSON.stringify({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: { services: [] } } }));
     await expect(pending).resolves.toEqual({ services: [] });
   });
 

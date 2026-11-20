@@ -142,6 +142,7 @@ export interface IExportFilePreview {
   readonly path: string;
   readonly change: ExportChange;
   readonly bytes: number;
+  readonly outsideWorkspace: boolean;
 }
 /** The files a snapshot would produce, and what would happen to them. */
 export interface IExportPlan {

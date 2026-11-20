@@ -50,10 +50,11 @@ import type { EndpointQuery } from "../../packages/app/src/app/core/api/endpoint
 @Component({
   standalone: true,
   imports: [SidebarComponent],
-  template: `<tanit-sidebar [activeId]="activeId" (select)="chosen = $event" />`,
+  template: `<tanit-sidebar [activeId]="activeId" [projectOpen]="projectOpen" (select)="chosen = $event" />`,
 })
 class SidebarHost {
   activeId = "overview";
+  projectOpen = true;
   chosen: string | null = null;
 }
 
@@ -116,6 +117,14 @@ describe("the sidebar", () => {
     const current = fixture.nativeElement.querySelectorAll('[aria-current="page"]');
     expect(current.length).toBe(1);
     expect(current[0].textContent?.trim()).toContain("Endpoints");
+  });
+
+  it("shows workspace and settings before a project opens", () => {
+    const fixture = TestBed.createComponent(SidebarHost);
+    fixture.componentInstance.projectOpen = false;
+    fixture.detectChanges();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings"]);
   });
 
   it("has no entry that leads nowhere", () => {

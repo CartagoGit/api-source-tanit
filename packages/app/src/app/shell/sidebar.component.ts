@@ -95,6 +95,7 @@ export class SidebarComponent {
   ];
 
   readonly activeId = input("overview");
+  readonly projectOpen = input(false);
 
   /**
    * The label of the theme button.
@@ -116,7 +117,9 @@ export class SidebarComponent {
     return `nav-group-${group.id}`;
   }
 
-  iconFor(id: string): string {
-    return ({ overview: "O", endpoints: "E", services: "V", exports: "X", stats: "N", check: "C", validate: "A", sync: "Y", push: "P", live: "L", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
+  visibleItems(group: NavigationGroup): ReadonlyArray<NavigationItem> {
+    return this.projectOpen()
+      ? group.items
+      : group.items.filter(({ id }) => id === "overview" || id === "settings");
   }
 }

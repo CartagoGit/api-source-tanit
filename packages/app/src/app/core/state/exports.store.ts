@@ -82,6 +82,7 @@ export class ExportsStore {
 
   setOutputDirectory(path: string): void {
     this.outputDirectory.set(path);
+    this.overwriteConfirmed.set(false);
     this.outsideWorkspaceConfirmed.set(false);
     this.result.set(null);
     void this.refresh();
@@ -114,7 +115,7 @@ export class ExportsStore {
       const directory = this.outputDirectory() || `${this.workspaceRoot()}/tanit`;
       const previews = await Promise.all(
         this.formats().map((format) =>
-          this.client.preview(projectRoot, format, directory, this.workspaceRoot()),
+          this.client.preview(projectRoot, format, directory),
         ),
       );
       this.preview.set(merge(previews));

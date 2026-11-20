@@ -11,6 +11,7 @@ import { buildArtifacts } from "../discovery/generation.pipeline.js";
 import { collectionBasename } from "../discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../discovery/project-context.service.js";
 import { selectExporters } from "./registry.js";
+import { ensureInside } from "../helpers/path-containment.helper.js";
 import { writeFileAtomic } from "../helpers/atomic-write.helper.js";
 import type { IPreparedExport, IPreparedExportFile } from "../../contracts/interfaces/core/export-files.interface.js";
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
@@ -140,7 +141,7 @@ export async function planExport(
   const planned = await prepareExport(snapshot, target, outputDirectory, outputPath);
   return {
     files: planned.files.map(
-      ({ path, change, bytes }): IExportFilePreview => ({ path, change, bytes }),
+      ({ path, change, bytes, outsideWorkspace }): IExportFilePreview => ({ path, change, bytes, outsideWorkspace }),
     ),
     outputPath: planned.outputPath,
     diagnostics: planned.diagnostics,
@@ -214,7 +215,7 @@ export async function writePreparedExport(planned: IPreparedExport): Promise<{
     bytes,
     files: written,
     plan: {
-      files: planned.files.map(({ path, change, bytes: size }) => ({ path, change, bytes: size })),
+      files: planned.files.map(({ path, change, bytes, outsideWorkspace }) => ({ path, change, bytes, outsideWorkspace })),
       outputPath: planned.outputPath,
       diagnostics: planned.diagnostics,
     },
@@ -271,12 +272,12 @@ export async function prepareExport(
     if (result.files.length === 0) {
       const path = destination.outputPath ?? join(directory, primaryFileName(snapshot, result.format));
       const content = JSON.stringify(result.artifact ?? {}, null, 2) + "\n";
-      files.push(await describeFile(path, content));
+      files.push(await describeFile(snapshot.projectRoot, path, content));
       continue;
     }
     for (const artifact of result.files) {
       const path = destination.outputPath ?? join(directory, artifact.path);
-      files.push(await describeFile(path, artifact.content));
+      files.push(await describeFile(snapshot.projectRoot, path, artifact.content));
     }
   }
 
@@ -287,21 +288,24 @@ export async function prepareExport(
 }
 
 /** What would happen to one file. */
-async function describeFile(path: string, content: string): Promise<IPreparedExportFile> {
+async function describeFile(projectRoot: string, path: string, content: string): Promise<IPreparedExportFile> {
   const bytes = utf8Length(content);
+  // The atomic writer replaces the file itself, so check the directory it writes into.
+  const outsideWorkspace = !(await ensureInside(projectRoot, dirname(path))).ok;
   try {
     const previous = await readFile(path, "utf8");
     return {
       path,
       change: previous === content ? "UNCHANGED" : "UPDATE",
       bytes,
+      outsideWorkspace,
       content,
     };
   } catch (error) {
     const missing = typeof error === "object" && error !== null &&
       "code" in error && error.code === "ENOENT";
     // Read directly: avoid a blocking existence probe and its race with reading.
-    return { path, change: missing ? "NEW" : "UPDATE", bytes, content };
+    return { path, change: missing ? "NEW" : "UPDATE", bytes, outsideWorkspace, content };
   }
 }
 

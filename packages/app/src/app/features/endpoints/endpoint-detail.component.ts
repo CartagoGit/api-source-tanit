@@ -42,7 +42,7 @@ export class EndpointDetailComponent {
   readonly endpoint = input<EndpointRecord | null>(null);
   readonly closed = output<void>();
   readonly transportFilter = output<string>();
-  readonly open = output<{ file: string; line: number }>();
+  readonly copyMessage = signal<string | null>(null);
   readonly width = signal(460);
   readonly activeTab = signal("overview");
   readonly tabs = [
@@ -60,7 +60,14 @@ export class EndpointDetailComponent {
   startResize(event: Pick<PointerEvent, "clientX" | "pointerId" | "currentTarget">): void { this.resizing = true; this.startX = event.clientX; this.startWidth = this.width(); (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); }
   @HostListener("document:pointermove", ["$event"]) onMove(event: PointerEvent): void { if (this.resizing) this.width.set(Math.min(720, Math.max(300, this.startWidth - event.clientX + this.startX))); }
   @HostListener("document:pointerup") onUp(): void { this.resizing = false; }
-  openLocation(file: string, line: number): void { this.open.emit({ file, line }); }
+  async copyLocation(file: string, line: number | undefined): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(line ? `${file}:${line}` : file);
+      this.copyMessage.set(this.i18n.translate("common.copied"));
+    } catch {
+      this.copyMessage.set(this.i18n.translate("common.clipboardUnavailable"));
+    }
+  }
 
   /**
    * What to draw when the backend did not say.

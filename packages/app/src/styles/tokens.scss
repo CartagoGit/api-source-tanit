@@ -6,7 +6,16 @@
   --color-ink: #17191c;
   --color-muted: #697077;
   --color-border: #dfe2df;
-  --color-focus: #b45f3c;
+  --color-focus: #06706a;
+  --color-action-bg: #075e56;
+  --color-action-text: #fff;
+  --color-nav-bg: #102a2e;
+  --color-nav-ink: #f5f8f5;
+  --color-nav-muted: #b6cacc;
+  --color-nav-hover: #e8efed;
+  --color-nav-hover-dark: #1a3d41;
+  --color-nav-accent: #fbb744;
+  --color-danger: #a3312b;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -18,15 +27,19 @@
   --radius-lg: 10px;
   --radius-xl: 12px;
   --font-ui: system-ui, sans-serif;
-  --font-code: ui-monospace, SFMono-Regular, Cascadia Code, Consolas, monospace;
+  --font-code: ui-monospace, Consolas, monospace;
   --motion-standard: cubic-bezier(.2, .8, .2, 1);
 }
 
 :root[data-theme="dark"] {
-  --color-surface: #101214;
-  --color-panel: #171a1d;
+  --color-surface: #10191b;
+  --color-panel: #172426;
   --color-ink: #f2f3f3;
   --color-muted: #a5abb0;
   --color-border: #343a3e;
-  --color-focus: #df895f;
+  --color-focus: #fbb744;
+  --color-action-bg: #fbb744;
+  --color-action-text: #231706;
+  --color-nav-hover: #213639;
+  --color-danger: #ffb4a8;
 }

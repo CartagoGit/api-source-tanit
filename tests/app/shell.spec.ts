@@ -22,6 +22,8 @@ import { TestBed } from "@angular/core/testing";
 
 import { AppComponent } from "../../packages/app/src/app/shell/app-shell.component";
 import { ProjectStore } from "../../packages/app/src/app/core/state/project.store";
+import { FolderPickerComponent } from "../../packages/app/src/app/features/home/folder-picker.component";
+import { RecentProjectsClient } from "../../packages/app/src/app/core/api/recent-projects.client";
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 
 describe("ProjectStore", () => {
@@ -82,6 +84,21 @@ describe("ProjectStore", () => {
     expect(project.sessionId()).toBeNull();
     expect(project.isOpen()).toBe(false);
     expect(project.error()).toContain("No framework detected");
+  });
+
+  it("keeps the current session when a replacement cannot open", async () => {
+    const request = vi.fn()
+      .mockResolvedValueOnce({ sessionId: "session", summary: { projectRoot: "/workspace/api" } })
+      .mockRejectedValueOnce(new Error("Folder unavailable"));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: HostBridgeClient, useValue: { request } }] });
+    const project = TestBed.inject(ProjectStore);
+    expect(await project.open("  /workspace/api  ")).toBe(true);
+    expect(await project.open("/workspace/invalid")).toBe(false);
+    expect(request).toHaveBeenNthCalledWith(1, "open-project", { projectRoot: "/workspace/api" });
+    expect(project.projectRoot()).toBe("/workspace/api");
+    expect(project.sessionId()).toBe("session");
+    expect(project.error()).toBe("Folder unavailable");
   });
 
   it("tells the backend to close the session", async () => {
@@ -148,5 +165,28 @@ describe("the shell", () => {
       shell.go(section);
       expect(shell.activeSection()).toBe(section);
     }
+  });
+});
+
+
+describe("the browser folder picker", () => {
+  it("lists backend folders and emits the path of the chosen directory", async () => {
+    const listing = (path: string, parent: string | null) => ({
+      ok: true, path, parent, entries: [], truncated: false,
+    });
+    const browse = vi.fn()
+      .mockResolvedValueOnce(listing("C:\\work", null))
+      .mockResolvedValueOnce(listing("C:\\work\\project", "C:\\work"));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: RecentProjectsClient, useValue: { browse } }] });
+    const picker = TestBed.runInInjectionContext(() => new FolderPickerComponent());
+    const selected = vi.fn();
+    picker.selected.subscribe(selected);
+    await picker.toggleBrowse();
+    expect(browse).toHaveBeenCalledWith(undefined);
+    await picker.open("C:\\work\\project");
+    expect(selected).not.toHaveBeenCalled();
+    picker.useCurrent();
+    expect(selected).toHaveBeenCalledWith("C:\\work\\project");
   });
 });
