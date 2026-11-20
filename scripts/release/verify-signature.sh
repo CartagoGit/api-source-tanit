@@ -181,10 +181,7 @@ VERSION="$(jq -r '.version // ""' "${MANIFEST_ABS}")"
 
 note "Release version: ${VERSION}"
 
-mapfile -t ARTIFACT_PATHS < <(jq -r '.artifacts[]?.path' "${MANIFEST_ABS}")
-mapfile -t ASSET_PATHS < <(jq -r '.assets[]?.path' "${MANIFEST_ABS}")
-
-if [[ ${#ARTIFACT_PATHS[@]} -eq 0 ]]; then
+if ! jq -e '.artifacts | type == "array" and length > 0' "${MANIFEST_ABS}" >/dev/null; then
   die "The manifest describes no artifact"
 fi
 
