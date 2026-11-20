@@ -79,7 +79,6 @@ export class EndpointsListComponent {
   clearSelection(): void { this.store.select(null); this.updateUrl(this.store.query()); }
   filterTransport(value: string): void { this.apply({ ...this.store.query(), transport: value as EndpointQuery["transport"] }); }
   refresh(): void { void this.store.refresh(); }
-  openLocation(location: { file: string; line: number }): void { if (typeof window !== "undefined") window.open(`tanit://open?file=${encodeURIComponent(location.file)}&line=${location.line}`, "_blank"); }
 
   private updateUrl(query: EndpointQuery & { endpoint?: string }): void { if (typeof history === "undefined") return; const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value)); history.replaceState(null, "", `${location.pathname}?${params.toString()}`); }
 

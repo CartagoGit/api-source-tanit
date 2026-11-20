@@ -1,1 +1,13 @@
-.home { display: grid; gap: var(--space-6); max-width: 800px; } header { display: grid; gap: var(--space-2); } h1 { margin: 0; font-size: clamp(32px, 6vw, 56px); } header p { margin: 0; color: var(--color-muted); } .eyebrow { color: var(--color-copper); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; } details { border-top: 1px solid var(--color-border); padding-top: var(--space-3); } label { display: grid; gap: var(--space-2); margin-top: var(--space-3); color: var(--color-muted); } input { max-width: 520px; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); color: var(--color-ink); }
+.home { display: grid; gap: var(--space-6); }
+.intro { display: grid; gap: var(--space-2); padding: var(--space-4) 0 var(--space-2); }
+h1 { font-size: clamp(30px, 4vw, 48px); line-height: 1.1; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.intro p { max-width: 60ch; color: var(--color-muted); font-size: 15px; }
+.home-grid { display: grid; gap: var(--space-5); align-items: start; }
+.home-grid.has-recents { grid-template-columns: minmax(0, 1.65fr) minmax(240px, 1fr); }
+tanit-recent-projects { display: block; padding: var(--space-4); background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-lg); min-width: 0; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin: 0; }
+.metrics div { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-panel); }
+dt { color: var(--color-muted); font-size: 13px; }
+dd { margin: var(--space-1) 0 0; font-size: 21px; font-weight: 650; overflow-wrap: anywhere; }
+@media (max-width: 920px) { .home-grid.has-recents { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .metrics { grid-template-columns: 1fr; } }

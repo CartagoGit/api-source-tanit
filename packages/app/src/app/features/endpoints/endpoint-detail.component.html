@@ -9,7 +9,7 @@
       @case ('responses') { @if (item.responses.length) { @for (response of item.responses; track response.status) { <article class="response"><strong>{{ response.status }}</strong><span>{{ response.description }}</span></article> } } @else { <p class="empty">{{ i18n.translate("endpoint.noResponse") }}</p> } }
       @case ('validation') { <p>{{ i18n.translate("endpoint.validation") }} <strong>{{ reported(item.validation) }}</strong></p> }
       @case ('auth') { <p>{{ i18n.translate("endpoint.authentication") }} <strong>{{ reported(item.auth) }}</strong></p> }
-      @case ('location') { @if (item.sourceFile) { <p><button class="evidence" type="button" (click)="openLocation(item.sourceFile, item.line ?? 0)">{{ item.sourceFile }}{{ item.line ? ":" + item.line : "" }}</button></p> } @else { <p class="empty">{{ i18n.translate("endpoint.noLocation") }}</p> } }
+      @case ('location') { @if (item.sourceFile) { <p><code>{{ item.sourceFile }}{{ item.line ? ":" + item.line : "" }}</code></p><button class="evidence" type="button" (click)="copyLocation(item.sourceFile, item.line)">{{ i18n.translate("common.copyLocation") }}</button>@if (copyMessage(); as message) { <p role="status">{{ message }}</p> } } @else { <p class="empty">{{ i18n.translate("endpoint.noLocation") }}</p> } }
     }
   </aside>
 }

@@ -14,6 +14,7 @@ interface ITauriEventApi {
 /** The part of Tauri's global this connector uses. */
 interface ITauriGlobal {
   invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+  core?: Pick<ITauriGlobal, "invoke">;
   event?: ITauriEventApi;
 }
 
@@ -105,9 +106,10 @@ export class HostBridgeClient implements IHostBridge {
       params: input ?? {},
     });
     const tauri = this.tauri();
-    if (tauri?.invoke) {
+    const invoke = tauri?.core?.invoke ?? tauri?.invoke;
+    if (invoke) {
       this.ensureListening();
-      return this.requestTauri(id, frame, tauri.invoke);
+      return this.requestTauri(id, frame, invoke);
     }
     return this.requestBrowser(frame, operation, input);
   }

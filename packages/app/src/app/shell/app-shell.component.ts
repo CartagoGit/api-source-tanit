@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
 import { ThemeStore } from "../core/state/theme.store";
-import { ButtonComponent } from "../shared/button/button.component";
 import { EmptyStateComponent } from "../shared/empty-state/empty-state.component";
 import { SidebarComponent } from "./sidebar.component";
 import { CommandPaletteComponent } from "./command-palette.component";
@@ -49,7 +48,6 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
   imports: [
     SidebarComponent,
     CommandPaletteComponent,
-    ButtonComponent,
     EmptyStateComponent,
     HomeComponent,
     EndpointsListComponent,
@@ -73,6 +71,7 @@ export class AppComponent {
   readonly i18n = inject(I18nService);
   readonly project = inject(ProjectStore);
   readonly paletteOpen = signal(false);
+  readonly commandShortcut = "Ctrl+K";
   readonly activeSection = signal("overview");
   /** The theme, and the switch that changes it. */
   readonly themes = inject(ThemeStore);
@@ -107,12 +106,21 @@ export class AppComponent {
   /** Goes to a section. */
   go(section: string): void { this.activeSection.set(section); }
 
+  showProjectPicker(): void {
+    this.go("overview");
+    if (typeof document !== "undefined" && typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => document.getElementById("project-path")?.focus());
+    }
+  }
+
   runCommand(command: string): void {
     if (command === "theme") this.toggleTheme();
-    if (command === "open" || command === "recent") this.go("overview");
+    if (command === "open" || command === "recent") this.showProjectPicker();
     if (command === "settings") this.go("settings");
-    if (command === "search") this.go("endpoints");
-    if (command === "export") this.go("exports");
+    if (command === "search" || command === "export") {
+      if (!this.project.isOpen()) this.showProjectPicker();
+      else this.go(command === "search" ? "endpoints" : "exports");
+    }
     // "Rescan" used to just go back to the overview. It now asks
     // the backend what the project looks like **now** — the session
     // watches the files, and its snapshot may be older than the
@@ -129,7 +137,7 @@ export class AppComponent {
    */
   async rescan(): Promise<void> {
     if (!this.project.isOpen()) {
-      this.go("overview");
+      this.showProjectPicker();
       return;
     }
     await this.project.refresh();

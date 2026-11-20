@@ -1,8 +1,7 @@
-import { ChangeDetectionStrategy, Component, Injectable, effect, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from "@angular/core";
 
-import type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
 export type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
-import { DialogService } from "../../core/host/dialog.service";
+import { FolderPickerComponent } from "../home/folder-picker.component";
 import { ExportDiagnostic, ExportFormat } from "../../core/api/exports.client";
 import { ExportsStore } from "../../core/state/exports.store";
 import { ProjectStore } from "../../core/state/project.store";
@@ -22,7 +21,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
 @Component({
   selector: "tanit-export-center",
   standalone: true,
-  imports: [ExportPreviewComponent, ExportSummaryComponent, FormatCapabilitiesComponent],
+  imports: [ExportPreviewComponent, ExportSummaryComponent, FormatCapabilitiesComponent, FolderPickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./export-center.component.html",
   styleUrls: ["./export-center.component.scss"],
@@ -30,8 +29,8 @@ import { I18nService } from "../../core/i18n/i18n.service";
 export class ExportCenterComponent {
   readonly i18n = inject(I18nService);
   readonly store = inject(ExportsStore);
-  readonly dialog = inject(DialogService);
-  readonly actions = inject(ExportSuccessActions);
+  readonly choosingOutput = signal(false);
+  readonly copyMessage = signal<string | null>(null);
   private readonly project = inject(ProjectStore);
 
   constructor() {
@@ -40,37 +39,24 @@ export class ExportCenterComponent {
     // written" — until the user happened to toggle a format, which
     // is the one thing the preview is supposed to decide.
     effect(() => {
-      if (this.project.projectRoot() !== null) void this.store.refresh();
+      if (this.project.projectRoot() !== null) untracked(() => { void this.store.refresh(); });
     });
   }
 
   toggleFormat(format: ExportFormat): void { this.store.toggleFormat(format); }
   defaultDirectory(): string { return `${this.store.workspaceRoot()}/tanit`; }
-  async chooseOutput(): Promise<void> { const path = await this.dialog.pickFolder(); if (path) this.store.setOutputDirectory(path); }
+  chooseOutput(path: string): void {
+    this.store.setOutputDirectory(path);
+    this.choosingOutput.set(false);
+  }
   async generate(): Promise<void> { await this.store.generate(); }
   selectDiagnostic(diagnostic: ExportDiagnostic): void { if (typeof history !== "undefined") history.replaceState(null, "", `${location.pathname}?diagnosticCode=${encodeURIComponent(diagnostic.code)}`); }
-  async openFolder(path: string): Promise<void> { await this.actions.openFolder(path); }
-  async openPostman(): Promise<void> { await this.actions.openPostman(); }
-  async copyPaths(paths: readonly string[]): Promise<void> { if (typeof navigator !== "undefined" && navigator.clipboard) await navigator.clipboard.writeText(paths.join("\n")); }
-}
-
-@Injectable({ providedIn: "root" })
-export class ExportSuccessActions implements ExportSuccessActionsPort {
-  async openFolder(path: string): Promise<void> {
-    const tauri = (globalThis as { __TAURI__?: { invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown> } }).__TAURI__;
-    if (tauri?.invoke) {
-      await tauri.invoke("open_folder", { path });
-      return;
+  async copyPaths(paths: readonly string[]): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(paths.join("\n"));
+      this.copyMessage.set(this.i18n.translate("common.copied"));
+    } catch {
+      this.copyMessage.set(this.i18n.translate("common.clipboardUnavailable"));
     }
-    if (typeof window !== "undefined") window.open(`tanit://open-folder?path=${encodeURIComponent(path)}`, "_blank");
-  }
-
-  async openPostman(): Promise<void> {
-    const tauri = (globalThis as { __TAURI__?: { invoke?: (command: string) => Promise<unknown> } }).__TAURI__;
-    if (tauri?.invoke) {
-      await tauri.invoke("open_postman");
-      return;
-    }
-    if (typeof window !== "undefined") window.open("tanit://open-postman", "_blank");
   }
 }

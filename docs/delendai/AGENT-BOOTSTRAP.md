@@ -312,6 +312,10 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) tracks the workspace and folder picker.
+Browser project selection browses and opens folders via the shared Application
+API. Project navigation becomes available after a session opens.
+
 The [proposal index](proposals/INDEX.md) tracks the Tanit branding and binary layout.
 `assets/icons/tanit.svg` is the shared artwork, and `bun run gen:brand` embeds
 it into the standalone web interface. Platform builds use `dist/`.

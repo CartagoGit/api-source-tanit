@@ -82,6 +82,7 @@ export class ExportsStore {
 
   setOutputDirectory(path: string): void {
     this.outputDirectory.set(path);
+    this.overwriteConfirmed.set(false);
     this.outsideWorkspaceConfirmed.set(false);
     this.result.set(null);
     void this.refresh();
