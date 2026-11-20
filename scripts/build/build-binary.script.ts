@@ -21,6 +21,7 @@ import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { arch as osArch } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { EMBEDDED_WEB_DIR } from "../../packages/contracts/constants/cli/terminal.constant.js";
 import { BIN_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 import { hasFlag, readFlag } from "../../packages/core/helpers/argv.helper.js";
 import { CLI_ENTRYPOINT, DIST_DIR, REPO_ROOT } from "../helpers/root.helper.js";
@@ -60,11 +61,13 @@ function currentTarget(): (typeof TARGETS)[number] {
 async function runCompile(
   target: string,
   outfile: string,
+  webBuild: string,
   extraArgs: string[] = [],
 ): Promise<{ ok: boolean; output: string }> {
   const proc = Bun.spawn(
-    ["bun", "build", "--compile", `--target=${target}`, ...extraArgs, CLI_ENTRYPOINT, "--outfile", outfile],
-    { cwd: REPO_ROOT, stdout: "pipe", stderr: "pipe" },
+    ["bun", "build", "--compile", `--target=${target}`, `--asset=./${EMBEDDED_WEB_DIR}`,
+      ...extraArgs, CLI_ENTRYPOINT, "--outfile", outfile],
+    { cwd: webBuild, stdout: "pipe", stderr: "pipe" },
   );
   const [stdout, stderr] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -82,53 +85,40 @@ function bunOutput(args: string[]): string {
 async function compile(
   target: string,
   outfile: string,
+  webBuild: string,
 ): Promise<{ ok: boolean; output: string }> {
-  if (target !== "bun-windows-x64") return runCompile(target, outfile);
+  if (target !== "bun-windows-x64") return runCompile(target, outfile, webBuild);
   const icon = join(REPO_ROOT, "packages", "desktop", "icons", "icon.ico");
-  if (process.platform === "win32") return runCompile(target, outfile, [`--windows-icon=${icon}`]);
+  if (process.platform === "win32") return runCompile(target, outfile, webBuild, [`--windows-icon=${icon}`]);
 
   // Bun only applies --windows-icon natively. Brand its cached Windows
   // runtime before Bun adds the compiled application section.
   const baseRuntime = join(bunOutput(["pm", "cache"]), `bun-windows-x64-v${bunOutput(["--version"])}`);
   if (!existsSync(baseRuntime)) {
-    const initial = await runCompile(target, outfile);
+    const initial = await runCompile(target, outfile, webBuild);
     if (!initial.ok) return initial;
   }
   const brandedRuntime = join(dirname(outfile), "windows-runtime.exe");
   const editor = join(REPO_ROOT, "scripts", "build", "windows-binary-icon.mjs");
   const stamp = Bun.spawn(["bun", editor, baseRuntime, icon, brandedRuntime], { stderr: "inherit" });
   if ((await stamp.exited) !== 0) return { ok: false, output: "Could not brand the Windows executable." };
-  return runCompile(target, outfile, [`--compile-executable-path=${brandedRuntime}`]);
+  return runCompile(target, outfile, webBuild, [`--compile-executable-path=${brandedRuntime}`]);
 }
 
-async function launchUi(
-  outfile: string,
-  outDir: string,
-  target: (typeof TARGETS)[number],
-  windowsInterop: boolean,
-  port: string | undefined,
-): Promise<number> {
-  const angularDir = join(outDir, `angular-${target.target}`);
-  const staticDir = join(angularDir, "browser");
-  const uiDir = windowsInterop
-    ? spawnSync("wslpath", ["-w", staticDir], { encoding: "utf8" })
-    : undefined;
-  if (uiDir && uiDir.status !== 0) {
-    console.error(`No se pudo convertir la ruta para Windows: ${staticDir}`);
-    return 1;
-  }
-
+/** Build once whether we are compiling one platform or all of them. */
+async function buildWebAssets(directory: string): Promise<boolean> {
   const app = Bun.spawn(
-    ["bun", "run", "build:app", "--output-path", angularDir],
+    ["bun", "run", "build:app", "--output-path", directory],
     { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" },
   );
-  if ((await app.exited) !== 0 || !existsSync(join(staticDir, "index.html"))) {
-    console.error(`No se encontró el build de Angular: ${staticDir}`);
-    return 1;
-  }
+  const index = join(directory, EMBEDDED_WEB_DIR, "index.html");
+  if ((await app.exited) === 0 && existsSync(index)) return true;
+  console.error(`No se encontró el build de Angular: ${index}`);
+  return false;
+}
 
-  const nativeDir = uiDir ? uiDir.stdout.trim() : staticDir;
-  const args = ["ui", "--no-open", "--static-dir", nativeDir];
+function launchUi(outfile: string, outDir: string, port: string | undefined): Promise<number> {
+  const args = ["ui", "--no-open"];
   if (port !== undefined) args.push("--port", port);
   return Bun.spawn([outfile, ...args], {
     cwd: outDir,
@@ -162,29 +152,35 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const outDir = resolve(out ?? DIST_DIR);
   await mkdir(outDir, { recursive: true });
   const targets = all ? TARGETS : [target];
-  console.log(`→ Compilando ${targets.length} binario(s) en ${outDir}\n`);
-
+  const webBuild = await mkdtemp(join(outDir, ".apisrc-web-"));
   let failed = 0;
-  for (const entry of targets) {
-    const filename = `${BIN_NAME}-${entry.suffix}`;
-    const outfile = join(outDir, filename);
-    const staging = await mkdtemp(join(outDir, ".apisrc-build-"));
-    const staged = join(staging, filename);
-    const started = Date.now();
-    try {
-      const result = await compile(entry.target, staged);
-      if (!result.ok || !existsSync(staged)) {
-        failed += 1;
-        console.error(`  FAIL ${entry.suffix.padEnd(18)} ${result.output.trim().slice(-300)}`);
-        continue;
+  try {
+    if (!(await buildWebAssets(webBuild))) return 1;
+    console.log(`→ Compilando ${targets.length} binario(s) en ${outDir}\n`);
+
+    for (const entry of targets) {
+      const filename = `${BIN_NAME}-${entry.suffix}`;
+      const outfile = join(outDir, filename);
+      const staging = await mkdtemp(join(outDir, ".apisrc-build-"));
+      const staged = join(staging, filename);
+      const started = performance.now();
+      try {
+        const result = await compile(entry.target, staged, webBuild);
+        if (!result.ok || !existsSync(staged)) {
+          failed += 1;
+          console.error(`  FAIL ${entry.suffix.padEnd(18)} ${result.output.trim().slice(-300)}`);
+          continue;
+        }
+        await rename(staged, outfile);
+        const seconds = ((performance.now() - started) / 1000).toFixed(1);
+        const sizeMb = (Bun.file(outfile).size / 1024 / 1024).toFixed(0);
+        console.log(`  ok   ${entry.suffix.padEnd(18)} ${sizeMb} MB   ${seconds}s`);
+      } finally {
+        await rm(staging, { recursive: true, force: true });
       }
-      await rename(staged, outfile);
-      const seconds = ((Date.now() - started) / 1000).toFixed(1);
-      const sizeMb = (Bun.file(outfile).size / 1024 / 1024).toFixed(0);
-      console.log(`  ok   ${entry.suffix.padEnd(18)} ${sizeMb} MB   ${seconds}s`);
-    } finally {
-      await rm(staging, { recursive: true, force: true });
     }
+  } finally {
+    await rm(webBuild, { recursive: true, force: true });
   }
 
   if (failed > 0) {
@@ -193,7 +189,7 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   }
   console.log(`\n${targets.length} binario(s) listos en ${outDir}`);
   return ui
-    ? launchUi(join(outDir, `${BIN_NAME}-${target.suffix}`), outDir, target, windowsInterop, port)
+    ? launchUi(join(outDir, `${BIN_NAME}-${target.suffix}`), outDir, port)
     : 0;
 }
 

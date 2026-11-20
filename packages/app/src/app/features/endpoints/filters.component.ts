@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal } from "@angular/core";
 
 import {
   ENDPOINT_CONFIDENCES,
@@ -63,6 +63,10 @@ export class FiltersComponent {
    * the word is finished.
    */
   readonly draft = signal<EndpointQuery>({});
+  readonly expanded = signal(false);
+  readonly advancedCount = computed(() =>
+    Object.entries(this.draft()).filter(([key, value]) => key !== "search" && Boolean(value)).length,
+  );
 
   /**
    * The delayed request.
@@ -76,6 +80,7 @@ export class FiltersComponent {
   }, FILTER_DEBOUNCE_MS);
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.ask.cancel());
     // When the parent sets a new query — from the URL, or after
     // clearing — the draft follows it.
     effect(() => {

@@ -157,6 +157,19 @@ escribir nada, y se genera en los formatos que se quieran. Llama al
 mismo pipeline que el CLI: no es una segunda implementación que se
 desincronice.
 
+Los ejecutables distribuidos sirven la app Angular con `apisrc ui`.
+Usa el comando de tu plataforma para compilar o abrir la interfaz desde el repositorio.
+
+```bash
+bun run build:binary:linux
+bun run build:binary:windows
+bun run ui:binary:linux
+bun run ui:binary:windows
+```
+
+Los ejecutables se escriben en `dist/`. El comando de Windows también
+puede lanzarlo desde WSL. Abre la dirección que imprime el script.
+
 Para editar la interfaz Angular, ejecuta `bun run ui:dev`. El servidor
 de desarrollo abre la app con la Application API y actualiza la pestaña
 al guardar cambios. `bun run build:web` prepara los archivos para Apache

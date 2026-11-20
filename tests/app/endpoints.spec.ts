@@ -204,6 +204,33 @@ describe("EndpointsStore", () => {
     expect(store.error()).toBeNull();
   });
 
+  it("keeps the current result when an earlier filter finishes later", async () => {
+    let resolveEarlier!: (result: unknown) => void;
+    const earlier = new Promise((resolve) => { resolveEarlier = resolve; });
+    const response = (uri: string) => ({
+      endpoints: [{ method: "GET", uri, name: uri }],
+      total: 1,
+      indexedTotal: 2,
+      nextCursor: null,
+    });
+    const request = vi.fn().mockReturnValueOnce(earlier).mockResolvedValueOnce(response("/current"));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: HostBridgeClient, useValue: { request } }] });
+    const project = TestBed.inject(ProjectStore);
+    const store = TestBed.inject(EndpointsStore);
+    project.projectRoot.set("/workspace");
+
+    store.setQuery({ search: "old" });
+    const stale = store.refresh();
+    store.setQuery({ search: "current" });
+    await store.refresh();
+    resolveEarlier(response("/old"));
+    await stale;
+
+    expect(store.all().map((endpoint) => endpoint.path)).toEqual(["/current"]);
+    expect(store.loading()).toBe(false);
+  });
+
   it("says what went wrong instead of showing an empty list", async () => {
     const bridge = {
       request: vi.fn(async () => {
