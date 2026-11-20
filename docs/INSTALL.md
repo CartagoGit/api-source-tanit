@@ -222,18 +222,19 @@ Desde el checkout puedes compilar y probar cada plataforma con Bun:
 | Compilar y arrancar Angular con el binario nativo Windows | `bun run ui:binary:windows` |
 | Compilar Angular por separado | `bun run build:app` |
 
-Los comandos por plataforma escriben en `.cache/tanit/binaries/` del
-checkout. Desde WSL, los comandos para Windows usan
-`C:\Users\Public\Downloads\Tanit-dev` si está disponible. Puedes
-elegir otro destino con `--out <carpeta>`. Usa una ruta de Windows en
-PowerShell o la ruta de montaje equivalente desde WSL.
+Los binarios compilados van a `dist/` del repositorio, también desde WSL.
+Puedes elegir otro destino con `--out <carpeta>`. Usa una ruta de Windows
+en PowerShell o su ruta de montaje desde WSL. `bin/` contiene los
+lanzadores del código fuente. Git ignora los binarios de `dist/`.
 
-Los comandos `ui:binary:*` preparan también Angular en su carpeta de
-salida y muestran la URL local. Ábrela en el navegador. Puedes pasar
-`--port 4780` y detener la interfaz con `Ctrl+C`.
+Los comandos `ui:binary:*` preparan Angular en su carpeta de salida y
+muestran la URL local. Puedes pasar `--port 4780` y detener la interfaz
+con `Ctrl+C`.
 
-Para usar la salida tradicional en `dist/`, ejecuta `bun run build:binary`
-en tu plataforma o `bun run build:binary --all` para los cinco destinos.
+`bun run build:binary` compila para la plataforma actual. El comando
+`bun run build:binary --all` genera los cinco destinos. El `.exe` lleva
+el icono de Tanit y los paquetes de escritorio usan el formato de su
+plataforma.
 
 Pesa entre 60 y 95 MB porque incluye el runtime. A cambio, quien lo use
 no instala nada.

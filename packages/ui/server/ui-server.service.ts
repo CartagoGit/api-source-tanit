@@ -85,7 +85,7 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
                 // None of this leaves the machine, but an interface that runs
                 // whatever it is told is a borrowed interface.
                 "content-security-policy":
-                  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
+                  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src data:",
               },
               },
             );

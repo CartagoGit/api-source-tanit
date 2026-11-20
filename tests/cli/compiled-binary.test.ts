@@ -66,6 +66,7 @@ describe("compiled binary", () => {
   test("`--help` responds without bun on the PATH", async () => {
     const { code, output } = await runWithoutRuntime(["--help"]);
     expect(code).toBe(0);
+    expect(output).toContain("o----/");
     for (const command of ["generate", "check", "list", "stats", "validate"]) {
       expect(output).toContain(command);
     }
@@ -128,6 +129,10 @@ describe("compiled binary", () => {
         expect(response.status, output).toBe(200);
         const html = await response.text();
         expect(args.length ? html : output).toContain(expected);
+        if (!args.length) {
+          expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,');
+          expect(response.headers.get("content-security-policy")).toContain("img-src data:");
+        }
       } finally {
         if (!stopped) child.kill("SIGTERM");
         await closed;

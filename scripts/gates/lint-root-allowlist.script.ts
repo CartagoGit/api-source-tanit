@@ -89,6 +89,7 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   { path: "vitest.config.ts", reason: "Config de vitest" },
 
   // Producto.
+  { path: "assets", reason: "Originales de marca compartidos por el producto" },
   { path: "bin", reason: "Lanzador del CLI (binario apisrc)" },
   { path: "packages", reason: "Producto: cli, core, contracts, frameworks, ui" },
   { path: "scripts", reason: "Gates, helpers y build del producto" },

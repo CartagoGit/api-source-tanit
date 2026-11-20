@@ -48,6 +48,7 @@
   },
   "files": [
     "bin/",
+    "assets/",
     "packages/",
     "!packages/desktop/target",
     "scripts/",
@@ -111,7 +112,7 @@
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
     "lint:cli-app-parity": "bun run scripts/gates/lint-cli-app-parity.script.ts",
     "lint:fixtures": "bun run scripts/gates/lint-fixtures.script.ts",
-    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:path-containment && bun run lint:regex-state && bun run lint:no-instance-mutable-maps-in-scanners && bun run lint:scanner-state-isolation && bun run lint:effective-project-root && bun run lint:tools && bun run lint:no-monkey-patch && bun run lint:bun-ci && bun run lint:boundaries && bun run lint:fixtures && bun run lint:mcp && bun run lint:mcp-server-key && bun run lint:docs && bun run lint:proposals && bun run lint:secrets && bun run lint:sast && bun run lint:tsdoc && bun run lint:api && bun run lint:frameworks-table && bun run lint:mcp-surface && bun run lint:durable-writes && bun run lint:bootstrap-drift && bun run lint:no-type-escapes && bun run lint:no-raw-json-parse && bun run lint:command-coverage && bun run lint:project-context && bun run lint:contracts && bun run lint:release-channel && bun run lint:output-language && bun run lint:i18n-completeness && bun run lint:no-call-callee-split && bun run lint:spec-isolation && bun run lint:no-skip-env-vars && bun run lint:root-allowlist && bun run lint:no-orphan-types && bun run lint:angular-components && bun run lint:app-i18n && bun run lint:integration-verifier && bun run lint:cli-app-parity && bun run lint:workflows && bun run lint:work-refs && bun run lint:clean-tree",
+    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:path-containment && bun run lint:regex-state && bun run lint:no-instance-mutable-maps-in-scanners && bun run lint:scanner-state-isolation && bun run lint:effective-project-root && bun run lint:tools && bun run lint:no-monkey-patch && bun run lint:bun-ci && bun run lint:boundaries && bun run lint:fixtures && bun run lint:mcp && bun run lint:mcp-server-key && bun run lint:docs && bun run lint:proposals && bun run lint:secrets && bun run lint:sast && bun run lint:tsdoc && bun run lint:api && bun run lint:frameworks-table && bun run lint:brand && bun run lint:mcp-surface && bun run lint:durable-writes && bun run lint:bootstrap-drift && bun run lint:no-type-escapes && bun run lint:no-raw-json-parse && bun run lint:command-coverage && bun run lint:project-context && bun run lint:contracts && bun run lint:release-channel && bun run lint:output-language && bun run lint:i18n-completeness && bun run lint:no-call-callee-split && bun run lint:spec-isolation && bun run lint:no-skip-env-vars && bun run lint:root-allowlist && bun run lint:no-orphan-types && bun run lint:angular-components && bun run lint:app-i18n && bun run lint:integration-verifier && bun run lint:cli-app-parity && bun run lint:workflows && bun run lint:work-refs && bun run lint:clean-tree",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts",
     "lint:no-monkey-patch": "bun run scripts/gates/lint-no-monkey-patch.script.ts",
     "mcp:sync": "bun run scripts/gates/sync-mcp-config.script.ts",
@@ -171,8 +172,10 @@
     "prove": "bun run scripts/gates/prove.script.ts",
     "prove:plan": "bun run scripts/gates/prove.script.ts --plan",
     "test:affected": "bun run scripts/gates/prove.script.ts --affected-tests",
-    "gen:all": "bun run mcp:sync && bun run lint:proposals:gen-index && bun run docs:frameworks",
-    "gen:all:check": "bun run lint:mcp && bun run lint:proposals:fix:check && bun run lint:frameworks-table"
+    "gen:brand": "bun run scripts/build/brand-assets.script.ts",
+    "lint:brand": "bun run scripts/build/brand-assets.script.ts --check",
+    "gen:all": "bun run mcp:sync && bun run lint:proposals:gen-index && bun run docs:frameworks && bun run gen:brand",
+    "gen:all:check": "bun run lint:mcp && bun run lint:proposals:fix:check && bun run lint:frameworks-table && bun run lint:brand"
   },
   "dependencies": {
     "@angular/cdk": "^20.2.0",
@@ -195,6 +198,7 @@
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^26.1.0",
+    "resedit": "3.1.1",
     "typescript": "5.9.3",
     "vitest": "^4.1.10",
     "zone.js": "^0.15.1"
