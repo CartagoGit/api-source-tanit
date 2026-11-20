@@ -29,8 +29,60 @@ const packlistInput: IProofInput = {
   files: { ...baseInput.files, [packlistSpec]: "test('packlist', () => {});" },
   packageManifests: { base: JSON.stringify(originalManifest), head: JSON.stringify(correctedManifest) },
 };
+const angularStore = "packages/app/src/app/core/state/example.store.ts";
+const angularInput: IProofInput = {
+  ...baseInput,
+  changes: [
+    { path: angularStore, status: "M" },
+    { path: "tests/app/store.spec.ts", status: "M" },
+    { path: "docs/delendai/proposals/review/angular.md", status: "A" },
+  ],
+  files: {
+    ...baseInput.files,
+    [angularStore]: "export const state = 1;",
+    "tests/app/store.spec.ts": 'import { state } from "../../packages/app/src/app/core/state/example.store"; expect(state).toBe(1);',
+  },
+};
 
 describe("scope-aware proof plan", () => {
+  test("limits a proven Angular-only source edit to the app suite and common checks", () => {
+    const plan = createProofPlan(angularInput);
+    expect(plan.mode).toBe("affected");
+    expect(plan.sections).toEqual(["app"]);
+    expect(plan.specs).toEqual(["tests/app/example.spec.ts", "tests/app/store.spec.ts"]);
+    expect(Object.keys(plan.jobs).filter(job => plan.jobs[job])).toEqual([
+      "typecheck", "lint", "affected-tests", "integration-verifier",
+    ]);
+    expect(plan.steps.find(step => step.id === "affected-tests")?.argv).toContain("--affected-tests");
+  });
+
+  test.each([
+    { ...angularInput, forceFull: true },
+    { ...angularInput, uncertainty: "unknown Angular import" },
+    { ...angularInput, changes: [{ path: angularStore, status: "A" }] },
+    {
+      ...angularInput,
+      changes: [...angularInput.changes, { path: "packages/app/src/app/core/api/host-bridge.client.ts", status: "M" }],
+    },
+    {
+      ...angularInput,
+      changes: [...angularInput.changes, { path: "packages/app/src/app/features/view.component.html", status: "M" }],
+    },
+    { ...angularInput, changes: [...angularInput.changes, ...baseInput.changes] },
+    {
+      ...angularInput,
+      files: {
+        ...angularInput.files,
+        "tests/core/app-consumer.spec.ts": 'import { state } from "../../packages/app/src/app/core/state/example.store";',
+      },
+    },
+  ])("keeps full proof for structural, mixed, outside-consumer or promotion input (case %#)", (input) => {
+    const plan = createProofPlan(input);
+    expect(plan.mode).toBe("full");
+    expect(plan.jobs["desktop-tests"]).toBe(true);
+    expect(plan.jobs["test-coverage"]).toBe(true);
+  });
+
   test("checks the tarball and its regression for an isolated npm files change", () => {
     const plan = createProofPlan(packlistInput);
     expect(plan.mode).toBe("affected");

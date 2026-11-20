@@ -8,3 +8,13 @@ export const COVERAGE_THRESHOLDS = {
 } as const;
 
 export type CoverageScope = keyof typeof COVERAGE_THRESHOLDS;
+
+export const ANGULAR_COVERAGE_SOURCE = "packages/app/src/app/**/*.ts";
+
+// Floors from the separate Angular suite (72.81 / 70.00 / 69.55 / 53.55).
+export const ANGULAR_COVERAGE_THRESHOLDS = { lines: 72, statements: 70, functions: 69, branches: 53 } as const;
+
+/** Scope eligible state and presentation code. Entry, bridge and asset changes use full proof. */
+export function isScopedAngularSource(file: string): boolean {
+  return /^packages\/app\/src\/app\/(?:core\/state|features|shell)\/.+\.ts$/.test(file) && !file.endsWith(".d.ts");
+}
