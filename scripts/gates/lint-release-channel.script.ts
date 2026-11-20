@@ -22,7 +22,8 @@
  *   1. Las tres copias de la versión son la misma.
  *   2. La versión tiene forma de semver, con o sin prefijo.
  *   3. El prefijo de prerelease es uno de los del canal: `alpha`,
- *      `beta` o `rc`. Sin prefijo, la versión es del canal estable.
+ *      `beta` o `rc`. Sin sufijo, las versiones 0.x son beta y las
+ *      versiones a partir de 1.0.0 son estables.
  *
  * ## El `--print-channel`
  *

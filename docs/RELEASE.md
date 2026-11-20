@@ -11,51 +11,23 @@ hacen falta.
 
 ---
 
-## Los canales: alfa, beta, rc y estable
+## Canales de publicación
 
-El número de versión dice **qué** hay; el canal dice **cuánto se puede
-esperar**. Son dos cosas distintas, y confundirlas es un problema
-real: un `1.0.0` que en realidad es un alfa promete una estabilidad
-que el producto no tiene, y quien lo instala se lleva esa promesa.
+| Canal | Versión | Release de GitHub |
+|---|---|---|
+| Alfa | `0.1.0-alpha.1` | prerelease |
+| Beta | `0.2.0` | prerelease |
+| RC | `0.9.0-rc.1` | prerelease |
+| Estable | `1.0.0` | normal |
 
-| Canal | Versión | Release de GitHub | Qué se puede esperar |
-|---|---|---|---|
-| Alfa | `0.1.0-alpha.1` | prerelease | Se rompe. La forma todavía se mueve. |
-| Beta | `0.2.0-beta.1` | prerelease | La forma está; puede haber fallos de comportamiento. |
-| RC | `0.9.0-rc.1` | prerelease | Candidata a la release. Sólo falta decidir el número. |
-| Estable | `1.0.0` | normal | La release. A partir de aquí, versionado normal. |
+El sufijo explícito conserva el canal de las versiones que lo usan.
+Una versión 0.x sin sufijo usa el canal beta. Desde 1.0.0, una versión
+sin sufijo usa el canal estable. El gate de release informa de ese canal
+tanto al workflow que crea la release como al que construye el escritorio.
 
-**El prefijo decide el canal.** `0.1.0-alpha.1` es del canal `alpha`
-por su prefijo, no por una decisión que se toma aparte: no hay
-ningún sitio donde se declare "estamos en alfa" que se pueda quedar
-viejo sin que nada lo note.
-
-**Un prerelease se marca como prerelease.** GitHub muestra las
-prereleases aparte, y quien busca "la última versión" no se lleva un
-alfa sin querer. El workflow que corta la release **pregunta** al gate
-cuál es el canal en vez de decidirlo por su cuenta: si decidiera él,
-un día se desincronizaría del gate y una release estable acabaría
-marcando un alfa.
-
-### La escalera, y cuándo se sube
-
-La escalera se sube de uno en uno, y cada peldaño sale de `develop`
-hacia `main`:
-
-```
-0.1.0-alpha.1  →  0.1.0-alpha.2  →  0.1.0-beta.1  →  0.1.0-rc.1  →  1.0.0
-```
-
-- **Alfa.** Se rompe entre versiones. Es donde vive el producto
-  mientras se le busca la forma.
-- **Beta.** La forma está; puede haber fallos de comportamiento, pero
-  la API no se mueve.
-- **RC.** Candidata a la release. Sólo falta decidir el número.
-- **Estable.** `1.0.0`, y a partir de ahí versionado normal: patch,
-  minor y major.
-
-Dentro de un canal, el número de la prerelease sube (`alpha.1`,
-`alpha.2`…). Un canal nuevo empieza con su número a uno.
+Los ejecutables autocontenidos se adjuntan a la prerelease. La publicación
+de los instaladores de escritorio sigue sujeta al canal estable y a las
+validaciones de firma. [Estado de la certificación](BETA.md).
 
 ### `main` es donde se corta una versión
 
