@@ -20,9 +20,8 @@ import { join, } from "node:path";
 import { tmpdir } from "node:os";
 import { runProcess } from "../helpers/run-process";
 import { BIN_NAME, OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
-import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
+import { REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const ENTRYPOINT = CLI_ENTRYPOINT;
 const SAMPLE_PROJECT = exampleDir("express");
 
 let workDir = "";
@@ -31,13 +30,16 @@ let project = "";
 
 beforeAll(async () => {
   workDir = await mkdtemp(join(tmpdir(), "apisrc-binary-"));
-  binary = join(workDir, BIN_NAME);
   project = join(workDir, "mi-api");
   await cp(SAMPLE_PROJECT, project, { recursive: true });
 
-  await runProcess("bun", ["build", "--compile", ENTRYPOINT, "--outfile", binary], {
+  const build = await runProcess("bun", ["run", "build:binary", "--out", workDir], {
     cwd: REPO_ROOT,
   });
+  expect(build.code, build.output).toBe(0);
+  const artifacts = (await readdir(workDir)).filter((name) => name.startsWith(`${BIN_NAME}-`));
+  expect(artifacts).toHaveLength(1);
+  binary = join(workDir, artifacts[0]!);
 }, 120_000);
 
 afterAll(async () => {
@@ -94,12 +96,12 @@ describe("compiled binary", () => {
     expect(countRequests(collection.item)).toBe(9);
   });
 
-  test("serves the built-in UI and an explicit static directory outside the repository", async () => {
+  test("serves bundled Angular and an explicit static directory outside the repository", async () => {
     const staticDir = join(workDir, "static");
     await mkdir(staticDir);
     await writeFile(join(staticDir, "index.html"), "<h1>compiled fixture</h1>");
     for (const [args, expected] of [
-      [[], "Serving the built-in interface."],
+      [[], "Serving the bundled Angular app."],
       [["--static-dir", staticDir], "compiled fixture"],
     ] as const) {
       const port = await freePort();
@@ -130,8 +132,19 @@ describe("compiled binary", () => {
         const html = await response.text();
         expect(args.length ? html : output).toContain(expected);
         if (!args.length) {
-          expect(html).toContain('rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,');
-          expect(response.headers.get("content-security-policy")).toContain("img-src data:");
+          expect(html).toContain("<tanit-root>");
+          expect(html).toContain("data-tanit-token");
+          const main = html.match(/src="(main-[^"]+\.js)"/)?.[1];
+          expect(main).toBeDefined();
+          const bundle = await fetch(new URL(main!, url));
+          expect(bundle.status).toBe(200);
+          expect(bundle.headers.get("content-type")).toContain("text/javascript");
+          const icon = await fetch(new URL("/assets/tanit.svg", url));
+          expect(icon.status).toBe(200);
+          expect(await icon.text()).toMatch(/<svg[\s>]/);
+          const route = await fetch(new URL("/endpoints", url));
+          expect(await route.text()).toContain("<tanit-root>");
+          expect((await fetch(new URL("/missing.js", url))).status).toBe(404);
         }
       } finally {
         if (!stopped) child.kill("SIGTERM");
