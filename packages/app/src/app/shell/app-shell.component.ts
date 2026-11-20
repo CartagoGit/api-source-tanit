@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from "@angular/core";
+import { Location } from "@angular/common";
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal } from "@angular/core";
 
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
 import { ThemeStore } from "../core/state/theme.store";
-import { EmptyStateComponent } from "../shared/empty-state/empty-state.component";
 import { SidebarComponent } from "./sidebar.component";
 import { CommandPaletteComponent } from "./command-palette.component";
 import { HomeComponent } from "../features/home/home.component";
@@ -48,7 +48,6 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
   imports: [
     SidebarComponent,
     CommandPaletteComponent,
-    EmptyStateComponent,
     HomeComponent,
     EndpointsListComponent,
     ExportCenterComponent,
@@ -68,6 +67,7 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
   styleUrls: ["./app-shell.component.scss"],
 })
 export class AppComponent {
+  private readonly location = inject(Location);
   readonly i18n = inject(I18nService);
   readonly project = inject(ProjectStore);
   readonly paletteOpen = signal(false);
@@ -101,10 +101,28 @@ export class AppComponent {
     settings: "nav.settings",
   };
 
+  constructor() {
+    this.readSection(this.location.path());
+    inject(DestroyRef).onDestroy(this.location.onUrlChange(() => this.readSection(this.location.path())));
+    void this.project.restore();
+  }
+
+  private readSection(path: string): void {
+    const section = path.split(/[?#]/, 1)[0]?.replace(/^\//, "").replace(/\/$/, "") ?? "";
+    this.activeSection.set(Object.hasOwn(this.sectionLabels, section) ? section : "overview");
+  }
+
   toggleTheme(): void { this.themes.toggle(); }
 
   /** Goes to a section. */
-  go(section: string): void { this.activeSection.set(section); }
+  go(section: string): void {
+    if (!Object.hasOwn(this.sectionLabels, section) || section === this.activeSection()) return;
+    this.location.go(section === "overview" ? "/" : `/${section}`);
+  }
+
+  projectOpened(): void {
+    if (this.activeSection() === "overview") this.go("endpoints");
+  }
 
   showProjectPicker(): void {
     this.go("overview");

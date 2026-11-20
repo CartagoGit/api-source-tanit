@@ -68,6 +68,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 @Injectable({ providedIn: "root" })
 export class HostBridgeClient implements IHostBridge {
   private nextId = 0;
+  private browserTokenRequest: Promise<string> | undefined;
   private readonly listeners = new Set<(event: unknown) => void>();
   private readonly pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
   private listening = false;
@@ -157,14 +158,12 @@ export class HostBridgeClient implements IHostBridge {
   }
 
   private async requestBrowser(frame: string, operation: string, input: unknown): Promise<unknown> {
-    const token = typeof document !== "undefined"
-      ? document.documentElement.dataset.tanitToken
-      : undefined;
+    const token = await this.browserToken();
     const response = await fetch("/api", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(token ? { "x-tanit-token": token } : {}),
+        "x-tanit-token": token,
       },
       body: frame,
     });
@@ -194,12 +193,31 @@ export class HostBridgeClient implements IHostBridge {
     return value;
   }
 
-  private async openBrowserStream(subscriptionId: string, token: string | undefined): Promise<void> {
+  private async browserToken(): Promise<string> {
+    const embedded = document.documentElement.dataset.tanitToken;
+    if (embedded) return embedded;
+    return this.browserTokenRequest ??= fetch("/api/bootstrap", {
+      headers: { "x-tanit-bootstrap": "1" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    }).then(async (response) => {
+      if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
+        const body: unknown = await response.json();
+        if (typeof body === "object" && body !== null && "token" in body &&
+            typeof body.token === "string" && body.token.length > 0) return body.token;
+      }
+      throw new Error(`${translate("common.hostRequestFailed")} (${response.status})`);
+    }).catch((error: unknown) => {
+      this.browserTokenRequest = undefined;
+      throw error;
+    });
+  }
+
+  private async openBrowserStream(subscriptionId: string, token: string): Promise<void> {
     const controller = new AbortController();
     this.streams.set(subscriptionId, controller);
     const response = await fetch("/api/events", {
       method: "POST",
-      headers: { "content-type": "application/json", ...(token ? { "x-tanit-token": token } : {}) },
+      headers: { "content-type": "application/json", "x-tanit-token": token },
       body: JSON.stringify({ subscriptionId }), signal: controller.signal,
     });
     if (!response.ok || !response.body) {

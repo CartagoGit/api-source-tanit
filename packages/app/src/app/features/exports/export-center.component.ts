@@ -1,3 +1,4 @@
+import { Location } from "@angular/common";
 import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from "@angular/core";
 
 export type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
@@ -32,6 +33,7 @@ export class ExportCenterComponent {
   readonly choosingOutput = signal(false);
   readonly copyMessage = signal<string | null>(null);
   private readonly project = inject(ProjectStore);
+  private readonly location = inject(Location);
 
   constructor() {
     // The dry run is asked for when the project opens. Without this
@@ -50,7 +52,11 @@ export class ExportCenterComponent {
     this.choosingOutput.set(false);
   }
   async generate(): Promise<void> { await this.store.generate(); }
-  selectDiagnostic(diagnostic: ExportDiagnostic): void { if (typeof history !== "undefined") history.replaceState(null, "", `${location.pathname}?diagnosticCode=${encodeURIComponent(diagnostic.code)}`); }
+  selectDiagnostic(diagnostic: ExportDiagnostic): void {
+    const path = this.location.path().split("?", 1)[0] ?? "";
+    const query = new URLSearchParams({ diagnosticCode: diagnostic.code });
+    this.location.replaceState(path, query.toString(), this.location.getState());
+  }
   async copyPaths(paths: readonly string[]): Promise<void> {
     try {
       await navigator.clipboard.writeText(paths.join("\n"));

@@ -18,11 +18,14 @@
     </header>
     <div class="view">
       @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
-      @if (activeSection() === 'overview') {
-        <tanit-home (opened)="go('endpoints')" />
+      @if (activeSection() === 'overview' || (!project.isOpen() && activeSection() !== 'settings')) {
+        @if (activeSection() !== 'overview') {
+          <p>{{ i18n.translate("home.empty") }}</p>
+        }
+        <tanit-home (opened)="projectOpened()" />
       } @else if (activeSection() === 'settings') {
         <tanit-settings />
-      } @else if (project.isOpen()) {
+      } @else {
         @switch (activeSection()) {
           @case ('endpoints') { <tanit-endpoints-list /> }
           @case ('exports') { <tanit-export-center /> }
@@ -36,11 +39,6 @@
           @case ('stats') { <tanit-stats /> }
           @case ('diagnostics') { <tanit-diagnostics /> }
         }
-      } @else {
-        <tanit-empty-state>
-          <p>{{ i18n.translate("home.empty") }}</p>
-          <button type="button" class="toolbar-button" (click)="showProjectPicker()">{{ i18n.translate("home.open") }}</button>
-        </tanit-empty-state>
       }
     </div>
   </main>

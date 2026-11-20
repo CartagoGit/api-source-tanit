@@ -28,15 +28,17 @@ verified in the browser is what runs in the app, because both go
 through the same connector over the same registry.
 
 ```bash
+bun run ui:dev      # run Angular from source with live reload and the API
 bun run build:app   # compile the app
-bun run ui:web      # serve it in the browser, against the real backend
+bun run ui:web      # serve that build in the browser with the API
 ```
 
 `ui:web` serves the compiled app and the Application API on **one
 origin** — the page asks for `POST /api` with a relative path, and a
 relative path means "the origin that served me". The token travels in
-the served HTML (`data-tanit-token` on the `<html>` element), which is
-the only place same-origin policy stops a third party from reading it.
+the served HTML (`data-tanit-token` on the `<html>` element). Angular's
+development server and the local Apache proxy obtain the token through
+a same-origin bootstrap request. See [Apache deployment](UI.md#servir-el-build-con-apache).
 
 ## The map, and the gate that checks it
 

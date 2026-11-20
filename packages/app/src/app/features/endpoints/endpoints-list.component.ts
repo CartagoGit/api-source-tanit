@@ -1,3 +1,4 @@
+import { Location } from "@angular/common";
 import { ChangeDetectionStrategy, Component, TemplateRef, ViewChild, effect, inject } from "@angular/core";
 
 import {
@@ -40,6 +41,7 @@ export class EndpointsListComponent {
   readonly i18n = inject(I18nService);
   readonly store = inject(EndpointsStore);
   private readonly project = inject(ProjectStore);
+  private readonly location = inject(Location);
   @ViewChild("endpointTemplate", { static: true }) readonly endpointTemplate!: TemplateRef<unknown>;
   readonly trackBy = (item: { id: string }): string => item.id;
 
@@ -51,7 +53,7 @@ export class EndpointsListComponent {
       if (this.project.projectRoot() !== null) void this.store.refresh();
     });
     effect(() => {
-      const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+      const params = new URLSearchParams(this.location.path().split("?", 2)[1]);
       const query = this.queryFromUrl(params);
       if (JSON.stringify(query) !== JSON.stringify(this.store.query())) {
         this.store.setQuery(query);
@@ -80,7 +82,14 @@ export class EndpointsListComponent {
   filterTransport(value: string): void { this.apply({ ...this.store.query(), transport: value as EndpointQuery["transport"] }); }
   refresh(): void { void this.store.refresh(); }
 
-  private updateUrl(query: EndpointQuery & { endpoint?: string }): void { if (typeof history === "undefined") return; const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value)); history.replaceState(null, "", `${location.pathname}?${params.toString()}`); }
+  private updateUrl(query: EndpointQuery & { endpoint?: string }): void {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== "") params.set(key, String(value));
+    }
+    const path = this.location.path().split("?", 1)[0] ?? "";
+    this.location.replaceState(path, params.toString(), this.location.getState());
+  }
 
   private queryFromUrl(params: URLSearchParams): EndpointQuery {
     const transport = params.get("transport");
