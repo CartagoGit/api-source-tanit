@@ -28,7 +28,7 @@ Al cambiar destino, formatos o proyecto, solicitudes superpuestas pueden reinsta
 
 ### S1 — Aislar el estado y el consentimiento de exportación
 - **Status**: pending
-- **Files**: `packages/app/src/app/core/state/exports.store.ts`, `tests/app/live-store.spec.ts`
+- **Files**: `packages/app/src/app/core/state/exports.store.ts`, `packages/app/src/app/features/exports/export-center.component.ts`, `tests/app/live-store.spec.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: e2e
 - acceptance:
   - "La respuesta antigua no cambia la vista, los errores ni el estado de carga de una solicitud posterior."
