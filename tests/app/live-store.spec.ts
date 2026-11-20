@@ -113,22 +113,27 @@ describe("live store common events", () => {
 
 
 describe("autoexport preserves Export Center consent", () => {
-  function exportSetup() {
-    TestBed.resetTestingModule();
-    const preview = vi.fn(async (_root: string, _target: string, directory: string) => ({
+  function exportPreview(directory: string) {
+    return {
       files: [{ path: `${directory}/api.json`, change: "UPDATE", bytes: 10, overwriteRisk: true, outsideWorkspace: false }],
       diagnostics: [], canGenerate: true, requiresOverwriteConfirmation: true, requiresOutsideWorkspaceConfirmation: false,
-    }));
+    };
+  }
+
+  function exportSetup() {
+    TestBed.resetTestingModule();
+    const preview = vi.fn(async (_root: string, _target: string, directory: string) => exportPreview(directory));
     const generate = vi.fn(async (_root: string, _target: string, directory: string) => ({
       files: [{ path: `${directory}/api.json` }], outputDirectory: directory,
     }));
+    const capabilities = vi.fn(async () => [{ format: "postman", label: "postman", summary: "Postman collection" }]);
     TestBed.configureTestingModule({ providers: [
       { provide: HostBridgeClient, useValue: { request: vi.fn(), subscribe: () => () => undefined } },
-      { provide: ExportsClient, useValue: { preview, generate, capabilities: async () => [] } },
+      { provide: ExportsClient, useValue: { preview, generate, capabilities } },
     ] });
     const project = TestBed.inject(ProjectStore);
     project.projectRoot.set("/workspace"); project.sessionId.set("session-1");
-    return { store: TestBed.inject(ExportsStore), project, generate, preview };
+    return { store: TestBed.inject(ExportsStore), project, generate, preview, capabilities };
   }
 
   test("does not overwrite an unrelated existing destination without the original confirmation", async () => {
@@ -158,5 +163,88 @@ describe("autoexport preserves Export Center consent", () => {
     finish({ files: [], diagnostics: [], canGenerate: true, requiresOverwriteConfirmation: false, requiresOutsideWorkspaceConfirmation: false });
     await updating;
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  test.each(["success", "error"])("ignores a stale %s while a newer preview is still loading", async (outcome) => {
+    const { store, preview, generate } = exportSetup();
+    let finishEarlier!: () => void;
+    let finishLater!: () => void;
+    preview
+      .mockImplementationOnce(() => new Promise((resolve, reject) => {
+        finishEarlier = () => {
+          if (outcome === "success") resolve(exportPreview("/earlier"));
+          else reject(new Error("earlier request failed"));
+        };
+      }))
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        finishLater = () => resolve(exportPreview("/latest"));
+      }));
+
+    const earlier = store.refresh();
+    store.setOutputDirectory("/latest");
+    finishEarlier();
+    await earlier;
+    expect(store.loading()).toBe(true);
+    expect(store.preview().files).toEqual([]);
+    expect(store.error()).toBeNull();
+    await store.generate();
+    expect(generate).not.toHaveBeenCalled();
+
+    finishLater();
+    await expect.poll(() => store.loading()).toBe(false);
+    expect(store.preview().files.map((file) => file.path)).toEqual(["/latest/api.json"]);
+  });
+
+  test("previews and consent are cleared when a project session changes", async () => {
+    const { store, project, generate } = exportSetup();
+    store.setOutputDirectory("/chosen");
+    await store.refresh();
+    store.confirmOverwrite(true);
+    store.confirmOutsideWorkspace(true);
+    expect(store.preview().files[0]?.path).toBe("/chosen/api.json");
+
+    project.sessionId.set("session-2");
+    expect(store.outputDirectory()).toBe("");
+    expect(store.preview().files).toEqual([]);
+    expect(store.overwriteConfirmed()).toBe(false);
+    expect(store.outsideWorkspaceConfirmed()).toBe(false);
+    await store.generate();
+    expect(generate).not.toHaveBeenCalled();
+    await store.refresh();
+    expect(store.preview().files[0]?.path).toBe("/workspace/tanit/api.json");
+  });
+
+  test("formats remain selectable when the last selected format is cleared", async () => {
+    const { store, generate, capabilities } = exportSetup();
+    await store.refresh();
+    store.toggleFormat("postman");
+    expect(store.formats()).toEqual([]);
+    expect(store.capabilities().map((capability) => capability.format)).toEqual(["postman"]);
+    await store.generate();
+    expect(generate).not.toHaveBeenCalled();
+    store.toggleFormat("postman");
+    await expect.poll(() => store.loading()).toBe(false);
+    expect(store.preview().canGenerate).toBe(true);
+    expect(capabilities).toHaveBeenCalledTimes(1);
+  });
+
+  test("a project switch during a write does not display its result or write the next format", async () => {
+    const { store, project, generate } = exportSetup();
+    let finish!: (value: Awaited<ReturnType<typeof generate>>) => void;
+    generate.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    store.toggleFormat("openapi");
+    await store.refresh();
+    expect(store.formats()).toHaveLength(2);
+    store.confirmOverwrite(true);
+    const writing = store.generate();
+    expect(generate).toHaveBeenCalledTimes(1);
+
+    project.projectRoot.set("/another-project");
+    project.sessionId.set("session-2");
+    finish({ files: [{ path: "/workspace/tanit/api.json" }], outputDirectory: "/workspace/tanit" });
+    await writing;
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(store.result()).toBeNull();
+    expect(store.loading()).toBe(false);
   });
 });
