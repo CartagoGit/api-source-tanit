@@ -74,9 +74,7 @@ const EMBEDDED_APP_DIR = join(moduleDir(import.meta.url), EMBEDDED_WEB_DIR);
 /** Selects an explicit build, the packaged build, or the build in a source checkout. */
 function staticDirDeLaApp(argv: readonly string[]): string | undefined {
   const explicit = readFlag(argv, "--static-dir");
-  if (hasFlag(argv, "--static-dir")) {
-    return explicit !== undefined && existsSync(join(explicit, "index.html")) ? explicit : undefined;
-  }
+  if (explicit !== undefined) return existsSync(join(explicit, "index.html")) ? explicit : undefined;
   if (existsSync(join(EMBEDDED_APP_DIR, "index.html"))) return EMBEDDED_APP_DIR;
 
   const root = findRepoRoot(import.meta.url);
@@ -223,10 +221,6 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   const staticDir = staticDirDeLaApp(argv);
-  if (staticDir === undefined && hasFlag(argv, "--static-dir")) {
-    console.error("The directory passed to --static-dir must contain an index.html file.");
-    return 1;
-  }
   let server;
   try {
     server = staticDir === undefined
