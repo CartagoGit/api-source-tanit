@@ -30,6 +30,7 @@ import { ProjectStore } from "./project.store";
 export class EndpointsStore {
   private readonly client = inject(EndpointsClient);
   private readonly project = inject(ProjectStore);
+  private refreshSequence = 0;
 
   /** The endpoints the backend answered with, filtered. */
   readonly all = signal<readonly EndpointRecord[]>([]);
@@ -64,6 +65,7 @@ export class EndpointsStore {
       this.indexedTotal.set(0);
       this.selectedId.set(null);
       this.error.set(null);
+      this.loading.set(false);
     });
   }
 
@@ -89,17 +91,21 @@ export class EndpointsStore {
   async refresh(): Promise<void> {
     const projectRoot = this.project.projectRoot();
     if (projectRoot === null) return;
+    const sequence = ++this.refreshSequence;
+    const superseded = (): boolean =>
+      this.refreshSequence !== sequence || this.project.projectRoot() !== projectRoot;
     this.loading.set(true);
     this.error.set(null);
     try {
       const result = await this.client.list(projectRoot, this.query());
+      if (superseded()) return;
       this.all.set(result.endpoints);
       this.total.set(result.total);
       this.indexedTotal.set(result.indexedTotal);
     } catch (error) {
-      this.error.set(describe(error));
+      if (!superseded()) this.error.set(describe(error));
     } finally {
-      this.loading.set(false);
+      if (!superseded()) this.loading.set(false);
     }
   }
 
@@ -114,6 +120,7 @@ export class EndpointsStore {
     if (projectRoot === null) return;
     try {
       const detail = await this.client.detail(projectRoot, endpoint.method, endpoint.path);
+      if (this.project.projectRoot() !== projectRoot) return;
       this.all.update((endpoints) =>
         endpoints.map((item) =>
           item.id === endpoint.id
@@ -127,7 +134,7 @@ export class EndpointsStore {
         ),
       );
     } catch (error) {
-      this.error.set(describe(error));
+      if (this.project.projectRoot() === projectRoot) this.error.set(describe(error));
     }
   }
 }

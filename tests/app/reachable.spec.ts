@@ -127,6 +127,25 @@ describe("the sidebar", () => {
     expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings"]);
   });
 
+  it("closes the mobile navigation after choosing a destination", () => {
+    const fixture = TestBed.createComponent(SidebarHost);
+    fixture.detectChanges();
+    const menu: HTMLButtonElement = fixture.nativeElement.querySelector(".menu-toggle");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    menu.click();
+    fixture.detectChanges();
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+
+    const destinations = Array.from(
+      fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>,
+    );
+    const destination = destinations.find((button) => button.textContent?.trim() === "Settings")!;
+    destination.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.chosen).toBe("settings");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("has no entry that leads nowhere", () => {
     const fixture = TestBed.createComponent(SidebarHost);
     fixture.detectChanges();
@@ -200,6 +219,26 @@ describe("the diagnostics section", () => {
 });
 
 describe("the endpoint filters", () => {
+  it("reveals advanced filters with their active count and can clear them", () => {
+    const fixture = TestBed.createComponent(FiltersHost);
+    fixture.componentInstance.value = { method: "POST", transport: "http" };
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const toggle = root.querySelector<HTMLButtonElement>("button[aria-controls]")!;
+    const advanced = root.querySelector<HTMLElement>("#advanced-endpoint-filters")!;
+    expect(advanced.hidden).toBe(true);
+    expect(toggle.textContent).toContain("2");
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(advanced.hidden).toBe(false);
+    root.querySelector<HTMLButtonElement>("button.clear")!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.changed).toEqual({});
+    expect(root.querySelector(".filter-count")).toBeNull();
+  });
+
   it("asks the backend once for a word, not once per letter", async () => {
     vi.useFakeTimers();
     try {

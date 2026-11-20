@@ -1,5 +1,5 @@
 import { Location } from "@angular/common";
-import { ChangeDetectionStrategy, Component, TemplateRef, ViewChild, effect, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, TemplateRef, ViewChild, computed, effect, inject, untracked } from "@angular/core";
 
 import {
   ENDPOINT_CONFIDENCES,
@@ -43,6 +43,8 @@ export class EndpointsListComponent {
   private readonly project = inject(ProjectStore);
   private readonly location = inject(Location);
   @ViewChild("endpointTemplate", { static: true }) readonly endpointTemplate!: TemplateRef<unknown>;
+  readonly rowHeight = 64;
+  readonly viewportHeight = computed(() => Math.min(this.store.filtered().length * this.rowHeight, 512));
   readonly trackBy = (item: { id: string }): string => item.id;
 
   constructor() {
@@ -50,7 +52,7 @@ export class EndpointsListComponent {
     // explorer used to stay empty until the user touched a filter,
     // because nothing ever asked.
     effect(() => {
-      if (this.project.projectRoot() !== null) void this.store.refresh();
+      if (this.project.projectRoot() !== null) untracked(() => { void this.store.refresh(); });
     });
     effect(() => {
       const params = new URLSearchParams(this.location.path().split("?", 2)[1]);
