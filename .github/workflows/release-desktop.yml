@@ -134,6 +134,7 @@ jobs:
       # preguntar.
       - name: El canal lo dice el gate
         id: channel
+        shell: bash
         run: |
           channel="$(bun scripts/gates/lint-release-channel.script.ts --print-channel)"
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
@@ -260,7 +261,7 @@ jobs:
             # produce `notarize-macos.sh` después de grapar el ticket.
             rm -rf "${RUNNER_TEMP}/macos-app"
             mkdir -p "${RUNNER_TEMP}/macos-app"
-            cp -R "${BUNDLE_DIR}/app"/*.app "${RUNNER_TEMP}/macos-app/"
+            cp -R "${BUNDLE_DIR}/macos"/*.app "${RUNNER_TEMP}/macos-app/"
           else
             for bundle in ${BUNDLES}; do
               source_dir="${BUNDLE_DIR}/${bundle}"

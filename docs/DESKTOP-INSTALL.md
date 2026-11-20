@@ -121,9 +121,12 @@ contenedor las trae:
 bun run docker:installers      # produce el .deb sin instalar nada
 ```
 
-En una máquina con Rust:
+En una máquina con Rust, instala las dependencias fijadas y ejecuta
+el comando de tu plataforma. El script compila Angular y el sidecar
+antes de empaquetarlos.
 
 ```bash
+bun install --frozen-lockfile
 bun run desktop:build:linux    # .deb + .AppImage
 bun run desktop:build:mac      # .dmg + .app
 bun run desktop:build:windows  # .msi + .exe

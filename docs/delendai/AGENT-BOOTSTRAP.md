@@ -391,6 +391,11 @@ keep static facts, documented evidence, unknowns and AI suggestions distinct.
 Before continuing optional enrichment work, read the current provider findings
 and eligibility limits in [AI-ENRICHMENT.md](../AI-ENRICHMENT.md).
 
+The [proposal index](proposals/INDEX.md) tracks x00120: native desktop builds
+compile the Angular frontend and sidecar from a clean checkout and use the
+Tauri CLI pinned in the dependency lockfile. The installer workflow shares
+that command across platforms.
+
 The [proposal index](proposals/INDEX.md) tracks t00007: focused updater coverage
 checks installer signatures independently of signed manifests and binds desktop
 commands to version approval and verification before writing.

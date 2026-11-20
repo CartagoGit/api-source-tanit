@@ -2,8 +2,8 @@
 /**
  * `bun run desktop:build` — los instaladores nativos.
  *
- * Compila el binario del CLI, lo coloca donde Tauri espera el sidecar, y
- * lanza el empaquetado. Los tres pasos van juntos a propósito: el
+ * Compila Angular, prepara el sidecar del CLI y lanza el empaquetado
+ * con la versión de Tauri fijada en bun.lock. El
  * instalador **contiene** el binario, así que empaquetar sin recompilar
  * produce un instalador con una versión vieja dentro y nadie se entera
  * hasta que alguien lo instala.
@@ -131,10 +131,14 @@ async function main(): Promise<number> {
     const bundles = process.env["TANIT_BUNDLES"] ?? objetivo.bundles.join(",");
     console.log(`→ Bundles:  ${bundles}\n`);
 
-    // 1. El binario del CLI, que es el sidecar.
+    console.log("→ Building the Angular frontend…");
+    await ejecutar(["bun", "--bun", "run", "build:app"], REPO_ROOT);
+
+    // The host-specific executable Tauri copies into its bundle.
     const binarios = join(DESKTOP, "binaries");
     await mkdir(binarios, { recursive: true });
-    const sidecar = join(binarios, `apisrc-${triple}`);
+    const extension = process.platform === "win32" ? ".exe" : "";
+    const sidecar = join(binarios, `apisrc-${triple}${extension}`);
 
     console.log("→ Compiling the sidecar…");
     await ejecutar(
@@ -154,7 +158,10 @@ async function main(): Promise<number> {
     // dándole `/dev/fuse` y `SYS_ADMIN` —se probó—. El error que da,
     // `failed to run linuxdeploy`, no menciona FUSE por ninguna parte.
     console.log(`\n→ Packaging with Tauri (${bundles})…`);
-    await ejecutar(["cargo", "tauri", "build", "--bundles", bundles], DESKTOP);
+    await ejecutar(
+      ["bunx", "--bun", "--no-install", "--package", "@tauri-apps/cli", "tauri", "build", "--bundles", bundles],
+      DESKTOP,
+    );
 
     // 3. Decir qué ha salido, con su tamaño: un instalador de 2 KB es un
     //    instalador vacío, y sin mirarlo parece que todo fue bien.
@@ -174,7 +181,7 @@ async function main(): Promise<number> {
       throw new Error(
         `Tauri reported success but produced nothing in ${bundle}.\n` +
           "  · That usually means the requested bundles do not apply to this\n" +
-          "    platform. Check `bundle.targets` in projects/desktop/tauri.conf.json.",
+          "    platform. Check `bundle.targets` in packages/desktop/tauri.conf.json.",
       );
     }
 

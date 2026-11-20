@@ -385,6 +385,7 @@ interface IWorkflowStep {
   readonly name?: string;
   readonly uses?: string;
   readonly run?: string;
+  readonly shell?: string;
   readonly if?: string;
   readonly env?: Record<string, string>;
   readonly with?: Record<string, unknown>;
@@ -1796,6 +1797,14 @@ describe("the release policy", () => {
     // Los assets se adjuntan por su `basename`: los dos bundles de
     // macOS se llamarían igual y el segundo pisaría al primero.
     expect(workflow).toContain("Tanit_${VERSION}_${{ matrix.arch }}.app.zip");
+  });
+
+  test("the release matrix uses Bash for the channel and stages the native macOS bundle", async () => {
+    const workflow = await workflowDocument();
+    const steps = workflow.jobs.build?.steps ?? [];
+    expect(steps.find((step) => step.id === "channel")?.shell).toBe("bash");
+    expect(steps.find((step) => step.name === "Preparar el staging")?.run)
+      .toContain('"${BUNDLE_DIR}/macos"/*.app');
   });
 
   test("the workflow asks the build script for the bundles the matrix declares", async () => {
