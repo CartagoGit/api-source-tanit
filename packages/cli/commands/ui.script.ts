@@ -41,7 +41,7 @@ import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
 
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
-import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
+import { DEFAULT_UI_PORT, EMBEDDED_WEB_DIR } from "../../contracts/constants/cli/terminal.constant.js";
 import type { IUiDeps, IUiServer } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface.js";
 import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
@@ -51,7 +51,7 @@ import { browseDirectory } from "../../core/application-api/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
 import { readHistory } from "../../core/session/history-run.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
-import { findRepoRoot } from "../../core/helpers/module-path.helper.js";
+import { findRepoRoot, moduleDir } from "../../core/helpers/module-path.helper.js";
 
 /** Opens the browser, and if it cannot, stays quiet: the URL is already printed. */
 function abrirNavegador(url: string): void {
@@ -69,26 +69,16 @@ function abrirNavegador(url: string): void {
   }
 }
 
-/**
- * Where the compiled app is, if it is there at all.
- *
- * The desktop app is Angular and lands in `packages/app/dist`. When
- * it is there, `apisrc ui` serves **it**: the same interface the
- * desktop app shows, in a browser, over the same connector.
- *
- * When it is not —a released binary, a checkout where nobody ran
- * the build— the interface travels embedded in the binary and is
- * served from memory.
- *
- * The point of asking is that **the command says which one it is
- * serving**. A command that quietly serves a different interface
- * depending on what happens to be on disk is two products wearing
- * one name, and the tests cannot tell which one they are talking to.
- */
+const EMBEDDED_APP_DIR = join(moduleDir(import.meta.url), EMBEDDED_WEB_DIR);
+
+/** Selects an explicit build, the packaged build, or the build in a source checkout. */
 function staticDirDeLaApp(argv: readonly string[]): string | undefined {
   const explicit = readFlag(argv, "--static-dir");
-  const root = explicit === undefined ? findRepoRoot(import.meta.url) : null;
-  const dist = explicit ?? (root === null ? undefined : join(root, "packages", "app", "dist"));
+  if (explicit !== undefined) return existsSync(join(explicit, "index.html")) ? explicit : undefined;
+  if (existsSync(join(EMBEDDED_APP_DIR, "index.html"))) return EMBEDDED_APP_DIR;
+
+  const root = findRepoRoot(import.meta.url);
+  const dist = root === null ? undefined : join(root, "packages", "app", "dist");
   return dist !== undefined && existsSync(join(dist, "index.html")) ? dist : undefined;
 }
 
@@ -247,11 +237,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   console.log(`\n✔ Interface at ${server.url}`);
-  console.log(
-    staticDir === undefined
-      ? "  · Serving the built-in interface."
-      : `  · Serving the compiled app from ${staticDir}.`,
-  );
+  if (staticDir === EMBEDDED_APP_DIR) {
+    console.log("  · Serving the bundled Angular app.");
+  } else if (staticDir !== undefined) {
+    console.log(`  · Serving the compiled app from ${staticDir}.`);
+  } else {
+    console.log("  · Serving the built-in interface.");
+  }
   console.log("  · Listening on this machine only: not reachable from the network.");
   console.log("  · Ctrl-C to stop.\n");
 

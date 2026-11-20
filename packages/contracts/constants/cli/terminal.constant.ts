@@ -34,3 +34,6 @@ export const DEFAULT_TERMINAL_WIDTH = 80;
  * failing on a busy port is the worst possible first impression.
  */
 export const DEFAULT_UI_PORT = 4771;
+
+/** Browser output directory embedded in standalone Tanit binaries. */
+export const EMBEDDED_WEB_DIR = "browser";

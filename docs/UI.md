@@ -8,12 +8,10 @@ Si aún no has instalado la herramienta: [INSTALL.md](INSTALL.md).
 
 ---
 
-> **Ojo: hay dos interfaces.** Esta es la que trae el binario: HTML y
-> CSS escritos a mano, sin dependencias, para que un `.exe` instalado
-> funcione sin red. La **app de escritorio** (`packages/app`, Angular)
-> es la otra, y es la que se distribuye. Su camino para probarla en el
-> navegador está en [CLI.md](CLI.md#how-the-app-talks-to-the-backend).
-> Ejecuta `bun run ui:dev` para trabajar sobre los archivos fuente.
+Los binarios distribuidos incluyen Angular y lo sirven con `apisrc ui`.
+Es la misma app que usa el escritorio. Para trabajar sobre el frontend
+desde el repositorio, usa `bun run ui:dev`. El checkout también conserva
+una interfaz integrada de respaldo si aún no existe un build de Angular.
 
 ---
 
@@ -195,12 +193,8 @@ no es alcanzable desde la red. Para cerrarla: **Ctrl-C** en la terminal.
 - `--static-dir <ruta>` — sirve la **app compilada** de esa carpeta en
   vez de la interfaz que va dentro del binario.
 
-> **Qué interfaz se sirve.** `apisrc ui` sirve la app de escritorio
-> compilada (`packages/app/dist`) cuando está ahí, y la interfaz
-> embebida en el binario cuando no. No es un detalle: la terminal
-> **dice** cuál de las dos está sirviendo, al arrancar. Y
-> `--static-dir` lo deja explícito, para no depender de lo que haya
-> por casualidad en el disco.
+La terminal indica si sirve Angular empaquetado, un build en disco o
+la interfaz de respaldo. `--static-dir` selecciona un build en disco.
 
 ---
 
