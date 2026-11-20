@@ -17,7 +17,7 @@
  * GitHub: el ejecutable autocontenido y el instalador. En GitHub el
  * equivalente de un `dist-tag` es el **canal de la release** —la
  * marca de prerelease y su etiqueta—, y las dos salen del canal que
- * decide el prefijo de la versión.
+ * se deduce de la versión.
  */
 
 import type { ReleaseChannel } from "../../interfaces/release/release-channel.interface.js";
@@ -31,7 +31,7 @@ export const RELEASE_CHANNELS: ReadonlyArray<ReleaseChannel> = [
 ];
 
 /**
- * El canal de una versión sin prefijo de prerelease.
+ * El canal de una versión con major a partir de 1 y sin sufijo.
  *
  * Sin anotación, a propósito: TypeScript le da el tipo literal
  * `"stable"`, y eso deja que `Exclude<ReleaseChannel, "stable">`
@@ -42,10 +42,8 @@ export const STABLE_RELEASE_CHANNEL = "stable";
 /**
  * El prefijo de prerelease que declara cada canal.
  *
- * `0.1.0-alpha.1` es del canal `alpha`; `1.0.0` no lleva prefijo y es
- * del canal estable. El prefijo es lo que **decide** el canal, no al
- * revés: el canal es una consecuencia de la versión, no una decisión
- * que se tome aparte.
+ * `0.1.0-alpha.1` es del canal `alpha`. Sin sufijo, el major indica el
+ * canal de distribución. `0.2.0` es beta y `1.0.0` es estable.
  */
 export const RELEASE_PRERELEASE_TAGS: Readonly<
   Record<Exclude<ReleaseChannel, "stable">, string>

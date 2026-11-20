@@ -9,14 +9,10 @@ name: release-cut
 # eso este workflow se dispara con el tag, y el tag sólo puede existir
 # en `main`.
 #
-# ## El canal lo decide el prefijo
+# ## Canal de publicación
 #
-# El prefijo de prerelease de la versión dice si lo que sale es una
-# release normal o una prerelease, y el gate es la fuente: este
-# workflow **pregunta** con `lint:release-channel --print-channel` en
-# lugar de decidir por su cuenta. Si el workflow decidiera por su
-# cuenta, un día se desincronizaría del gate y una release estable
-# acabaría marcando un alfa.
+# `lint:release-channel --print-channel` deduce el canal de la versión.
+# El workflow usa ese valor para marcar la release en GitHub.
 #
 # ## Las notas salen del CHANGELOG
 #
@@ -97,7 +93,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
-          VERSION: ${{ steps.channel.outputs.channel }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
         run: |
           # Dos comandos y no un booleano: `--prerelease=false` depende
           # de cómo el CLI interprete el flag, y una release estable
@@ -110,7 +106,7 @@ jobs:
           # y en ese caso las notas y la marca tienen que volver a
           # quedar como deben, no reventar el workflow.
           if gh release view "$TAG" > /dev/null 2>&1; then
-            if [ "$VERSION" = "stable" ]; then
+            if [ "$CHANNEL" = "stable" ]; then
               gh release edit "$TAG" \
                 --title "$TAG" \
                 --notes-file notes.md \
@@ -121,18 +117,18 @@ jobs:
                 --notes-file notes.md \
                 --prerelease
             fi
-            echo "✓ release $TAG actualizada (canal $VERSION)"
-          elif [ "$VERSION" = "stable" ]; then
+            echo "✓ release $TAG actualizada (canal $CHANNEL)"
+          elif [ "$CHANNEL" = "stable" ]; then
             gh release create "$TAG" \
               --title "$TAG" \
               --notes-file notes.md \
               --verify-tag
-            echo "✓ release $TAG creada (canal $VERSION)"
+            echo "✓ release $TAG creada (canal $CHANNEL)"
           else
             gh release create "$TAG" \
               --title "$TAG" \
               --notes-file notes.md \
               --prerelease \
               --verify-tag
-            echo "✓ release $TAG creada (canal $VERSION)"
+            echo "✓ release $TAG creada (canal $CHANNEL)"
           fi

@@ -10,15 +10,16 @@
  *
  * ## La regla
  *
- * El prefijo de prerelease decide el canal, no al revés:
+ * El sufijo explícito decide el canal cuando existe.
  *
  *   · `0.1.0-alpha.1` → canal `alpha`, release marcada como prerelease.
+ *   · `0.2.0`         → canal `beta`, release marcada como prerelease.
  *   · `0.2.0-beta.3`  → canal `beta`, release marcada como prerelease.
  *   · `0.9.0-rc.1`    → canal `rc`, release marcada como prerelease.
  *   · `1.0.0`         → canal estable, release normal.
  *
- * Una versión sin prefijo es siempre la estable: es la única forma
- * que se puede instalar sin pedir un canal a mano.
+ * Sin sufijo, las versiones 0.x usan el canal beta y las versiones con
+ * major a partir de 1 usan el canal estable.
  */
 
 import {
@@ -58,7 +59,7 @@ export function channelOf(version: string): ReleaseChannel | null {
   const match = SEMVER.exec(version);
   if (!match) return null;
   const prerelease = match[4];
-  if (!prerelease) return STABLE_RELEASE_CHANNEL;
+  if (!prerelease) return match[1] === "0" ? "beta" : STABLE_RELEASE_CHANNEL;
   const identifier = prerelease.split(".")[0] ?? "";
   for (const channel of PRERELEASE_CHANNELS) {
     if (RELEASE_PRERELEASE_TAGS[channel] === identifier) return channel;

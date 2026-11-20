@@ -18,8 +18,8 @@
  *
  * ## El canal
  *
- * El prefijo de prerelease decide el canal, y el canal decide si la
- * release se marca como prerelease. Un alfa marcado como release
+ * El sufijo explícito o el major decide el canal. El canal decide si
+ * la release se marca como prerelease. Un alfa marcado como release
  * estable se lo traga cualquiera que busque la última versión, así que
  * esa parte también se prueba.
  */
@@ -45,9 +45,11 @@ async function readJson(path: string): Promise<Record<string, unknown>> {
 }
 
 describe("el canal de una versión", () => {
-  test("sin prefijo de prerelease es el canal estable", () => {
+  test("una versión sin sufijo usa el canal beta hasta la primera major", () => {
+    expect(channelOf("0.2.0")).toBe("beta");
+    expect(channelOf("0.9.3+build")).toBe("beta");
     expect(channelOf("1.0.0")).toBe(STABLE_RELEASE_CHANNEL);
-    expect(channelOf("0.9.3")).toBe(STABLE_RELEASE_CHANNEL);
+    expect(channelOf("2.4.0+build")).toBe(STABLE_RELEASE_CHANNEL);
   });
 
   test("el prefijo decide el canal", () => {
@@ -77,7 +79,7 @@ describe("el canal de una versión", () => {
 describe("la marca de prerelease", () => {
   test("sólo el canal estable es una release normal", () => {
     expect(isPrereleaseVersion("1.0.0")).toBe(false);
-    expect(isPrereleaseVersion("0.9.3")).toBe(false);
+    expect(isPrereleaseVersion("0.2.0")).toBe(true);
   });
 
   test("cualquier prerelease se marca como tal", () => {
