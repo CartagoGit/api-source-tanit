@@ -178,7 +178,7 @@ describe("the export preview does not invent", () => {
     withBridge(bridge);
     const client = TestBed.runInInjectionContext(() => new ExportsClient());
 
-    const preview = await client.preview("/workspace", "postman", "/out", "/workspace");
+    const preview = await client.preview("/workspace", "postman", "/out");
 
     // The app used to answer with the code "EXPORT_WARNING" and a
     // suggestion nobody wrote.
@@ -199,7 +199,7 @@ describe("the export honours the confirmation", () => {
         frameworks: [],
         warnings: [],
         durationMs: 1,
-        files: [{ path: "/workspace/tanit/collection.json", change: "UPDATE", bytes: 10 }],
+        files: [{ path: "/workspace/tanit/collection.json", change: "UPDATE", bytes: 10, outsideWorkspace: false }],
         formats: [],
         diagnostics: [],
       }),
@@ -230,7 +230,7 @@ describe("the export honours the confirmation", () => {
         frameworks: [],
         warnings: [],
         durationMs: 1,
-        files: [{ path: "/workspace/tanit/collection.json", change: "UPDATE", bytes: 10 }],
+        files: [{ path: "/workspace/tanit/collection.json", change: "UPDATE", bytes: 10, outsideWorkspace: false }],
         formats: [],
         diagnostics: [],
       }),

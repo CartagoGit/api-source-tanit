@@ -73,7 +73,7 @@ function fakeBridge(): {
           files: ["/workspace/tanit/api.postman_collection.json"],
           bytes: 4096,
           plannedFiles: [
-            { path: "/workspace/tanit/api.postman_collection.json", change: "NEW", bytes: 4096 },
+            { path: "/workspace/tanit/api.postman_collection.json", change: "NEW", bytes: 4096, outsideWorkspace: false },
           ],
           endpointCount: 12,
           frameworks: ["express"],

@@ -41,8 +41,8 @@ function fakeBridge(): {
           warnings: [],
           durationMs: 4,
           files: [
-            { path: `${directory}/api.json`, change: "NEW", bytes: 2048 },
-            { path: `${directory}/api.postman_collection.json`, change: "UPDATE", bytes: 4096 },
+            { path: `${directory}/api.json`, change: "NEW", bytes: 2048, outsideWorkspace: directory === "/elsewhere" },
+            { path: `${directory}/api.postman_collection.json`, change: "UPDATE", bytes: 4096, outsideWorkspace: directory === "/elsewhere" },
           ],
           formats: [{ id: "postman", summary: "Collection and environments for Postman" }],
           diagnostics: [
@@ -72,7 +72,7 @@ describe("ExportsClient", () => {
     });
     const client = TestBed.inject(ExportsClient);
 
-    const preview = await client.preview("/workspace", "postman", "/workspace/tanit", "/workspace");
+    const preview = await client.preview("/workspace", "postman", "/workspace/tanit");
 
     expect(calls[0]?.operation).toBe("dry-run");
     expect(calls[0]?.input).toMatchObject({
@@ -86,6 +86,7 @@ describe("ExportsClient", () => {
     expect(preview.files[1]?.overwriteRisk).toBe(true);
     expect(preview.requiresOverwriteConfirmation).toBe(true);
     expect(preview.canGenerate).toBe(true);
+    expect(preview.requiresOutsideWorkspaceConfirmation).toBe(false);
   });
 
   it("marks a file that would land outside the project", async () => {
@@ -96,7 +97,7 @@ describe("ExportsClient", () => {
     });
     const client = TestBed.inject(ExportsClient);
 
-    const preview = await client.preview("/workspace", "postman", "/elsewhere", "/workspace");
+    const preview = await client.preview("/workspace", "postman", "/elsewhere");
 
     expect(preview.files.every((file) => file.outsideWorkspace)).toBe(true);
     expect(preview.requiresOutsideWorkspaceConfirmation).toBe(true);

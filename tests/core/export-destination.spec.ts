@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { planExport, writeExport, writeExportWithPlan } from "../../packages/core/application-api/export-artifacts.helper.js";
 import type { IProjectSnapshot } from "../../packages/contracts/interfaces/core/session.interface.js";
@@ -31,7 +31,7 @@ describe("export destination shared by preview and write", () => {
     const expected = join(root, name);
     const preview = await planExport(snapshot, "postman", undefined, name);
     expect(preview.outputPath).toBe(expected);
-    expect(preview.files.map((file) => file.path)).toEqual([expected]);
+    expect(preview.files).toEqual([expect.objectContaining({ path: expected, outsideWorkspace: false })]);
     expect(existsSync(expected)).toBe(false);
 
     const written = await writeExport(snapshot, "postman", undefined, name);
@@ -39,6 +39,11 @@ describe("export destination shared by preview and write", () => {
     expect(written.files).toEqual([expected]);
     expect(JSON.parse(await readFile(expected, "utf8"))).toHaveProperty("item");
     expect((await planExport(snapshot, "postman", undefined, name)).files[0]?.change).toBe("UNCHANGED");
+  });
+
+  test("marks a sibling that shares the project path prefix as external", async () => {
+    const preview = await planExport(snapshot, "postman", `${root}-elsewhere`);
+    expect(preview.files).toEqual([expect.objectContaining({ outsideWorkspace: true })]);
   });
 
   test("honors an absolute filename", async () => {
@@ -62,7 +67,7 @@ describe("export destination shared by preview and write", () => {
 
   test("resolves a relative output directory against the project", async () => {
     const written = await writeExportWithPlan(snapshot, "postman", "generated");
-    expect(written.outputPath.startsWith(join(root, "generated") + "/")).toBe(true);
+    expect(dirname(written.outputPath)).toBe(join(root, "generated"));
     expect(written.plan.files.map((file) => file.path)).toEqual(written.files);
     expect(existsSync(written.outputPath)).toBe(true);
   });
