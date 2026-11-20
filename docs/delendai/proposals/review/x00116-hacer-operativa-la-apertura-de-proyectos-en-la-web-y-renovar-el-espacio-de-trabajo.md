@@ -2,10 +2,14 @@
 id: x00116
 title: "Hacer operativa la apertura de proyectos en la web y renovar el espacio de trabajo"
 kind: fix
-status: in-progress
+status: review
 type: proposal
 track: beta
 date: 2026-11-20
+last-transition-id: d37148d3-d254-4fba-b688-0bb48811121f
+last-correlation-id: d37148d3-d254-4fba-b688-0bb48811121f
+last-transition-from: in-progress
+last-transition-at: 2026-11-20T07:06:53.727Z
 ---
 
 # x00116 — Hacer operativa la apertura de proyectos en la web y renovar el espacio de trabajo
@@ -27,7 +31,7 @@ La prueba Chromium registra cero llamadas al pulsar Abrir carpeta en web y el ex
 - global_gate: lint
 
 ### S1 — Reparar selector web y renovar navegación y espacios de trabajo
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/app/src/app/shell/app-shell.component.ts`, `packages/app/src/app/shell/app-shell.component.html`, `packages/app/src/app/shell/app-shell.component.scss`, `packages/app/src/app/shell/sidebar.component.ts`, `packages/app/src/app/shell/sidebar.component.html`, `packages/app/src/app/shell/sidebar.component.scss`, `packages/app/src/app/shell/command-palette.component.html`, `packages/app/src/app/features/home/folder-picker.component.ts`, `packages/app/src/app/features/home/folder-picker.component.html`, `packages/app/src/app/features/home/folder-picker.component.scss`, `packages/app/src/app/features/home/home.component.ts`, `packages/app/src/app/features/home/home.component.html`, `packages/app/src/app/features/home/home.component.scss`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/host/dialog.service.ts`, `packages/app/src/app/core/i18n/locales/es.json`, `packages/app/src/app/core/i18n/locales/en.json`, `packages/app/src/app/core/i18n/locales/fr.json`, `packages/app/src/styles/tokens.scss`, `tests/app/shell.spec.ts`, `tests/app/host-bridge.spec.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`, `packages/app/src/app/features/exports/export-center.component.ts`, `packages/app/src/app/features/exports/export-center.component.html`, `packages/app/src/app/features/exports/export-summary.component.ts`, `packages/app/src/app/features/exports/export-summary.component.html`, `packages/app/src/app/features/endpoints/endpoint-detail.component.ts`, `packages/app/src/app/features/endpoints/endpoint-detail.component.html`, `packages/app/src/app/features/endpoints/endpoints-list.component.ts`, `packages/app/src/app/features/endpoints/endpoints-list.component.html`, `packages/app/src/app/core/state/exports.store.ts`, `tests/app/reachable.spec.ts`, `packages/core/exporters/export-files.service.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/app/src/app/core/api/exports.client.ts`, `tests/core/export-destination.spec.ts`, `tests/app/export-center.spec.ts`, `tests/app/truth.spec.ts`, `tests/app/project-verbs.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -36,6 +40,9 @@ La prueba Chromium registra cero llamadas al pulsar Abrir carpeta en web y el ex
   - "El flujo real permite abrir el fixture, ver endpoints y acceder a exportación, historial y ajustes. El conector de escritorio acepta core.invoke de Tauri 2."
 
   - "La previsualización compartida clasifica los destinos internos y externos en el sistema que escribe los archivos, incluido Windows."
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+- shipped-in: `65001ce091e7`
 
 ## acceptance
 
