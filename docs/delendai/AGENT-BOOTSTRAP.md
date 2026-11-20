@@ -312,6 +312,10 @@ sibling-repo generated markdown file.
 
 ### 3.10 Shared data and follow-up audit
 
+The [proposal index](proposals/INDEX.md) tracks the Tanit branding and binary layout.
+`assets/icons/tanit.svg` is the shared artwork, and `bun run gen:brand` embeds
+it into the standalone web interface. Platform builds use `dist/`.
+
 The [proposal index](proposals/INDEX.md) tracks the per-platform binary scripts.
 They build Linux or Windows directly, and the compiled UI scripts build Angular
 into the same output directory and launch the bundled CLI.

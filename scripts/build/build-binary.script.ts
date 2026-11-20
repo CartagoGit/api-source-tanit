@@ -20,7 +20,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { arch as osArch } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { BIN_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 import { hasFlag, readFlag } from "../../packages/core/helpers/argv.helper.js";
 import { CLI_ENTRYPOINT, DIST_DIR, REPO_ROOT } from "../helpers/root.helper.js";
@@ -57,12 +57,13 @@ function currentTarget(): (typeof TARGETS)[number] {
   return TARGETS.find((t) => t.suffix === suffix) ?? TARGETS[0]!;
 }
 
-async function compile(
+async function runCompile(
   target: string,
   outfile: string,
+  extraArgs: string[] = [],
 ): Promise<{ ok: boolean; output: string }> {
   const proc = Bun.spawn(
-    ["bun", "build", "--compile", `--target=${target}`, CLI_ENTRYPOINT, "--outfile", outfile],
+    ["bun", "build", "--compile", `--target=${target}`, ...extraArgs, CLI_ENTRYPOINT, "--outfile", outfile],
     { cwd: REPO_ROOT, stdout: "pipe", stderr: "pipe" },
   );
   const [stdout, stderr] = await Promise.all([
@@ -70,6 +71,34 @@ async function compile(
     new Response(proc.stderr).text(),
   ]);
   return { ok: (await proc.exited) === 0, output: stdout + stderr };
+}
+
+function bunOutput(args: string[]): string {
+  const result = spawnSync("bun", args, { encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`Could not run bun ${args.join(" ")}: ${result.stderr}`);
+  return result.stdout.trim();
+}
+
+async function compile(
+  target: string,
+  outfile: string,
+): Promise<{ ok: boolean; output: string }> {
+  if (target !== "bun-windows-x64") return runCompile(target, outfile);
+  const icon = join(REPO_ROOT, "packages", "desktop", "icons", "icon.ico");
+  if (process.platform === "win32") return runCompile(target, outfile, [`--windows-icon=${icon}`]);
+
+  // Bun only applies --windows-icon natively. Brand its cached Windows
+  // runtime before Bun adds the compiled application section.
+  const baseRuntime = join(bunOutput(["pm", "cache"]), `bun-windows-x64-v${bunOutput(["--version"])}`);
+  if (!existsSync(baseRuntime)) {
+    const initial = await runCompile(target, outfile);
+    if (!initial.ok) return initial;
+  }
+  const brandedRuntime = join(dirname(outfile), "windows-runtime.exe");
+  const editor = join(REPO_ROOT, "scripts", "build", "windows-binary-icon.mjs");
+  const stamp = Bun.spawn(["bun", editor, baseRuntime, icon, brandedRuntime], { stderr: "inherit" });
+  if ((await stamp.exited) !== 0) return { ok: false, output: "Could not brand the Windows executable." };
+  return runCompile(target, outfile, [`--compile-executable-path=${brandedRuntime}`]);
 }
 
 async function launchUi(
@@ -130,11 +159,7 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
     console.error("El ejecutable de la interfaz debe corresponder al sistema donde se ejecuta.");
     return 1;
   }
-  const windowsDownloads = "/mnt/c/Users/Public/Downloads";
-  const targetOut = windowsInterop && existsSync(windowsDownloads)
-    ? join(windowsDownloads, "Tanit-dev")
-    : join(REPO_ROOT, ".cache", "tanit", "binaries");
-  const outDir = resolve(out ?? (name || ui ? targetOut : DIST_DIR));
+  const outDir = resolve(out ?? DIST_DIR);
   await mkdir(outDir, { recursive: true });
   const targets = all ? TARGETS : [target];
   console.log(`→ Compilando ${targets.length} binario(s) en ${outDir}\n`);
