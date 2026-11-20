@@ -157,9 +157,10 @@ escribir nada, y se genera en los formatos que se quieran. Llama al
 mismo pipeline que el CLI: no es una segunda implementación que se
 desincronice.
 
-Para tocarla, `bun run ui:dev` la levanta y **la reinicia sola** al
-editar `packages/ui/`, manteniendo el puerto: basta con recargar la
-pestaña.
+Para editar la interfaz Angular, ejecuta `bun run ui:dev`. El servidor
+de desarrollo abre la app con la Application API y actualiza la pestaña
+al guardar cambios. `bun run build:web` prepara los archivos para Apache
+en `dist/web/browser/`. [Despliegue web](docs/UI.md#servir-el-build-con-apache).
 
 Y para usarla sin instalar nada de Node hay instaladores nativos que
 abren esa misma interfaz en su propia ventana:

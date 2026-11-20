@@ -9,6 +9,8 @@ export interface IHttpBridgeOptions {
   readonly orchestrator?: unknown;
   /** What the bridges pass as `IRequestContext.caller`. */
   readonly caller?: "browser" | "desktop" | "cli";
+  /** Opts in to token bootstrap for a trusted HTTP reverse proxy on loopback. */
+  readonly browserOrigin?: string;
   /** Disable Origin / token checks (loopback + token stay). */
   readonly skipSecurity?: boolean;
   /**

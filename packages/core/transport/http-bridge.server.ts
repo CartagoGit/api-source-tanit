@@ -104,6 +104,15 @@ const HOST = "127.0.0.1";
 const INTENTOS = 20;
 const TOKEN_HEADER = "x-tanit-token";
 
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return url.origin === origin && url.protocol === "http:" && url.hostname === HOST && url.port !== "";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Starts the HTTP bridge.
  *
@@ -112,6 +121,9 @@ const TOKEN_HEADER = "x-tanit-token";
  * way `startUiServer` does today.
  */
 export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
+  if (options.browserOrigin !== undefined && !isLoopbackOrigin(options.browserOrigin)) {
+    throw new Error("The browser proxy origin must be an HTTP URL on 127.0.0.1 with an explicit port.");
+  }
   const portInicial = options.port ?? 0;
   const token = newToken();
   const caller = options.caller ?? "browser";
@@ -120,6 +132,7 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
 
   for (let intento = 0; intento < INTENTOS; intento++) {
     const port = portInicial === 0 ? pickPort() : portInicial + intento;
+    const browserOrigin = options.browserOrigin ?? `http://${HOST}:${port}`;
     try {
       const server = Bun.serve({
         port,
@@ -132,7 +145,7 @@ export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
           const abort = () => aborter.abort();
           request.signal?.addEventListener("abort", abort, { once: true });
           if (request.signal?.aborted) abort();
-          try { return await handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams); }
+          try { return await handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams, browserOrigin); }
           finally { request.signal?.removeEventListener("abort", abort); }
         },
       });
@@ -167,15 +180,24 @@ async function handleFetch(
   skipSecurity: boolean,
   aborter: BridgeAbortController,
   liveStreams: Set<() => void>,
+  browserOrigin: string,
 ): Promise<IFetchResponse> {
   // Alias for the ambient `IFetchResponse` declared in
   // `runtime.d.ts`. Avoids re-importing a non-module file.
   const { pathname } = new URL(request.url);
+  const rejectedOrigin = request.headers.get("origin");
+  const sameOrigin = rejectedOrigin === null || rejectedOrigin === browserOrigin;
 
-  // Loopback-only — the TCP bind already enforces this; we mirror
-  // it here for the response so the caller can debug from
-  // `Origin` rejection messages.
-  const port = new URL(request.url).port;
+  if (request.method === "GET" && pathname === "/api/bootstrap" && options.browserOrigin !== undefined) {
+    // A cross-origin browser cannot send this header without a CORS preflight.
+    if (!sameOrigin || request.headers.get("host") !== new URL(browserOrigin).host ||
+        request.headers.get("x-tanit-bootstrap") !== "1") {
+      return new Response("Forbidden", { status: 403 });
+    }
+    return new Response(JSON.stringify({ token }), {
+      headers: { "content-type": "application/json", "cache-control": "no-store" },
+    });
+  }
 
   // The liveness answer.
   //
@@ -195,7 +217,11 @@ async function handleFetch(
   // means "the origin that served me". Splitting them across two
   // ports would make every call cross-origin.
   if (options.staticDir !== undefined && request.method === "GET") {
-    const asset = await readAsset(options.staticDir, pathname);
+    const navigation = /^\/[a-z][a-z-]*\/?$/.test(pathname) && !/^\/(?:api|assets)\/?$/.test(pathname);
+    const asset = pathname.split("/").some((segment) => segment.startsWith("."))
+      ? null
+      : await readAsset(options.staticDir, pathname) ??
+        (navigation ? await readAsset(options.staticDir, "/") : null);
     if (asset !== null) {
       const body = asset.isPage ? plantToken(asset.contents, token, "html") : asset.contents;
       return new Response(body, {
@@ -219,13 +245,12 @@ async function handleFetch(
   }
 
   if (!skipSecurity) {
-    const origen = request.headers.get("origin");
-    if (origen !== null && origen !== `http://${HOST}:${port}`) {
+    if (!sameOrigin) {
       return Response.json(
         wrapApiError(null, bridgeFailure(
           403,
           "EXECUTION_FAILED",
-          `This interface does not answer requests from ${origen}.`,
+          `This interface does not answer requests from ${rejectedOrigin}.`,
         ).app),
         { status: 403 },
       );

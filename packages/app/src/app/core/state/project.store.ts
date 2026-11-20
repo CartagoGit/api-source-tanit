@@ -48,6 +48,13 @@ export class ProjectStore {
   /** The last failure, in words a person can read. */
   readonly error = signal<string | null>(null);
 
+  /** Reopen the last project in this tab after a page reload. */
+  async restore(): Promise<void> {
+    const projectRoot = storedProjectRoot();
+    if (projectRoot === null || this.isOpen()) return;
+    if (!(await this.open(projectRoot)) && !this.isOpen()) rememberProjectRoot(null);
+  }
+
   /** Whether a project is really open — a session, not a name. */
   readonly isOpen = computed(() => this.sessionId() !== null);
 
@@ -73,6 +80,7 @@ export class ProjectStore {
       this.sessionId.set(answer.sessionId);
       this.summary.set(answer.summary);
       this.projectName.set(nameOf(answer.summary.projectRoot));
+      rememberProjectRoot(answer.summary.projectRoot);
       return true;
     } catch (error) {
       this.error.set(describe(error));
@@ -96,6 +104,7 @@ export class ProjectStore {
       await this.closeSession(projectRoot);
     }
     this.closeLocally();
+    rememberProjectRoot(null);
   }
 
   /**
@@ -151,6 +160,20 @@ export class ProjectStore {
     this.summary.set(null);
     this.projectName.set("Tanit");
   }
+}
+
+const PROJECT_ROOT_SESSION_KEY = "tanit.open-project";
+
+function storedProjectRoot(): string | null {
+  try { return globalThis.sessionStorage.getItem(PROJECT_ROOT_SESSION_KEY); }
+  catch { return null; }
+}
+
+function rememberProjectRoot(root: string | null): void {
+  try {
+    if (root === null) globalThis.sessionStorage.removeItem(PROJECT_ROOT_SESSION_KEY);
+    else globalThis.sessionStorage.setItem(PROJECT_ROOT_SESSION_KEY, root);
+  } catch { /* The project remains usable when tab storage is unavailable. */ }
 }
 
 /** The name to draw: the folder's name. */

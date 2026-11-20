@@ -170,6 +170,32 @@ describe("the connector", () => {
 });
 
 describe("browser live carrier", () => {
+  test("obtains the proxy token once before sending authenticated requests", async () => {
+    delete globals.__TAURI__;
+    delete document.documentElement.dataset.tanitToken;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+      url === "/api/bootstrap"
+        ? Response.json({ token: "proxy-token" })
+        : Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: { services: [] } } }),
+    );
+    try {
+      const client = new HostBridgeClient();
+      await Promise.all([
+        client.request("list-services", { projectRoot: "/workspace" }),
+        client.request("list-services", { projectRoot: "/workspace" }),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/bootstrap", expect.objectContaining({
+        headers: { "x-tanit-bootstrap": "1" },
+      }));
+      expect(fetchMock).toHaveBeenNthCalledWith(2, "/api", expect.objectContaining({
+        headers: { "content-type": "application/json", "x-tanit-token": "proxy-token" },
+      }));
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   test("opens an authenticated stream after watch and cancels it with the subscription", async () => {
     delete globals.__TAURI__;
     document.documentElement.dataset.tanitToken = "local-token";
@@ -210,6 +236,7 @@ describe("browser live carrier", () => {
 
   test("failed stream setup cancels the backend watch", async () => {
     delete globals.__TAURI__;
+    document.documentElement.dataset.tanitToken = "local-token";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       if (url === "/api/events") return new Response("forbidden", { status: 403 });
       return Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: {
@@ -221,6 +248,9 @@ describe("browser live carrier", () => {
       await expect(client.request("watch", { projectRoot: "/workspace" })).rejects.toThrow("403");
       const cancelFrame = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
       expect(cancelFrame).toMatchObject({ method: "cancel", params: { subscriptionId: "sub-failed" } });
-    } finally { fetchMock.mockRestore(); }
+    } finally {
+      fetchMock.mockRestore();
+      delete document.documentElement.dataset.tanitToken;
+    }
   });
 });

@@ -12,8 +12,8 @@ Si aún no has instalado la herramienta: [INSTALL.md](INSTALL.md).
 > CSS escritos a mano, sin dependencias, para que un `.exe` instalado
 > funcione sin red. La **app de escritorio** (`packages/app`, Angular)
 > es la otra, y es la que se distribuye. Su camino para probarla en el
-> navegador está en [CLI.md](CLI.md#how-the-app-talks-to-the-backend):
-> `bun run build:app && bun run ui:web`.
+> navegador está en [CLI.md](CLI.md#how-the-app-talks-to-the-backend).
+> Ejecuta `bun run ui:dev` para trabajar sobre los archivos fuente.
 
 ---
 
@@ -24,9 +24,51 @@ pantalla es lo que el backend responde, no un maqueta. Para verla en el
 navegador, contra el backend de verdad:
 
 ```bash
-bun run build:app   # compila la app
-bun run ui:web      # sirve la app y la API en el mismo origen
+bun run ui:dev                # Angular y Application API con recarga en desarrollo
+bun run build:app             # compila el frontend que usa Tauri
+bun run ui:web                # sirve ese build y la API en el mismo origen
 ```
+
+### Servir el build con Apache
+
+Construye la web y arranca la Application API en otra terminal.
+
+```bash
+bun run build:web
+bun run ui:web --port 5200 --proxy-origin http://127.0.0.1:8080 --no-open
+```
+
+Usa `dist/web/browser/` como directorio raíz. El build incluye
+`.htaccess`, que recupera la app al recargar una ruta como `/endpoints`
+y conserva las respuestas de los recursos y de la API.
+
+Configura Apache 2.4 con `mod_rewrite`, `mod_proxy` y `mod_proxy_http`.
+Ajusta la ruta al build y usa el puerto que imprimió la Application API.
+
+```apache
+Listen 127.0.0.1:8080
+<VirtualHost 127.0.0.1:8080>
+    ServerName 127.0.0.1
+    DocumentRoot "/ruta/absoluta/dist/web/browser"
+    DirectoryIndex index.html
+    ProxyPreserveHost On
+    ProxyPassMatch "^(/api(?:/.*)?)$" "http://127.0.0.1:5200$1"
+
+    <Directory "/ruta/absoluta/dist/web/browser">
+        Options FollowSymLinks
+        AllowOverride FileInfo
+        Require local
+    </Directory>
+    <Location "/api">
+        Require local
+    </Location>
+</VirtualHost>
+```
+
+Abre `http://127.0.0.1:8080`. El proxy conserva ese origen y el
+navegador autentica sus solicitudes con un token por arranque. El
+backend opera sobre los proyectos accesibles para el usuario que lo
+ejecuta. La selección activa se recupera al recargar la misma pestaña.
 
 Lo que hay en el menú lateral, en **cuatro grupos**. Los grupos dicen
 qué es la app para lo que estás haciendo; las secciones son lo que hay

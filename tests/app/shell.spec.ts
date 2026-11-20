@@ -17,14 +17,18 @@
  * sections are **mounted**, and opening a project **opens a
  * session**.
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestBed } from "@angular/core/testing";
+import { Location } from "@angular/common";
+import { provideLocationMocks } from "@angular/common/testing";
 
 import { AppComponent } from "../../packages/app/src/app/shell/app-shell.component";
 import { ProjectStore } from "../../packages/app/src/app/core/state/project.store";
 import { FolderPickerComponent } from "../../packages/app/src/app/features/home/folder-picker.component";
 import { RecentProjectsClient } from "../../packages/app/src/app/core/api/recent-projects.client";
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
+
+beforeEach(() => sessionStorage.clear());
 
 describe("ProjectStore", () => {
   it("opens a session and keeps the summary", async () => {
@@ -101,6 +105,17 @@ describe("ProjectStore", () => {
     expect(project.error()).toBe("Folder unavailable");
   });
 
+  it("restores the canonical project from this tab after reload", async () => {
+    const request = vi.fn().mockResolvedValue({ sessionId: "reopened", summary: { projectRoot: "/workspace/api" } });
+    sessionStorage.setItem("tanit.open-project", "/workspace/api");
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: HostBridgeClient, useValue: { request } }] });
+    const project = TestBed.inject(ProjectStore);
+    await project.restore();
+    expect(request).toHaveBeenCalledWith("open-project", { projectRoot: "/workspace/api" });
+    expect(project.sessionId()).toBe("reopened");
+  });
+
   it("tells the backend to close the session", async () => {
     const request = vi.fn(async (operation: string) => {
       if (operation === "open-project") {
@@ -132,6 +147,7 @@ describe("ProjectStore", () => {
     await project.close();
 
     expect(request).toHaveBeenCalledWith("close", { projectRoot: "/workspace/api" });
+    expect(sessionStorage.getItem("tanit.open-project")).toBeNull();
     expect(project.isOpen()).toBe(false);
   });
 });
@@ -142,11 +158,16 @@ describe("the shell", () => {
     TestBed.configureTestingModule({
       providers: [
         AppComponent,
+        ...provideLocationMocks(),
         ProjectStore,
         { provide: HostBridgeClient, useValue: { request: vi.fn() } },
       ],
     });
+
+    const location = TestBed.inject(Location);
+    location.go("/history");
     const shell = TestBed.runInInjectionContext(() => new AppComponent());
+    expect(shell.activeSection()).toBe("history");
 
     // The sections are real: the shell knows how to go to each one.
     for (const section of [
@@ -164,7 +185,10 @@ describe("the shell", () => {
     ]) {
       shell.go(section);
       expect(shell.activeSection()).toBe(section);
+      expect(location.path()).toBe(section === "overview" ? "/" : `/${section}`);
     }
+    location.back();
+    expect(shell.activeSection()).toBe("validate");
   });
 });
 

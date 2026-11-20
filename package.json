@@ -71,6 +71,7 @@
     "ui:dev": "bun run scripts/build/ui-dev.script.ts",
     "ui:web": "bun run scripts/build/ui-web.script.ts",
     "build:app": "ng build tanit-app --configuration production",
+    "build:web": "ng build tanit-app --configuration production --output-path dist/web",
     "test:app": "bunx vitest run --project app",
     "open": "bun run packages/cli/commands/open-postman.script.ts",
     "init": "bun run packages/cli/commands/init.script.ts",
