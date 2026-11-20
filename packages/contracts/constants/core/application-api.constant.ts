@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ContractDocumentationUrlSchema, ContractEvidenceReportSchema } from "./contract-evidence.constant.js";
 
 export const ProjectRootSchema = z.string().min(1, "projectRoot must not be empty");
 export const SessionIdSchema = z.string().min(1, "sessionId must not be empty");
@@ -46,19 +47,32 @@ export const GetEndpointInputSchema = z.object({
   uri: z.string().min(1),
 });
 export const GetSchemaInputSchema = GetEndpointInputSchema;
+export const CONTRACT_PREVIEW_MAX_BYTES = 256 * 1024;
+export const CONTRACT_PREVIEW_MAX_URL_LENGTH = 4096;
+export const ReadContractArtifactInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  sessionId: SessionIdSchema,
+  serviceId: z.string().min(1).max(4096),
+  artifact: z.string().min(1).max(4096),
+});
+export const ReadRemoteContractInputSchema = ReadContractArtifactInputSchema.omit({ artifact: true }).extend({
+  url: ContractDocumentationUrlSchema.max(CONTRACT_PREVIEW_MAX_URL_LENGTH),
+});
 export const ListServicesInputSchema = SnapshotInputSchema;
 export const DryRunInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   collectionName: z.string().min(1).optional(),
   /** The format to preview. `postman` when nobody says. */
   target: z.string().min(1).optional(),
-  /** Where the files would go. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
+  outputPath: z.string().min(1).optional(),
+  /** Where the files would go. Relative directories are resolved against projectRoot. */
   outputDirectory: z.string().min(1).optional(),
 });
 export const ExportInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   target: z.string().min(1),
-  /** The file to write. Its folder is the output directory. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
   outputPath: z.string().min(1).optional(),
   /** Where the files go. The project's `tanit` folder when nobody says. */
   outputDirectory: z.string().min(1).optional(),
@@ -197,7 +211,9 @@ export const SyncInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   /** The format to write. `postman` when nobody says. */
   target: z.string().min(1).optional(),
-  /** Where the files go. */
+  /** A single-file destination, resolved against projectRoot; outputDirectory overrides its folder. */
+  outputPath: z.string().min(1).optional(),
+  /** Where the files go. Relative directories are resolved against projectRoot. */
   outputDirectory: z.string().min(1).optional(),
   /** Say what would happen without writing anything. */
   dryRun: z.boolean().optional(),
@@ -244,6 +260,7 @@ export const ProjectDiagnosticSchema = z.object({
   source: z.string().optional(),
 });
 export const SnapshotSummarySchema = z.object({
+  contractEvidence: z.array(ContractEvidenceReportSchema).optional(),
   sessionId: z.string(),
   projectRoot: z.string(),
   capturedAt: z.string(),
@@ -269,7 +286,7 @@ export const ProjectEntrySchema = z.object({
 
 export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
-  "get-schema", "list-services", "service-detail", "dry-run", "export",
+  "get-schema", "read-contract-artifact", "read-remote-contract", "list-services", "service-detail", "dry-run", "export",
   "history", "history-list", "history-diff", "history-compare-config",
   "history-re-export", "history-restore",
   "watch", "cancel", "settings", "list-projects", "close", "browse",

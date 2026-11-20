@@ -127,7 +127,7 @@ export function logCoverageReport(report: IResponseCoverageReport): void {
     );
     return;
   }
-  console.log(`${header}\n${lines.join("\n")}`);
+  console.warn(`${header}\n${lines.join("\n")}`);
 }
 
 /**

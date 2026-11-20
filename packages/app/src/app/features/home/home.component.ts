@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, output } from "@angular/core";
 
 import { ProjectStore } from "../../core/state/project.store";
 import { RecentProjectsStore } from "../../core/state/recent-projects.store";
@@ -17,9 +17,10 @@ import { I18nService } from "../../core/i18n/i18n.service";
 })
 export class HomeComponent implements OnInit, OnDestroy {
   readonly i18n = inject(I18nService);
-  private readonly project = inject(ProjectStore);
-  private readonly recents = inject(RecentProjectsStore);
+  readonly project = inject(ProjectStore);
+  readonly recents = inject(RecentProjectsStore);
   private readonly dragDrop = inject(DragDropService);
+  readonly opened = output<void>();
   private unsubscribeDrop?: () => void;
 
   ngOnInit(): void {
@@ -30,16 +31,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void { this.unsubscribeDrop?.(); this.dragDrop.disconnect(); }
 
-  /**
-   * Opens a project.
-   *
-   * Opening is a **round trip** now: the backend scans the project
-   * and answers with the session and the summary. The screen used to
-   * say the project was open the moment it had its name, and every
-   * operation behind it failed with `SESSION_NOT_FOUND`.
-   */
   async open(path: string): Promise<void> {
-    const opened = await this.project.open(path);
-    if (opened) this.recents.add(path);
+    if (await this.project.open(path)) {
+      this.recents.add(this.project.projectRoot() ?? path);
+      this.opened.emit();
+    }
   }
 }

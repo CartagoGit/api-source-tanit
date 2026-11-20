@@ -35,6 +35,7 @@
  *   bun run ui:web
  *   bun run ui:web -- --port 5200
  *   bun run ui:web -- --no-open
+ *   bun run ui:web --port 5200 --proxy-origin http://127.0.0.1:8080 --no-open
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -74,7 +75,13 @@ function abrirNavegador(url: string): void {
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
 
-  if (!existsSync(join(APP_DIST, "index.html"))) {
+  const proxyIndex = argv.indexOf("--proxy-origin");
+  const browserOrigin = proxyIndex === -1 ? undefined : argv[proxyIndex + 1];
+  if (proxyIndex !== -1 && browserOrigin === undefined) {
+    console.error("Provide the local Apache origin with --proxy-origin.");
+    return 1;
+  }
+  if (browserOrigin === undefined && !existsSync(join(APP_DIST, "index.html"))) {
     console.error(
       `\n✗ The app is not built.\n  · Expected ${APP_DIST}/index.html\n` +
         "  · Build it with: bun run build:app\n",
@@ -85,17 +92,19 @@ async function main(): Promise<number> {
   const bridge = startHttpBridge({
     registry: buildRegistry(),
     port: puerto(argv),
-    staticDir: APP_DIST,
     orchestrator: defaultOrchestrator(),
     caller: "browser",
+    ...(browserOrigin === undefined ? { staticDir: APP_DIST } : { browserOrigin }),
   });
 
-  console.log(`\n✔ App at ${bridge.url}`);
+  const appUrl = browserOrigin ?? bridge.url;
+  console.log(`\n✔ App at ${appUrl}`);
+  if (browserOrigin !== undefined) console.log(`  · Proxy /api from Apache to ${bridge.url}.`);
   console.log("  · The same Application API the desktop app talks to.");
   console.log("  · Listening on this machine only: not reachable from the network.");
   console.log("  · Ctrl-C to stop.\n");
 
-  if (!argv.includes("--no-open")) abrirNavegador(bridge.url);
+  if (!argv.includes("--no-open")) abrirNavegador(appUrl);
 
   await new Promise<void>((resolve) => {
     const cerrar = (): void => {

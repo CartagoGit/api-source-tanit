@@ -6,7 +6,7 @@
  * broken: the CLI spawned the generation script with `cwd` = package
  * root, and the pipeline resolved the project root as `process.env.
  * POSTMAN_PROJECT_ROOT ?? "."`, so `--project-root` was ignored and the
- * scan targeted export-to-postman itself: empty collection.
+ * scan targeted tanit itself: empty collection.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";

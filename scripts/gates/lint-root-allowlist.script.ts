@@ -89,6 +89,7 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   { path: "vitest.config.ts", reason: "Config de vitest" },
 
   // Producto.
+  { path: "assets", reason: "Originales de marca compartidos por el producto" },
   { path: "bin", reason: "Lanzador del CLI (binario apisrc)" },
   { path: "packages", reason: "Producto: cli, core, contracts, frameworks, ui" },
   { path: "scripts", reason: "Gates, helpers y build del producto" },
@@ -100,11 +101,6 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   // pero viven aquí para conveniencia del usuario.
   { path: "integrations", reason: "Integraciones opcionales con hosts MCP (x00041)" },
 
-  // Salida de `validate:examples` sobre `example-app`. Se commitea como
-  // artefacto de referencia para que el usuario vea qué produce el CLI
-  // sin tener que ejecutarlo.
-  { path: "export-to-postman", reason: "Salida de generate sobre example-app" },
-
   // Configuración del host MCP y del repo.
   { path: "delendai.config.json", reason: "Config del host MCP Delendai" },
   // Decisiones de reconciliación del host, versionadas. El runtime las
@@ -114,6 +110,7 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   // tomó deja a todo el resto degradado y sin registro de por qué.
   { path: "config", reason: "Decisiones de reconciliación del host (Delendai)" },
   { path: ".mcp.json", reason: "Servidores MCP locales para desarrollo" },
+  { path: ".codex", reason: "Config MCP de Codex derivada de .mcp.json" },
   { path: ".vscode", reason: "Config local de VS Code (regenerada por lint:mcp)" },
   { path: ".github", reason: "Workflows y agents del repo" },
   { path: ".docker", reason: "Compose + scripts Docker (release)" },

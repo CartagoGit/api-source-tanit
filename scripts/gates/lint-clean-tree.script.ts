@@ -41,6 +41,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { relative } from "node:path";
 import { REPO_ROOT } from "../helpers/root.helper.js";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -125,7 +126,7 @@ export async function main(): Promise<number> {
     /^\.s[0-9]+-msg\.txt$/,
     /^[a-z]'\s/, // 'n foo', ' et ZSH_VERSION' (residuos de zsh)
     /^'/,
-    /^examples\/[^/]+\/export-to-postman\/[^/]+\.json$/,
+    new RegExp(`^examples/[^/]+/${OUTPUT_DIR_NAME}/[^/]+\\.json$`),
     /^__tanit_tmp__\//,
   ];
   const orphans = status.untrackedNew.filter((e) =>

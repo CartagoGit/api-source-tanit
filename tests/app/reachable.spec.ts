@@ -50,10 +50,11 @@ import type { EndpointQuery } from "../../packages/app/src/app/core/api/endpoint
 @Component({
   standalone: true,
   imports: [SidebarComponent],
-  template: `<tanit-sidebar [activeId]="activeId" (select)="chosen = $event" />`,
+  template: `<tanit-sidebar [activeId]="activeId" [projectOpen]="projectOpen" (select)="chosen = $event" />`,
 })
 class SidebarHost {
   activeId = "overview";
+  projectOpen = true;
   chosen: string | null = null;
 }
 
@@ -118,6 +119,33 @@ describe("the sidebar", () => {
     expect(current[0].textContent?.trim()).toContain("Endpoints");
   });
 
+  it("shows workspace and settings before a project opens", () => {
+    const fixture = TestBed.createComponent(SidebarHost);
+    fixture.componentInstance.projectOpen = false;
+    fixture.detectChanges();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings"]);
+  });
+
+  it("closes the mobile navigation after choosing a destination", () => {
+    const fixture = TestBed.createComponent(SidebarHost);
+    fixture.detectChanges();
+    const menu: HTMLButtonElement = fixture.nativeElement.querySelector(".menu-toggle");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+    menu.click();
+    fixture.detectChanges();
+    expect(menu.getAttribute("aria-expanded")).toBe("true");
+
+    const destinations = Array.from(
+      fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>,
+    );
+    const destination = destinations.find((button) => button.textContent?.trim() === "Settings")!;
+    destination.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.chosen).toBe("settings");
+    expect(menu.getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("has no entry that leads nowhere", () => {
     const fixture = TestBed.createComponent(SidebarHost);
     fixture.detectChanges();
@@ -170,7 +198,7 @@ describe("the diagnostics section", () => {
     expect(fixture.nativeElement.querySelectorAll("li.error").length).toBe(1);
   });
 
-  it("says so when there is nothing to report", () => {
+  it("says so when there are no scanner diagnostics", () => {
     const request = vi.fn(async () => {
       throw new Error("unexpected operation");
     });
@@ -186,11 +214,31 @@ describe("the diagnostics section", () => {
     const fixture = TestBed.createComponent(DiagnosticsComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain("Nothing to report");
+    expect(fixture.nativeElement.textContent).toContain("No scanner warnings or errors.");
   });
 });
 
 describe("the endpoint filters", () => {
+  it("reveals advanced filters with their active count and can clear them", () => {
+    const fixture = TestBed.createComponent(FiltersHost);
+    fixture.componentInstance.value = { method: "POST", transport: "http" };
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    const toggle = root.querySelector<HTMLButtonElement>("button[aria-controls]")!;
+    const advanced = root.querySelector<HTMLElement>("#advanced-endpoint-filters")!;
+    expect(advanced.hidden).toBe(true);
+    expect(toggle.textContent).toContain("2");
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(advanced.hidden).toBe(false);
+    root.querySelector<HTMLButtonElement>("button.clear")!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.changed).toEqual({});
+    expect(root.querySelector(".filter-count")).toBeNull();
+  });
+
   it("asks the backend once for a word, not once per letter", async () => {
     vi.useFakeTimers();
     try {

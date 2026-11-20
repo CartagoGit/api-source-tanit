@@ -96,7 +96,7 @@ async function runFrameworkSmoke(
   framework: string,
   workspaceRoot: string,
 ): Promise<[string, boolean, number, number, string, string | undefined]> {
-  const start = Date.now();
+  const start = performance.now();
   const fixtureRoot = smokeFixtureRoot(workspaceRoot, framework);
   const outcome = await smokeFramework(framework, fixtureRoot);
   return outcome.ok
@@ -104,11 +104,11 @@ async function runFrameworkSmoke(
         `smoke:${framework}`,
         true,
         0,
-        Date.now() - start,
+        Math.round(performance.now() - start),
         `${outcome.routeCount} routes pass`,
         undefined,
       ]
-    : [`smoke:${framework}`, false, 1, Date.now() - start, "smoke falló", outcome.detail];
+    : [`smoke:${framework}`, false, 1, Math.round(performance.now() - start), "smoke falló", outcome.detail];
 }
 
 /**
@@ -185,7 +185,7 @@ export function buildTestToolRegistration(
           }
           const args = parsed.data;
           const workspaceRoot = normalizeCwd(ctx.workspace.root);
-          const start = Date.now();
+          const start = performance.now();
           const steps: ITestStep[] = [];
 
           const pushStep = (
@@ -212,7 +212,7 @@ export function buildTestToolRegistration(
           if (withTypecheck) {
             const r = runBunCommand(["run", "typecheck"], {
               cwd: workspaceRoot,
-              timeoutMs: 60_000,
+              timeoutMs: 90_000,
               ctx: {
                 cwd: workspaceRoot,
                 bunBin: ctx.options["delendaiBunBin"] as string | undefined,
@@ -240,7 +240,7 @@ export function buildTestToolRegistration(
           // Sustituye el spawn de `bun test tests/e2e/`, que creaba decenas
           // of bun subprocesses in parallel and blew up the host's RAM.
           {
-            const smokeAllStart = Date.now();
+            const smokeAllStart = performance.now();
             const { existsSync } = await import("node:fs");
             const failDetails: string[] = [];
             let passed = 0;
@@ -258,7 +258,7 @@ export function buildTestToolRegistration(
               "test:smoke-all",
               allOk,
               allOk ? 0 : 1,
-              Date.now() - smokeAllStart,
+              Math.round(performance.now() - smokeAllStart),
               `${passed} frameworks pass${allOk ? "" : `, ${failDetails.length} fail`}`,
               allOk ? undefined : failDetails.join("\n"),
             );
@@ -273,7 +273,7 @@ export function buildTestToolRegistration(
             ok: true,
             passed: steps.every((s) => s.ok),
             steps,
-            durationMs: Date.now() - start,
+            durationMs: Math.round(performance.now() - start),
             framework: args.framework ?? null,
           };
           return toolJson(out);

@@ -73,8 +73,8 @@ export const SUPPORTED_METHODS = [
  *
  * Same as the `bin` in `package.json` and the one typed at the
  * terminal. It used to be hard-coded in the build script and stayed
- * as `postman-from-routes` — the old name — when the product
- * rebranded: release artefacts came out with a name that did not
+ * under a previous name when the product rebranded: release
+ * artefacts came out with a name that did not
  * exist anywhere else in the project.
  */
 export const BIN_NAME = "apisrc" as const;

@@ -23,7 +23,7 @@ import { resolve } from "node:path";
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import type { ILegacyDiscovery } from "../../contracts/interfaces/core/legacy-discovery.interface.js";
 import { generateCollection } from "./generation.pipeline.js";
-import { computeProjectHealth } from "../domain/project-health.service.js";
+import { summarizeGenerationResults } from "./generation-summary.helper.js";
 import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
@@ -58,36 +58,8 @@ export async function summarizeProject(
     ...(legacyFallback ? { legacyFallback } : {}),
   });
 
-  return {
-    framework: result.match?.framework ?? "unknown",
-    frameworks: result.frameworks,
-    projectName: result.config.name,
-    baseUrl: result.config.baseUrl,
-    routesInCode: result.metrics.specs,
-    withFormRequest: result.metrics.withValidation,
-    withoutFormRequest: result.metrics.withoutValidation,
-    bodiesAdded: result.metrics.bodiesInferred,
-    queriesAdded: result.metrics.queriesInferred,
-    zeroConfig: result.project.zeroConfig,
-    configPath: result.project.configPath,
-    manualEndpoints: result.project.manualEndpoints,
-    inferredVariables: result.config.variables.length,
-    auth: result.authFlow?.login
-      ? {
-          loginEndpoint: `${result.authFlow.login.request?.method ?? "POST"} ${
-            result.authFlow.login.request?.url?.raw ?? result.authFlow.login.name
-          }`,
-        }
-      : null,
-    warnings: result.warnings,
-    evidence: result.match
-      ? (await orchestrator.detectAll(resolve(projectRoot)))
-          .find((f) => f.match.framework === result.match!.framework)
-          ?.evidence ?? []
-      : [],
-    // Use `result.specs`, not adapter counters: the specs already contain the
-    // framework-agnostic inference and override merge that `generate` would
-    // write.
-    health: computeProjectHealth(result.specs),
-  };
+  const evidence = result.match
+    ? (await orchestrator.detectAll(resolve(projectRoot))).find(candidate => candidate.match.framework === result.match!.framework)?.evidence ?? []
+    : [];
+  return summarizeGenerationResults([result], result.frameworks, evidence);
 }

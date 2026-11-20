@@ -11,7 +11,7 @@
  * document**. If a trace leaks there, the consumer eats a parse error.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -141,5 +141,35 @@ describe("generate --json", () => {
     });
     expect(human.stdout).toContain("Collection written to");
     expect(() => JSON.parse(human.stdout)).toThrow();
+  }, 60_000);
+
+  test("high inline-response coverage leaves --json stdout parseable", async () => {
+    const inlineProject = join(resolve(project, ".."), "inline-response-api");
+    await cp(SOURCE_PROJECT, inlineProject, { recursive: true });
+    await writeFile(
+      join(inlineProject, "server.js"),
+      [
+        'import express from "express";',
+        "const app = express();",
+        'app.get("/health", (_req, res) => res.json({ status: "ok" }));',
+        "app.listen(3000);",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = await runProcess(
+      "bun",
+      [GENERATE, "--project-root", inlineProject, "--json"],
+      { cwd: REPO_ROOT },
+    );
+    const inlineReport = JSON.parse(result.stdout) as IGenerateReport;
+
+    expect(inlineReport.ok).toBe(true);
+    expect(inlineReport.framework).toBe("express");
+    expect(inlineReport.requests).toBe(1);
+    expect(result.stdout).not.toContain("[responses] inference coverage");
+    expect(result.stderr).toContain("[responses] inference coverage");
+    expect(result.stderr).toContain("express: 1/1 operations");
   }, 60_000);
 });

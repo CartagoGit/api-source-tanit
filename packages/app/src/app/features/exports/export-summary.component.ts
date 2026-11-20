@@ -21,8 +21,6 @@ import { I18nService } from "../../core/i18n/i18n.service";
 export class ExportSummaryComponent {
   readonly i18n = inject(I18nService);
   @Input() result: ExportResult | null = null;
-  @Output() readonly openFolder = new EventEmitter<string>();
-  @Output() readonly openPostman = new EventEmitter<void>();
   @Output() readonly copyPaths = new EventEmitter<readonly string[]>();
 
   copy(files: readonly { path: string }[]): void { this.copyPaths.emit(files.map((file) => file.path)); }

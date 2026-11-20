@@ -9,5 +9,7 @@ export type {
   SessionEventName,
   SessionEventPayload,
   SnapshotReadyEvent,
+  SnapshotErrorEvent,
   SnapshotStaleEvent,
+  SessionClosedEvent,
 } from "../../contracts/interfaces/core/session.interface.js";

@@ -94,8 +94,8 @@ async function appendEntrada(
   timestamp: Date,
   kind: "generate" | "summary" = "generate",
   collectionPath: string | null = "/x.json",
-): Promise<void> {
-  await appendHistory(
+): Promise<Awaited<ReturnType<typeof appendHistory>>> {
+  return appendHistory(
     {
       kind,
       projectRoot,
@@ -552,22 +552,23 @@ describe("dashboard — the HTTP route delivers multi-project, order, and filter
   });
 
   /**
-   * The append physically writes to `history.jsonl`: if the HTTP
+   * The append physically writes to the shared record repository: if the HTTP
    * route received the data without going through the file, server
    * restarts would empty the dashboard. This verification is small
    * but decisive: it reads the file after the append and confirms
    * the lines arrived.
    */
   test("appendHistory leaves a trail on disk, not only in memory", async () => {
-    await appendEntrada(
+    const written = await appendEntrada(
       "/p/a",
       "alpha",
       "express",
       4,
       new Date("2026-09-03T10:00:00Z"),
     );
-    const raw = await readFile(historyFile, "utf8");
-    expect(raw.split("\n").filter((l) => l.trim() !== "").length).toBe(1);
+    expect(written.ok).toBe(true);
+    const raw = await readFile(written.path, "utf8");
+    expect(JSON.parse(raw).version).toBe(2);
     expect(raw).toContain("alpha");
     expect(raw).toContain("/p/a");
   });

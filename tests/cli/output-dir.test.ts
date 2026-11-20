@@ -8,7 +8,7 @@
  * of whoever used the tool — in a folder that their `clean` wipes
  * entirely.
  *
- * Now the output is `${projectRoot}/export-to-postman/`. Nobody has
+ * Now the output is `${projectRoot}/tanit/`. Nobody has
  * a folder with that name; if they do, it is ours.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -48,7 +48,7 @@ afterAll(async () => {
 });
 
 describe("output folder", () => {
-  test("writes to export-to-postman/, not to build/", async () => {
+  test("writes to tanit/, not to build/", async () => {
     expect(existsSync(join(project, OUTPUT_DIR_NAME))).toBe(true);
     const files = await readdir(join(project, OUTPUT_DIR_NAME));
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);

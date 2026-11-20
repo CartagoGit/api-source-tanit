@@ -67,7 +67,11 @@ function wrap(text: string, width: number, indent: string): string {
   return lines.join("\n");
 }
 
+const HELP_LOGO = "       \\  |  /\n      .-  O  -.\n     (  \\___/  )\n    o----/ \\----o\n     (  /   \\  )\n      \\/_____\\/\n       `-----'";
+
 const HELP_TEMPLATE = `apisrc — Tanit (generate Postman collections from your API's source)
+
+${HELP_LOGO}
 
 USAGE
   apisrc                  Interactive wizard (no flags needed)
@@ -111,8 +115,8 @@ PUSH FLAGS
   --no-environments       Upload the collection only.
 
 ENVIRONMENT VARIABLES
-  POSTMAN_PROJECT_ROOT    Same as --project-root.
-  POSTMAN_OUTPUT_DIR      Same as --output-dir.
+  TANIT_PROJECT_ROOT      Same as --project-root. POSTMAN_PROJECT_ROOT is a deprecated alias.
+  TANIT_OUTPUT_DIR        Same as --output-dir. POSTMAN_OUTPUT_DIR is a deprecated alias.
   POSTMAN_API_KEY         Same as --api-key.
 
 EXAMPLES

@@ -34,6 +34,14 @@
 			"decidedAt": "2026-10-29T14:12:53.742Z"
 		},
 		{
+			"taskId": "c11a497c38ee0f0fecadccb3a0d13147",
+			"evidenceDigest": "b60306cdd390148017f40e6c93fbc88f",
+			"decision": "resolved-elsewhere",
+			"reason": "La unidad wip/minimax-m3/implement/batch-infra-g11/dependabot-en-las-dos-ramas ya no existe y su contenido esta mergeado en develop: el dependabot en las dos ramas esta en la historia de develop. El ref se borro al integrar el trabajo, y lo que el reconciler encuentra es un residuo del registro: el checkpoint ya no es alcanzable porque la rama que lo llevaba no existe, no porque su trabajo se perdiera. Nada se pierde.",
+			"decidedBy": "minimax-m3.1-flash",
+			"decidedAt": "2026-11-02T19:47:09.375Z"
+		},
+		{
 			"taskId": "d169ad0dd3741ab61e6bf6c94a903f36",
 			"evidenceDigest": "c147e00dc06fc2b0fb68f1a566be95a8",
 			"decision": "resolved-elsewhere",
@@ -48,6 +56,14 @@
 			"reason": "La ref wip/minimax-m3/implement/workspace-interval-g1/work se reescribio sobre el trabajo actual: su unico contenido propio era 't2' (basura de un pager) y el .md de r00019, ya mergeado en develop. El checkpoint 385ed49 sigue en el object store (git cat-file -t -> commit) y su contenido real ya esta mergeado en develop. Nada se perdio.",
 			"decidedBy": "copilot",
 			"decidedAt": "2026-10-28T20:54:26.323Z"
+		},
+		{
+			"taskId": "f98ef9a7210df08e66c5226f78ba347f",
+			"evidenceDigest": "7cf86f883b39391e40c32ed593197768",
+			"decision": "resolved-elsewhere",
+			"reason": "Las dos refs que reclamaban workspace/interval@1 eran restos de pruebas de mutacion: una vaciaba la frase de remedio del gate de proteccion de rama y la otra anadia un fichero llamado et con un 5. Ninguna tenia trabajo que no estuviera ya en develop. Ambas se han retirado y sus puntas quedan en refs/retired/, de modo que la generacion duplicada ya no existe.",
+			"decidedBy": "minimax-m3.1-flash",
+			"decidedAt": "2026-11-02T19:47:17.763Z"
 		}
 	]
 }

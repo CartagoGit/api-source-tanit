@@ -17,6 +17,7 @@
  *     envelope instead of the value.
  */
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { ReadableStream as NodeReadableStream } from "node:stream/web";
 
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 
@@ -31,7 +32,7 @@ afterEach(() => {
 });
 
 /** Puts a Tauri-shaped global in place, and hands back its pieces. */
-function fakeTauri(): {
+function fakeTauri(v2 = false): {
   invoke: ReturnType<typeof vi.fn>;
   emit(payload: unknown): void;
   listeners: Listener[];
@@ -39,7 +40,7 @@ function fakeTauri(): {
   const listeners: Listener[] = [];
   const invoke = vi.fn().mockResolvedValue(undefined);
   globals.__TAURI__ = {
-    invoke,
+    ...(v2 ? { core: { invoke } } : { invoke }),
     event: {
       listen: vi.fn(async (_name: string, callback: Listener) => {
         listeners.push(callback);
@@ -73,6 +74,16 @@ describe("the connector", () => {
       }),
     );
 
+    await expect(pending).resolves.toEqual({ services: [] });
+  });
+
+  test("uses core.invoke in a Tauri 2 window", async () => {
+    originalTauri = globals.__TAURI__;
+    const tauri = fakeTauri(true);
+    const client = new HostBridgeClient();
+    const pending = client.request("list-services", { projectRoot: "/workspace" });
+    expect(tauri.invoke).toHaveBeenCalledWith("send_to_sidecar", expect.anything());
+    tauri.emit(JSON.stringify({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: { services: [] } } }));
     await expect(pending).resolves.toEqual({ services: [] });
   });
 
@@ -155,5 +166,91 @@ describe("the connector", () => {
         params: { projectRoot: "/workspace" },
       }),
     });
+  });
+});
+
+describe("browser live carrier", () => {
+  test("obtains the proxy token once before sending authenticated requests", async () => {
+    delete globals.__TAURI__;
+    delete document.documentElement.dataset.tanitToken;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+      url === "/api/bootstrap"
+        ? Response.json({ token: "proxy-token" })
+        : Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: { services: [] } } }),
+    );
+    try {
+      const client = new HostBridgeClient();
+      await Promise.all([
+        client.request("list-services", { projectRoot: "/workspace" }),
+        client.request("list-services", { projectRoot: "/workspace" }),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/bootstrap", expect.objectContaining({
+        headers: { "x-tanit-bootstrap": "1" },
+      }));
+      expect(fetchMock).toHaveBeenNthCalledWith(2, "/api", expect.objectContaining({
+        headers: { "content-type": "application/json", "x-tanit-token": "proxy-token" },
+      }));
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  test("opens an authenticated stream after watch and cancels it with the subscription", async () => {
+    delete globals.__TAURI__;
+    document.documentElement.dataset.tanitToken = "local-token";
+    const cancelled = vi.fn();
+    vi.stubGlobal("ReadableStream", NodeReadableStream);
+    let writer!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({ start(controller) { writer = controller; }, cancel: cancelled });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (url === "/api/events") return new Response(stream, { headers: { "content-type": "application/x-ndjson" } });
+      return Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: {
+        subscription: { subscriptionId: "sub-live", projectRoot: "/workspace", onlyPaths: null }, cancelled: 1,
+      } } });
+    });
+    const client = new HostBridgeClient();
+    const observed: unknown[] = [];
+    const unsubscribe = client.subscribe((event) => observed.push(event));
+    try {
+      await client.request("watch", { projectRoot: "/workspace" });
+      expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+        headers: { "x-tanit-token": "local-token" }, body: JSON.stringify({ subscriptionId: "sub-live" }),
+      });
+      const event = { jsonrpc: "2.0", method: "tanit/live", params: {
+        type: "snapshot-stale", subscriptionId: "sub-live", sessionId: "session-1", projectRoot: "/workspace",
+        changedPaths: ["routes.ts"],
+      } };
+      // Exercise a frame split over arbitrary network chunks.
+      const encoded = JSON.stringify(event) + "\n";
+      writer.enqueue(new TextEncoder().encode(encoded.slice(0, 20)));
+      writer.enqueue(new TextEncoder().encode(encoded.slice(20)));
+      await vi.waitFor(() => expect(observed).toContainEqual(event));
+      await client.request("cancel", { subscriptionId: "sub-live" });
+      await vi.waitFor(() => expect(cancelled).toHaveBeenCalledTimes(1));
+    } finally {
+      unsubscribe(); fetchMock.mockRestore(); vi.unstubAllGlobals();
+      delete document.documentElement.dataset.tanitToken;
+    }
+  });
+
+  test("failed stream setup cancels the backend watch", async () => {
+    delete globals.__TAURI__;
+    document.documentElement.dataset.tanitToken = "local-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (url === "/api/events") return new Response("forbidden", { status: 403 });
+      return Response.json({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: {
+        subscription: { subscriptionId: "sub-failed", projectRoot: "/workspace", onlyPaths: null }, cancelled: 1,
+      } } });
+    });
+    const client = new HostBridgeClient();
+    try {
+      await expect(client.request("watch", { projectRoot: "/workspace" })).rejects.toThrow("403");
+      const cancelFrame = JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body));
+      expect(cancelFrame).toMatchObject({ method: "cancel", params: { subscriptionId: "sub-failed" } });
+    } finally {
+      fetchMock.mockRestore();
+      delete document.documentElement.dataset.tanitToken;
+    }
   });
 });

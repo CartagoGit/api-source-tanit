@@ -133,6 +133,8 @@ export interface IProjectHealth {
 
 /** Summary of a host project for quick inspection. */
 export interface IProjectSummary {
+  /** Shared static documentation comparison reports, one per generated service. */
+  contractEvidence?: ReadonlyArray<import("./contract-evidence.interface.js").IContractEvidenceReport>;
   /** Detected framework. `"unknown"` if none was recognised. */
   framework: string;
   /**

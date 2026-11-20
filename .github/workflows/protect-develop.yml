@@ -61,6 +61,10 @@ jobs:
           fi
           echo "→ REPO_ADMIN_TOKEN present; proceeding with the API call."
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
       - name: Apply branch protection
         env:
           TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
@@ -68,74 +72,10 @@ jobs:
           REPO: ${{ github.repository }}
           API_BASE: ${{ github.api_url }}
         run: |
-          # The canonical development policy — `.development` — is the
-          # ONLY source read here. `.ci.branchProtection` used to be a
-          # second one, and by the time this model was adopted the two
-          # disagreed: it still asked for one approving review on
-          # `develop` while the policy had moved to autonomous
-          # integration. Running this workflow would have silently
-          # reverted the migration, which makes a stale duplicate a live
-          # hazard rather than stale prose.
-          #
-          # Values not stated in `.development` are NOT invented here.
-          # This shell cannot expand a delendai profile, so anything it
-          # would have to guess is refused instead — a protection rule
-          # applied from a guess is how a branch ends up requiring a
-          # check nobody produces.
-          POLICY=$(jq -c '.development.integration' delendai.config.json)
-          if [ "$POLICY" = "null" ]; then
-            echo "::error::delendai.config.json has no .development.integration block."
-            echo "This workflow refuses to invent a protection policy. Declare the"
-            echo "development policy first; it is the source of truth for the branch rules."
-            exit 1
-          fi
-
-          CONTEXTS=$(jq -c '.development.integration.requiredChecks // empty' delendai.config.json)
-          if [ -z "$CONTEXTS" ] || [ "$CONTEXTS" = "[]" ]; then
-            echo "::error::.development.integration.requiredChecks is empty."
-            echo "Protecting a branch with no required check produces a gate that"
-            echo "passes anything, which is worse than no gate: it looks protected."
-            exit 1
-          fi
-
-          # `requireLatestIntegration` is what strict status checks mean:
-          # a candidate is re-validated against the CURRENT head, which
-          # is what stops two independently green pull requests from
-          # combining into a red branch.
-          STRICT=$(jq -c '.development.integration.requireLatestIntegration // true' delendai.config.json)
-          APPROVALS=$(jq -c '.development.integration.requiredApprovals // 0' delendai.config.json)
-
-          # The remaining switches come from the SAME block the gate
-          # verifies against. Hardcoding them here gave the workflow a
-          # second answer to "what must protect develop": it applied a
-          # linear-history rule the policy did not declare, and a branch
-          # that forbids merge commits rejects every push containing one.
-          # One source, read twice — by this workflow and by the gate.
-          LINEAR=$(jq -c '.development.integration.linearHistory // true' delendai.config.json)
-          FORCE=$(jq -c '.development.integration.allowForcePush // false' delendai.config.json)
-          DELETIONS=$(jq -c '.development.integration.allowDeleteIntegrationBranch // false' delendai.config.json)
-
-          PAYLOAD=$(jq -n \
-            --argjson contexts "$CONTEXTS" \
-            --argjson strict "$STRICT" \
-            --argjson approvals "$APPROVALS" \
-            --argjson linear "$LINEAR" \
-            --argjson force "$FORCE" \
-            --argjson deletions "$DELETIONS" '{
-            required_status_checks: { strict: $strict, contexts: $contexts },
-            enforce_admins: true,
-            required_pull_request_reviews: {
-              dismiss_stale_reviews: false,
-              require_code_owner_reviews: false,
-              required_approving_review_count: $approvals
-            },
-            restrictions: null,
-            required_linear_history: $linear,
-            allow_force_pushes: $force,
-            allow_deletions: $deletions,
-            block_creations: false,
-            required_conversation_resolution: false
-          }')
+          # The verifier and applicator share one policy implementation.
+          # Explicit false values and release strictness retain their meaning.
+          PAYLOAD=$(bun scripts/gates/branch-protection-payload.script.ts "$BRANCH")
+          CONTEXTS=$(echo "$PAYLOAD" | jq -c '.required_status_checks.contexts')
 
           echo "→ PATCH ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
           HTTP_CODE=$(curl -sS -o /tmp/protect-response.json -w "%{http_code}" \

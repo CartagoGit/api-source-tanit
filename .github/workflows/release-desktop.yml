@@ -80,18 +80,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-13 es el último corredor x64; macos-14 es arm64. Cada
-          # uno construye su propia arquitectura: no hay cross-build.
+          # Compilación nativa con un corredor Intel y otro Apple Silicon.
           # En macOS, Tauri construye **sólo** el `.app`: el `.dmg`
           # lo hace `scripts/release/package-dmg.sh`, y lo hace
           # **después** de grapar el bundle. El `.dmg` de Tauri lleva
           # dentro un `.app` sin firmar, y Apple rechaza esa imagen.
-          - os: macos-13
+          - os: macos-15-intel
             platform: macos
             arch: x64
             tauri_bundles: app
             bundles: app,dmg
-          - os: macos-14
+          - os: macos-15
             platform: macos
             arch: arm64
             tauri_bundles: app
@@ -111,10 +110,7 @@ jobs:
     permissions:
       contents: write
 
-    # El canal lo dice el gate, no el evento: el prefijo de la
-    # versión decide si lo que sale es una release estable o una
-    # prerelease. `release-cut` usa la misma fuente, así que los dos
-    # workflows no pueden discrepar.
+    # El gate deduce el canal de la versión y comparte el resultado con release-cut.
     outputs:
       channel: ${{ steps.channel.outputs.channel }}
 
@@ -131,10 +127,7 @@ jobs:
         with:
           bun-version: 1.4.2
 
-      # El canal lo dice el gate, no el evento: el prefijo de la
-      # versión decide si lo que sale es una release estable o una
-      # prerelease. `release-cut` usa la misma fuente, así que los dos
-      # workflows no pueden discrepar.
+      # El gate deduce el canal de la versión.
       #
       # Va **después** del checkout porque el gate es un script del
       # repositorio: sin el código en el disco no hay nada que
@@ -242,11 +235,11 @@ jobs:
       - name: Empaquetar
         run: bun run desktop:build
         env:
-          # `EXPOSTMAN_BUNDLES` es la variable que lee
+          # `TANIT_BUNDLES` es la variable que lee
           # `scripts/build/desktop-build.script.ts` para acotar los
           # formatos. La matriz dice lo mismo, pero escribirlo aquí
           # deja el recorte explícito en el workflow.
-          EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}
+          TANIT_BUNDLES: ${{ matrix.tauri_bundles }}
 
       # El staging tiene una forma fija: <os>/<arch>/<bundle>/. El
       # manifest dice qué debería haber; la ruta dice qué hay.

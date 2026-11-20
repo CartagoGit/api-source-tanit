@@ -1,1 +1,17 @@
-<div class="home"><header><span class="eyebrow">{{ i18n.translate("app.name") }}</span><h1>{{ i18n.translate("home.title") }}</h1><p>{{ i18n.translate("home.intro") }}</p></header><tanit-folder-picker (selected)="open($event)" /><tanit-recent-projects (selected)="open($event)" /><details><summary>{{ i18n.translate("home.advanced") }}</summary><label>{{ i18n.translate("home.path") }}<input #path type="text" [placeholder]="i18n.translate('home.pathPlaceholder')" (keydown.enter)="open(path.value)" /></label></details></div>
+<section class="home">
+  <header class="intro">
+    <h1>{{ project.isOpen() ? project.projectName() : i18n.translate("home.title") }}</h1>
+    @if (!project.isOpen()) { <p>{{ i18n.translate("home.intro") }}</p> }
+  </header>
+  @if (project.summary(); as summary) {
+    <dl class="metrics">
+      <div><dt>{{ i18n.translate("nav.endpoints") }}</dt><dd>{{ summary.endpointCount }}</dd></div>
+      <div><dt>{{ i18n.translate("nav.services") }}</dt><dd>{{ summary.serviceCount }}</dd></div>
+      <div><dt>{{ i18n.translate("home.frameworks") }}</dt><dd>{{ summary.frameworks.join(", ") }}</dd></div>
+    </dl>
+  }
+  <div class="home-grid" [class.has-recents]="recents.projects().length > 0">
+    <tanit-folder-picker [busy]="project.loading()" (selected)="open($event)" />
+    @if (recents.projects().length) { <tanit-recent-projects (selected)="open($event)" /> }
+  </div>
+</section>

@@ -64,7 +64,6 @@ export class ExportsClient {
     projectRoot: string,
     target: ExportFormat,
     outputDirectory: string,
-    workspaceRoot: string,
   ): Promise<ExportDryRun> {
     const answer: DryRunOutput = await this.bridge.request("dry-run", {
       projectRoot,
@@ -77,7 +76,7 @@ export class ExportsClient {
       change: file.change,
       bytes: file.bytes,
       overwriteRisk: file.change === "UPDATE",
-      outsideWorkspace: !isInside(workspaceRoot, file.path),
+      outsideWorkspace: file.outsideWorkspace !== false,
     }));
 
     const diagnostics: ExportDiagnostic[] = answer.diagnostics.map((diagnostic) => ({
@@ -131,10 +130,4 @@ export class ExportsClient {
       summary: format.summary,
     }));
   }
-}
-
-/** Whether a path is inside a folder. */
-function isInside(root: string, path: string): boolean {
-  const normalizedRoot = root.endsWith("/") ? root : `${root}/`;
-  return path.startsWith(normalizedRoot);
 }

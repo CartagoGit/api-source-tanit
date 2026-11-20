@@ -11,7 +11,7 @@
  * Comprueba las invariantes de x00032 (cierre coherente):
  *   1. El `status` es uno de los estados válidos.
  *   2. La carpeta corresponde a ese estado.
- *   3. Dentro de `done/`, la subcarpeta corresponde al `kind`.
+ *   3. Dentro de `done/`, la subcarpeta corresponde a la familia estable del id (kind para ids legacy).
  *   4. Los `id` no se repiten y coinciden con el prefijo del fichero.
  *   5. El esqueleto de carpetas existe entero y cada una tiene `.gitkeep`.
  *   6. (x00032 S1) Una propuesta `status: done` cuyo `kind` no sea
@@ -21,7 +21,8 @@
  *      esta regla porque sus slices son recomendaciones aspiracionales
  *      que abren OTROS `kind: fix|chore|feat` — no trabajo de la propia
  *      auditoría.
- *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shippedIn:`
+ *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shipped-in:`
+ *      (o el alias histórico `shippedIn:`)
  *      con al menos un SHA. Y cada SHA debe ser alcanzable en git,
  *      lo que exige DOS comprobaciones:
  *        - `git cat-file -e <sha>`                         → el objeto existe.
@@ -41,7 +42,10 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { basename, join, relative, } from "node:path";
+import { parseShippedIn } from "../helpers/proposal-frontmatter.helper.js";
 import { PROPOSALS_DIR, REPO_ROOT } from "../helpers/root.helper.js";
+
+export { parseShippedIn };
 
 const execFileAsync = promisify(execFile);
 
@@ -113,39 +117,6 @@ function readField(frontmatter: string, name: string): string {
 }
 
 /**
- * Parsea el frontmatter YAML-like y devuelve los `shippedIn: [...]` SHAs.
- *
- * Acepta dos formas (lo que aparece en el repo):
- *
- *   shippedIn:
- *     - cc134ce  # comentario
- *     - 3f6b533
- *
- *   shippedIn: [cc134ce, 3f6b533]
- *
- * Si el campo no existe o está vacío, devuelve `[]`.
- */
-function parseShippedIn(body: string): string[] {
-  const block = body.match(/^shippedIn:\s*\n((?:\s*-\s*\S+\s*(?:#.*)?\s*\n?)+)/m);
-  if (block && block[1] !== undefined) {
-    const out: string[] = [];
-    for (const line of block[1].split("\n")) {
-      const sha = line.match(/-\s*([0-9a-f]{7,40})\b/i)?.[1];
-      if (sha) out.push(sha);
-    }
-    return out;
-  }
-  const inline = body.match(/^shippedIn:\s*\[([^\]]+)\]/m);
-  if (inline) {
-    return (inline[1] ?? "")
-      .split(",")
-      .map((s) => s.trim().match(/([0-9a-f]{7,40})/i)?.[1] ?? "")
-      .filter(Boolean);
-  }
-  return [];
-}
-
-/**
  * Busca las marcas `**Status**: <value>` en el cuerpo de la propuesta.
  *
  * Solo cuenta las que estén bajo una sección `## Slices` (x00032 S1).
@@ -167,6 +138,19 @@ function parseSliceStatuses(bodyAfter: string): string[] {
     if (v !== undefined) out.push(v.toLowerCase());
   }
   return out;
+}
+
+/** Reject unterminated metadata before the body can masquerade as YAML. */
+export function frontmatterProblem(source: string): string | null {
+  const lines = source.split(/\r?\n/);
+  if (lines[0] !== "---") return "falta el delimitador inicial del frontmatter";
+  for (const line of lines.slice(1)) {
+    if (line === "---") return null;
+    if (/^#{1,6}\s/.test(line)) {
+      return "falta el delimitador de cierre del frontmatter antes del cuerpo";
+    }
+  }
+  return "falta el delimitador de cierre del frontmatter";
 }
 
 async function collectProposals(dir: string): Promise<IProposal[]> {
@@ -207,10 +191,26 @@ async function collectProposals(dir: string): Promise<IProposal[]> {
   return out;
 }
 
-/** Carpeta donde debería vivir una propuesta según su frontmatter. */
+/** Canonical ID families used by DelendAI's proposal reconciler.
+ * Legacy p IDs retain their recorded kind; their family predates this protocol.
+ * Storage follows the stable family, while historical semantic kinds stay intact.
+ */
+const KIND_BY_PREFIX: Readonly<Record<string, string>> = {
+  f: "feat", b: "breaking", x: "fix", r: "refactor", v: "perf",
+  a: "audit", c: "chore", d: "docs", t: "test", i: "infra", s: "spike",
+  q: "plan", n: "resume", e: "repair",
+};
+
+/** Folder used by the runtime for a terminal proposal. */
+export function doneFolderFor(id: string, kind: string): string {
+  const storageKind = KIND_BY_PREFIX[id[0] ?? ""] ?? kind;
+  return join("done", KIND_DIRS[storageKind] ?? "chores");
+}
+
+/** Storage must agree with the runtime that materializes proposal documents. */
 function expectedFolder(proposal: IProposal): string {
   if (proposal.status !== "done") return proposal.status;
-  return join("done", KIND_DIRS[proposal.kind] ?? "chores");
+  return doneFolderFor(proposal.id, proposal.kind);
 }
 
 /** ¿La propuesta usa la subcarpeta opcional correspondiente a su kind? */
@@ -364,6 +364,8 @@ export async function main(): Promise<number> {
 
   for (const proposal of proposals) {
     const rel = relative(REPO_ROOT, proposal.path);
+    const metadataProblem = frontmatterProblem(proposal.body);
+    if (metadataProblem !== null) problems.push(`${rel}: ${metadataProblem}`);
 
     if (!proposal.id) {
       problems.push(`${rel}: falta \`id\` en el frontmatter`);
@@ -407,11 +409,11 @@ export async function main(): Promise<number> {
         );
       }
 
-      // Regla 2: `shippedIn` no vacío y SHAs alcanzables.
+      // Regla 2: `shipped-in` no vacío y SHAs alcanzables.
       const shas = parseShippedIn(proposal.body);
       if (shas.length === 0) {
         problems.push(
-          `${rel}: status "done" pero \`shippedIn:\` está vacío — x00032 S1 (regla 2)`,
+          `${rel}: status "done" pero \`shipped-in:\` (o \`shippedIn:\`) está vacío — x00032 S1 (regla 2)`,
         );
       } else {
         for (const sha of shas) {

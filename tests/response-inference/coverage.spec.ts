@@ -118,6 +118,31 @@ describe("coverage reporter — arithmetic (r00020 S3)", () => {
     expect(() => logCoverageReport(report)).not.toThrow();
     expect(() => logCoverageReport(buildCoverageReport([]))).not.toThrow();
   });
+
+  test("high coverage uses the diagnostic channel and returns the structured report", () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const report = reportResponseCoverage([
+        { framework: "fastify", id: "fastify", total: 1, inferred: 1 },
+      ]);
+
+      expect(report.entries[0]).toMatchObject({
+        framework: "fastify",
+        total: 1,
+        inferred: 1,
+        percentage: 100,
+        belowBaseline: false,
+      });
+      expect(warn.mock.calls.map((call) => String(call[0])).join("\n")).toContain(
+        "[responses] inference coverage",
+      );
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      log.mockRestore();
+    }
+  });
 });
 
 describe("coverage reporter — the frozen baseline (r00020 S3)", () => {

@@ -9,14 +9,14 @@ Lo que el `exports` del `package.json` deja importar desde fuera del
 paquete. Todo lo demás es interno y puede cambiar sin aviso.
 
 ```ts
-import { generateWithAllFrameworks } from "export-to-postman/frameworks";
-import { buildCollection } from "export-to-postman/core/domain/collection-builder.service";
+import { generateWithAllFrameworks } from "api-source-tanit/frameworks";
+import { buildCollection } from "api-source-tanit/core/domain/collection-builder.service";
 ```
 
 Si lo que buscas es la herramienta de línea de comandos y no la
-librería, `expostman --help` lista los comandos y las banderas.
+librería, `apisrc --help` lista los comandos y las banderas.
 
-> 423 símbolos en 170 módulos.
+> 456 símbolos en 182 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -212,44 +212,31 @@ their envelope; everything else becomes `EXECUTION_FAILED`.
 
 ### `packages/core/application-api/export-artifacts.helper.ts`
 
-Turning a snapshot into files on disk.
+Application API adapters for the shared export preparation and writer.
 
 #### `planExport`
 
 ```ts
-export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<IExportPlan>
+export async function planExport(...args: Parameters<typeof files.planExport>): ReturnType<typeof files.planExport>
 ```
-
-Builds the artifacts of one format and says where they would go.
-
-Nothing is written. The paths are absolute, so the caller can show
-them and the user can see where the tool is about to write.
 
 #### `writeExport`
 
 ```ts
-export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExport(...args: Parameters<typeof files.writeExport>): ReturnType<typeof files.writeExport>
 ```
-
-Builds the artifacts once, says what each file would change, and
-**writes** them.
-
-The write is atomic: a file that is half-written is worse than no
-file, because the user cannot tell which half is the truth.
 
 #### `writeExportWithPlan`
 
 ```ts
-export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+export async function writeExportWithPlan(...args: Parameters<typeof files.writeExportWithPlan>): ReturnType<typeof files.writeExportWithPlan>
 ```
 
-Writes the artifacts and tells what was written, **and** what would
-have been written.
+#### `resolveExportDestination`
 
-The build happens **once**: a preview that built the artifacts
-again could promise a file the write would not produce, and a
-`sync` that builds them twice spends twice the time on the most
-expensive step of the pipeline.
+```ts
+export function resolveExportDestination(...args: Parameters<typeof files.resolveExportDestination>): ReturnType<typeof files.resolveExportDestination>
+```
 
 ### `packages/core/application-api/export.handler.ts`
 
@@ -423,6 +410,30 @@ Reads a collection, or says why it could not be read.
 export function createPushHandler(): IHandler<PushInput, PushOutput>
 ```
 
+### `packages/core/application-api/read-contract-artifact.handler.ts`
+
+#### `createReadContractArtifactHandler`
+
+```ts
+export function createReadContractArtifactHandler(): IHandler<ReadContractArtifactInput, ReadContractArtifactOutput>
+```
+
+### `packages/core/application-api/read-remote-contract.handler.ts`
+
+#### `createReadRemoteContractHandler`
+
+```ts
+export function createReadRemoteContractHandler(): IHandler<ReadRemoteContractInput, ReadContractArtifactOutput>
+```
+
+### `packages/core/application-api/remote-contract-text.helper.ts`
+
+#### `readRemoteContractText`
+
+```ts
+export async function readRemoteContractText(address: string): Promise<string>
+```
+
 ### `packages/core/application-api/service-detail.handler.ts`
 
 `service-detail.handler.ts` — one service, with everything known about it.
@@ -435,7 +446,7 @@ export function createServiceDetailHandler(): IHandler<ServiceDetailInput, Servi
 
 ### `packages/core/application-api/settings.handlers.ts`
 
-`settings.handlers.ts` — get / patch per-session options.
+Session settings are owned and applied atomically by the shared session.
 
 #### `createSettingsHandler`
 
@@ -519,6 +530,18 @@ export function clearSubscriptions(): void
 
 ```ts
 export function dropSubscriptionById(id: string): boolean
+```
+
+#### `connectSubscriptionEvents`
+
+```ts
+export function connectSubscriptionEvents(id: string, sink: LiveEventSink): () => void
+```
+
+#### `dropSubscriptionsForProject`
+
+```ts
+export function dropSubscriptionsForProject(projectRoot: string): void
 ```
 
 #### `listSubscriptions`
@@ -635,6 +658,17 @@ between iterations).
 @see `IProjectContext` for the root context. If more per-service overrides are
 added in the future (global auth, extra headers, URI prefixes, etc.), this
 helper is the natural place to extend them.
+
+### `packages/core/discovery/contract-reconciliation.service.ts`
+
+#### `reconcileContracts`
+
+```ts
+export function reconcileContracts(scans: ReadonlyArray<IContractScan>): IContractEvidenceReport | undefined
+```
+
+Compare original observations without changing merger precedence or inventing absence.
+A match means compatible observed assertions, not full HTTP/schema certification.
 
 ### `packages/core/discovery/discovery.orchestrator.ts`
 
@@ -799,9 +833,15 @@ mutable copy for that reason; we preserve that contract.
 @param service        The descriptor for one service in the graph.
 @returns              Specs that belong to this service.
 
-### `packages/core/discovery/generation.pipeline.ts`
+### `packages/core/discovery/generation-summary.helper.ts`
 
-Generation pipeline: `projectRoot` -> `PostmanCollection`.
+#### `summarizeGenerationResults`
+
+```ts
+export function summarizeGenerationResults(results: ReadonlyArray<IGenerationResult>, frameworks: ReadonlyArray<string>, evidence: ReadonlyArray<IProjectDetectionEvidence> = []): IProjectSummary
+```
+
+### `packages/core/discovery/generation.pipeline.ts`
 
 #### `MultipleServicesWithoutCombineError`
 
@@ -915,6 +955,12 @@ Derives a stable id from a match. Two matches with the same
   introduced by a00010.
 - Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
   between single-framework services in different roots.
+
+#### `resolveServiceIdentity`
+
+```ts
+export function resolveServiceIdentity( matches: readonly IProjectMatch[], detectedMonorepo: boolean | undefined, ):
+```
 
 #### `collectFlatHybridRoutes`
 
@@ -1145,7 +1191,7 @@ export function resolveProjectContext( options: IResolveContextOptions =
 Builds a project context.
 
 Root priority: explicit parameter → `--project-root` in argv →
-`POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+`TANIT_PROJECT_ROOT` in env (with its deprecated alias). Throws if none is present because continuing
 with a guessed root produces empty collections without explaining why (this
 was exactly the CLI bug with `--project-root`).
 
@@ -2018,6 +2064,77 @@ Bruno exporter.
 export class BrunoExporter implements IExportTarget
 ```
 
+### `packages/core/exporters/export-files.service.ts`
+
+Shared preparation and atomic writing of export artifacts. A prepared plan holds the exact content used by previews and every host's writer. Building all plans before writing lets callers reject exporter failures without replacing any previous output.
+
+#### `ExportPreparationError`
+
+```ts
+export class ExportPreparationError extends Error
+```
+
+#### `resolveExportDestination`
+
+```ts
+export function resolveExportDestination( snapshot: IProjectSnapshot, outputDirectory?: string, outputPath?: string, ):
+```
+
+Resolves user destinations against the project being exported.
+
+An explicit directory takes precedence over the directory in outputPath;
+outputPath still supplies the file name. Without either, use the project's
+standard output directory. Both preview and write consume this resolution.
+
+#### `planExport`
+
+```ts
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
+```
+
+Builds the artifacts of one format and says where they would go.
+
+Nothing is written. The paths are absolute, so the caller can show
+them and the user can see where the tool is about to write.
+
+#### `writeExport`
+
+```ts
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+```
+
+Builds the artifacts once, says what each file would change, and
+**writes** them.
+
+The write is atomic: a file that is half-written is worse than no
+file, because the user cannot tell which half is the truth.
+
+#### `writeExportWithPlan`
+
+```ts
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+```
+
+Writes the artifacts and tells what was written, **and** what would
+have been written.
+
+The build happens **once**: a preview that built the artifacts
+again could promise a file the write would not produce, and a
+`sync` that builds them twice spends twice the time on the most
+expensive step of the pipeline.
+
+#### `writePreparedExport`
+
+```ts
+export async function writePreparedExport(planned: IPreparedExport): Promise<
+```
+
+#### `prepareExport`
+
+```ts
+export async function prepareExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IPreparedExport>
+```
+
 ### `packages/core/exporters/export-registry.service.ts`
 
 The catalog of output formats.
@@ -2417,7 +2534,7 @@ Centralized environment-variable resolver (x00067).
 #### `envOrAlias`
 
 ```ts
-export function envOrAlias( canonical: string, deprecated: string, ): string | undefined
+export function envOrAlias( canonical: string, deprecated: string, env: Readonly<Record<string, string | undefined>> = process.env, ): string | undefined
 ```
 
 Resolves `canonical` (preferred) with `deprecated` (alias) as
@@ -2459,6 +2576,20 @@ skipping those that don't exist.
 
 ```ts
 export function isSourceJsTsFile(name: string): boolean
+```
+
+### `packages/core/helpers/live-event.helper.ts`
+
+#### `isLiveEvent`
+
+```ts
+export function isLiveEvent(value: unknown): value is LiveEvent
+```
+
+#### `isLiveOutputChange`
+
+```ts
+export function isLiveOutputChange(path: string, projectRoot: string, outputs: readonly string[]): boolean
 ```
 
 ### `packages/core/helpers/module-path.helper.ts`
@@ -2627,6 +2758,14 @@ If `folder` is passed, it's used as the prefix of the folder path.
 export function countItems(collection: PostmanCollection):
 ```
 
+### `packages/core/helpers/read-bounded-text.helper.ts`
+
+#### `readBoundedText`
+
+```ts
+export async function readBoundedText(path: string, limit: number): Promise<
+```
+
 ### `packages/core/helpers/read-files.helper.ts`
 
 Read many files without reading them one at a time.
@@ -2669,12 +2808,8 @@ Where the project root comes from, in one place.
 export function resolveRoot(options: IResolveRootOptions =
 ```
 
-The project root: `--project-root`, then `POSTMAN_PROJECT_ROOT`, and
-as a last resort the current directory.
-
-The order is the one two of the three commands already had, so it
-changes nobody's behavior — it just makes it consistent across all
-of them and adds where it came from.
+Resolves the project root from `--project-root`, `TANIT_PROJECT_ROOT`
+(with its deprecated alias), or the current directory.
 
 #### `guessedRootNotice`
 
@@ -4979,6 +5114,117 @@ What changed between two revisions of a project.
 export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
 ```
 
+### `packages/core/session/history-paths.helper.ts`
+
+Dónde vive el historial de generaciones.
+
+#### `userHistoryDir`
+
+```ts
+export function userHistoryDir( env: Readonly<Record<string, string | undefined>> = process.env, platform: string = process.platform, home: string = homedir(), ): string
+```
+
+La carpeta del historial de generaciones, dentro del `homedir` de
+quien usa la aplicación.
+
+Se inyectan `env`, `platform` y `home` para poder probar las tres
+convenciones sin cambiar de sistema operativo. Es el mismo patrón
+que `userConfigDir`: la única forma de tener un test que valga algo
+es no depender del sistema que lo corre.
+
+#### `historyPath`
+
+```ts
+export function historyPath( env?: Readonly<Record<string, string | undefined>>, platform?: string, home?: string, ): string
+```
+
+#### `projectHistoryDirectory`
+
+```ts
+export function projectHistoryDirectory(root: string, base: string): string
+```
+
+### `packages/core/session/history-run.repository.ts`
+
+#### `writeHistoryRun`
+
+```ts
+export async function writeHistoryRun(entry: IHistoryEntry, directory: string, identity?: string, legacy = false): Promise<string>
+```
+
+#### `storedHistoryRuns`
+
+```ts
+export async function storedHistoryRuns(directory: string, projectRoot?: string): Promise<ReadonlyArray<
+```
+
+#### `migrateLegacyHistory`
+
+```ts
+export async function migrateLegacyHistory(directory: string, path = historyPath()): Promise<Awaited<ReturnType<typeof readLegacyHistory>>>
+```
+
+### `packages/core/session/history-run.service.ts`
+
+The shared history authority; JSONL is a read-only migration input.
+
+#### `historyDirectoryFor`
+
+```ts
+export function historyDirectoryFor(path?: string): string
+```
+
+#### `appendHistory`
+
+```ts
+export async function appendHistory(input: IHistoryEntryInput, path?: string, now = new Date()): Promise<IHistoryAppendResult>
+```
+
+#### `readHistory`
+
+```ts
+export async function readHistory(options: IHistoryReadOptions =
+```
+
+#### `clearHistory`
+
+```ts
+export async function clearHistory(path?: string): Promise<boolean>
+```
+
+#### `formatHistoryJsonl`
+
+```ts
+export function formatHistoryJsonl(entries: ReadonlyArray<IHistoryEntry>): string
+```
+
+### `packages/core/session/legacy-history.helper.ts`
+
+Read-only compatibility importer. New writes use the common history store.
+
+#### `isHistoryEntry`
+
+```ts
+export function isHistoryEntry(value: unknown): value is IHistoryEntry
+```
+
+#### `readLegacyHistory`
+
+```ts
+export async function readLegacyHistory( options: IHistoryReadOptions =
+```
+
+Reads the history and returns the requested entries.
+
+`limit` trims from the tail (the most recent), not from the head:
+a history that already passed N entries would always show the same
+first ones, which is the opposite of what a dashboard wants.
+
+Lines that fail to parse or to pass `isHistoryEntry` are returned
+in `rejected` with their 1-indexed line number (which is what an
+editor shows). The file can be legitimate and still have one bad
+line; that does not prevent returning the rest.
+
 ### `packages/core/session/project-history.service.ts`
 
 #### `resolveHistoryDirectory`
@@ -5010,8 +5256,16 @@ export async function openSession( projectRoot: string, options: IProjectSession
 
 Opens (or returns) a session for `projectRoot`.
 
-The first call triggers a full scan. Subsequent calls for the same
-root return the existing session without scanning again.
+Concurrent calls share one scan and use the first caller's configuration.
+Each caller retains its own abort signal. Roots are normalized lexically,
+without resolving relative paths or requiring filesystem existence.
+Later calls return the registered session without scanning again.
+
+#### `cancelSessionOpening`
+
+```ts
+export function cancelSessionOpening(projectRoot: string): boolean
+```
 
 #### `getSession`
 

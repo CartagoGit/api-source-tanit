@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from "@angular/core";
+import { Location } from "@angular/common";
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal } from "@angular/core";
 
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
 import { ThemeStore } from "../core/state/theme.store";
-import { ButtonComponent } from "../shared/button/button.component";
-import { EmptyStateComponent } from "../shared/empty-state/empty-state.component";
 import { SidebarComponent } from "./sidebar.component";
 import { CommandPaletteComponent } from "./command-palette.component";
 import { HomeComponent } from "../features/home/home.component";
@@ -49,8 +48,6 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
   imports: [
     SidebarComponent,
     CommandPaletteComponent,
-    ButtonComponent,
-    EmptyStateComponent,
     HomeComponent,
     EndpointsListComponent,
     ExportCenterComponent,
@@ -70,9 +67,11 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
   styleUrls: ["./app-shell.component.scss"],
 })
 export class AppComponent {
+  private readonly location = inject(Location);
   readonly i18n = inject(I18nService);
   readonly project = inject(ProjectStore);
   readonly paletteOpen = signal(false);
+  readonly commandShortcut = "Ctrl+K";
   readonly activeSection = signal("overview");
   /** The theme, and the switch that changes it. */
   readonly themes = inject(ThemeStore);
@@ -102,17 +101,44 @@ export class AppComponent {
     settings: "nav.settings",
   };
 
+  constructor() {
+    this.readSection(this.location.path());
+    inject(DestroyRef).onDestroy(this.location.onUrlChange(() => this.readSection(this.location.path())));
+    void this.project.restore();
+  }
+
+  private readSection(path: string): void {
+    const section = path.split(/[?#]/, 1)[0]?.replace(/^\//, "").replace(/\/$/, "") ?? "";
+    this.activeSection.set(Object.hasOwn(this.sectionLabels, section) ? section : "overview");
+  }
+
   toggleTheme(): void { this.themes.toggle(); }
 
   /** Goes to a section. */
-  go(section: string): void { this.activeSection.set(section); }
+  go(section: string): void {
+    if (!Object.hasOwn(this.sectionLabels, section) || section === this.activeSection()) return;
+    this.location.go(section === "overview" ? "/" : `/${section}`);
+  }
+
+  projectOpened(): void {
+    if (this.activeSection() === "overview") this.go("endpoints");
+  }
+
+  showProjectPicker(): void {
+    this.go("overview");
+    if (typeof document !== "undefined" && typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => document.getElementById("project-path")?.focus());
+    }
+  }
 
   runCommand(command: string): void {
     if (command === "theme") this.toggleTheme();
-    if (command === "open" || command === "recent") this.go("overview");
+    if (command === "open" || command === "recent") this.showProjectPicker();
     if (command === "settings") this.go("settings");
-    if (command === "search") this.go("endpoints");
-    if (command === "export") this.go("exports");
+    if (command === "search" || command === "export") {
+      if (!this.project.isOpen()) this.showProjectPicker();
+      else this.go(command === "search" ? "endpoints" : "exports");
+    }
     // "Rescan" used to just go back to the overview. It now asks
     // the backend what the project looks like **now** — the session
     // watches the files, and its snapshot may be older than the
@@ -129,7 +155,7 @@ export class AppComponent {
    */
   async rescan(): Promise<void> {
     if (!this.project.isOpen()) {
-      this.go("overview");
+      this.showProjectPicker();
       return;
     }
     await this.project.refresh();

@@ -11,6 +11,13 @@
 
 // --- node:fs/promises ----------------------------------------------------
 declare module "node:fs/promises" {
+  export function open(path: string, flags: number): Promise<{
+    stat(): Promise<{ isFile(): boolean; size: number }>;
+    read(buffer: Uint8Array, offset: number, length: number, position: number): Promise<{ bytesRead: number }>;
+    close(): Promise<void>;
+  }>;
+  /** Omitting encoding returns the original bytes, as in Node and Bun. */
+  export function readFile(path: string): Promise<IBufferLike>;
   export function readFile(
     path: string,
     encoding: "utf8" | "utf-8",
@@ -20,7 +27,7 @@ declare module "node:fs/promises" {
   // `writeFile(path, data)`.
   export function writeFile(
     path: string,
-    data: string,
+    data: string | Uint8Array,
     encoding?: "utf8" | "utf-8",
   ): Promise<void>;
   export function mkdir(
@@ -62,6 +69,12 @@ declare module "node:fs/promises" {
     size: number;
     /** Permission bits, used to check the execute bit. */
     mode: number;
+    /**
+     * Last write, in milliseconds since the epoch. The gates use it to
+     * tell a directory somebody is writing to right now from one that
+     * was left behind.
+     */
+    mtimeMs: number;
   }>;
   export function copyFile(src: string, dest: string): Promise<void>;
   export function symlink(target: string, path: string): Promise<void>;
@@ -112,6 +125,7 @@ declare module "node:path" {
   export function basename(p: string, ext?: string): string;
   export function extname(p: string): string;
   export function join(...segments: string[]): string;
+  export const posix: { readonly join: typeof join };
   export function relative(from: string, to: string): string;
   export function isAbsolute(p: string): boolean;
   export const sep: string;
@@ -137,6 +151,7 @@ declare module "node:path" {
 
 // --- node:fs (sync) ------------------------------------------------------
 declare module "node:fs" {
+  export const constants: { O_RDONLY: number; O_NONBLOCK: number; O_NOFOLLOW: number };
   /**
    * What this repo uses from a filesystem watcher: closing it.
    *
@@ -245,10 +260,17 @@ declare module "node:child_process" {
   export interface ChildStream {
     on(event: "data", listener: (chunk: Uint8Array) => void): ChildStream;
   }
-  export interface ChildProcess {
+  export class ChildProcess {
     readonly stdout: ChildStream | null;
     readonly stderr: ChildStream | null;
     kill(signal?: string): boolean;
+    unref(): void;
+    once(event: "spawn", listener: () => void): ChildProcess;
+    once(event: "exit", listener: (code: number | null) => void): ChildProcess;
+    once(event: "error", listener: (error: Error) => void): ChildProcess;
+    emit(event: "spawn"): boolean;
+    emit(event: "exit", code: number | null): boolean;
+    emit(event: "error", error: Error): boolean;
     on(event: "exit", listener: (code: number | null) => void): ChildProcess;
     on(event: "close", listener: (code: number | null) => void): ChildProcess;
     on(event: "error", listener: (error: Error) => void): ChildProcess;
@@ -268,6 +290,7 @@ declare module "node:child_process" {
     options?: {
       /** Global, o por descriptor (`["ignore", "pipe", "pipe"]`). */
       stdio?: "inherit" | "pipe" | "ignore" | Array<"inherit" | "pipe" | "ignore">;
+      detached?: boolean;
       cwd?: string;
       env?: Record<string, string | undefined>;
       shell?: boolean | string;
@@ -373,6 +396,7 @@ declare module "node:crypto" {
 
 /** Subset of `Buffer` used by the package (UUID v5, byte reads). */
 declare const Buffer: {
+  alloc(size: number): IBufferLike;
   from(value: string, encoding?: string): BufferLike;
   from(value: IBufferLike): BufferLike;
 };
@@ -508,6 +532,7 @@ declare const Bun: {
   serve(options: {
     port: number;
     hostname?: string;
+    idleTimeout?: number;
     fetch: (request: IServerRequest) => Response | Promise<Response>;
   }): { readonly port: number; stop(closeActiveConnections?: boolean): void };
   /**
@@ -527,6 +552,9 @@ declare const Bun: {
 
 /** What this repo uses from an incoming request. */
 interface IServerRequest {
+  readonly signal?: { readonly aborted: boolean;
+    addEventListener(name: "abort", listener: () => void, options?: { once?: boolean }): void;
+    removeEventListener(name: "abort", listener: () => void): void };
   readonly url: string;
   readonly method: string;
   /**
@@ -585,6 +613,7 @@ declare function fetch(
 
 /** Byte-to-text decoder, for reading stdin. */
 declare class TextDecoder {
+  constructor(label?: string, options?: { fatal?: boolean; ignoreBOM?: boolean });
   /**
    * `stream: true` keeps state across chunks, so a multibyte
    * character that straddles two `data` events is not split.
@@ -592,9 +621,55 @@ declare class TextDecoder {
   decode(input?: Uint8Array, options?: { stream?: boolean }): string;
 }
 declare type Uint8Array = { readonly length: number };
+interface IRuntimeAbortSignal {
+  readonly aborted: boolean;
+  addEventListener(event: "abort", listener: () => void, options?: { once?: boolean }): void;
+}
+declare class AbortController {
+  readonly signal: IRuntimeAbortSignal;
+  abort(): void;
+}
+declare module "node:dns/promises" {
+  export function lookup(hostname: string, options: { all: true }): Promise<{ address: string }[]>;
+}
+declare module "node:net" {
+  export function isIP(address: string): 0 | 4 | 6;
+  export class BlockList {
+    addSubnet(address: string, prefix: number, family: "ipv4" | "ipv6"): void;
+    check(address: string, family: "ipv4" | "ipv6"): boolean;
+  }
+}
+declare module "node:http" {
+  export interface IncomingMessage extends AsyncIterable<Uint8Array> {
+    readonly statusCode?: number;
+    readonly headers: Readonly<Record<string, string | string[] | undefined>>;
+    destroy(): void;
+  }
+  export interface RequestOptions {
+    readonly hostname: string;
+    readonly port: number;
+    readonly path: string;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly agent: false;
+    readonly signal: IRuntimeAbortSignal;
+    readonly servername?: string;
+    readonly rejectUnauthorized: true;
+  }
+  export function get(options: RequestOptions, callback: (response: IncomingMessage) => void): {
+    once(event: "error", listener: (error: Error) => void): void;
+  };
+}
+declare module "node:https" {
+  export { get } from "node:http";
+}
 declare const URL: {
   new (url: string, base?: string): {
     hostname: string;
+    host: string;
+    origin: string;
+    href: string;
+    username: string;
+    password: string;
     protocol: string;
     port: string;
     pathname: string;
@@ -682,3 +757,12 @@ declare function setInterval(
   timeout?: number,
 ): { readonly __timer: unique symbol };
 declare function clearInterval(handle: ReturnType<typeof setInterval>): void;
+
+/** Minimal web stream surface used by authenticated live event responses. */
+declare class ReadableStream<T> {
+  constructor(source: {
+    start(controller: { readonly desiredSize: number | null; enqueue(value: T): void; close(): void }): void;
+    cancel?(): void;
+  });
+}
+declare class TextEncoder { encode(value: string): Uint8Array; }

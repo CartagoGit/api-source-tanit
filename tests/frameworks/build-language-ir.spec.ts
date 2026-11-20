@@ -143,3 +143,20 @@ describe("buildLanguageIR — degradación", () => {
     expect(ir.reexports).toEqual([]);
   });
 });
+
+describe("ambient declarations in project sources", () => {
+  test("keeps route calls and literal bindings after an uninitialized declaration", () => {
+    const ir = buildLanguageIR(`
+      declare const environment: { name: string };
+      import express from "express";
+      const app = express();
+      const METHOD = "get";
+      app[METHOD]("/health", handler);
+    `, "server.ts");
+    expect(ir.bindings).toEqual([
+      expect.objectContaining({ name: "METHOD", value: "get" }),
+    ]);
+    expect(ir.calls).toHaveLength(1);
+    expect(ir.aliases).toContainEqual(expect.objectContaining({ name: "express" }));
+  });
+});

@@ -52,7 +52,7 @@ describe("watch --once", () => {
     const { code, output } = await watch(["--project-root", root, "--once"]);
     expect(code, output).toBe(0);
 
-    const salida = await readdir(join(root, "export-to-postman"));
+    const salida = await readdir(join(root, "tanit"));
     expect(salida.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 

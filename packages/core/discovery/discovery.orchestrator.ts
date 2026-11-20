@@ -32,6 +32,7 @@ import type {
 } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   DiscoveryRegistry,
+  IGenerationResult,
 } from "../../contracts/interfaces/core/discovery.interface.js";
 import { runWithConcurrency } from "../helpers/concurrency.helper.js";
 import {
@@ -76,6 +77,11 @@ function buildDiagnostic(args: {
  */
 export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
   constructor(private readonly registry: DiscoveryRegistry) {}
+
+  /** Run framework preparation supplied by the registry, without importing concrete providers. */
+  async prepareResult(result: IGenerationResult): Promise<IGenerationResult> {
+    return this.registry.prepareResult?.(result) ?? result;
+  }
 
   /**
    * All frameworks that recognize the project, from most to least confident.

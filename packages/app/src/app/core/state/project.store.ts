@@ -48,24 +48,26 @@ export class ProjectStore {
   /** The last failure, in words a person can read. */
   readonly error = signal<string | null>(null);
 
+  /** Reopen the last project in this tab after a page reload. */
+  async restore(): Promise<void> {
+    const projectRoot = storedProjectRoot();
+    if (projectRoot === null || this.isOpen()) return;
+    if (!(await this.open(projectRoot)) && !this.isOpen()) rememberProjectRoot(null);
+  }
+
   /** Whether a project is really open — a session, not a name. */
   readonly isOpen = computed(() => this.sessionId() !== null);
 
-  /**
-   * Opens a project: scans it, and remembers the session.
-   *
-   * A failure leaves the app **closed** rather than half-open. A
-   * project with a name on the screen and no session behind it is
-   * the state this store used to be in all the time, and every
-   * operation from it failed.
-   */
+  /** Opens a session and keeps any previously open project if the request fails. */
   async open(path: string): Promise<boolean> {
+    const requestedPath = path.trim();
+    if (!requestedPath || this.loading()) return false;
     this.loading.set(true);
     this.error.set(null);
     const previous = this.projectRoot();
     try {
       const answer: OpenProjectOutput = await this.bridge.request("open-project", {
-        projectRoot: path,
+        projectRoot: requestedPath,
       });
       // The previous session is closed **after** the new one opens:
       // if the new one fails, the old project is still open and
@@ -78,9 +80,9 @@ export class ProjectStore {
       this.sessionId.set(answer.sessionId);
       this.summary.set(answer.summary);
       this.projectName.set(nameOf(answer.summary.projectRoot));
+      rememberProjectRoot(answer.summary.projectRoot);
       return true;
     } catch (error) {
-      this.closeLocally();
       this.error.set(describe(error));
       return false;
     } finally {
@@ -102,6 +104,7 @@ export class ProjectStore {
       await this.closeSession(projectRoot);
     }
     this.closeLocally();
+    rememberProjectRoot(null);
   }
 
   /**
@@ -144,12 +147,33 @@ export class ProjectStore {
     }
   }
 
+  /** Apply a live summary only to the session that is still open. */
+  applySummary(summary: ISnapshotSummary): void {
+    if (summary.projectRoot !== this.projectRoot() || summary.sessionId !== this.sessionId()) return;
+    this.summary.set(summary);
+    this.error.set(null);
+  }
+
   private closeLocally(): void {
     this.projectRoot.set(null);
     this.sessionId.set(null);
     this.summary.set(null);
     this.projectName.set("Tanit");
   }
+}
+
+const PROJECT_ROOT_SESSION_KEY = "tanit.open-project";
+
+function storedProjectRoot(): string | null {
+  try { return globalThis.sessionStorage.getItem(PROJECT_ROOT_SESSION_KEY); }
+  catch { return null; }
+}
+
+function rememberProjectRoot(root: string | null): void {
+  try {
+    if (root === null) globalThis.sessionStorage.removeItem(PROJECT_ROOT_SESSION_KEY);
+    else globalThis.sessionStorage.setItem(PROJECT_ROOT_SESSION_KEY, root);
+  } catch { /* The project remains usable when tab storage is unavailable. */ }
 }
 
 /** The name to draw: the folder's name. */

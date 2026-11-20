@@ -30,6 +30,7 @@ import type {
   IEndpointAuth,
   IEndpointConfidence,
 } from "./endpoint-legacy.interface.js";
+import type { IGenerationResult } from "./discovery.interface.js";
 import type { ITransportMeta, TransportKind } from "./transport.interface.js";
 
 /** Stable framework id. Used as a key in config. */
@@ -130,6 +131,12 @@ export interface ParsedRoute {
   rawUri: string;
   /** Origin: routes file or spec name (e.g. "openapi.yaml#/paths/~1users"). */
   sourceFile: string;
+  /** RFC 6901 source pointer inside `sourceFile`, when the scanner has one. */
+  sourcePointer?: string;
+  /** Top-level document whose paths entry produced this operation. */
+  sourceDocument?: string;
+  /** Local reference chain that contributed to this route. */
+  sourceReferences?: ReadonlyArray<{ readonly file: string; readonly pointer: string }>;
   /** 1-based line number in `sourceFile` (0 if not applicable). */
   lineNumber: number;
   /** Chain of prefixes active when declaring the route. */
@@ -225,6 +232,10 @@ export interface ParsedRoute {
  * duplicating the descriptor inside the serialized string.
  */
 export interface IScanResult {
+  /** Explicit observation limits; omission never proves that routes are absent. */
+  readonly evidence?: import("./contract-evidence.interface.js").IContractScanEvidence;
+  /** Opaque, scan-scoped parsed data shared with validation providers. */
+  readonly providerContext?: ReadonlyMap<string, unknown>;
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**
    * Map `${method} ${uri}` → auxiliary descriptor.
@@ -465,6 +476,8 @@ export interface IDetectedFramework {
  * the bug: the key, not the position, decides the role.
  */
 export interface IDiscoveryOrchestrator {
+  /** Prepare results through the injected framework registry before exposing them to any host. */
+  prepareResult?(result: IGenerationResult): Promise<IGenerationResult>;
   /**
    * Everyone who recognises the project, ordered by confidence.
    *

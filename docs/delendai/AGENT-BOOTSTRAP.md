@@ -1,4 +1,4 @@
-# Project-specific agent bootstrap — `@export-to-postman/core`
+# Project-specific agent bootstrap — `api-source-tanit`
 
 > **This file is the project-specific extension of**
 > [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md)
@@ -7,7 +7,7 @@
 >
 > **Read order**: read the universal bootstrap first, then this file.
 > The universal bootstrap defines the agent contract; this file adds
-> the export-to-postman-specific shapes, naming, and rules.
+> the Tanit-specific shapes, naming, and rules.
 >
 > **Conflict policy**: where this file and the universal bootstrap
 > disagree, **the universal bootstrap wins**, except for the rules
@@ -20,13 +20,14 @@
 > `.claude/agents/*.md`) points here, **not** to the universal
 > bootstrap directly, and **never** to a path outside this repository.
 >
-**Agnostic / portable rule:** do not require a sibling checkout of
-`delendai` for consumers. Local absolute paths under a developer's
-machine are forbidden in committed docs and configs. While the
-`@delendai/cli` package is not published, this repository may use the
-relative sibling host in `.mcp.json` and `.vscode/mcp.json` for local MCP
-development. Once the package is published, the published CLI form can
-replace that local configuration.
+**Agnostic / portable rule:** Tanit runs without DelendAI. Its optional
+integration lives in `integrations/delendai/`; product code must not import
+it. MCP clients launch `delendai __serve ... --version=0.3.0`. The installed
+launcher delegates to `scripts/integrations/delendai-runtime.sh`, which verifies
+the immutable DelendAI 0.3.0 commit declared in its adjacent JSON pin.
+Use this launcher for development CLI commands too; never use a moving
+sibling checkout. Installation is documented in `integrations/delendai/README.md`.
+No committed launch configuration contains a machine path.
 
 ---
 
@@ -57,7 +58,8 @@ the single source of truth and re-stating them invites drift:
 - No `process.cwd()` in engines (universal §6 invariant; mirrored
   by `scripts/gates/lint-tool-no-process.script.ts` per p00011).
 - Conventional Commits; `bun run validate` is the DoD gate
-  (universal §5).
+  (universal §5). The scoped-validation exception for work units is
+  defined in §5 below.
 - One atomic slice per turn; minimal validation; trust the MCP
   payload over local re-derivation (universal §4).
 - Every public tool declares an `outputSchema` (universal §6).
@@ -71,36 +73,19 @@ If any of those rules ever feels wrong for this project, edit this
 file (§3 below) and explicitly mark the change as a **project
 override**. Do not edit them silently.
 
-## 3. Project overrides and additions — export-to-postman
+## 3. Project overrides and additions — Tanit
 
 These rules apply **only** in this workspace. They extend or replace
 the corresponding universal rule on purpose. Each override cites the
 universal rule it replaces, so the divergence is auditable.
 
-### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
+### 3.1 Plugin tool naming
 
-The 4 plugin tools in `integrations/delendai/src/lib/tools/`
-register themselves as `` `${ctx.namespacePrefix}_${TOOL_ID}` ``, where
-`namespacePrefix` comes from the host and `TOOL_ID` is the short,
-stable id declared at the top of each `*.tool.ts`:
-
-| Tool id (short, in `id:`) | Qualified name on the MCP surface |
-| --- | --- |
-| `generate` | `delendai_tanit_generate` |
-| `validate` | `delendai_tanit_validate` |
-| `summary` | `delendai_tanit_summary` |
-| `test` | `delendai_tanit_test` |
-
-Hardcoding these four qualified names here is **permitted** because they
-are the **public MCP surface** the host dispatches on. Other tool ids
-must still come from the server (universal §6).
-
-> **This section used to be wrong.** It described a `${NAMESPACE}_exporter_<verb>`
-> shape built from a `NAMESPACE = "postman"` constant it called the
-> single source of truth. No tool ever registered that way, the constant
-> was imported by nobody, and following this section produced a name the
-> host does not dispatch. Corrected in the 2026-08-08 audit (`a00001`,
-> finding 4); the dead constant is gone.
+Tanit tools derive their qualified names from `ctx.namespacePrefix` and their
+short tool IDs. The [plugin registration](../../integrations/delendai/src/index.ts)
+provides the implementation. Activate `tanit` and consult the live server
+catalog for the currently available tools and their qualified names.
+The [proposal index](proposals/INDEX.md) tracks d00005 for this documentation.
 
 ### 3.2 Tool `registerTool` shape — **project-specific**
 
@@ -179,7 +164,7 @@ The `^3.x` standard API (`~standard`, `~validate`) is required by
 
 ### 3.4 Agents — no bespoke agents, **project override** of universal §6
 
-**Do not add bespoke agents** (e.g. `export-to-postman-builder`)
+**Do not add bespoke agents** (e.g. `tanit-builder`)
 under `.github/agents/` or `.claude/agents/`. The 5 canonical agents
 (orchestrator + proposal_guardian + implementation_runner +
 delivery_verifier + technical_investigator) are the only ones this
@@ -239,8 +224,8 @@ being needed. See [`packages/contracts/README.md`](../../packages/contracts/READ
 ### 3.6 Plugin options
 
 Plugin options live at
-`delendai.config.json#plugins.export-to-postman.options` and are
-parsed by `ExportToPostmanOptionsSchema` in
+`delendai.config.json#plugins.tanit.options` and are
+parsed by `TanitOptionsSchema` in
 `integrations/delendai/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
@@ -250,97 +235,34 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
-### 3.7 MCP server launch — **sibling mientras no haya release**
+The [proposal index](proposals/INDEX.md) tracks x00104. The temporary
+`picomatch` replacement must stay pinned to reviewed bytes until an official
+patched release passes the existing dependency audit and full validation.
 
-Mientras `@delendai/cli` no esté publicado en npm (ver `p00007`,
-actualizado a `done` el 2026-09-03), **el flujo oficial** es consumir el
-`@delendai/core` desde el checkout hermano de `delendai` mediante
-enlace `file:` y arrancar el host desde su host-script. Esto no es
-deuda: es la forma soportada hasta que se publique la primera versión
-semver del paquete. Decisión del proyecto.
+### 3.7 MCP server launch and project identity
 
-**El plugin vive en `integrations/delendai/` y NO es parte del
-producto.** La CI principal (`.github/workflows/validate.yml`) ya no
-lo clona, compila ni enlaza — sólo `integration-delendai.yml` (opt-in,
-manual + semanal) lo valida contra un checkout pinneado de Delendai.
-`x00041` movió la carpeta; `x00045` cerró la CI. La frontera
-producto↔integración se mantiene por reducción, no por configuración
-adicional.
+The canonical project registration is **`DelendAI:Tanit`**, following
+`DelendAI:{project}`. `.mcp.json` is the source for client configuration;
+`bun run mcp:sync` derives `.vscode/mcp.json`. VS Code derives the lowercase permission reference
+`delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
+and grant agreement, including names containing colons.
 
-**Forma published (referencia futura)** — úsala cuando
-`@delendai/cli` esté en npm:
+`bun run gen:all` delegates to the existing client-config, proposal-index
+and framework-table generators. `bun run gen:all:check` verifies those same
+artifacts without writing them. These commands satisfy the pinned runtime
+hooks while retaining each existing canonical input.
 
-```json
-{
-  "servers": {
-    "delendai": {
-      "type": "stdio",
-      "command": "bunx",
-      "args": [
-        "--package",
-        "@delendai/cli",
-        "mcpv",
-        "__serve",
-        "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
-      ]
-    }
-  }
-}
-```
+The installed `delendai` command launches `__serve` with the workspace and
+`delendai.config.json`. It must be available on the host PATH. Contributors
+may install the CLI from a published package or their chosen local checkout;
+this repository does not require a particular checkout location or branch.
 
-**Forma local actual (mientras `npm view @delendai/core version` siga
-devolviendo 404)** — la práctica oficial y soportada:
+The optional integration is private and outside the product dependency graph.
+Only the opt-in integration workflow validates it against DelendAI. The product
+validation and distribution remain independent of it.
 
-```json
-{
-  "servers": {
-    "delendai": {
-      "type": "stdio",
-      "command": "bun",
-      "args": [
-        "run",
-        "../delendai/tools/scripts/host/host-server.script.ts",
-        "--workspace=${workspaceFolder}",
-        "--config=${workspaceFolder}/delendai.config.json"
-      ]
-    }
-  }
-}
-```
-
-Equivalencias:
-
-- `.mcp.json` apunta al `host-server.script.ts` del repo hermano con
-  un path relativo (`../delendai/...`). Nunca absoluto del estilo
-  `/home/<user>/_packages/...`.
-- `.vscode/mcp.json` lo genera `bun run lint:mcp` a partir del
-  anterior y queda en este repo (es `.gitignore`d).
-- El plugin `integrations/delendai/package.json`
-  declara `"@delendai/core": "file:../../../../delendai/packages/core"`.
-  El plugin es `"private": true`, no viaja en el tarball público y
-  por tanto **no rompe la distribución** del CLI aunque el `file:`
-  no resuelva fuera del worktree del desarrollador.
-
-> El path `../delendai/...` se cita dentro de un quote porque vive
-> **fuera de este repositorio** — es el único caso en el que
-> `lint:bootstrap-drift` permite nombrar algo que no existe aquí.
-
-**Migración a la forma published cuando `@delendai/core` se
-publique** (es la reactivación futura de `p00007`):
-
-1. `npm view @delendai/core version` deja de devolver 404.
-2. Cambiar el `file:` por `^<versión>` en
-   `integrations/delendai/package.json`.
-3. `bun install` regenera el lockfile.
-4. Sustituir `.mcp.json` por la forma published.
-5. Archivar la propuesta reabierta como `done`.
-
-Schema reference for `delendai.config.json`: usa el schema que
-embargue el paquete `@delendai/core` instalado (u omite `$schema`
-mientras no exista publicación). No exijas
-`../delendai/packages/core/schema/...`.
-`../delendai/packages/core/schema/...` for third-party clones.
+The identity and active rename audit is tracked in
+[the canonical identity proposal](proposals/INDEX.md).
 
 ### 3.8 Framework scanners — the discovery contract
 
@@ -388,11 +310,116 @@ path. Live tool/skill/proposal catalogs come from the MCP server
 (`delendai_overview` / `delendai_agent_catalog`), never from a
 sibling-repo generated markdown file.
 
+### 3.10 Shared data and follow-up audit
+
+The [proposal index](proposals/INDEX.md) tracks the workspace and folder picker.
+Browser project selection browses and opens folders via the shared Application
+API. Project navigation becomes available after a session opens.
+
+The [proposal index](proposals/INDEX.md) tracks the Tanit branding and binary layout.
+`assets/icons/tanit.svg` is the shared artwork, and `bun run gen:brand` embeds
+it into the standalone web interface. Platform builds use `dist/`.
+
+The [proposal index](proposals/INDEX.md) tracks the per-platform binary scripts.
+They build Linux or Windows directly, and the compiled UI scripts build Angular
+into the same output directory and launch the bundled CLI.
+
+The [proposal index](proposals/INDEX.md) tracks Windows OpenAPI route parity.
+HTTP paths use POSIX separators across platforms. Filesystem resolution keeps
+using the native path implementation.
+
+The [proposal index](proposals/INDEX.md) uses the same delivery SHA reader as
+proposal lint. DelendAI records new deliveries in `shipped-in`, and the reader
+also preserves historical `shippedIn` entries.
+
+The [proposal index](proposals/INDEX.md) tracks the scoped npm packlist proof.
+The planner compares the Git manifests at the base and head. An isolated
+`files` change runs the packlist regression, package validation, lint,
+integration verification and audit. Other manifest fields and promotions
+retain full validation.
+
+The [2026-11-08 audit](AUDIT-2026-11-08.md) records the current architecture,
+verified rename cleanup, and follow-up proposals for effective settings,
+export destinations, Live subscriptions, shared generation/history and scan
+coalescing. The live proposal catalog tracks their execution; archived states
+remain unchanged when repairing malformed metadata. Terminal storage follows
+the stable ID family used by the runtime reconciler; legacy IDs retain their
+recorded kind. Semantic historical kinds are preserved.
+
+The [proposal index](proposals/INDEX.md) tracks the standalone compiled UI startup fix.
+
+The [proposal index](proposals/INDEX.md) tracks the compiled browser carrier.
+`apisrc ui` serves Angular through the Application API HTTP bridge, including
+the bridge's same-origin assets and request token. Without an Angular build it
+serves the embedded interface with its existing routes.
+
+The [proposal index](proposals/INDEX.md) tracks the CLI environment fix.
+The project context, root selection and Watch use the shared alias resolver.
+Explicit paths take precedence over `TANIT_PROJECT_ROOT` and
+`TANIT_OUTPUT_DIR`, and inherited aliases remain valid.
+
+The [proposal index](proposals/INDEX.md) tracks the external TypeScript
+acceptance fix: ambient declarations have null initializers and must not
+abort shared LanguageIR analysis or invent constant values.
+
+The [proposal index](proposals/INDEX.md) tracks Express chained/default-export
+router mounts, module-scoped identity and unresolved/cyclic mount diagnostics,
+verified against the explicit method/path baseline of an external sample.
+
+The [proposal index](proposals/INDEX.md) also tracks the asynchronous artifact
+opening fix required by the delivery gate: tests isolate launchers and the CLI
+opens the generated output using its injected context.
+
+The [external corpus](../../tests/acceptance/external-corpus/README.md) records
+reviewed upstream revisions and hashes; its offline runner compares the actual
+CLI and Application API without executing third-party project scripts. Unknown
+response/schema claims must remain separate from endpoint accuracy.
+
+The [proposal index](proposals/INDEX.md) tracks exclusion of Rust build artifacts
+from the npm package while preserving distributable sources and UI assets.
+
+The [proposal index](proposals/INDEX.md) tracks the beta evidence update, which
+distinguishes technical checks from human evaluation and signed desktop acceptance.
+The [beta evidence](../BETA.md) also records integrated remote documentation
+reading and compiled UI startup, while distinguishing product delivery from
+formal proposal closure and external acceptance.
+
+The [beta acceptance record](../BETA.md) links the canonical follow-ups for
+external accuracy measurements, Swagger reconciliation, optional anonymous
+enrichment and the Linux desktop dependency gate. Their acceptance criteria
+keep static facts, documented evidence, unknowns and AI suggestions distinct.
+Before continuing optional enrichment work, read the current provider findings
+and eligibility limits in [AI-ENRICHMENT.md](../AI-ENRICHMENT.md).
+
+The [proposal index](proposals/INDEX.md) tracks t00007: focused updater coverage
+checks installer signatures independently of signed manifests and binds desktop
+commands to version approval and verification before writing.
+
+The [proposal index](proposals/INDEX.md) tracks x00107: a GPG detached receipt
+requires its canonical regular `.sig` file when preparing artifact and checksum
+metadata; it must never fall back to the installer or silently omit the signature.
+
+The [proposal index](proposals/INDEX.md) tracks the signing-fixture clock
+stability fix: freeze only ephemeral test key creation; product signing and
+verification retain real time and isolated temporary key homes.
+
+The [proposal index](proposals/INDEX.md) tracks the PR auto-merge repair:
+GitHub's official GraphQL mutation, an expected-head guard, scoped write
+permissions, and failures that remain visible to the delivery workflow.
+
+The [proposal index](proposals/INDEX.md) tracks native Swagger reconciliation: raw
+scanner observations retain source files and declared coverage limits before
+merger precedence. Missing scanner coverage never establishes route absence.
+
+The [proposal index](proposals/INDEX.md) tracks x00103. Endpoint fusion and the
+service graph must use the same service identity for overlapping HTTP
+observations, while keeping workspaces and scanner evidence distinguishable.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the
 universal bootstrap does not mention because they are
-export-to-postman-specific:
+Tanit-specific:
 
 - **Workspace root comes from `ctx.workspace.toString()`**, not
   `process.cwd()`. Every tool receives it through the plugin's
@@ -438,7 +465,18 @@ marked `"complete"`.
 
 ## 5. Definition of done — local deltas
 
-The universal bootstrap §5 DoD applies. Project-specific additions:
+For an implementation or review work unit, the local DoD is the
+plan-aware `bun run validate` entrypoint: it runs the shared conservative
+proof plan, exercises affected specs and changed-file coverage for a
+known source scope, and writes the result to the validation journal when
+invoked through `delendai validate`. Documentation-only changes still
+run lint; uncertain scope, source graph gaps, structural changes,
+detached worktrees, integration/release branches, and promotion CI run
+the full gate. Use `bun run validate:full` for an explicit full run. This
+is a project-specific exception to universal §5's full-validation DoD
+for work units; integration, release, and promotion checks remain full.
+
+Project-specific additions:
 
 - **Commit y push al cerrar una tarea**: cuando una tarea o slice termina con
   sus gates verdes, el agente debe crear un commit Conventional Commits y

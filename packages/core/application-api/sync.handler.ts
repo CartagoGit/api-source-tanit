@@ -17,8 +17,6 @@
  *
  * A dry run builds and reports, and writes nothing.
  */
-import { join } from "node:path";
-
 import type { IHandler } from "./dispatcher.js";
 import {
   SyncInputSchema,
@@ -45,7 +43,6 @@ export function createSyncHandler(): IHandler<SyncInput, SyncOutput> {
       const snap = requireResults(session.current());
 
       const target = input.target ?? "postman";
-      const directory = input.outputDirectory ?? join(snap.projectRoot, "tanit");
 
       const frameworks = new Set<string>();
       let endpointCount = 0;
@@ -55,7 +52,7 @@ export function createSyncHandler(): IHandler<SyncInput, SyncOutput> {
       }
 
       if (input.dryRun === true) {
-        const plan = await planExport(snap, target, directory);
+        const plan = await planExport(snap, target, input.outputDirectory, input.outputPath);
         return {
           files: [],
           bytes: 0,
@@ -67,7 +64,7 @@ export function createSyncHandler(): IHandler<SyncInput, SyncOutput> {
         };
       }
 
-      const written = await writeExportWithPlan(snap, target, directory);
+      const written = await writeExportWithPlan(snap, target, input.outputDirectory, input.outputPath);
       return {
         files: written.files,
         bytes: written.bytes,

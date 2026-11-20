@@ -84,7 +84,7 @@ describe("la auto-aprobación", () => {
     const raw = await workflow();
     // La política declarada en `delendai.config.json` es
     // `mergeMethod: "merge"`, y las dos ramas lo cumplen.
-    expect(raw).toContain('const method = "merge"');
+    expect(raw).toContain("mergeMethod: MERGE");
     // Un squash aplana la historia: los commits que `lint:proposals`
     // audita dejan de ser ancestros de HEAD y `main` se queda en rojo.
     // La regex cubre las dos comillas: con `not.toContain('"squash"')`
@@ -92,43 +92,25 @@ describe("la auto-aprobación", () => {
     expect(raw).not.toMatch(/['"]squash['"]/);
   });
 
-  test("activa el auto-merge por el endpoint REST, no por un método de Octokit", async () => {
-    const raw = await workflow();
-    // Se busca la **llamada**, no la mención: el workflow explica en un
-    // comentario por qué no usa ese método, y ese comentario lo nombra.
-    // Una búsqueda de la cadena suelta daría un positivo falso; la
-    // regex exige los paréntesis de la invocación.
-    //
-    // `github.rest.pulls.enableAutoMerge` no existe en la versión de
-    // Octokit de `github-script@v7`: la llamada moría con
-    // "enableAutoMerge is not a function", y el PR se quedaba
-    // aprobado pero sin auto-merge, esperando a un humano.
+  test("activa auto-merge por GraphQL con guardia de SHA", async () => {
+    const raw = await workflowWithoutComments();
+    expect(raw).toContain("github.graphql(");
+    expect(raw).toContain("enablePullRequestAutoMerge(input:");
+    expect(raw).toContain("expectedHeadOid: $head");
     expect(raw).not.toMatch(/github\.rest\.pulls\.enableAutoMerge\s*\(/);
-    // Y la llamada tiene que ser **la del endpoint REST**, no cualquier
-    // cosa que mencione la ruta: un comentario la nombra, así que la
-    // aserción exige el `github.request(` con la ruta y el método.
-    //
-    // Y la ruta es la del endpoint de **fusión** con
-    // `enable_auto_merge`: el `/auto-merge` aparte **no existe** en
-    // la API REST, y llamarlo devolvía un 404 que el `catch`
-    // convertía en un aviso. El PR se quedaba aprobado y sin
-    // auto-merge, esperando a un humano.
-    expect(raw).toMatch(
-      /github\.request\(\s*["']PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/merge["']/,
-    );
-    // Y el cuerpo tiene que llevar el método y la bandera: la ruta
-    // sola no dice con qué se va a mergear, ni que lo haga solo.
-    const sinComentarios = await workflowWithoutComments();
-    expect(sinComentarios).toMatch(/merge_method:\s*method/);
-    expect(sinComentarios).toMatch(/enable_auto_merge:\s*true/);
+    expect(raw).not.toContain("enable_auto_merge");
   });
 
-  test("usa pull-requests: write y nada más", async () => {
+  test("limita escritura al job filtrado y mantiene lectura global", async () => {
     const raw = await workflow();
-    expect(raw).toContain("pull-requests: write");
-    expect(raw).toContain("contents: read");
-    // `contents: write` sería puerta abierta para modificar el repo.
-    expect(raw).not.toContain("contents: write");
+    const defaults = raw.split("\njobs:")[0] ?? "";
+    expect(defaults).toContain("contents: read");
+    expect(defaults).not.toContain("contents: write");
+    const job = raw.split("\njobs:")[1] ?? "";
+    expect(job).toContain("pull-requests: write");
+    expect(job).toContain("contents: write");
+    expect(job).toContain("checks: read");
+    expect(job).toContain("github.event.pull_request.user.login ==");
   });
 
   test("no se salta los borradores", async () => {

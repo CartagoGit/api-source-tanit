@@ -27,7 +27,7 @@ function makeContext(overrides: Partial<IProjectContext> = {}): IProjectContext 
     projectRoot: "/tmp/proyecto",
     packageRoot: "/tmp/paquete",
     projectBasename: "proyecto",
-    outputDir: "/tmp/proyecto/export-to-postman",
+    outputDir: join("/tmp/proyecto", OUTPUT_DIR_NAME),
     ...overrides,
   };
 }
@@ -134,9 +134,9 @@ describe("outputCollectionPath — path composition", () => {
     expect(path).toBe(join(out, "api.postman_collection.json"));
   });
 
-  test("the default path lands in <projectRoot>/export-to-postman/", () => {
+  test("the default path lands in <projectRoot>/tanit/", () => {
     // The context built by `resolveProjectContext` leaves
-    // outputDir = `<root>/export-to-postman` when no `--output-dir`
+    // outputDir = `<root>/tanit` when no `--output-dir`
     // is passed. We fabricate it here by hand to pin down the expected
     // behavior.
     const ctx: IProjectContext = {

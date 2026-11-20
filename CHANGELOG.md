@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.2.0 (2026-11-20) — Tanit en el navegador y en un solo ejecutable
+
+Esta versión 0.x se distribuye como prerelease de GitHub. Los ejecutables
+incluyen el CLI y la interfaz Angular. La certificación y distribución de los
+instaladores de escritorio se mantienen en su propio ciclo.
+
+### Interfaz web y experiencia de uso
+
+- El selector abre proyectos desde el navegador con una ruta pegada o mediante
+  el explorador de carpetas del backend. Una ruta inválida conserva el proyecto
+  abierto y muestra el error.
+- El explorador da prioridad a la búsqueda y las operaciones. Los filtros
+  avanzados se pueden abrir y limpiar, y las respuestas antiguas no pisan el
+  resultado del último filtro. El menú se pliega en ventanas pequeñas.
+- Las secciones tienen URL propia. Recargar recupera el proyecto activo de la
+  pestaña y el historial del navegador permite volver a la vista anterior.
+- La previsualización y la exportación usan el mismo plan de archivos. El
+  selector elige el destino y el planificador comprueba si está dentro del
+  proyecto con la semántica del sistema anfitrión, también en Windows.
+- El nombre, el favicon y los iconos usan la marca de Tanit. El CLI muestra una
+  versión ASCII del símbolo en `--help`.
+
+### Compilación y ejecución
+
+- `ui:dev` sirve Angular desde las fuentes, con recarga automática y la
+  Application API real. `build:web` genera `dist/web/browser/` con el
+  `.htaccess` para las rutas de Angular en Apache.
+- `build:binary:linux`, `build:binary:windows` y los comandos `ui:binary:*`
+  escriben los ejecutables en `dist/`. El binario de Windows incluye el icono
+  nativo de Tanit y puede ejecutarse desde WSL.
+- La compilación de publicación construye Angular una sola vez y lo incorpora
+  a los ejecutables de Linux x64 y arm64, macOS Intel y Apple Silicon, y Windows
+  x64. `apisrc ui` sirve la app desde el propio ejecutable.
+
+### Análisis, contratos y exportación
+
+- La interfaz, el CLI y la integración MCP comparten el catálogo de
+  operaciones, la preparación de exportaciones y el historial persistente.
+  Las exportaciones y el historial de la web reflejan lo que se escribió en
+  disco.
+- Tanit descubre documentación Swagger y OpenAPI existente, la reconcilia con
+  el código y conserva la procedencia de cada dato. Las discrepancias siguen
+  visibles. La lectura de documentación remota declarada requiere una acción
+  explícita y mantiene el análisis local si la lectura falla.
+- Mejoran la detección de montajes de routers de Express y rutas de recursos
+  de Laravel, la atribución de referencias de OpenAPI y la deduplicación de
+  operaciones. OpenAPI conserva las barras de las rutas HTTP en Windows.
+- Las sesiones agrupan rescaneos concurrentes, actualizan el estado en vivo
+  mediante la API compartida y liberan sus suscripciones al cerrar. El CLI
+  conserva la salida JSON limpia mientras informa de cobertura por separado.
+
+### Integración y validación
+
+- VS Code, Codex y la configuración MCP usan `DelendAI:Tanit` con DelendAI
+  fijado a `0.3.0`. La integración es opcional para ejecutar Tanit.
+- La validación local y la de CI comparten un plan que elige pruebas afectadas
+  cuando existe cobertura verificable y conserva la validación completa para
+  compilaciones, promociones y cambios de alcance global.
+- Se corrigieron el índice de propuestas, la retirada de referencias
+  integradas, el empaquetado con Rust y la verificación de firmas separadas.
+
+El [historial completo entre versiones](https://github.com/CartagoGit/api-source-tanit/compare/v0.1.0-alpha.2...v0.2.0)
+incluye los commits de producto, documentación y mantenimiento.
+
 ## 0.1.0-alpha.2 (2026-11-02) — La release con binarios de verdad
 
 `alpha.1` se publicó sin un solo ejecutable adjunto. Esta versión

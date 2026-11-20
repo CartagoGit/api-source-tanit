@@ -30,6 +30,8 @@ export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;
   readonly routeScanners: ReadonlyArray<IRouteScanner>;
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
+  /** Framework-owned preparation, injected before a generated result becomes a snapshot. */
+  readonly prepareResult?: (result: IGenerationResult) => Promise<IGenerationResult>;
 }
 
 /** Discovery metrics, for reports and tests. */
@@ -224,6 +226,8 @@ export interface IMonorepoDetection {
 
 /** Full pipeline result. */
 export interface IGenerationResult {
+  /** Comparison of raw documentation/code observations, before merger precedence. */
+  readonly contractEvidence?: import("./contract-evidence.interface.js").IContractEvidenceReport;
   readonly collection: PostmanCollection;
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
@@ -331,6 +335,7 @@ export interface IPathScope {
 
 /** What comes out of adapting a scanner's paths to core's catalog. */
 export interface AdapterResult {
+  readonly scanEvidence?: import("./contract-evidence.interface.js").IContractScanEvidence;
   readonly specs: EndpointSpec[];
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**

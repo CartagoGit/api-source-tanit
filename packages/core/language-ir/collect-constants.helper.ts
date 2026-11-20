@@ -46,7 +46,7 @@ interface BabelNode {
   readonly end?: number | null;
   readonly declarations?: ReadonlyArray<BabelNode>;
   readonly id?: BabelNode;
-  readonly init?: BabelNode;
+  readonly init?: BabelNode | null;
   readonly expression?: BabelNode;
   readonly value?: string | number | boolean;
   readonly name?: string;
@@ -120,7 +120,7 @@ function walkBindings(
     for (const decl of node.declarations) {
       if (decl.type !== "VariableDeclarator") continue;
       if (decl.id?.type !== "Identifier") continue;
-      if (decl.init === undefined) continue;
+      if (decl.init === undefined || decl.init === null) continue;
       const v = literalValue(decl.init);
       if (v === undefined) continue;
       out.push({

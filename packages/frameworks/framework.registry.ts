@@ -9,6 +9,7 @@
  * Orden de los detectores = orden de prioridad. Si dos `detect()`
  * empatan en score, gana el que aparezca primero en esta lista.
  */
+import { prepareFrameworkGeneration } from "./generation-preparation.service.js";
 import { DiscoveryOrchestrator } from "../core/discovery/discovery.orchestrator";
 import {
   GraphQlProjectScanner,
@@ -127,6 +128,7 @@ const fiberRouteScanner = new FiberRouteScanner();
 const rustRouteScanner = new RustRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
+  prepareResult: prepareFrameworkGeneration,
   detectors: [
     new GraphQlProjectScanner(),
     new TrpcProjectScanner(),

@@ -202,22 +202,39 @@ No necesita nada más.
 
 ```bash
 # Linux x64
-curl -L https://github.com/CartagoGit/api-source-tanit/releases/latest/download/api-source-tanit-linux-x64 \
+curl -L https://github.com/CartagoGit/api-source-tanit/releases/latest/download/apisrc-linux-x64 \
   -o /usr/local/bin/apisrc
 chmod +x /usr/local/bin/apisrc
 
 apisrc generate --project-root .
 ```
 
-Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
+Disponibles: `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64` y
 `windows-x64.exe`.
 
-Para compilarlo tú mismo desde el repo:
+Desde el checkout puedes compilar y probar cada plataforma con Bun:
 
-```bash
-bun run build:binary          # solo tu plataforma
-bun run build:binary --all    # las cuatro, en dist/
-```
+| Tarea | Comando |
+| --- | --- |
+| Compilar el CLI Linux x64 | `bun run build:binary:linux` |
+| Compilar el CLI Windows x64 | `bun run build:binary:windows` |
+| Compilar y arrancar Angular con el binario Linux | `bun run ui:binary:linux` |
+| Compilar y arrancar Angular con el binario nativo Windows | `bun run ui:binary:windows` |
+| Compilar Angular por separado | `bun run build:app` |
+
+Los binarios compilados van a `dist/` del repositorio, también desde WSL.
+Puedes elegir otro destino con `--out <carpeta>`. Usa una ruta de Windows
+en PowerShell o su ruta de montaje desde WSL. `bin/` contiene los
+lanzadores del código fuente. Git ignora los binarios de `dist/`.
+
+Los comandos `ui:binary:*` preparan Angular en su carpeta de salida y
+muestran la URL local. Puedes pasar `--port 4780` y detener la interfaz
+con `Ctrl+C`.
+
+`bun run build:binary` compila para la plataforma actual. El comando
+`bun run build:binary --all` genera los cinco destinos. El `.exe` lleva
+el icono de Tanit y los paquetes de escritorio usan el formato de su
+plataforma.
 
 Pesa entre 60 y 95 MB porque incluye el runtime. A cambio, quien lo use
 no instala nada.

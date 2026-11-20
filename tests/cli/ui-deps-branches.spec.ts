@@ -4,7 +4,7 @@ import { seedLocales, loadLocales } from "../../packages/ui/i18n/i18n.service.js
 import { browseDirectory } from "../../packages/core/application-api/browse.service.js";
 import { planDryRun } from "../../packages/ui/server/dry-run.service.js";
 import { readSettings, patchSettings } from "../../packages/ui/settings/settings.service.js";
-import { readHistory } from "../../packages/ui/server/history.service.js";
+import { readHistory } from "../../packages/core/session/history-run.service.js";
 import { generateWithAllFrameworks, summarizeWithAllFrameworks } from "../../packages/frameworks/index.js";
 import { runGenerate } from "../../packages/cli/commands/generate.script.js";
 import { main as uiMain } from "../../packages/cli/commands/ui.script";
@@ -18,7 +18,7 @@ vi.mock("../../packages/ui/i18n/i18n.service.js", () => ({ seedLocales: vi.fn(),
 vi.mock("../../packages/core/application-api/browse.service.js", () => ({ browseDirectory: vi.fn() }));
 vi.mock("../../packages/ui/server/dry-run.service.js", () => ({ planDryRun: vi.fn() }));
 vi.mock("../../packages/ui/settings/settings.service.js", () => ({ readSettings: vi.fn(), patchSettings: vi.fn() }));
-vi.mock("../../packages/ui/server/history.service.js", () => ({ readHistory: vi.fn() }));
+vi.mock("../../packages/core/session/history-run.service.js", () => ({ readHistory: vi.fn() }));
 vi.mock("../../packages/frameworks/index.js", () => ({
   generateWithAllFrameworks: vi.fn(),
   summarizeWithAllFrameworks: vi.fn(),
@@ -99,7 +99,7 @@ describe("ui dependencies branch surface", () => {
       return process;
     });
     try {
-      expect(await uiMain(["--no-open", "--port", "1"])).toBe(0);
+      expect(await uiMain(["--no-open", "--static-dir", "tests/smoke-fixtures/openapi-mini", "--port", "1"])).toBe(0);
       const options = mock(startUiServer).mock.calls.at(-1)?.[0];
       expect(options?.port).toBe(1);
       const deps = options?.deps;

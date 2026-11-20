@@ -27,27 +27,31 @@ import { join } from "node:path";
 import { stat } from "node:fs/promises";
 
 import {
+  defaultOrchestrator,
   generateWithAllFrameworks,
   summarizeWithAllFrameworks,
 } from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
 
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
+import { buildRegistry } from "../../core/application-api/handlers.js";
+import { startHttpBridge } from "../../core/transport/http-bridge.server.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
 
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
-import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
+import { DEFAULT_UI_PORT, EMBEDDED_WEB_DIR } from "../../contracts/constants/cli/terminal.constant.js";
+import type { IUiDeps, IUiServer } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface.js";
 import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
 import { userLocalesDir } from "../../ui/config-dir.helper.js";
 import { patchSettings, readSettings } from "../../ui/settings/settings.service.js";
 import { browseDirectory } from "../../core/application-api/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
-import { readHistory } from "../../ui/server/history.service.js";
+import { readHistory } from "../../core/session/history-run.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
-import { fromRoot } from "../../../scripts/helpers/root.helper.js";
+import { findRepoRoot, moduleDir } from "../../core/helpers/module-path.helper.js";
 
 /** Opens the browser, and if it cannot, stays quiet: the URL is already printed. */
 function abrirNavegador(url: string): void {
@@ -65,25 +69,17 @@ function abrirNavegador(url: string): void {
   }
 }
 
-/**
- * Where the compiled app is, if it is there at all.
- *
- * The desktop app is Angular and lands in `packages/app/dist`. When
- * it is there, `apisrc ui` serves **it**: the same interface the
- * desktop app shows, in a browser, over the same connector.
- *
- * When it is not —a released binary, a checkout where nobody ran
- * the build— the interface travels embedded in the binary and is
- * served from memory.
- *
- * The point of asking is that **the command says which one it is
- * serving**. A command that quietly serves a different interface
- * depending on what happens to be on disk is two products wearing
- * one name, and the tests cannot tell which one they are talking to.
- */
-function staticDirDeLaApp(): string | undefined {
-  const dist = fromRoot("packages", "app", "dist");
-  return existsSync(join(dist, "index.html")) ? dist : undefined;
+const EMBEDDED_APP_DIR = join(moduleDir(import.meta.url), EMBEDDED_WEB_DIR);
+
+/** Selects an explicit build, the packaged build, or the build in a source checkout. */
+function staticDirDeLaApp(argv: readonly string[]): string | undefined {
+  const explicit = readFlag(argv, "--static-dir");
+  if (explicit !== undefined) return existsSync(join(explicit, "index.html")) ? explicit : undefined;
+  if (existsSync(join(EMBEDDED_APP_DIR, "index.html"))) return EMBEDDED_APP_DIR;
+
+  const root = findRepoRoot(import.meta.url);
+  const dist = root === null ? undefined : join(root, "packages", "app", "dist");
+  return dist !== undefined && existsSync(join(dist, "index.html")) ? dist : undefined;
 }
 
 /**
@@ -191,14 +187,7 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
   };
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  const puertoTexto = readFlag(argv, "--port");
-  const puerto = puertoTexto === undefined ? undefined : Number(puertoTexto);
-  if (puerto !== undefined && (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)) {
-    console.error("`--port` espera un número entre 1 y 65535.");
-    return 1;
-  }
-
+async function startEmbeddedUi(port: number | undefined): Promise<IUiServer> {
   // Languages are seeded to disk the first time and reloaded from there:
   // that is what makes them editable and what makes adding one as easy
   // as dropping in a file. If the folder cannot be written —permissions,
@@ -220,29 +209,41 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.warn(`⚠ Language file ${roto.file} was ignored: ${roto.reason}`);
   }
 
+  return startUiServer({ deps: dependencias(catalogo), html: UI_HTML, port });
+}
+
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const puertoTexto = readFlag(argv, "--port");
+  const puerto = puertoTexto === undefined ? undefined : Number(puertoTexto);
+  if (puerto !== undefined && (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)) {
+    console.error("`--port` espera un número entre 1 y 65535.");
+    return 1;
+  }
+
+  const staticDir = staticDirDeLaApp(argv);
   let server;
-  // `--static-dir` says where the compiled app is. Without it, the
-  // app is looked for where the build puts it — and when it is not
-  // there, the embedded interface is served instead.
-  const staticDir = readFlag(argv, "--static-dir") ?? staticDirDeLaApp();
   try {
-    server = startUiServer({
-      deps: dependencias(catalogo),
-      html: UI_HTML,
-      staticDir,
-      ...(puerto !== undefined ? { port: puerto } : {}),
-    });
+    server = staticDir === undefined
+      ? await startEmbeddedUi(puerto)
+      : startHttpBridge({
+        registry: buildRegistry(),
+        orchestrator: defaultOrchestrator(),
+        port: puerto ?? DEFAULT_UI_PORT,
+        staticDir,
+      });
   } catch (error) {
     console.error(`\n✗ Could not start the interface.\n  · ${(error as Error).message}`);
     return 1;
   }
 
   console.log(`\n✔ Interface at ${server.url}`);
-  console.log(
-    staticDir === undefined
-      ? "  · Serving the built-in interface."
-      : `  · Serving the compiled app from ${staticDir}.`,
-  );
+  if (staticDir === EMBEDDED_APP_DIR) {
+    console.log("  · Serving the bundled Angular app.");
+  } else if (staticDir !== undefined) {
+    console.log(`  · Serving the compiled app from ${staticDir}.`);
+  } else {
+    console.log("  · Serving the built-in interface.");
+  }
   console.log("  · Listening on this machine only: not reachable from the network.");
   console.log("  · Ctrl-C to stop.\n");
 

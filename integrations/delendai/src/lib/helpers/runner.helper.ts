@@ -167,7 +167,7 @@ export function runBunCommand(
     readonly ctx?: IRunnerContext;
   },
 ): IRunScriptResult {
-  const start = Date.now();
+  const start = performance.now();
   const timeout = options.timeoutMs ?? 60_000;
   const bunBin = resolveBunBin(options.ctx);
   const cmd = [bunBin, ...args];
@@ -212,7 +212,7 @@ interface IRawSpawnResult {
 function toRunResult(raw: IRawSpawnResult, startedAt: number): IRunScriptResult {
   const stdout = decodeStream(raw.stdout);
   const stderr = decodeStream(raw.stderr);
-  const durationMs = Date.now() - startedAt;
+  const durationMs = Math.round(performance.now() - startedAt);
 
   if (raw.error) {
     return {
@@ -257,7 +257,7 @@ export function runBunScript(
     readonly ctx?: IRunnerContext;
   },
 ): IRunScriptResult {
-  const start = Date.now();
+  const start = performance.now();
   const timeout = options.timeoutMs ?? 60_000;
   const bunBin = resolveBunBin(options.ctx);
   const cmd = [bunBin, "run", scriptPath, ...args];

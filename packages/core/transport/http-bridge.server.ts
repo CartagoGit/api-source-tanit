@@ -40,6 +40,7 @@ import type {
   IHttpBridge,
   IHttpBridgeOptions,
 } from "../../contracts/interfaces/core/bridge.interface.js";
+import { connectSubscriptionEvents } from "../application-api/watch.handlers.js";
 import { dispatch } from "../application-api/dispatcher.js";
 import type {
   IJsonRpcRequest,
@@ -89,7 +90,8 @@ class BridgeAbortController {
     for (const listener of this._listeners) listener();
   }
   get signal(): { readonly aborted: boolean } {
-    return { aborted: this._aborted };
+    const controller = this;
+    return { get aborted() { return controller._aborted; } };
   }
   /** Subscribe to abort; useful for handlers that want to react. */
   onAbort(listener: () => void): () => void {
@@ -102,6 +104,15 @@ const HOST = "127.0.0.1";
 const INTENTOS = 20;
 const TOKEN_HEADER = "x-tanit-token";
 
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return url.origin === origin && url.protocol === "http:" && url.hostname === HOST && url.port !== "";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Starts the HTTP bridge.
  *
@@ -110,34 +121,42 @@ const TOKEN_HEADER = "x-tanit-token";
  * way `startUiServer` does today.
  */
 export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge {
+  if (options.browserOrigin !== undefined && !isLoopbackOrigin(options.browserOrigin)) {
+    throw new Error("The browser proxy origin must be an HTTP URL on 127.0.0.1 with an explicit port.");
+  }
   const portInicial = options.port ?? 0;
   const token = newToken();
   const caller = options.caller ?? "browser";
   const skipSecurity = options.skipSecurity === true;
+  const liveStreams = new Set<() => void>();
 
   for (let intento = 0; intento < INTENTOS; intento++) {
     const port = portInicial === 0 ? pickPort() : portInicial + intento;
+    const browserOrigin = options.browserOrigin ?? `http://${HOST}:${port}`;
     try {
       const server = Bun.serve({
         port,
         hostname: HOST,
+        idleTimeout: 0,
         fetch: async (request) => {
-          // One abort controller per request. The bridge fires
-          // it on the response boundary; handlers can poll
-          // `ctx.signal.aborted` to opt into cooperative
-          // cancellation. We do not currently observe the
-          // upstream client disconnect — `IServerRequest` in the
-          // project's ambient `runtime.d.ts` does not expose a
-          // `signal`. Tracking disconnects is a separate slice.
+          // Request cancellation and long-lived subscription ownership are separate:
+          // event streams observe disconnect and release their own subscription.
           const aborter = new BridgeAbortController();
-          return handleFetch(request, options, token, caller, skipSecurity, aborter);
+          const abort = () => aborter.abort();
+          request.signal?.addEventListener("abort", abort, { once: true });
+          if (request.signal?.aborted) abort();
+          try { return await handleFetch(request, options, token, caller, skipSecurity, aborter, liveStreams, browserOrigin); }
+          finally { request.signal?.removeEventListener("abort", abort); }
         },
       });
       return {
         url: `http://${HOST}:${server.port}`,
         port: server.port,
         token,
-        stop: () => server.stop(true),
+        stop: () => {
+          for (const close of [...liveStreams]) close();
+          server.stop(true);
+        },
       };
     } catch (err) {
       if (isEAddrInUse(err)) continue;
@@ -160,15 +179,25 @@ async function handleFetch(
   caller: IHttpBridgeOptions["caller"] & string,
   skipSecurity: boolean,
   aborter: BridgeAbortController,
+  liveStreams: Set<() => void>,
+  browserOrigin: string,
 ): Promise<IFetchResponse> {
   // Alias for the ambient `IFetchResponse` declared in
   // `runtime.d.ts`. Avoids re-importing a non-module file.
   const { pathname } = new URL(request.url);
+  const rejectedOrigin = request.headers.get("origin");
+  const sameOrigin = rejectedOrigin === null || rejectedOrigin === browserOrigin;
 
-  // Loopback-only — the TCP bind already enforces this; we mirror
-  // it here for the response so the caller can debug from
-  // `Origin` rejection messages.
-  const port = new URL(request.url).port;
+  if (request.method === "GET" && pathname === "/api/bootstrap" && options.browserOrigin !== undefined) {
+    // A cross-origin browser cannot send this header without a CORS preflight.
+    if (!sameOrigin || request.headers.get("host") !== new URL(browserOrigin).host ||
+        request.headers.get("x-tanit-bootstrap") !== "1") {
+      return new Response("Forbidden", { status: 403 });
+    }
+    return new Response(JSON.stringify({ token }), {
+      headers: { "content-type": "application/json", "cache-control": "no-store" },
+    });
+  }
 
   // The liveness answer.
   //
@@ -188,7 +217,11 @@ async function handleFetch(
   // means "the origin that served me". Splitting them across two
   // ports would make every call cross-origin.
   if (options.staticDir !== undefined && request.method === "GET") {
-    const asset = await readAsset(options.staticDir, pathname);
+    const navigation = /^\/[a-z][a-z-]*\/?$/.test(pathname) && !/^\/(?:api|assets)\/?$/.test(pathname);
+    const asset = pathname.split("/").some((segment) => segment.startsWith("."))
+      ? null
+      : await readAsset(options.staticDir, pathname) ??
+        (navigation ? await readAsset(options.staticDir, "/") : null);
     if (asset !== null) {
       const body = asset.isPage ? plantToken(asset.contents, token, "html") : asset.contents;
       return new Response(body, {
@@ -198,7 +231,7 @@ async function handleFetch(
           ...(asset.isPage
             ? {
                 "content-security-policy":
-                  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+                  "default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; " +
                   "connect-src 'self'; img-src 'self' data:; font-src 'self' data:",
               }
             : {}),
@@ -212,13 +245,12 @@ async function handleFetch(
   }
 
   if (!skipSecurity) {
-    const origen = request.headers.get("origin");
-    if (origen !== null && origen !== `http://${HOST}:${port}`) {
+    if (!sameOrigin) {
       return Response.json(
         wrapApiError(null, bridgeFailure(
           403,
           "EXECUTION_FAILED",
-          `This interface does not answer requests from ${origen}.`,
+          `This interface does not answer requests from ${rejectedOrigin}.`,
         ).app),
         { status: 403 },
       );
@@ -252,6 +284,15 @@ async function handleFetch(
         { status: 400 },
       );
     }
+  }
+  if (pathname === "/api/events") {
+    if (typeof parsed !== "object" || parsed === null ||
+        !("subscriptionId" in parsed) || typeof parsed.subscriptionId !== "string") {
+      return Response.json(wrapApiError(null, {
+        code: "INVALID_INPUT", message: "subscriptionId is required",
+      }), { status: 400 });
+    }
+    return openEventStream(request, parsed.subscriptionId, liveStreams);
   }
   if (!isJsonRpcRequestLike(parsed)) {
     return Response.json(
@@ -292,7 +333,7 @@ async function handleFetch(
       );
       continue;
     }
-    frames.push(await dispatchFrame(frame, options, caller, aborter));
+    frames.push(await dispatchFrame(frame, options, caller, aborter, request));
   }
   // One response per request: if the client sent a single envelope
   // (the supported shape), return the single envelope; otherwise
@@ -313,15 +354,73 @@ async function handleFetch(
   });
 }
 
+/** Authenticated, subscription-scoped NDJSON stream; disconnect releases ownership. */
+function openEventStream(
+  request: IServerRequest,
+  subscriptionId: string,
+  liveStreams: Set<() => void>,
+): IFetchResponse {
+  let enqueue: (value: Uint8Array) => void = () => undefined;
+  let close: () => void = () => undefined;
+  let release: () => void = () => undefined;
+  let ended = false;
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    request.signal?.removeEventListener("abort", end);
+    liveStreams.delete(end);
+    release();
+    try { close(); } catch { /* The reader may have cancelled first. */ }
+  };
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      enqueue = (value) => {
+        if (controller.desiredSize !== null && controller.desiredSize < 0) { end(); return; }
+        controller.enqueue(value);
+      };
+      close = () => controller.close();
+    },
+    cancel: end,
+  });
+  const encoder = new TextEncoder();
+  try {
+    release = connectSubscriptionEvents(subscriptionId, (event) => {
+      if (ended) return;
+      enqueue(encoder.encode(JSON.stringify({
+        jsonrpc: "2.0", method: "tanit/live", params: event,
+      }) + "\n"));
+      if (event.type === "session-closed" || event.type === "subscription-closed") end();
+    });
+  } catch (error) {
+    end();
+    return Response.json(wrapApiError(null, {
+      code: "INVALID_INPUT", message: error instanceof Error ? error.message : String(error),
+    }), { status: 400 });
+  }
+  liveStreams.add(end);
+  request.signal?.addEventListener("abort", end, { once: true });
+  if (request.signal?.aborted) end();
+  return new Response(stream, {
+    status: 200,
+    headers: { "content-type": "application/x-ndjson", "cache-control": "no-store" },
+  });
+}
+
 async function dispatchFrame(
   frame: IJsonRpcRequest,
   options: IHttpBridgeOptions,
   caller: "browser" | "desktop" | "cli",
   aborter: BridgeAbortController,
+  request: IServerRequest,
 ): Promise<IJsonRpcResponse> {
   const ctx: IRequestContext = {
     caller,
-    signal: { aborted: aborter.signal.aborted },
+    signal: aborter.signal,
+    onDisconnect: (dispose) => {
+      request.signal?.addEventListener("abort", dispose, { once: true });
+      if (request.signal?.aborted) dispose();
+      return () => request.signal?.removeEventListener("abort", dispose);
+    },
     ...(options.workspace !== undefined ? { workspace: options.workspace } : {}),
     ...(options.orchestrator !== undefined ? { orchestrator: options.orchestrator } : {}),
   };

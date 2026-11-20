@@ -28,15 +28,17 @@ verified in the browser is what runs in the app, because both go
 through the same connector over the same registry.
 
 ```bash
+bun run ui:dev      # run Angular from source with live reload and the API
 bun run build:app   # compile the app
-bun run ui:web      # serve it in the browser, against the real backend
+bun run ui:web      # serve that build in the browser with the API
 ```
 
 `ui:web` serves the compiled app and the Application API on **one
 origin** — the page asks for `POST /api` with a relative path, and a
 relative path means "the origin that served me". The token travels in
-the served HTML (`data-tanit-token` on the `<html>` element), which is
-the only place same-origin policy stops a third party from reading it.
+the served HTML (`data-tanit-token` on the `<html>` element). Angular's
+development server and the local Apache proxy obtain the token through
+a same-origin bootstrap request. See [Apache deployment](UI.md#servir-el-build-con-apache).
 
 ## The map, and the gate that checks it
 
@@ -188,3 +190,18 @@ were omitted. An absent or unavailable database does not change scan behavior.
 `sync` is a carrier over the existing generation handler. It does not scan or
 export through a second pipeline. GUI dry-run, retry, cancellation and native
 secure storage are host concerns around the same operation contract.
+
+### One persisted history for all clients
+
+CLI generation and summary runs, the web application and desktop use the
+same core repository at `~/.tanit/history/` (`TANIT_HISTORY_DIR` can override
+it). The CLI projects these records into its text/JSONL output; the app
+projects them into revision summaries. No rescan is needed to read history.
+
+The old `history.jsonl` is a read-only migration input. Import is idempotent,
+preserves duplicates and reports malformed lines without discarding valid
+records. New writes never append to that file. Historical run metadata
+without a source snapshot has no invented snapshot hash and cannot be
+compared, restored or exported again. The UI labels that limitation.
+`history --clear` explicitly clears the shared repository and legacy input,
+so cleared legacy data is not silently imported again.

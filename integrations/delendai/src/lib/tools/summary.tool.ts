@@ -51,7 +51,7 @@ export function buildSummaryToolRegistration(
             "Inspecciona un proyecto host sin escribir archivos. " +
             "Devuelve { framework, projectName, baseUrl, routesInCode, withFormRequest, " +
             "withoutFormRequest, bodiesAdded, queriesAdded, zeroConfig, configPath, manualEndpoints, " +
-            "health: porcentajes de endpoints con validación, body, ejemplos y descripción }.",
+            "health: porcentajes de endpoints con validación, body, ejemplos y descripción, contractEvidence opcional }.",
           inputSchema: SummaryInputSchema,
           outputSchema: SummaryOutputSchema,
         },
@@ -105,6 +105,9 @@ export function buildSummaryToolRegistration(
               inferredVariables: summary.inferredVariables,
               auth: summary.auth ? { loginEndpoint: summary.auth.loginEndpoint } : null,
               warnings: [...summary.warnings],
+              ...(summary.contractEvidence === undefined
+                ? {}
+                : { contractEvidence: [...summary.contractEvidence] }),
               // f00010 S2: documentation health, in percentages.
               // The output is **projected field by field** (never
               // spread): if the summary adds a new field and this

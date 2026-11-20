@@ -36,6 +36,14 @@ describe("where the root comes from", () => {
     expect(r.origin).toBe("env");
   });
 
+  test("the canonical environment variable takes precedence over the deprecated alias", () => {
+    const r = resolveRoot({
+      argv: [],
+      env: { TANIT_PROJECT_ROOT: "/actual", POSTMAN_PROJECT_ROOT: "/heredado" },
+    });
+    expect(r).toEqual({ root: resolve("/actual"), origin: "env", explicit: true });
+  });
+
   test("with nothing, the current directory", () => {
     const r = resolveRoot({ argv: [], env: SIN_ENV, cwd: "/cwd" });
     expect(r.root).toBe(resolve("/cwd"));

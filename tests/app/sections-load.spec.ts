@@ -245,7 +245,19 @@ describe("the live mode", () => {
     const component = TestBed.runInInjectionContext(() => new LiveToggleComponent());
 
     expect(listeners.length).toBeGreaterThan(0);
-    listeners[0]?.({ sourceFileCount: 3, changes: [{ path: "src/a.ts", kind: "changed" }] });
+    const project = TestBed.inject(ProjectStore);
+    project.projectRoot.set("/workspace");
+    project.sessionId.set("session-1");
+    component.store.enabled.set(true);
+    const identity = { subscriptionId: "sub-1", sessionId: "session-1", projectRoot: "/workspace" };
+    listeners[0]?.({ jsonrpc: "2.0", method: "tanit/live", params: {
+      ...identity, type: "snapshot-ready", changedPaths: [], sourceFileCount: 3,
+      summary: { sessionId: "session-1", projectRoot: "/workspace", capturedAt: new Date().toISOString(),
+        frameworks: [], endpointCount: 1, serviceCount: 1, diagnostics: [] },
+    } });
+    listeners[0]?.({ jsonrpc: "2.0", method: "tanit/live", params: {
+      ...identity, type: "snapshot-stale", changedPaths: ["src/a.ts"],
+    } });
 
     expect(component.store.sourceFileCount()).toBe(3);
     expect(component.store.changes()).toHaveLength(1);

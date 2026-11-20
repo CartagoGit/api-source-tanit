@@ -54,7 +54,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 feat: orchestrator agent routes requests to 4 bounded subagents
 
 Implements p00005 S0 + p00012. The new agent at
-.github/agents/export-to-postman-orchestrator.agent.md never
+.github/agents/api-source-tanit-orchestrator.agent.md never
 invokes postman_exporter_* tools directly — that lane belongs
 to the bounded subagents. It owns the state machine and the
 memory_save + proposals_close_slice close-out.
@@ -76,7 +76,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin delendai export-to-postman + config local   ← wrong prefix style
+[FEAT] Plugin delendai api-source-tanit + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -257,11 +257,47 @@ gate nombrando la constante exacta.
 `.mcp.json` en la raíz es la **fuente de verdad**. `.vscode/mcp.json` se
 deriva de él con `bun run mcp:sync` y `lint:mcp` falla si han derivado.
 
+**No lo edites a mano**: se regenera desde `.mcp.json`, y el aviso no
+está dentro del fichero precisamente porque no puede estar.
+
 No es un capricho: Claude Code lee `{ "mcpServers": … }` con rutas
 relativas y VS Code lee `{ "servers": … }` con `${workspaceFolder}`. El
 contenido difiere, no solo el nombre del fichero, así que un enlace
 simbólico no vale. Manteniéndolos a mano, cambias uno y el otro se queda
 viejo hasta que un servidor no arranca y nadie sabe por qué.
+
+Y `.vscode/mcp.json` se genera como **JSON estricto, sin comentarios**.
+VS Code admitiría comentarios (JSONC), pero ese fichero no lo lee sólo
+VS Code: el runtime de DelendAI lo parsea al arrancar con `JSON.parse`,
+y un `//` delante hace que el servidor salga con código 1 y vuelva a
+intentarlo, en bucle. JSON estricto es un subconjunto de JSONC: un
+fichero sin comentarios lo lee todo el mundo. `lint:mcp` vigila que los
+dos ficheros parseen en estricto.
+
+### El nombre del servidor: `DelendAI:Tanit`
+
+El servidor se registra con la clave **`DelendAI:Tanit`**, y esa clave
+no es decorativa: es la que **cualifica los nombres de las tools**. Un
+`.agent.md` que concede `tools: [read, delendai:tanit/*]` pide las
+tools del servidor llamado `DelendAI:Tanit`.
+
+Por eso los grants y la clave no pueden separarse: si renuevas la
+clave y no los grants, el agente sigue arrancando y lo único que pasa
+es que **se queda sin tools MCP**, sin que nada lo diga. El gate
+[`lint:mcp-server-key`](scripts/gates/lint-mcp-server-key.script.ts)
+comprueba que todo grant nombra un servidor registrado en `.mcp.json`,
+y que los dos ficheros de configuración declaran los mismos.
+
+La identidad de proyecto sigue la convención `DelendAI:{proyecto}`.
+`DelendAI:Tanit` identifica el registro del cliente; el servidor mantiene
+su namespace MCP y sus nombres de herramientas. Los grants incluyen la
+referencia normalizada del host: `delendai:tanit/*`. El gate reconoce
+los dos puntos y comprueba también los grants a otros proyectos.
+
+El comando `delendai` debe estar instalado en el PATH del host. Se usa
+`__serve --workspace=. --config=./delendai.config.json`, sin fijar una
+rama del host ni una ruta a un checkout vecino. La configuración de
+VS Code fija su cwd y expande las rutas desde `${workspaceFolder}`.
 
 ### Dónde escribe la herramienta
 
@@ -342,16 +378,11 @@ The 5 agents in `.github/agents/` each declare **only the tools they
 need** in the `tools:` permission list. The list is exhaustive — the
 agent does **not** pick up additional permissions at runtime.
 
-| Agent | File | Tools |
-| --- | --- | --- |
-| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, delendai/delendai_overview, delendai/delendai_agent_catalog, delendai/delendai_proposals_proposal_board, delendai/delendai_proposals_close_slice, delendai/delendai_memory_save` |
-| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_tanit_summary` |
-| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_generate, delendai/delendai_tanit_summary` |
-| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_tanit_validate` |
-| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_test` |
-
-When adding a new tool a lane needs, **add it to that agent's `tools:`
-list** — do **not** widen to `delendai/*`.
+Los permisos efectivos viven en los cinco archivos de `.github/agents/`:
+orchestrator, proposal_guardian, implementation_runner, delivery_verifier y
+technical_investigator. Todos conceden acceso al servidor del proyecto con
+`delendai:tanit/*`; las herramientas disponibles se consultan en el
+catálogo vivo del servidor. No se mantiene aquí una segunda lista de tools.
 
 ---
 
@@ -366,9 +397,10 @@ con squash.
 |---|---|
 | `delendai.config.json` → `development.integration.mergeMethod` | `merge` |
 | `delendai.config.json` → `development.integration.linearHistory` | `false` |
-| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `false` |
+| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `true` |
 | GitHub → `develop` → *Require linear history* | **desactivado** |
 | GitHub → repositorio → *Allow merge commits* | **activado** |
+| GitHub → repositorio → *Automatically delete head branches* | **activado** |
 
 **Por qué merge commit y no squash.** Un squash **destruye** los
 commits de la rama: entran cuatro commits y aterrizan como uno, y
@@ -412,11 +444,24 @@ ascendencia: sin él, `git log --graph` vuelve a mostrar una sola línea
 y las ramas desaparecen de la historia. Es el interruptor que
 contradice a `mergeMethod: "merge"`.
 
-**Por qué la rama no la borra GitHub.** Una propuesta aterriza **un
-pull request por slice**, y un slice puede tener más de una revisión:
-si el forge borrase la rama al primer merge, se perderían las slices
-siguientes. El borrado es decisión de delendai, que lo hace cuando la
-propuesta se cierra y ya no quedan slices.
+**Por qué aquí la rama sí se borra.** En este repo una unidad publica
+**un pull request por propuesta**, con todas sus slices: los pull
+requests mergeados lo enseñan —`pr/…-all-g1/…` en el nombre—. Borrar la
+rama al integrar, entonces, no deja ninguna slice sin publicar. Y no se
+pierde nada: la integración es un **merge commit**, así que los commits
+de la rama siguen en la historia de `develop` y `git log --graph
+develop` los enseña aunque la rama ya no exista.
+
+Por eso `development.integration.deleteMergedWorkRef` está en `true`: con
+esa política, el repositorio borra la rama de la publicación al integrar
+—el interruptor *Automatically delete head branches* de GitHub, activado
+aquí— y el runtime borra la ref de trabajo local cuando su contenido ya
+está en `develop`.
+
+**El borrado automático puede fallar, y entonces nadie se entera.** Una
+rama abandonada, un worktree que se quedó, una publicación que alguien
+empujó a mano: nada de eso avisa. `bun run lint:work-refs` lo vigila en
+cada `lint`, y `delendai work doctor` lo dice cuando se le pregunta.
 
 Cómo leerlo:
 
@@ -424,6 +469,43 @@ Cómo leerlo:
 git log --graph --oneline develop      # las ramas se ven
 git log --first-parent --oneline develop   # una línea por cambio
 ```
+
+---
+
+## Los restos — ramas, worktrees y refs que ya no guardan nada
+
+Una unidad de trabajo publica su trabajo en una rama (`pr/...`) y trabaja
+en otra (`wip/...`). Cuando ese trabajo aterriza en `develop`, las dos
+refs dejan de guardar nada… y se quedan. El clon se llena de ramas que
+nadie sabe si son trabajo vivo o trabajo ya integrado.
+
+El runtime sabe lo que es un resto y sabe limpiarlo (`delendai work
+reap`, `delendai work retire`, `delendai work doctor`). El gate
+`lint:work-refs` **le pregunta**: con el runtime instalado, usa el
+informe del doctor (`delendai --json work doctor`), y sus veredictos y su
+remedio son los del runtime, palabra por palabra. Sin runtime —la CI de
+este repo no lo instala, porque el runtime vive en otro repositorio— el
+gate hace la misma pregunta con `git`: si el commit de la ref es
+ancestro del de la rama de integración. Los dos modos hablan de lo
+mismo con los mismos nombres, así que el veredicto es el mismo; sólo
+cambia quién lo pronuncia.
+
+| veredicto | qué es un resto | cómo se quita |
+|---|---|---|
+| `publications-hold-work` | una publicación (`pr/…`) cuyo trabajo ya está integrado | `delendai work retire --ref=refs/heads/pr/… --reason="landed on develop"` |
+| `no-abandoned-work-refs` | una ref de trabajo (`wip/…`) local sin worktree encima | `delendai work publish`, o `delendai work retire --ref=refs/heads/wip/… --reason="<por qué>"` |
+| `no-leftover-worktrees` | un worktree que no está en ninguna ref de trabajo | `git worktree remove --force <ruta>` |
+| `no-husk-directories` | un directorio junto a las unidades que no es una unidad | `delendai work reap --apply` |
+
+Lo que el gate **no** toca, porque no es un resto:
+
+- Las refs de trabajo **del forge** (`wip/…` en `origin`): el runtime
+  las deja a propósito, como archivo del trabajo ya integrado.
+- Los claims del runtime (`refs/delendai/claims/…`).
+- Las refs retiradas (`refs/retired/…`): guardan el commit de un
+  trabajo retirado para que no se pierda, y no son ramas.
+
+---
 
 ## Proposal workflow
 
@@ -455,7 +537,7 @@ title: "<short title>"
 kind: feat | fix | refactor | perf | test | docs | chore
 status: ready | in-progress | review | done | paused | blocked | retired | legacy
 type: proposal
-track: export-to-postman
+track: api-source-tanit
 date: <YYYY-MM-DD>
 related:
     - <sha or proposal id>

@@ -12,15 +12,16 @@
  * dependency left over.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { join, } from "node:path";
 import { tmpdir } from "node:os";
 import { runProcess } from "../helpers/run-process";
-import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
-import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
+import { BIN_NAME, OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
+import { REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const ENTRYPOINT = CLI_ENTRYPOINT;
 const SAMPLE_PROJECT = exampleDir("express");
 
 let workDir = "";
@@ -28,14 +29,17 @@ let binary = "";
 let project = "";
 
 beforeAll(async () => {
-  workDir = await mkdtemp(join(tmpdir(), "postman-binary-"));
-  binary = join(workDir, "export-to-postman");
+  workDir = await mkdtemp(join(tmpdir(), "apisrc-binary-"));
   project = join(workDir, "mi-api");
   await cp(SAMPLE_PROJECT, project, { recursive: true });
 
-  await runProcess("bun", ["build", "--compile", ENTRYPOINT, "--outfile", binary], {
+  const build = await runProcess("bun", ["run", "build:binary", "--out", workDir], {
     cwd: REPO_ROOT,
   });
+  expect(build.code, build.output).toBe(0);
+  const artifacts = (await readdir(workDir)).filter((name) => name.startsWith(`${BIN_NAME}-`));
+  expect(artifacts).toHaveLength(1);
+  binary = join(workDir, artifacts[0]!);
 }, 120_000);
 
 afterAll(async () => {
@@ -64,6 +68,7 @@ describe("compiled binary", () => {
   test("`--help` responds without bun on the PATH", async () => {
     const { code, output } = await runWithoutRuntime(["--help"]);
     expect(code).toBe(0);
+    expect(output).toContain("o----/");
     for (const command of ["generate", "check", "list", "stats", "validate"]) {
       expect(output).toContain(command);
     }
@@ -91,6 +96,63 @@ describe("compiled binary", () => {
     expect(countRequests(collection.item)).toBe(9);
   });
 
+  test("serves bundled Angular and an explicit static directory outside the repository", async () => {
+    const staticDir = join(workDir, "static");
+    await mkdir(staticDir);
+    await writeFile(join(staticDir, "index.html"), "<h1>compiled fixture</h1>");
+    for (const [args, expected] of [
+      [[], "Serving the bundled Angular app."],
+      [["--static-dir", staticDir], "compiled fixture"],
+    ] as const) {
+      const port = await freePort();
+      const child = spawn(binary, ["ui", "--no-open", "--port", String(port), ...args], {
+        cwd: workDir,
+        env: { PATH: "/usr/bin:/bin", HOME: workDir },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "";
+      let stopped = false;
+      let spawnError: Error | undefined;
+      const closed = new Promise<void>((resolve) => {
+        child.on("close", () => { stopped = true; resolve(); });
+        child.on("error", (error) => { spawnError = error; stopped = true; resolve(); });
+      });
+      child.stdout?.on("data", (data: Uint8Array) => { output += Buffer.from(data).toString(); });
+      child.stderr?.on("data", (data: Uint8Array) => { output += Buffer.from(data).toString(); });
+      try {
+        let url: string | undefined;
+        for (let attempt = 0; attempt < 100 && !url; attempt++) {
+          if (stopped) throw spawnError ?? new Error(`UI exited: ${output}`);
+          url = output.match(/Interface at (https?:\/\/\S+)/)?.[1];
+          if (!url) await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        expect(url, output).toBeDefined();
+        const response = await fetch(url!);
+        expect(response.status, output).toBe(200);
+        const html = await response.text();
+        expect(args.length ? html : output).toContain(expected);
+        if (!args.length) {
+          expect(html).toContain("<tanit-root>");
+          expect(html).toContain("data-tanit-token");
+          const main = html.match(/src="(main-[^"]+\.js)"/)?.[1];
+          expect(main).toBeDefined();
+          const bundle = await fetch(new URL(main!, url));
+          expect(bundle.status).toBe(200);
+          expect(bundle.headers.get("content-type")).toContain("text/javascript");
+          const icon = await fetch(new URL("/assets/tanit.svg", url));
+          expect(icon.status).toBe(200);
+          expect(await icon.text()).toMatch(/<svg[\s>]/);
+          const route = await fetch(new URL("/endpoints", url));
+          expect(await route.text()).toContain("<tanit-root>");
+          expect((await fetch(new URL("/missing.js", url))).status).toBe(404);
+        }
+      } finally {
+        if (!stopped) child.kill("SIGTERM");
+        await closed;
+      }
+    }
+  });
+
   test("rejects an unknown command with exit code 1", async () => {
     const { code, output } = await runWithoutRuntime(["comando-inventado"]);
     expect(code).toBe(1);
@@ -103,4 +165,13 @@ function countRequests(items: ReadonlyArray<Record<string, any>>): number {
     (total, item) => total + (item["item"] ? countRequests(item["item"]) : 1),
     0,
   );
+}
+
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("No TCP port");
+  await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return address.port;
 }

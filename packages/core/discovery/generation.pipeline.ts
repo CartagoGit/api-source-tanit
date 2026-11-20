@@ -1,3 +1,5 @@
+import { reconcileContracts } from "./contract-reconciliation.service.js";
+import type { IContractScan } from "../../contracts/interfaces/core/contract-evidence.interface.js";
 /**
  * Generation pipeline: `projectRoot` -> `PostmanCollection`.
  *
@@ -67,7 +69,7 @@ import {
 import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IServiceGraphNode } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { toServiceGraph } from "./to-service-graph.helper.js";
-import { deriveServiceId } from "./group-by-service.helper.js";
+import { deriveServiceId, resolveServiceIdentity } from "./group-by-service.helper.js";
 import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper.js";
 import { filterSpecsForService } from "./filter-specs-for-service.helper.js";
 import { toServiceDescriptor } from "../merge/service-descriptor.adapter.js";
@@ -589,7 +591,13 @@ async function buildForService(
     collection.variable = localConfig.variables;
   }
 
-  return {
+  const comparisonIds = new Set([service.match, ...service.additionalMatches].map(deriveServiceId));
+  const combinedComparison = options.combineServices === true && service.serviceId === "";
+  const comparisonScans = discovery.contractScans?.filter(scan => combinedComparison || comparisonIds.has(scan.source.serviceId))
+    .map(scan => ({ ...scan, source: { ...scan.source, serviceId: combinedComparison ? scan.source.serviceId : service.serviceId } }));
+  const contractEvidence = comparisonScans ? reconcileContracts(comparisonScans) : undefined;
+
+  const result: IGenerationResult = {
     collection,
     specs,
     routes: service.endpoints,
@@ -609,6 +617,7 @@ async function buildForService(
     frameworks: discovery.frameworks,
     project: discovery.project,
     ...(discovery.provenance ? { provenance: discovery.provenance } : {}),
+    ...(contractEvidence ? { contractEvidence } : {}),
     metrics: {
       // Per-service metrics. Before this slice they came from
       // `discovery.routes` / `discovery.withValidation` /
@@ -638,6 +647,7 @@ async function buildForService(
       responsesInferred: responseResult.enrichedCount,
     },
   };
+  return options.orchestrator.prepareResult?.(result) ?? result;
 }
 
 /**
@@ -992,6 +1002,7 @@ function isSafeRelativeSubdir(value: string): boolean {
 }
 
 interface IDiscovery {
+  readonly contractScans?: ReadonlyArray<IContractScan>;
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
   readonly config: ProjectConfig;
@@ -1118,14 +1129,10 @@ async function discoverSpecs(
       readonly framework: string;
       readonly scannerScore: number;
       readonly scannerSpecs: ReadonlyArray<EndpointSpec>;
-      /**
-       * Identity of the workspace / service the specs come from.
-       * Audit 2nd review #3: in multi-workspace monorepos, two
-       * `GET /health` endpoints from different workspaces must NOT
-       * be fused. The merger uses `serviceId` to keep them apart.
-       * Empty string = flat project (not applicable).
-       */
-      readonly serviceId: string;
+      /** Match identity used to look up routes and raw scanner evidence. */
+      readonly scannerServiceId: string;
+      /** Graph identity used to fuse HTTP operations within a service. */
+      readonly httpServiceId: string;
       /**
        * Routes this scanner actually emitted. x00025 S1: the helper
        * `accumulateRoutesByService` no longer re-derives attribution
@@ -1136,13 +1143,28 @@ async function discoverSpecs(
       readonly scannerRoutes: ReadonlyArray<ParsedRoute>;
     }
     const perScanner: IPerScanner[] = [];
+    const contractScans: IContractScan[] = [];
+    const matches = usable.map(candidate => candidate.match);
+    const { idFor } = resolveServiceIdentity(matches, monorepoDetection?.isMonorepo === true);
 
     for (const candidate of usable) {
+      const scannerServiceId = deriveServiceId(candidate.match);
       const result = await buildSpecsFromScanner(
         candidate.scanner!,
         candidate.match,
         candidate.validation,
       );
+      contractScans.push({
+        source: {
+          ...(result.scanEvidence ?? {
+            kind: "code" as const, completeness: "unknown" as const,
+            artifacts: [...candidate.match.artifacts],
+            limitations: ["This scanner has not declared complete route coverage."],
+          }),
+          framework: candidate.match.framework, serviceId: scannerServiceId,
+        },
+        specs: result.specs.filter(spec => (spec.transport ?? "http") === "http"), routes: result.routes,
+      });
       specs.push(...result.specs);
       routes.push(...result.routes);
       withValidation += result.withFormRequest;
@@ -1151,15 +1173,8 @@ async function discoverSpecs(
         framework: candidate.match.framework,
         scannerScore: candidate.score,
         scannerSpecs: result.specs,
-        // MUST go through `deriveServiceId`, not the raw
-        // `frameworkSearchRoot`: `toServiceGraph` looks routes up by
-        // the NORMALIZED id (`apps/api` → `apps_api`), so raw keys
-        // silently missed every lookup and every descriptor ended up
-        // with empty `endpoints` — which made `filterSpecsForService`
-        // fall back to the full global catalog (x00028's isolation
-        // became a no-op for real monorepos; the x00028 test fixture
-        // only passed because its temp path carried no `/`).
-        serviceId: deriveServiceId(candidate.match),
+        scannerServiceId,
+        httpServiceId: idFor(candidate.match),
         scannerRoutes: result.routes,
       });
 
@@ -1189,18 +1204,13 @@ async function discoverSpecs(
           "If any one is extraneous, narrow the scan with `--project-root` to the right folder.",
       );
 
-      // Hybrid merge: each scanner contributes its specs with its
-      // framework. The merger groups by identity (method + uri +
-      // name + serviceId) and chooses piece by piece (body, fields,
-      // auth, description) the most trustworthy one, leaving
-      // provenance of who contributed what. Previously it did "first
-      // wins" on the already-mixed specs, which silently lost the
-      // info from the rest.
-      const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs, serviceId }) =>
+      // HTTP candidates share the service graph's identity. Keeping the
+      // scanner identity on raw routes and evidence preserves attribution.
+      const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs, scannerServiceId, httpServiceId }) =>
         scannerSpecs.map((spec) => ({
           framework,
           scannerScore,
-          serviceId,
+          serviceId: (spec.transport ?? "http") === "http" ? httpServiceId : scannerServiceId,
           method: spec.method,
           uri: spec.uri,
           ...(spec.name !== undefined && spec.name !== ""
@@ -1255,9 +1265,10 @@ async function discoverSpecs(
         frameworks: usable.map((c) => c.match.framework),
         project,
         provenance,
-        matches: usable.map((c) => c.match),
+        contractScans,
+        matches,
         routesByService: accumulateRoutesByService(
-          perScanner.map(({ serviceId, scannerRoutes }) => {
+          perScanner.map(({ scannerServiceId, scannerRoutes }) => {
             // x00025 S1: cada scanner YA sabe qué rutas emitió
             // (`scannerRoutes: result.routes` en el push de arriba). Lo
             // que antes pasaba aquí era reconstruir esa atribución
@@ -1269,7 +1280,7 @@ async function discoverSpecs(
             // atribuiría los health de `apps/users` Y `apps/orders` a
             // AMBOS descriptores, y luego `filterSpecsForService`
             // ya no tenía con qué restringir.
-            return { serviceId, scannerRoutes };
+            return { serviceId: scannerServiceId, scannerRoutes };
           }),
         ),
         monorepoDetection: monorepoDetection ?? undefined,
@@ -1295,6 +1306,7 @@ async function discoverSpecs(
       warnings,
       frameworks: usable.map((c) => c.match.framework),
       project,
+      contractScans,
       matches: usable.map((c) => c.match),
       routesByService: new Map([
         [deriveServiceId(usable[0]!.match), routes],

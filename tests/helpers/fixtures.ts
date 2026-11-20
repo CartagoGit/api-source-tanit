@@ -26,7 +26,7 @@ export type FixtureTree = Record<string, string>;
  *   });
  */
 export function mkFixtureSync(tree: FixtureTree): string {
-  const base = mkdtempSync(join(tmpdir(), "export-to-postman-test-"));
+  const base = mkdtempSync(join(tmpdir(), "tanit-test-"));
   for (const [rel, content] of Object.entries(tree)) {
     const abs = join(base, rel);
     const dir = dirname(abs);
@@ -81,7 +81,7 @@ export async function withFixtureAsync<T>(
  *
  * A bare `cp` is not enough, and the failure does not show up until it
  * bites. The examples are real projects the CLI is run against, so
- * they end up with an `export-to-postman/` folder inside. It is in
+ * they end up with an `tanit/` folder inside. It is in
  * `.gitignore`, not in the repo — but it is **on disk**, and `cp`
  * copies it.
  *

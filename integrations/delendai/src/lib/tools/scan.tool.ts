@@ -80,7 +80,7 @@ export function buildScanToolRegistration(ctx: IMcpPluginContext): IToolRegistra
             );
           }
 
-          const started = Date.now();
+          const started = performance.now();
           const context = resolveProjectContext({ projectRoot });
           const outcome = await runScan([], context);
 
@@ -101,7 +101,7 @@ export function buildScanToolRegistration(ctx: IMcpPluginContext): IToolRegistra
               tags: [...r.tags],
               description: r.description,
             })),
-            durationMs: Date.now() - started,
+            durationMs: performance.now() - started,
           };
           return toolJson(out);
         },

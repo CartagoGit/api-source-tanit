@@ -9,7 +9,8 @@
  * (unit tests fabricated bindings by hand).
  */
 import { describe, expect, it } from "vitest";
-import { collectConstantsFromSource } from "../../packages/core/language-ir/collect-constants.helper.js";
+import { parse } from "@babel/parser";
+import { collectConstantsFromProgram, collectConstantsFromSource } from "../../packages/core/language-ir/collect-constants.helper.js";
 
 const FILE = "src/server.ts";
 
@@ -88,5 +89,27 @@ describe("collectConstantsFromSource (a00016 S6)", () => {
       FILE,
     );
     expect(out).toEqual([]);
+  });
+});
+
+
+describe("ambient declarations without initializers", () => {
+  const source = `
+    declare const environment: { name: string };
+    export declare const remoteMethod: string;
+    const METHOD = "get";
+  `;
+
+  it("ignores null initializers while preserving real source bindings", () => {
+    expect(collectConstantsFromSource(source, FILE)).toEqual([
+      expect.objectContaining({ name: "METHOD", value: "get" }),
+    ]);
+  });
+
+  it("handles the same declarations through the shared Program entrypoint", () => {
+    const ast = parse(source, { sourceType: "module", plugins: ["typescript"] });
+    expect(collectConstantsFromProgram(ast.program, FILE)).toEqual([
+      expect.objectContaining({ name: "METHOD", value: "get" }),
+    ]);
   });
 });

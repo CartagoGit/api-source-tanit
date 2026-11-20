@@ -79,13 +79,13 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
     }),
     dryRun: async ({ outputDir }) => ({
       ok: true,
-      outputDir: outputDir ?? "/x/export-to-postman",
+      outputDir: outputDir ?? "/x/tanit",
       projectName: "sample-express",
       framework: "express",
       requests: 9,
       files: [
         {
-          path: `${outputDir ?? "/x/export-to-postman"}/sample-express.postman_collection.json`,
+          path: `${outputDir ?? "/x/tanit"}/sample-express.postman_collection.json`,
           kind: "collection" as const,
           format: "postman",
           overwrites: false,

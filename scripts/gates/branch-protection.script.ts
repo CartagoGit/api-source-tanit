@@ -77,9 +77,9 @@ if (REQUIRED_CHECKS.length === 0) {
 }
 
 export const BRANCH_PROTECTION_POLICY = {
-  // `requireLatestIntegration` IS strict status checks: the candidate is
-  // re-validated against the current head, which is what stops two
-  // independently green pull requests from combining into a red branch.
+  // The integration line follows the profile's latest-integration switch.
+  // Release branches keep strict checks enabled so promotion is validated
+  // against the current target head too.
   requiredStatusChecksStrict:
     DEVELOPMENT_INTEGRATION.requireLatestIntegration ?? true,
   requiredApprovingReviewCount: DEVELOPMENT_INTEGRATION.requiredApprovals ?? 0,
@@ -171,6 +171,13 @@ export const RELEASE_APPROVALS: number = (() => {
  */
 export function requiredApprovalsFor(branch: string): number {
   return branch === RELEASE_BRANCH ? RELEASE_APPROVALS : BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount;
+}
+
+/** Integration policy applies to the integration branch; promotion lines stay strict. */
+export function requiredStrictChecksFor(branch: string): boolean {
+  return branch === INTEGRATION_BRANCH
+    ? BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict
+    : true;
 }
 
 interface IResponseLike {
@@ -554,7 +561,7 @@ async function checkBranchProtection(
     };
   }
 
-  if (payload.required_status_checks?.strict !== BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict ||
+  if (payload.required_status_checks?.strict !== requiredStrictChecksFor(options.branch) ||
       payload.enforce_admins?.enabled !== BRANCH_PROTECTION_POLICY.enforceAdmins) {
     return { branch: options.branch, ok: false, detail: "strict o enforce_admins divergen de la política" };
   }

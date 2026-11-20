@@ -19,12 +19,15 @@
  *     or a screen reader notices nothing.
  *   · `prefers-reduced-motion` and `prefers-color-scheme` are honoured.
  */
+import { TANIT_LOGO_URL } from "../../contracts/constants/cli/tanit-brand.constant.js";
+
 export const UI_HTML = String.raw`<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tanit</title>
+<link rel="icon" type="image/svg+xml" href="${TANIT_LOGO_URL}">
 <style>
   /*
    * El tema, en variables y con los mismos nombres que la hoja de
@@ -68,7 +71,7 @@ export const UI_HTML = String.raw`<!doctype html>
     font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   main { max-width: 46rem; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h1 { display: flex; align-items: center; gap: .5rem; font-size: 1.5rem; margin: 0 0 .25rem; }
   p.sub { color: var(--tenue); margin: 0 0 2rem; }
   fieldset { border: 1px solid var(--borde); border-radius: 8px; padding: 1rem 1.25rem 1.25rem; margin: 0 0 1.25rem; }
   legend { padding: 0 .4rem; font-weight: 600; }
@@ -280,7 +283,7 @@ export const UI_HTML = String.raw`<!doctype html>
 <main>
   <div class="cabecera">
     <div>
-      <h1 data-i18n="app.title">Tanit</h1>
+      <h1><img src="${TANIT_LOGO_URL}" width="32" height="32" alt=""><span data-i18n="app.title">Tanit</span></h1>
       <p class="sub">Apunta a la carpeta de tu API y mira lo detectado antes de escribir nada.</p>
     </div>
     <button type="button" id="ajustes" class="tuerca" aria-haspopup="dialog" data-i18n-attr="aria-label:nav.settings" title="Ajustes" aria-label="Ajustes">&#9881;</button>
@@ -795,6 +798,31 @@ export const UI_HTML = String.raw`<!doctype html>
       // del resumen plano para que el orden visual sea de lo
       // conocido a lo explicado, no al revés.
       pintaDeteccion(s);
+      (s.contractEvidence || []).forEach(function (report) {
+        var details = document.createElement("details");
+        var heading = document.createElement("summary");
+        heading.textContent = "Documentación y código — " + report.operations.length + " comparaciones estáticas";
+        details.appendChild(heading);
+        var scope = document.createElement("p");
+        scope.textContent = "Desconocido no significa ausente. No se certifican esquemas completos ni comportamiento HTTP.";
+        details.appendChild(scope);
+        var rows = [];
+        report.sources.forEach(function (source) { rows.push([source.framework + " · " + source.completeness, source.artifacts.join(", ")]); });
+        var attention = report.operations.filter(function (operation) { return operation.status !== "matched"; });
+        if (attention.length > 100) rows.push(["Límite de vista", "Se muestran 100 de " + attention.length + ". CLI: summary --format json muestra el informe completo."]);
+        attention.slice(0, 100).forEach(function (operation) {
+          rows.push([operation.method + " " + operation.path, operation.status + " · " + operation.serviceId]);
+          [["Documentado", operation.documented], ["Observado", operation.observed]].forEach(function (side) {
+            side[1].forEach(function (evidence) {
+              var location = evidence.pointer || (evidence.line > 0 ? ":" + evidence.line : "");
+              rows.push([side[0], evidence.file + location]);
+            });
+          });
+          operation.conflicts.forEach(function (conflict) { rows.push([conflict.field, "Documentado: " + conflict.documented + " · Observado: " + conflict.observed]); });
+        });
+        details.appendChild(tabla(rows));
+        viva.firstChild.appendChild(details);
+      });
       if (res.j.notice) {
         var p = document.createElement("p");
         p.textContent = res.j.notice;

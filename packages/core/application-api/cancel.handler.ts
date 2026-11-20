@@ -17,9 +17,9 @@ import {
   CancelInputSchema,
   type CancelInput,
 } from "./zod-schemas.js";
-import { getSession } from "../session/project-session.service.js";
+import { cancelSessionOpening, getSession } from "../session/project-session.service.js";
 import {
-  clearSubscriptions,
+  dropSubscriptionsForProject,
   dropSubscriptionById,
 } from "./watch.handlers.js";
 
@@ -36,9 +36,13 @@ export function createCancelHandler(): IHandler<CancelInput, CancelOutput> {
       let cancelled = 0;
 
       if (input.projectRoot) {
+        const cancelledOpening = cancelSessionOpening(input.projectRoot);
         const session = getSession(input.projectRoot);
         if (session) {
+          dropSubscriptionsForProject(input.projectRoot);
           session.close();
+          cancelled += 1;
+        } else if (cancelledOpening) {
           cancelled += 1;
         }
       }
@@ -53,7 +57,6 @@ export function createCancelHandler(): IHandler<CancelInput, CancelOutput> {
       // idempotent. We return `cancelled: 0` and let the caller
       // decide whether that means "already done" or "wrong
       // identifier".
-      void clearSubscriptions;
       return { cancelled };
     },
   };

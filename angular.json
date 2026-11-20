@@ -9,6 +9,10 @@
       "sourceRoot": "packages/app/src",
       "prefix": "tanit",
       "architect": {
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": { "buildTarget": "tanit-app:build:development" }
+        },
         "build": {
           "builder": "@angular/build:application",
           "options": {
@@ -21,7 +25,10 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": [],
+            "assets": [
+              { "glob": "tanit.svg", "input": "assets/icons", "output": "assets" },
+              { "glob": ".htaccess", "input": "packages/app/src", "output": "." }
+            ],
             "styles": ["packages/app/src/styles.scss"]
           },
           "configurations": {

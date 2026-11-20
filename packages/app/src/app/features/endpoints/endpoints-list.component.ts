@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, TemplateRef, ViewChild, effect, inject } from "@angular/core";
+import { Location } from "@angular/common";
+import { ChangeDetectionStrategy, Component, TemplateRef, ViewChild, computed, effect, inject, untracked } from "@angular/core";
 
 import {
   ENDPOINT_CONFIDENCES,
@@ -40,7 +41,10 @@ export class EndpointsListComponent {
   readonly i18n = inject(I18nService);
   readonly store = inject(EndpointsStore);
   private readonly project = inject(ProjectStore);
+  private readonly location = inject(Location);
   @ViewChild("endpointTemplate", { static: true }) readonly endpointTemplate!: TemplateRef<unknown>;
+  readonly rowHeight = 64;
+  readonly viewportHeight = computed(() => Math.min(this.store.filtered().length * this.rowHeight, 512));
   readonly trackBy = (item: { id: string }): string => item.id;
 
   constructor() {
@@ -48,10 +52,10 @@ export class EndpointsListComponent {
     // explorer used to stay empty until the user touched a filter,
     // because nothing ever asked.
     effect(() => {
-      if (this.project.projectRoot() !== null) void this.store.refresh();
+      if (this.project.projectRoot() !== null) untracked(() => { void this.store.refresh(); });
     });
     effect(() => {
-      const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+      const params = new URLSearchParams(this.location.path().split("?", 2)[1]);
       const query = this.queryFromUrl(params);
       if (JSON.stringify(query) !== JSON.stringify(this.store.query())) {
         this.store.setQuery(query);
@@ -79,9 +83,15 @@ export class EndpointsListComponent {
   clearSelection(): void { this.store.select(null); this.updateUrl(this.store.query()); }
   filterTransport(value: string): void { this.apply({ ...this.store.query(), transport: value as EndpointQuery["transport"] }); }
   refresh(): void { void this.store.refresh(); }
-  openLocation(location: { file: string; line: number }): void { if (typeof window !== "undefined") window.open(`tanit://open?file=${encodeURIComponent(location.file)}&line=${location.line}`, "_blank"); }
 
-  private updateUrl(query: EndpointQuery & { endpoint?: string }): void { if (typeof history === "undefined") return; const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value)); history.replaceState(null, "", `${location.pathname}?${params.toString()}`); }
+  private updateUrl(query: EndpointQuery & { endpoint?: string }): void {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== "") params.set(key, String(value));
+    }
+    const path = this.location.path().split("?", 1)[0] ?? "";
+    this.location.replaceState(path, params.toString(), this.location.getState());
+  }
 
   private queryFromUrl(params: URLSearchParams): EndpointQuery {
     const transport = params.get("transport");

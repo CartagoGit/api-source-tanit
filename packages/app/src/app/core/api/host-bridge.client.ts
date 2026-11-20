@@ -14,6 +14,7 @@ interface ITauriEventApi {
 /** The part of Tauri's global this connector uses. */
 interface ITauriGlobal {
   invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+  core?: Pick<ITauriGlobal, "invoke">;
   event?: ITauriEventApi;
 }
 
@@ -21,6 +22,8 @@ interface ITauriGlobal {
 interface IWireFrame {
   readonly jsonrpc: string;
   readonly id?: string | number | null;
+  readonly method?: string;
+  readonly params?: unknown;
   readonly result?: unknown;
   readonly error?: { readonly code?: number; readonly message?: string };
 }
@@ -65,9 +68,11 @@ const REQUEST_TIMEOUT_MS = 30_000;
 @Injectable({ providedIn: "root" })
 export class HostBridgeClient implements IHostBridge {
   private nextId = 0;
+  private browserTokenRequest: Promise<string> | undefined;
   private readonly listeners = new Set<(event: unknown) => void>();
   private readonly pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
   private listening = false;
+  private readonly streams = new Map<string, AbortController>();
 
   request<K extends keyof IHostRequestMap>(
     operation: K,
@@ -79,7 +84,13 @@ export class HostBridgeClient implements IHostBridge {
   subscribe(listener: (event: unknown) => void): () => void {
     this.listeners.add(listener);
     this.ensureListening();
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0) {
+        for (const controller of this.streams.values()) controller.abort();
+        this.streams.clear();
+      }
+    };
   }
 
   /**
@@ -96,11 +107,12 @@ export class HostBridgeClient implements IHostBridge {
       params: input ?? {},
     });
     const tauri = this.tauri();
-    if (tauri?.invoke) {
+    const invoke = tauri?.core?.invoke ?? tauri?.invoke;
+    if (invoke) {
       this.ensureListening();
-      return this.requestTauri(id, frame, tauri.invoke);
+      return this.requestTauri(id, frame, invoke);
     }
-    return this.requestBrowser(frame);
+    return this.requestBrowser(frame, operation, input);
   }
 
   /**
@@ -145,15 +157,13 @@ export class HostBridgeClient implements IHostBridge {
     });
   }
 
-  private async requestBrowser(frame: string): Promise<unknown> {
-    const token = typeof document !== "undefined"
-      ? document.documentElement.dataset.tanitToken
-      : undefined;
+  private async requestBrowser(frame: string, operation: string, input: unknown): Promise<unknown> {
+    const token = await this.browserToken();
     const response = await fetch("/api", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(token ? { "x-tanit-token": token } : {}),
+        "x-tanit-token": token,
       },
       body: frame,
     });
@@ -165,7 +175,94 @@ export class HostBridgeClient implements IHostBridge {
     if (!response.ok || payload.error) {
       throw new Error(payload.error?.message ?? `${translate("common.hostRequestFailed")} (${response.status})`);
     }
-    return unwrap(payload.result, translate("common.hostRequestFailed"));
+    const value = unwrap(payload.result, translate("common.hostRequestFailed"));
+    if (operation === "watch") {
+      const id = subscriptionIdOf(value);
+      if (id !== null) {
+        try { await this.openBrowserStream(id, token); }
+        catch (error) {
+          await this.send("cancel", { subscriptionId: id }).catch(() => undefined);
+          throw error;
+        }
+      }
+    } else if (operation === "cancel" && typeof input === "object" && input !== null &&
+               "subscriptionId" in input && typeof input.subscriptionId === "string") {
+      this.streams.get(input.subscriptionId)?.abort();
+      this.streams.delete(input.subscriptionId);
+    }
+    return value;
+  }
+
+  private async browserToken(): Promise<string> {
+    const embedded = document.documentElement.dataset.tanitToken;
+    if (embedded) return embedded;
+    return this.browserTokenRequest ??= fetch("/api/bootstrap", {
+      headers: { "x-tanit-bootstrap": "1" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    }).then(async (response) => {
+      if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
+        const body: unknown = await response.json();
+        if (typeof body === "object" && body !== null && "token" in body &&
+            typeof body.token === "string" && body.token.length > 0) return body.token;
+      }
+      throw new Error(`${translate("common.hostRequestFailed")} (${response.status})`);
+    }).catch((error: unknown) => {
+      this.browserTokenRequest = undefined;
+      throw error;
+    });
+  }
+
+  private async openBrowserStream(subscriptionId: string, token: string): Promise<void> {
+    const controller = new AbortController();
+    this.streams.set(subscriptionId, controller);
+    const response = await fetch("/api/events", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-tanit-token": token },
+      body: JSON.stringify({ subscriptionId }), signal: controller.signal,
+    });
+    if (!response.ok || !response.body) {
+      this.streams.delete(subscriptionId);
+      controller.abort();
+      throw new Error(`Live event stream failed (${response.status})`);
+    }
+    const reader = response.body.getReader();
+    const abortReader = () => { void reader.cancel().catch(() => undefined); };
+    controller.signal.addEventListener("abort", abortReader, { once: true });
+    const decoder = new TextDecoder();
+    const consume = async () => {
+      let pending = "";
+      let ended = false;
+      try {
+        while (!controller.signal.aborted) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          pending += decoder.decode(chunk.value, { stream: true });
+          let newline: number;
+          while ((newline = pending.indexOf("\n")) >= 0) {
+            const line = pending.slice(0, newline);
+            pending = pending.slice(newline + 1);
+            const frame = parseFrame(line);
+            if (frame) {
+              const params = frame.params;
+              if (typeof params === "object" && params !== null && "type" in params &&
+                  (params.type === "subscription-closed" || params.type === "session-closed")) ended = true;
+              this.dispatch(frame);
+            }
+          }
+        }
+        if (!controller.signal.aborted && !ended) throw new Error("Live connection closed");
+      } catch (error) {
+        if (!controller.signal.aborted) this.dispatch({ jsonrpc: "2.0", method: "tanit/connection-error",
+          params: { subscriptionId, message: error instanceof Error ? error.message : String(error) } });
+      } finally {
+        if (this.streams.get(subscriptionId) === controller) this.streams.delete(subscriptionId);
+        controller.signal.removeEventListener("abort", abortReader);
+        controller.abort();
+        await reader.cancel().catch(() => undefined);
+        reader.releaseLock();
+      }
+    };
+    void consume();
   }
 
   /**
@@ -284,4 +381,12 @@ function unwrap(result: unknown, fallback: string): unknown {
     throw new Error(envelope.error?.message ?? fallback);
   }
   return result;
+}
+
+/** Read only the subscription identity from a successful watch result. */
+function subscriptionIdOf(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || !("subscription" in value) ||
+      typeof value.subscription !== "object" || value.subscription === null ||
+      !("subscriptionId" in value.subscription)) return null;
+  return typeof value.subscription.subscriptionId === "string" ? value.subscription.subscriptionId : null;
 }

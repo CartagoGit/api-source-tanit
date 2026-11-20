@@ -6,6 +6,7 @@ interface TauriDialogApi {
 
 interface TauriGlobal {
   dialog?: TauriDialogApi;
+  core?: Pick<TauriGlobal, "invoke">;
   invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -38,8 +39,9 @@ export class DialogService {
       const selected = await tauri.dialog.open({ directory: true, multiple: false, title: "Open project" });
       return Array.isArray(selected) ? selected[0] ?? null : selected;
     }
-    if (tauri?.invoke) {
-      const selected = await tauri.invoke("plugin:dialog|open", { options: { directory: true, multiple: false } });
+    const invoke = tauri?.core?.invoke ?? tauri?.invoke;
+    if (invoke) {
+      const selected = await invoke("plugin:dialog|open", { options: { directory: true, multiple: false } });
       return typeof selected === "string" ? selected : null;
     }
     // The browser's picker gives a name, not a path. Returning the
@@ -56,7 +58,7 @@ export class DialogService {
    */
   canPickFolder(): boolean {
     const tauri = this.tauri();
-    return tauri?.dialog !== undefined || tauri?.invoke !== undefined;
+    return Boolean(tauri?.dialog || tauri?.core?.invoke || tauri?.invoke);
   }
 
   private tauri(): TauriGlobal | undefined {

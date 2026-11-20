@@ -72,6 +72,7 @@ describe("una colección al día", () => {
     expect(out["ok"]).toBe(true);
     expect(out["inSync"]).toBe(true);
     expect(out["routesInSource"]).toBe(5);
+    expect(out["collectionPath"]).toBe(coleccion);
     expect(out["requestsInCollection"]).toBe(5);
   });
 

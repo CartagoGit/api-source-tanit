@@ -25,6 +25,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { REPO_ROOT } from "../helpers/root.helper.js";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 
 interface IRule {
   readonly id: string;
@@ -104,7 +105,7 @@ const SKIP_DIRS = new Set([
   "dist",
   "build",
   ".cache",
-  "export-to-postman",
+  OUTPUT_DIR_NAME,
   "coverage",
   // Los fixtures son código de OTROS proyectos: la entrada de los
   // scanners, no código que este repo ejecute.

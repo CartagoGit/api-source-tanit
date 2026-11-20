@@ -29,6 +29,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { REPO_ROOT } from "../helpers/root.helper.js";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 
 /** Formatos de credencial que son inconfundibles. */
 const PROVIDER_PATTERNS: ReadonlyArray<{ name: string; re: RegExp }> = [
@@ -80,7 +81,7 @@ const SKIP_DIRS = new Set([
   "dist",
   "build",
   ".cache",
-  "export-to-postman",
+  OUTPUT_DIR_NAME,
   "coverage",
 ]);
 

@@ -118,6 +118,13 @@ async function tempDir(prefix: string): Promise<string> {
   return mkdtemp(join(tmpdir(), `${prefix}-`));
 }
 
+/** Stop only the gpg-agent bound to a fixture-owned temporary home before removing it. */
+async function removeGpgHome(home: string): Promise<void> {
+  const stopped = run("gpgconf", ["--kill", "gpg-agent"], { GNUPGHOME: home });
+  expect(stopped.status, `could not stop the fixture gpg-agent for ${home}: ${stopped.output}`).toBe(0);
+  await rm(home, { recursive: true, force: true });
+}
+
 /** ¿Hay `gpg` en esta máquina? */
 const HAS_GPG = spawnSync("gpg", ["--version"], { encoding: "utf8" }).status === 0;
 
@@ -178,62 +185,96 @@ interface IManifestJson {
 async function createThrowawayKeyring(
   home: string,
   passphrase = "",
-): Promise<{ fingerprint: string; keyFile: string } | null> {
-  mkdir(home, { recursive: true });
-  const generated = runGpg(
-    [
-      "--batch",
-      "--yes",
-      "--no-tty",
-      "--pinentry-mode",
-      "loopback",
-      "--passphrase-fd",
-      "0",
-      "--quick-generate-key",
-      "Tanit Release Fixture <release@example.invalid>",
-      "default",
-      "default",
-      "never",
-    ],
-    home,
-    passphrase,
-  );
-  if (generated.status !== 0) return null;
-
-  const listed = run("gpg", ["--list-keys", "--with-colons"], { GNUPGHOME: home });
-  let fingerprint = "";
-  for (const line of listed.stdout.split("\n")) {
-    if (line.startsWith("fpr:")) {
-      fingerprint = line.split(":")[9] ?? "";
-      break;
+): Promise<{ fingerprint: string; keyFile: string }> {
+  await mkdir(home, { recursive: true, mode: 0o700 });
+  try {
+    const generated = runGpg(
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        // Freeze only fixture key creation: WSL wall-clock corrections can
+        // otherwise make its self-signature appear older than its key.
+        // Signing and product verification continue to use the real clock.
+        "--faked-system-time",
+        "20200101T000000!",
+        "--quick-generate-key",
+        "Tanit Release Fixture <release@example.invalid>",
+        "ed25519",
+        "sign",
+        "never",
+      ],
+      home,
+      passphrase,
+    );
+    if (generated.status !== 0) {
+      throw gpgFixtureError("generate the throwaway Ed25519 signing key", generated);
     }
+
+    const listed = run("gpg", ["--batch", "--no-tty", "--list-keys", "--with-colons"], {
+      GNUPGHOME: home,
+    });
+    if (listed.status !== 0) throw gpgFixtureError("list the throwaway signing key", listed);
+    const fingerprint = listed.stdout
+      .split("\n")
+      .find((line) => line.startsWith("fpr:"))
+      ?.split(":")[9];
+    if (!fingerprint) {
+      throw new Error(
+        `GPG listed no fingerprint for the throwaway key.\n${diagnosticTail(listed.output)}`,
+      );
+    }
+
+    // La clave se exporta **blindada**: es un fichero de texto, y un
+    // fichero de texto se puede comparar, leer y comprobar sin andarse
+    // con bytes binarios.
+    const exported = runGpg(
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        "--armor",
+        "--export-secret-keys",
+        fingerprint,
+      ],
+      home,
+      passphrase,
+    );
+    if (exported.status !== 0 || exported.stdout === "") {
+      throw gpgFixtureError("export the throwaway signing key", exported);
+    }
+
+    const keyFile = join(home, "release-keyring.gpg");
+    await writeFile(keyFile, exported.stdout, "utf8");
+    return { fingerprint, keyFile };
+  } catch (error) {
+    const stopped = run("gpgconf", ["--kill", "gpg-agent"], { GNUPGHOME: home });
+    await rm(home, { recursive: true, force: true });
+    if (stopped.status !== 0) {
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n` +
+          `Could not stop fixture gpg-agent: ${diagnosticTail(stopped.output)}`,
+      );
+    }
+    throw error;
   }
-  if (fingerprint === "") return null;
+}
 
-  // La clave se exporta **blindada**: es un fichero de texto, y un
-  // fichero de texto se puede comparar, leer y comprobar sin andarse
-  // con bytes binarios.
-  const exported = runGpg(
-    [
-      "--batch",
-      "--yes",
-      "--no-tty",
-      "--pinentry-mode",
-      "loopback",
-      "--passphrase-fd",
-      "0",
-      "--armor",
-      "--export-secret-keys",
-      fingerprint,
-    ],
-    home,
-    passphrase,
-  );
-  if (exported.status !== 0 || exported.stdout === "") return null;
+/** Keep failure output actionable without flooding the test report. */
+function gpgFixtureError(operation: string, result: IResult): Error {
+  return new Error(`Could not ${operation} (exit ${result.status}).\n${diagnosticTail(result.output)}`);
+}
 
-  const keyFile = join(home, "release-keyring.gpg");
-  await writeFile(keyFile, exported.stdout, "utf8");
-  return { fingerprint, keyFile };
+function diagnosticTail(output: string): string {
+  return output.trim().split("\n").slice(-20).join("\n") || "GPG produced no diagnostic output.";
 }
 
 /** El staging del dry-run: los ocho artefactos de la matriz. */
@@ -381,6 +422,33 @@ async function workflowDocument(): Promise<IWorkflow> {
 // ---------------------------------------------------------------------------
 
 describe("the release manifest", () => {
+  test.each([
+    ["linux/x64/deb/Tanit_0.1.0-alpha.2_x64.deb", "missing"],
+    ["linux/x64/deb/Tanit_0.1.0-alpha.2_x64.deb", "directory"],
+    ["linux/x64/checksums/SHA256SUMS", "missing"],
+    ["linux/x64/checksums/SHA256SUMS", "directory"],
+  ])("a GPG receipt for %s rejects a %s signature sidecar", async (owner, sidecar) => {
+    const stage = await tempDir("tanit-release-detached-contract");
+    try {
+      const directory = join(stage, owner.slice(0, owner.lastIndexOf("/")));
+      await mkdir(directory, { recursive: true });
+      await writeFile(join(stage, owner), "local unsigned fixture\n", "utf8");
+      await writeFile(join(stage, `${owner}${RELEASE_RECEIPT_SUFFIX}`), JSON.stringify({
+        kind: "gpg-detached", signer: "local fixture", keyId: "fixture", timestamped: false,
+      }), "utf8");
+      const signature = `${owner}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`;
+      if (sidecar === "directory") await mkdir(join(stage, signature));
+
+      const result = run("bun", ["run", PREPARE, "--stage", stage]);
+      expect(result.status, result.output).not.toBe(0);
+      expect(result.output).toContain("requires a regular detached signature file");
+      expect(result.output).toContain(signature);
+      expect(existsSync(join(stage, "release-manifest.json"))).toBe(false);
+    } finally {
+      await rm(stage, { recursive: true, force: true });
+    }
+  });
+
   test("the dry run produces every artifact the matrix declares", async () => {
     const stage = await dryRunStaging("tanit-release-dryrun");
     const manifest = await readManifest(stage);
@@ -563,8 +631,8 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     for (const artifact of linux) {
       expect(artifact.signature, artifact.path).not.toBeNull();
       expect(artifact.signature?.kind).toBe("gpg-detached");
-      expect(artifact.signature?.path.endsWith(".sig")).toBe(true);
-      expect(artifact.signature?.receipt).not.toBeNull();
+      expect(artifact.signature?.path).toBe(`${artifact.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
+      expect(artifact.signature?.receipt).toBe(`${artifact.path}${RELEASE_RECEIPT_SUFFIX}`);
       expect(existsSync(join(stage, artifact.signature?.path ?? ""))).toBe(true);
       expect(existsSync(join(stage, artifact.signature?.receipt ?? ""))).toBe(true);
     }
@@ -583,8 +651,8 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(checksums, "the checksums are an asset of the release").toBeDefined();
     expect(checksums?.signature, "SHA256SUMS goes signed").not.toBeNull();
     expect(checksums?.signature?.kind).toBe("gpg-detached");
-    expect(checksums?.signature?.path.endsWith("SHA256SUMS.sig")).toBe(true);
-    expect(checksums?.signature?.receipt).not.toBeNull();
+    expect(checksums?.signature?.path).toBe(`${checksums?.path}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`);
+    expect(checksums?.signature?.receipt).toBe(`${checksums?.path}${RELEASE_RECEIPT_SUFFIX}`);
     expect(checksums?.signature?.keyId.length ?? 0).toBeGreaterThan(0);
 
     await rm(stage, { recursive: true, force: true });
@@ -657,7 +725,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
 
     await rm(stage, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
   });
 
   test("it signs with a key that is not in the runner's default keyring", async () => {
@@ -665,8 +733,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const home = await tempDir("tanit-release-gnupg");
     const empty = await tempDir("tanit-release-gnupg-empty");
     const key = await createThrowawayKeyring(home);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // El keyring por defecto del runner está **vacío**: la clave sólo
     // existe en el fichero que se importa. Si el script volviera a
@@ -687,8 +753,8 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(existsSync(join(stage, "linux", "x64", "keyring", "tanit-release-keyring.gpg"))).toBe(true);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
-    await rm(empty, { recursive: true, force: true });
+    await removeGpgHome(home);
+    await removeGpgHome(empty);
   });
 
   test("it signs the installers and nothing else, and the published keyring keeps its digest", async () => {
@@ -696,8 +762,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const version = await releaseVersion();
     const home = await tempDir("tanit-release-gnupg-scope");
     const key = await createThrowawayKeyring(home);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // El staging mínimo: los instaladores de Linux x64, colocados
     // donde los coloca la release.
@@ -778,7 +842,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(await sha256(publishedChecksums)).toBe(checksumsAfterFirst);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
   });
 
   test("it refuses to sign when the keyring it is told to import does not exist", async () => {
@@ -807,8 +871,6 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     const home = await tempDir("tanit-release-gnupg-protected");
     const passphrase = "valor de prueba para la passphrase";
     const key = await createThrowawayKeyring(home, passphrase);
-    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
-    if (key === null) return;
 
     // Un `gpg` de mentira que anota sus argumentos: lo que se pasa por
     // la línea de órdenes se ve en `ps` y en `/proc/<pid>/cmdline`.
@@ -840,7 +902,7 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     expect(argv, "the passphrase is visible in the process arguments").not.toContain(passphrase);
 
     await rm(stage, { recursive: true, force: true });
-    await rm(home, { recursive: true, force: true });
+    await removeGpgHome(home);
     await rm(shim, { recursive: true, force: true });
   });
 
@@ -1739,17 +1801,18 @@ describe("the release policy", () => {
   test("the workflow asks the build script for the bundles the matrix declares", async () => {
     const workflow = await readFile(WORKFLOW, "utf8");
 
-    // `scripts/build/desktop-build.script.ts` lee `EXPOSTMAN_BUNDLES`.
+    // `scripts/build/desktop-build.script.ts` lee `TANIT_BUNDLES`.
     // Con otro nombre, el recorte de formatos se ignora en silencio y
     // el runner construye bundles que la matriz no pidió.
     const build = await readFile(
       join(REPO_ROOT, "scripts", "build", "desktop-build.script.ts"),
       "utf8",
     );
-    expect(build).toContain("EXPOSTMAN_BUNDLES");
+    expect(build).toContain('process.env["TANIT_BUNDLES"]');
 
-    expect(workflow).toContain("EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}");
-    expect(workflow).not.toContain("TANIT_BUNDLES");
+    expect(workflow).toContain("TANIT_BUNDLES: ${{ matrix.tauri_bundles }}");
+    const compose = await readFile(join(REPO_ROOT, ".docker", "docker-compose.yml"), "utf8");
+    expect(compose).toContain("TANIT_BUNDLES: deb");
   });
 
   test("the release documentation covers secrets, rotation, troubleshooting and verification", async () => {

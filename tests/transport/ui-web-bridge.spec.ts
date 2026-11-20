@@ -89,6 +89,22 @@ describe("the app served in the browser", () => {
     expect(html).toContain("<tanit-root>");
   });
 
+  test("page policy permits its own bundles while restricting external sources", async () => {
+    const { url } = await servedApp();
+    const page = await fetch(`${url}/`);
+    const policy = page.headers.get("content-security-policy") ?? "";
+    const directives = Object.fromEntries(policy.split(";").map(part => {
+      const [name, ...sources] = part.trim().split(/\s+/);
+      return [name, sources];
+    }));
+    expect(directives["script-src"]).toContain("'self'");
+    expect(directives["style-src"]).toContain("'self'");
+    expect(directives["default-src"]).toEqual(["'none'"]);
+    expect(directives["connect-src"]).toEqual(["'self'"]);
+    expect(directives["script-src"]).not.toContain("*");
+    expect(directives["script-src"]).not.toContain("'unsafe-eval'");
+  });
+
   test("serves the assets the page asks for", async () => {
     const { url } = await servedApp();
 
@@ -97,6 +113,45 @@ describe("the app served in the browser", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/javascript");
     expect(await response.text()).toContain("tanit");
+  });
+
+  test("serves page navigations while leaving missing assets and API paths alone", async () => {
+    const { url, token } = await servedApp();
+    const page = await fetch(`${url}/endpoints`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain(`data-tanit-token="${token}"`);
+    for (const path of ["/assets/missing", "/bundle.js", "/.htaccess", "/api/bootstrap"]) {
+      expect((await fetch(url + path)).status).toBe(404);
+    }
+  });
+
+  test("bootstraps a configured loopback proxy and still rejects cross-origin calls", async () => {
+    const origin = "http://127.0.0.1:39210";
+    const host = new URL(origin).host;
+    const server = startHttpBridge({ registry: makeRegistry(), browserOrigin: origin });
+    servers.push(server);
+
+    const bootstrap = `${server.url}/api/bootstrap`;
+    for (const headers of [
+      { host },
+      { host: "different.example", "x-tanit-bootstrap": "1" },
+      { host, origin: "https://different.example", "x-tanit-bootstrap": "1" },
+    ]) {
+      expect((await fetch(bootstrap, { headers })).status).toBe(403);
+    }
+    const response = await fetch(bootstrap, { headers: { host, "x-tanit-bootstrap": "1" } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ token: server.token });
+
+    const body = JSON.stringify({ jsonrpc: "2.0", id: "1", method: "echo", params: { hi: true } });
+    const post = (from: string) => fetch(`${server.url}/api`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: from, "x-tanit-token": server.token },
+      body,
+    });
+    expect((await post(origin)).status).toBe(200);
+    expect((await post("https://different.example")).status).toBe(403);
   });
 
   test("answers the API on the same origin, so the page's relative path works", async () => {
