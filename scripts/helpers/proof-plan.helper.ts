@@ -3,10 +3,12 @@ import { posix } from "node:path";
 import type { IProofInput, IProofPlan, IProofStep } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 import { PROOF_JOBS, PROOF_GLOBAL_PREFIXES } from "../../packages/contracts/constants/quality/proof-rules.constant.js";
 import { SECTIONS, GLOBAL_PATHS, bestSectionFor, sectionsForFiles, withDependents } from "../gates/sections.constant.js";
+import { isScopedAngularSource } from "../gates/coverage-policy.constant.js";
 
 const isSpec = (file: string): boolean => /\.(?:spec|test)\.ts$/.test(file);
 const isBunSpec = (file: string): boolean => file.startsWith("tests/core/state/sqlite/") || file.startsWith("tests/transport/");
 const PACKLIST_SPEC = "tests/scripts-gates/package-packlist.spec.ts";
+const isAngularSpec = (file: string): boolean => file.startsWith("tests/app/") && isSpec(file);
 
 /** The distribution allowlist has a proof of its own. Other manifest edits stay global. */
 function onlyPacklistChanged(input: IProofInput): boolean {
@@ -46,6 +48,13 @@ function sectionOf(file: string): string | undefined {
 export function createProofPlan(input: IProofInput): IProofPlan {
   const changedFiles = input.changes.map(({ path }) => path).sort();
   const packlistOnly = onlyPacklistChanged(input);
+  const angularOnly = changedFiles.some(isScopedAngularSource) && input.changes.every(({ path, status }) =>
+    (path.startsWith("docs/") && path.endsWith(".md")) ||
+    (status === "M" && (isScopedAngularSource(path) || isAngularSpec(path))),
+  );
+  const measurableSource = (path: string): boolean =>
+    /^(?:packages\/(?:core|frameworks|cli|ui)\/).+\.[cm]?[jt]sx?$/.test(path) ||
+    (angularOnly && isScopedAngularSource(path));
   const selectionRoots = packlistOnly ? [PACKLIST_SPEC] : changedFiles;
   const reasons: string[] = [];
   if (input.forceFull) reasons.push("Full proof requested (integration or promotion).");
@@ -56,8 +65,7 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     const isDocumentation = change.path.startsWith("docs/") || change.path.endsWith(".md");
     if (change.status !== "M" && !isDocumentation) reasons.push(`Structural change: ${change.path}`);
     if (GLOBAL_PATHS.some(prefix => change.path.startsWith(prefix)) || PROOF_GLOBAL_PREFIXES.some(prefix => change.path.startsWith(prefix))) reasons.push(`Global or measured disk reader: ${change.path}`);
-    const measurableSource = /^(?:packages\/(?:core|frameworks|cli|ui)\/).+\.[cm]?[jt]sx?$/.test(change.path);
-    if (change.path.startsWith("packages/") && !isDocumentation && !measurableSource) reasons.push(`Unsupported changed source coverage path: ${change.path}`);
+    if (change.path.startsWith("packages/") && !isDocumentation && !measurableSource(change.path)) reasons.push(`Unsupported changed source coverage path: ${change.path}`);
     if (!sectionOf(change.path) && !change.path.startsWith("docs/") && !change.path.endsWith(".md")) reasons.push(`Unclassified path: ${change.path}`);
   }
   const reverse = new Map<string, Set<string>>();
@@ -113,6 +121,12 @@ export function createProofPlan(input: IProofInput): IProofPlan {
   if (reached.has("tests/app/setup.ts")) reasons.push("Application test setup has broad shared effects.");
   const allSpecs = Object.keys(input.files).filter(isSpec);
   const selectedSpecs = new Set(allSpecs.filter(file => reached.has(file)));
+  const angularSpecs = angularOnly ? allSpecs.filter(isAngularSpec) : [];
+  if (angularOnly && (angularSpecs.length === 0 || [...reached].some(file =>
+    !["packages/app/", "tests/app/", "docs/"].some(prefix => file.startsWith(prefix)),
+  ))) {
+    reasons.push("Angular proof requires an available app suite and a consumer graph contained in the app.");
+  }
   // Bun owns the transport and SQLite suites, which Vitest intentionally
   // excludes. A scoped Vitest run cannot measure those source files and
   // the scoped plan skips the Bun jobs, so keep these changes on the full
@@ -126,11 +140,11 @@ export function createProofPlan(input: IProofInput): IProofPlan {
       for (const file of allSpecs) if (sectionOf(file) === section.name) selectedSpecs.add(file);
     }
   }
-  const hasMeasurableSourceChange = changedFiles.some(path => /^(?:packages\/(?:core|frameworks|cli|ui)\/).+\.[cm]?[jt]sx?$/.test(path));
+  const hasMeasurableSourceChange = changedFiles.some(measurableSource);
   if (hasMeasurableSourceChange && selectedSpecs.size === 0) reasons.push("No reachable specs for changed measurable source.");
   const full = reasons.length > 0;
   if (full) sections = [...SECTIONS];
-  const specs = (full ? allSpecs : [...selectedSpecs]).filter(file => !isBunSpec(file)).sort();
+  const specs = (full ? allSpecs : angularOnly ? angularSpecs : [...selectedSpecs]).filter(file => !isBunSpec(file)).sort();
   // Scoped source PRs replace the aggregate baseline with per-changed-file
   // floors. Integration and promotion plans retain full aggregate coverage.
   const jobs = Object.fromEntries(PROOF_JOBS.map(job => {
@@ -142,7 +156,10 @@ export function createProofPlan(input: IProofInput): IProofPlan {
     jobs.typecheck = sections.length > 0;
     jobs["validate-examples"] = sections.some(section => ["contracts", "core", "frameworks", "cli", "e2e"].includes(section.name));
     jobs["bench-check"] = sections.some(section => ["contracts", "core", "frameworks"].includes(section.name));
-    jobs["desktop-tests"] = sections.some(section => ["contracts", "core", "cli", "app"].includes(section.name)) || changedFiles.some(file => file.startsWith("packages/desktop/"));
+    jobs["desktop-tests"] = !angularOnly && (
+      sections.some(section => ["contracts", "core", "cli", "app"].includes(section.name)) ||
+      changedFiles.some(file => file.startsWith("packages/desktop/"))
+    );
     jobs["validate-package"] = changedFiles.some(file => file.startsWith("packages/") && !file.startsWith("packages/app/") && !file.startsWith("packages/desktop/"));
     if (packlistOnly) {
       jobs["validate-examples"] = false;
