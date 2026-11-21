@@ -323,6 +323,9 @@ The [proposal index](proposals/INDEX.md) tracks x00124: mobile menu and command-
 
 The [proposal index](proposals/INDEX.md) tracks x00126: mounted shell views use the same reduced-motion-safe entry transition.
 
+The [proposal index](proposals/INDEX.md) tracks the app's appearance preferences.
+Settings shows the active locale and previews persisted themes, including the system scheme.
+
 The [proposal index](proposals/INDEX.md) tracks x00127: signature manifest membership uses a pipefail-safe exact-line check.
 
 The [proposal index](proposals/INDEX.md) tracks export previews and consent.

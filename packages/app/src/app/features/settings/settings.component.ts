@@ -3,18 +3,6 @@ import { SecureStorageService } from "../../core/host/secure-storage.service";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { ThemeStore } from "../../core/state/theme.store";
 
-/**
- * The settings.
- *
- * The API key is the only secret the app holds. Where it goes is
- * said out loud: the operating system's keychain on the desktop,
- * this window's memory in the browser. The screen used to say
- * "saved securely" in both cases, which is a lie in one of them.
- *
- * The buttons also **say when they failed**: `save()` had no
- * `try`, so a storage that rejected left the promise unhandled and
- * the screen with no message at all.
- */
 @Component({
   selector: "tanit-settings",
   standalone: true,
@@ -82,13 +70,6 @@ export class SettingsComponent {
       : this.i18n.translate("settings.windowOnly");
   }
 
-  /**
-   * Changes the language.
-   *
-   * The list comes from the product's own languages, so the app and
-   * the interface inside the binary offer the same ones. The app
-   * only shows the ones it has a catalog for.
-   */
   changeLocale(event: Event): void {
     this.i18n.setLocale((event.target as HTMLSelectElement).value);
   }

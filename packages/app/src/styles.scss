@@ -3,14 +3,9 @@
 @use "./styles/motion";
 
 :root {
-  color-scheme: light;
   font-family: var(--font-ui);
   background: var(--color-surface);
   color: var(--color-ink);
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
 }
 
 * {
