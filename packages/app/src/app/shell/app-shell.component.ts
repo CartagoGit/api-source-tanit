@@ -18,6 +18,7 @@ import { SyncComponent } from "../features/sync/sync.component";
 import { ValidateComponent } from "../features/validate/validate.component";
 import { PushToPostmanComponent } from "../features/push/push-to-postman.component";
 import { StatsComponent } from "../features/stats/stats.component";
+import { HelpComponent } from "../features/help/help.component";
 import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.component";
 
 /**
@@ -61,6 +62,7 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
     PushToPostmanComponent,
     StatsComponent,
     DiagnosticsComponent,
+    HelpComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./app-shell.component.html",
@@ -73,9 +75,6 @@ export class AppComponent {
   readonly paletteOpen = signal(false);
   readonly commandShortcut = "Ctrl+K";
   readonly activeSection = signal("overview");
-  /** The theme, and the switch that changes it. */
-  readonly themes = inject(ThemeStore);
-  readonly theme = this.themes.theme;
 
   /**
    * The label of each section, by section id.
@@ -99,9 +98,11 @@ export class AppComponent {
     history: "nav.history",
     diagnostics: "nav.diagnostics",
     settings: "nav.settings",
+    help: "nav.help",
   };
 
   constructor() {
+    inject(ThemeStore);
     this.readSection(this.location.path());
     inject(DestroyRef).onDestroy(this.location.onUrlChange(() => this.readSection(this.location.path())));
     void this.project.restore();
@@ -111,8 +112,6 @@ export class AppComponent {
     const section = path.split(/[?#]/, 1)[0]?.replace(/^\//, "").replace(/\/$/, "") ?? "";
     this.activeSection.set(Object.hasOwn(this.sectionLabels, section) ? section : "overview");
   }
-
-  toggleTheme(): void { this.themes.toggle(); }
 
   /** Goes to a section. */
   go(section: string): void {
@@ -132,7 +131,6 @@ export class AppComponent {
   }
 
   runCommand(command: string): void {
-    if (command === "theme") this.toggleTheme();
     if (command === "open" || command === "recent") this.showProjectPicker();
     if (command === "settings") this.go("settings");
     if (command === "search" || command === "export") {
@@ -144,7 +142,7 @@ export class AppComponent {
     // watches the files, and its snapshot may be older than the
     // project on disk. The command had a name and no behaviour.
     if (command === "rescan") { void this.rescan(); return; }
-    if (command === "help") this.go("diagnostics");
+    if (command === "help") this.go("help");
   }
 
   /**

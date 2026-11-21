@@ -27,13 +27,6 @@ export class ThemeStore {
     this.apply(this.theme());
   }
 
-  toggle(): void {
-    const dark = this.theme() === "dark" || this.theme() === "midnight"
-      || (this.theme() === "system"
-        && this.document.defaultView?.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
-    this.set(dark ? "light" : "dark");
-  }
-
   set(theme: Theme): void {
     this.selection.set(theme);
     this.apply(theme);

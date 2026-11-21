@@ -1,5 +1,5 @@
-<div class="shell" [class.dark]="theme() === 'dark'">
-  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (theme)="toggleTheme()" (select)="go($event)" />
+<div class="shell">
+  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (select)="go($event)" />
   <main class="content">
     <header class="toolbar">
       <div class="workspace-context">
@@ -10,7 +10,7 @@
         @if (project.isOpen() && activeSection() !== 'overview') {
           <button type="button" class="toolbar-button" (click)="showProjectPicker()">{{ i18n.translate("home.open") }}</button>
         }
-        <button type="button" class="toolbar-button commands-button" aria-keyshortcuts="Control+K"
+        <button type="button" class="toolbar-button commands-button" aria-keyshortcuts="Control+K Meta+K"
           (click)="paletteOpen.set(true)">
           {{ i18n.translate("palette.placeholder") }}<kbd>{{ commandShortcut }}</kbd>
         </button>
@@ -18,13 +18,15 @@
     </header>
     <div class="view">
       @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
-      @if (activeSection() === 'overview' || (!project.isOpen() && activeSection() !== 'settings')) {
+      @if (activeSection() === 'overview' || (!project.isOpen() && activeSection() !== 'settings' && activeSection() !== 'help')) {
         @if (activeSection() !== 'overview') {
           <p>{{ i18n.translate("home.empty") }}</p>
         }
         <tanit-home animate.enter="motion-fade" (opened)="projectOpened()" />
       } @else if (activeSection() === 'settings') {
         <tanit-settings animate.enter="motion-fade" />
+      } @else if (activeSection() === 'help') {
+        <tanit-help animate.enter="motion-fade" />
       } @else {
         @switch (activeSection()) {
           @case ('endpoints') { <tanit-endpoints-list animate.enter="motion-fade" /> }

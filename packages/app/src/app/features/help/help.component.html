@@ -1,0 +1,41 @@
+<section class="help" aria-labelledby="help-title">
+  <header class="intro">
+    <h2 id="help-title">{{ i18n.translate("nav.help") }}</h2>
+    <p>{{ i18n.translate("help.intro") }}</p>
+  </header>
+  <div class="help-grid">
+    <section class="panel" aria-labelledby="shortcut-title">
+      <h3 id="shortcut-title">{{ i18n.translate("help.shortcuts") }}</h3>
+      <dl>
+        @for (shortcut of shortcuts; track shortcut.labelKey) {
+          <div>
+            <dt>
+              @for (key of shortcut.keys; track key) { <kbd>{{ key }}</kbd> }
+            </dt>
+            <dd>{{ i18n.translate(shortcut.labelKey) }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+    <section class="panel links" aria-labelledby="links-title">
+      <h3 id="links-title">{{ i18n.translate("help.links") }}</h3>
+      <a [href]="repository" target="_blank" rel="noopener noreferrer" (click)="openLink($event, repository)">
+        <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.57 22c.56.1.77-.24.77-.54v-2.1c-3.14.68-3.8-1.33-3.8-1.33-.5-1.27-1.22-1.6-1.22-1.6-1-.68.08-.67.08-.67 1.1.08 1.68 1.13 1.68 1.13.98 1.67 2.56 1.19 3.19.91.1-.71.38-1.2.69-1.48-2.5-.28-5.13-1.25-5.13-5.57 0-1.23.44-2.24 1.16-3.03-.12-.28-.5-1.43.11-2.98 0 0 .95-.3 3.11 1.16A10.8 10.8 0 0 1 12 6.23c.96 0 1.92.13 2.82.38 2.16-1.46 3.1-1.16 3.1-1.16.62 1.55.23 2.7.12 2.98.72.79 1.16 1.8 1.16 3.03 0 4.33-2.64 5.28-5.15 5.56.4.35.73 1.04.73 2.1v3.11c0 .3.2.65.78.54A11.3 11.3 0 0 0 12 .7Z"/></svg>
+        <span><strong>{{ i18n.translate("help.repository") }}</strong><small>{{ i18n.translate("help.repositoryDescription") }}</small></span>
+      </a>
+      <a [href]="issues" target="_blank" rel="noopener noreferrer" (click)="openLink($event, issues)">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M12 7v6m0 3h.01" stroke-linecap="round" />
+        </svg>
+        <span><strong>{{ i18n.translate("help.issues") }}</strong><small>{{ i18n.translate("help.issuesDescription") }}</small></span>
+      </a>
+      <a [href]="reportIssue" target="_blank" rel="noopener noreferrer" (click)="openLink($event, reportIssue)">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M8 12h8m-4-4v8" stroke-linecap="round" />
+        </svg>
+        <span><strong>{{ i18n.translate("help.reportIssue") }}</strong><small>{{ i18n.translate("help.reportIssueDescription") }}</small></span>
+      </a>
+      @if (linkFailed()) { <p class="error" role="alert">{{ i18n.translate("help.openFailed") }}</p> }
+    </section>
+  </div>
+</section>

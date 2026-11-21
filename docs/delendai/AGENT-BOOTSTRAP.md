@@ -321,6 +321,9 @@ API. Project navigation becomes available after a session opens.
 
 The [proposal index](proposals/INDEX.md) tracks x00124: mobile menu and command-palette entry motion honor the user's reduced-motion preference.
 
+The [proposal index](proposals/INDEX.md) tracks the Help screen. It lists the keyboard controls
+that the shell and command palette handle and links to GitHub support.
+
 The [proposal index](proposals/INDEX.md) tracks x00126: mounted shell views use the same reduced-motion-safe entry transition.
 
 The [proposal index](proposals/INDEX.md) tracks the app's appearance preferences.
