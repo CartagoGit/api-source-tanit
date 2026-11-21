@@ -6,7 +6,7 @@
   } @else {
     @for (service of services(); track service.serviceId) {
       <article>
-        <button type="button" class="row" (click)="select(service.serviceId)">
+        <button type="button" class="row" [attr.aria-expanded]="selected() === service.serviceId" (click)="select(service.serviceId)">
           <strong>{{ service.serviceId }}</strong><tanit-badge>{{ service.framework }}</tanit-badge>
           <small>{{ service.operationCount }} {{ i18n.translate("services.operations") }}</small>
         </button>
@@ -15,7 +15,7 @@
             @for (transport of service.transports; track transport) { <tanit-badge>{{ transport }}</tanit-badge> }
           </div>
         }
-        @if (selected() === service.serviceId) { <tanit-service-detail [serviceId]="service.serviceId" /> }
+        @if (selected() === service.serviceId) { <tanit-service-detail [serviceId]="service.serviceId" animate.enter="motion-fade" /> }
       </article>
     } @empty { <p>{{ i18n.translate("services.empty") }}</p> }
   }

@@ -172,6 +172,7 @@
   "history.operations": "operaciones",
   "history.revisions": "Revisiones",
   "history.right": "Hasta",
+  "history.selectRevision": "Elige una revisión",
   "history.snapshotReady": "Instantánea lista",
   "history.snapshotStale": "Instantánea obsoleta",
   "history.snapshotUnavailable": "Esta entrada no tiene una instantánea del código guardada.",

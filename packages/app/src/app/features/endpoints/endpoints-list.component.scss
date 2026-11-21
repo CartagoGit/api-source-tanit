@@ -1,15 +1,16 @@
 :host { display: block; min-height: 100%; }
-.explorer { display: grid; gap: var(--space-4); }
+.explorer { display: grid; gap: var(--space-5); }
 .heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
-h1 { margin: 0 0 var(--space-1); font-size: clamp(24px, 4vw, 32px); }
+h1 { margin: 0 0 var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
 .heading p { margin: 0; color: var(--color-muted); }
-.actions { display: flex; gap: var(--space-2); align-self: start; }
+.actions { display: flex; gap: var(--space-2); align-self: start; flex-wrap: wrap; }
 .actions button {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel);
   color: var(--color-ink);
-  padding: 8px 10px;
+  min-block-size: 2.625rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
 }
 .actions button:disabled { opacity: 0.5; cursor: default; }
@@ -26,7 +27,7 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(24px, 4vw, 32px); }
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xl);
   background: var(--color-panel);
 }
 .workspace.with-selection { grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); }
@@ -55,10 +56,13 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(24px, 4vw, 32px); }
   padding: 4px 7px;
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  color: var(--color-copper-strong);
+  color: var(--color-ink);
   font: 12px var(--font-code);
 }
-.verb[data-method="GET"] { background: var(--color-nav-hover); color: var(--color-ink); }
+.verb[data-method="GET"] { background: var(--color-nav-hover); }
+.verb:is([data-method="POST"], [data-method="PUT"], [data-method="PATCH"]) {
+  background: color-mix(in srgb, var(--color-focus) 14%, var(--color-panel));
+}
 .verb[data-method="DELETE"] {
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
   color: var(--color-danger);
@@ -70,3 +74,8 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(24px, 4vw, 32px); }
 
 @media (max-width: 1100px) { .workspace.with-selection { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 420px) { .endpoint-row { grid-template-columns: 56px minmax(0, 1fr) auto; gap: var(--space-2); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .endpoint-row, .actions button { transition: background-color 140ms var(--motion-standard); }
+}
+.actions button:not(:disabled):hover { background: var(--color-nav-hover); }

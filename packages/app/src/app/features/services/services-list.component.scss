@@ -1,8 +1,42 @@
-.services-list { display: grid; gap: 12px; }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } h2 { margin: 0; font-size: 20px; }
-article { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--color-border); background: var(--color-panel); }
-.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 8px; padding: 0; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+.services-list { display: grid; gap: var(--space-5); max-inline-size: 62rem; }
+header { display: flex; align-items: baseline; gap: var(--space-3); }
+h2 { font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
+header span {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-nav-hover);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+article {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-block-size: 2.625rem;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  text-align: start;
+}
+.row:hover, .row[aria-expanded="true"] { background: var(--color-nav-hover); }
 .row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.row strong, .row small { overflow-wrap: anywhere; }
 .row small { grid-column: 1 / -1; }
-.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-article span, article small, .services-list p { color: var(--color-muted); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+article small, .services-list p { color: var(--color-muted); }
+.services-list [role="alert"] { color: var(--color-danger); }
+@media (prefers-reduced-motion: no-preference) {
+  .row { transition: background-color 140ms var(--motion-standard); }
+}
