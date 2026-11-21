@@ -22,22 +22,22 @@
         @if (activeSection() !== 'overview') {
           <p>{{ i18n.translate("home.empty") }}</p>
         }
-        <tanit-home (opened)="projectOpened()" />
+        <tanit-home animate.enter="motion-fade" (opened)="projectOpened()" />
       } @else if (activeSection() === 'settings') {
-        <tanit-settings />
+        <tanit-settings animate.enter="motion-fade" />
       } @else {
         @switch (activeSection()) {
-          @case ('endpoints') { <tanit-endpoints-list /> }
-          @case ('exports') { <tanit-export-center /> }
-          @case ('services') { <tanit-services-list /> }
-          @case ('history') { <tanit-history-list /> }
-          @case ('live') { <tanit-live-toggle /> }
-          @case ('check') { <tanit-check /> }
-          @case ('sync') { <tanit-sync /> }
-          @case ('validate') { <tanit-validate /> }
-          @case ('push') { <tanit-push-to-postman /> }
-          @case ('stats') { <tanit-stats /> }
-          @case ('diagnostics') { <tanit-diagnostics /> }
+          @case ('endpoints') { <tanit-endpoints-list animate.enter="motion-fade" /> }
+          @case ('exports') { <tanit-export-center animate.enter="motion-fade" /> }
+          @case ('services') { <tanit-services-list animate.enter="motion-fade" /> }
+          @case ('history') { <tanit-history-list animate.enter="motion-fade" /> }
+          @case ('live') { <tanit-live-toggle animate.enter="motion-fade" /> }
+          @case ('check') { <tanit-check animate.enter="motion-fade" /> }
+          @case ('sync') { <tanit-sync animate.enter="motion-fade" /> }
+          @case ('validate') { <tanit-validate animate.enter="motion-fade" /> }
+          @case ('push') { <tanit-push-to-postman animate.enter="motion-fade" /> }
+          @case ('stats') { <tanit-stats animate.enter="motion-fade" /> }
+          @case ('diagnostics') { <tanit-diagnostics animate.enter="motion-fade" /> }
         }
       }
     </div>
