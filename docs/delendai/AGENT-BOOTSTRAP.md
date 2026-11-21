@@ -323,6 +323,8 @@ The [proposal index](proposals/INDEX.md) tracks x00124: mobile menu and command-
 
 The [proposal index](proposals/INDEX.md) tracks x00126: mounted shell views use the same reduced-motion-safe entry transition.
 
+The [proposal index](proposals/INDEX.md) tracks x00127: signature manifest membership uses a pipefail-safe exact-line check.
+
 The [proposal index](proposals/INDEX.md) tracks export previews and consent.
 The Export Center uses the backend's preview for the active session, destination
 and selected formats. Older requests cannot change the current export state.
