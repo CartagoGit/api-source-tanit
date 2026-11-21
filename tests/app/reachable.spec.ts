@@ -119,12 +119,12 @@ describe("the sidebar", () => {
     expect(current[0].textContent?.trim()).toContain("Endpoints");
   });
 
-  it("shows workspace and settings before a project opens", () => {
+  it("shows workspace, settings and help before a project opens", () => {
     const fixture = TestBed.createComponent(SidebarHost);
     fixture.componentInstance.projectOpen = false;
     fixture.detectChanges();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>);
-    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings"]);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings", "Help"]);
   });
 
   it("closes the mobile navigation after choosing a destination", () => {

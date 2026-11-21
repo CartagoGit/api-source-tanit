@@ -47,7 +47,6 @@ interface NavigationGroup {
 })
 export class SidebarComponent {
   readonly select = output<string>();
-  readonly theme = output<void>();
   readonly i18n = inject(I18nService);
 
   /**
@@ -90,7 +89,10 @@ export class SidebarComponent {
     {
       id: "preferences",
       labelKey: "nav.group.preferences",
-      items: [{ id: "settings", labelKey: "nav.settings" }],
+      items: [
+        { id: "settings", labelKey: "nav.settings" },
+        { id: "help", labelKey: "nav.help" },
+      ],
     },
   ];
 
@@ -103,21 +105,6 @@ export class SidebarComponent {
     this.select.emit(section);
   }
 
-  /**
-   * The label of the theme button.
-   *
-   * It used to be a field — `themeLabel = this.i18n.translate(...)` —
-   * which was read **once**, when the component was built. Change the
-   * language and the button kept saying the old word: the label was
-   * frozen in the language the app happened to start in.
-   *
-   * A method is re-read on every change detection, so it follows the
-   * language the way the rest of the screen does.
-   */
-  themeLabel(): string {
-    return this.i18n.translate("theme.toggle");
-  }
-
   /** The id of the heading that labels a group. */
   groupId(group: NavigationGroup): string {
     return `nav-group-${group.id}`;
@@ -126,6 +113,6 @@ export class SidebarComponent {
   visibleItems(group: NavigationGroup): ReadonlyArray<NavigationItem> {
     return this.projectOpen()
       ? group.items
-      : group.items.filter(({ id }) => id === "overview" || id === "settings");
+      : group.items.filter(({ id }) => id === "overview" || id === "settings" || id === "help");
   }
 }
