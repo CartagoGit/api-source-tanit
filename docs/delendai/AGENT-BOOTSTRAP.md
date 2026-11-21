@@ -319,6 +319,8 @@ The [proposal index](proposals/INDEX.md) tracks the workspace and folder picker.
 Browser project selection browses and opens folders via the shared Application
 API. Project navigation becomes available after a session opens.
 
+The [proposal index](proposals/INDEX.md) tracks x00124: mobile menu and command-palette entry motion honor the user's reduced-motion preference.
+
 The [proposal index](proposals/INDEX.md) tracks export previews and consent.
 The Export Center uses the backend's preview for the active session, destination
 and selected formats. Older requests cannot change the current export state.
