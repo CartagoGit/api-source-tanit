@@ -1,0 +1,41 @@
+<section class="workflow" aria-labelledby="push-title">
+  <header class="workflow-intro">
+    <h2 id="push-title">{{ i18n.translate("push.title") }}</h2>
+    <p>{{ i18n.translate("push.intro") }}</p>
+  </header>
+  <div class="workflow-panel">
+    <label class="workflow-field">
+      <span>{{ i18n.translate("push.workspace") }}</span>
+      <input [value]="workspace()" (input)="workspace.set(inputValue($event))" />
+    </label>
+    <label class="workflow-check">
+      <input type="checkbox" [checked]="dryRun()" (change)="dryRun.set(checked($event))" />
+      <span>{{ i18n.translate("push.dryRun") }}</span>
+    </label>
+    <div class="workflow-actions">
+      <button type="button" class="primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("push.running") : i18n.translate("push.start") }}</button>
+      <button type="button" [disabled]="!running()" (click)="cancel()">{{ i18n.translate("push.cancel") }}</button>
+    </div>
+    @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
+    @if (result(); as answer) {
+      <dl class="workflow-metrics">
+        <div><dt>{{ i18n.translate("push.account") }}</dt><dd>{{ answer.user ?? "—" }}</dd></div>
+        <div><dt>{{ i18n.translate("push.requests") }}</dt><dd>{{ answer.requests }}</dd></div>
+        <div><dt>{{ i18n.translate("push.collection") }}</dt><dd>{{ answer.collection ? answer.collection.name + " (" + answer.collection.action + ")" : "—" }}</dd></div>
+      </dl>
+      @if (answer.environments.length) {
+        <div>
+          <h3>{{ i18n.translate("push.environments") }}</h3>
+          <ul class="workflow-list" role="list">
+            @for (environment of answer.environments; track environment.name) {
+              <li>{{ environment.name }} <em>({{ environment.action }})</em></li>
+            }
+          </ul>
+        </div>
+      }
+      @if (answer.error; as failure) {
+        <div class="workflow-error" role="alert"><p>{{ failure.reason }}</p><p>{{ failure.nextAction }}</p></div>
+      }
+    }
+  </div>
+</section>

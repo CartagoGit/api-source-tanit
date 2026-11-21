@@ -1,0 +1,9 @@
+{
+  "name": "multi-service-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/users-api",
+    "apps/billing-api"
+  ]
+}

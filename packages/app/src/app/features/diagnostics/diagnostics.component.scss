@@ -1,0 +1,38 @@
+.diagnostics, .contracts { display: grid; gap: var(--space-4); max-inline-size: 68rem; }
+header { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-3); }
+h2 { font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
+header span { color: var(--color-muted); font-variant-numeric: tabular-nums; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+li { display: grid; gap: 3px; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-panel); overflow-wrap: anywhere; }
+li.error { border-color: var(--color-danger); }
+strong { color: var(--color-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+li.error strong { color: var(--color-danger); }
+small, .empty { color: var(--color-muted); }
+
+.contracts { margin-block-start: var(--space-6); }
+.contract-source, .artifact-preview { min-inline-size: 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-panel); overflow-wrap: anywhere; }
+.contract-source summary { cursor: pointer; }
+.contract-source code { display: block; margin-top: 6px; }
+.contract-filter { display: flex; align-items: center; gap: 8px; }
+.contract-operation p { margin: 4px 0; }
+.contract-operation code { overflow-wrap: anywhere; }
+.contract-operation.conflict { border-color: var(--color-danger); }
+.contract-conflict { color: var(--color-danger); }
+.muted { color: var(--color-muted); }
+
+.artifact-open { display: block; margin-top: 6px; max-width: 100%; text-align: start; }
+.contract-source .artifact-open code { display: inline; margin: 0; overflow-wrap: anywhere; }
+.artifact-preview h3 { margin: 0; overflow-wrap: anywhere; }
+.artifact-preview pre { max-height: 28rem; margin-bottom: 0; padding: 12px; overflow: auto; background: var(--color-surface); }
+
+.artifact-open, .artifact-preview button {
+  min-block-size: 2.625rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+}
+.artifact-open:hover, .artifact-preview button:hover { border-color: var(--color-focus); }
+:is(button, summary, input, pre):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }

@@ -1,0 +1,38 @@
+<section class="workflow" aria-labelledby="check-title">
+  <header class="workflow-intro">
+    <h2 id="check-title">{{ i18n.translate("check.title") }}</h2>
+    <p>{{ i18n.translate("check.intro") }}</p>
+  </header>
+  <div class="workflow-panel">
+    <div class="workflow-actions">
+      <button type="button" class="primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("check.running") : i18n.translate("check.start") }}</button>
+    </div>
+    @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
+    @if (report(); as answer) {
+      <dl class="workflow-metrics">
+        <div><dt>{{ i18n.translate("check.routes") }}</dt><dd>{{ answer.routesInSource }}</dd></div>
+        <div><dt>{{ i18n.translate("check.requests") }}</dt><dd>{{ answer.requestsInCollection }}</dd></div>
+      </dl>
+      @if (answer.missingInCollection.length) {
+        <div>
+          <h3>{{ i18n.translate("check.missing") }}</h3>
+          <ul class="workflow-list" role="list">
+            @for (route of answer.missingInCollection; track route.method + route.uri + (route.name ?? "")) {
+              <li><code>{{ route.method }} {{ route.uri }}</code> @if (route.name) { <em>({{ route.name }})</em> }</li>
+            }
+          </ul>
+        </div>
+      }
+      @if (answer.missingInSource.length) {
+        <div>
+          <h3>{{ i18n.translate("check.notInCode") }}</h3>
+          <ul class="workflow-list" role="list">
+            @for (route of answer.missingInSource; track route.method + route.uri + (route.name ?? "")) {
+              <li><code>{{ route.method }} {{ route.uri }}</code> @if (route.name) { <em>({{ route.name }})</em> }</li>
+            }
+          </ul>
+        </div>
+      }
+    }
+  </div>
+</section>

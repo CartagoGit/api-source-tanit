@@ -1,0 +1,31 @@
+@use "./styles/tokens";
+@use "./styles/typography";
+@use "./styles/motion";
+@use "./styles/workflow";
+
+:root {
+  font-family: var(--font-ui);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: var(--color-surface);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}

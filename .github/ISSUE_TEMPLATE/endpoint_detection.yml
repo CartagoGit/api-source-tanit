@@ -1,0 +1,70 @@
+name: "Endpoint detection issue / Problema de detección de endpoint"
+description: "Report a missing, extra, or incorrect endpoint / Informa de un endpoint ausente, extra o incorrecto"
+title: "[Endpoint] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for route discovery results. Do not include secrets.
+        Usa este formulario para resultados de descubrimiento de rutas. No incluyas secretos.
+  - type: input
+    id: framework
+    attributes:
+      label: "Framework and version / Framework y versión"
+      placeholder: "Express 5.1 / NestJS 11 / Laravel 12"
+    validations:
+      required: true
+  - type: input
+    id: route
+    attributes:
+      label: "Endpoint / Endpoint"
+      description: "Method and path, if known / Método y ruta, si se conocen"
+      placeholder: "GET /users/:id"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: "Detection result / Resultado de detección"
+      options:
+        - "Missing / Ausente"
+        - "Extra or invented / Extra o inventado"
+        - "Wrong method or path / Método o ruta incorrectos"
+        - "Wrong parameters or schema / Parámetros o esquema incorrectos"
+        - "Other / Otro"
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: "Minimal source example / Ejemplo mínimo de código"
+      description: "Include the route declaration and nearby context / Incluye la declaración de la ruta y su contexto cercano"
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected vs actual / Esperado frente a actual"
+      description: "What should Tanit detect, and what did it detect? / ¿Qué debería detectar Tanit y qué detectó?"
+      placeholder: "Expected: ... / Esperado: ...\nActual: ... / Actual: ..."
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: "Scan command / Comando de análisis"
+      placeholder: "apisrc scan --project-root ./example"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Checks / Comprobaciones"
+      options:
+        - label: "I searched existing issues / He buscado en las incidencias existentes"
+          required: true
+        - label: "The example contains no secrets / El ejemplo no contiene secretos"
+          required: true

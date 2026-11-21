@@ -1,0 +1,76 @@
+---
+id: x00098
+title: "Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript"
+kind: fix
+status: done
+type: proposal
+track: language-ir
+date: 2026-11-10
+last-transition-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-correlation-id: ff50a0e5-05ee-4d9b-a509-421aa17153b4
+last-transition-from: review
+last-transition-at: 2026-11-10T18:50:35.711Z
+shipped-in:
+  - "e1653ac68c18bee9e9b1fef335f71b7cbe2dc69d"
+---
+
+# x00098 — Ignorar inicializadores nulos del AST sin abortar el análisis de proyectos TypeScript
+
+## goal
+
+Analizar declaraciones ambientales sin inicializador y conservar constantes reales y rutas posteriores.
+
+## why
+
+Aceptación externa 2026-11-10: binario Linux aborta en unwrapTSAsExpression al analizar declare const global en gothinkster/node-express-realworld-example-app, commit 30b68e1e881462b2f4164ea09ab4c4f5699c7b0b. Babel representa init ausente con null, pero el collector solo excluye undefined.
+
+## non-goals
+
+- TODO: what this proposal deliberately skips.
+
+## slices
+
+- global_gate: none
+
+### S1 — Respetar nulabilidad de VariableDeclarator.init
+- **Status**: done
+- **Files**: `packages/core/language-ir/collect-constants.helper.ts`, `tests/frameworks/collect-constants.spec.ts`, `tests/frameworks/build-language-ir.spec.ts`
+- **Gate**: e2e
+- acceptance:
+  - "Declaraciones declare const/export declare const sin init no provocan TypeError ni generan constantes inventadas."
+  - "Mantener constantes literales y rutas que siguen a declaraciones ambientales; cubrir tanto entrada source como Program AST."
+  - "Repetir análisis estático del repositorio externo fijado sin instalar dependencias ni ejecutar su código y registrar limitaciones por separado."
+- shipped-in: `e34de9650e4f`
+- review-state: done
+- review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at e1653ac68c18, validate exit 0 and tests 27/27 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed e34de9650e4f: collector treats undefined and null VariableDeclarator.init as absent. Focused collect-constants, build-language-ir, and constant-propag… (2) Reviewed regressions in tests/frameworks/collect-constants.spec.ts for source and parsed Program AST, plus build-language-ir.spec.ts route-call/literal binding… (3) Inspected proposal immutable revision 30b68e1e881462b2f4164ea09ab4c4f5699c7b0b evidence and /tmp/tanit-corpus-express-20261110.json: static-only 52-file scope,… — Approved independently after source review and focused Vitest run (27/27); external evidence is limited to static route identity/parity and does not claim schema accuracy.
+
+## acceptance
+
+- Declaraciones declare const/export declare const sin init no provocan TypeError ni generan constantes inventadas.
+- Mantener constantes literales y rutas que siguen a declaraciones ambientales; cubrir tanto entrada source como Program AST.
+- Repetir análisis estático del repositorio externo fijado sin instalar dependencias ni ejecutar su código y registrar limitaciones por separado.
+
+
+## External acceptance evidence — 2026-11-10
+
+Public repository: `gothinkster/node-express-realworld-example-app`,
+immutable revision `30b68e1e881462b2f4164ea09ab4c4f5699c7b0b`.
+Only static analysis was performed: no dependency installation, server,
+migration or project script execution. Third-party source is not vendored.
+
+The prior standalone Linux binary aborted with a null-node TypeError while
+collecting constants from `src/prisma/prisma-client.ts`. Three new regressions
+failed with that same TypeError before the fix; the focused constants/IR/
+propagation suite now passes 27/27. The corrected source CLI and a newly
+compiled Linux binary both finish with Express / 20 indexed operations;
+the binary also runs with only system tools on PATH.
+
+This proves crash recovery, not endpoint accuracy. Manual inspection found
+that 19 controller routes are mounted under `/api` by a chained router export,
+while the generated paths currently omit that prefix. The root `GET /` is
+separate. This discovery is a subsequent scanner defect and must not be
+counted as successful contract acceptance or a 100% precision/recall result.
+Response/schema correctness and Application API parity remain unmeasured
+for this external sample.
