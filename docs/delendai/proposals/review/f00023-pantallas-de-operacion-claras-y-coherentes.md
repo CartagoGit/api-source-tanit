@@ -2,10 +2,14 @@
 id: f00023
 title: "Pantallas de operación claras y coherentes"
 kind: feat
-status: in-progress
+status: review
 type: proposal
 track: ux
 date: 2026-11-21
+last-transition-id: 413a0eaf-65e2-420d-b31a-2335dd52ff00
+last-correlation-id: 413a0eaf-65e2-420d-b31a-2335dd52ff00
+last-transition-from: in-progress
+last-transition-at: 2026-11-21T14:18:47.712Z
 ---
 
 # f00023 — Pantallas de operación claras y coherentes
@@ -36,6 +40,7 @@ Los controles, los resultados y los errores están juntos y es difícil anticipa
   - "Los paneles se adaptan a pantalla estrecha, tienen foco visible y respetan movimiento reducido."
 - review-state: in_review
 - review-implementer: openai-gpt-6.2-sol
+- shipped-in: `817c21f58973`
 
 ## acceptance
 
