@@ -47,7 +47,6 @@ interface NavigationGroup {
 })
 export class SidebarComponent {
   readonly select = output<string>();
-  readonly theme = output<void>();
   readonly i18n = inject(I18nService);
 
   /**
@@ -85,6 +84,7 @@ export class SidebarComponent {
         { id: "live", labelKey: "nav.live" },
         { id: "history", labelKey: "nav.history" },
         { id: "diagnostics", labelKey: "nav.diagnostics" },
+        { id: "help", labelKey: "nav.help" },
       ],
     },
     {
@@ -114,10 +114,6 @@ export class SidebarComponent {
    * A method is re-read on every change detection, so it follows the
    * language the way the rest of the screen does.
    */
-  themeLabel(): string {
-    return this.i18n.translate("theme.toggle");
-  }
-
   /** The id of the heading that labels a group. */
   groupId(group: NavigationGroup): string {
     return `nav-group-${group.id}`;

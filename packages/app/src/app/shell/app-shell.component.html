@@ -1,5 +1,5 @@
-<div class="shell" [class.dark]="theme() === 'dark'">
-  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (theme)="toggleTheme()" (select)="go($event)" />
+<div class="shell">
+  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (select)="go($event)" />
   <main class="content">
     <header class="toolbar">
       <div class="workspace-context">
@@ -38,6 +38,7 @@
           @case ('push') { <tanit-push-to-postman animate.enter="motion-fade" /> }
           @case ('stats') { <tanit-stats animate.enter="motion-fade" /> }
           @case ('diagnostics') { <tanit-diagnostics animate.enter="motion-fade" /> }
+          @case ('help') { <tanit-help animate.enter="motion-fade" /> }
         }
       }
     </div>

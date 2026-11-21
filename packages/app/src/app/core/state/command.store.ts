@@ -10,7 +10,6 @@ export class CommandStore {
     { id: "export", labelKey: "palette.export", shortcut: "E" },
     { id: "settings", labelKey: "palette.settings", shortcut: "," },
     { id: "help", labelKey: "palette.help", shortcut: "?" },
-    { id: "theme", labelKey: "palette.theme", shortcut: "T" },
     { id: "recent", labelKey: "palette.recent", shortcut: "P" },
   ]);
 }
