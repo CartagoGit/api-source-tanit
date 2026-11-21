@@ -1,6 +1,6 @@
 @if (open()) {
-  <div class="scrim" (click)="close.emit()"></div>
-  <section #palette class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)">
+  <div class="scrim motion-enter" (click)="close.emit()"></div>
+  <section #palette class="palette motion-enter" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)">
     <input
       #search
       autofocus

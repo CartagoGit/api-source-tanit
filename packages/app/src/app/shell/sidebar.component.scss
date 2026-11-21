@@ -32,6 +32,7 @@ nav button:focus-visible, .theme:focus-visible { outline: 2px solid var(--color-
   .menu-toggle:focus-visible { outline: 2px solid var(--color-nav-accent); outline-offset: 2px; }
   .navigation { display: none; }
   .menu-open .navigation { display: grid; gap: var(--space-3); }
+  .menu-open .navigation.navigation-entered { animation: reveal 160ms var(--motion-standard) both; }
   nav { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .theme { width: auto; justify-self: start; }
 }

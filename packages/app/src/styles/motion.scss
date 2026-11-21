@@ -1,7 +1,11 @@
 @media (prefers-reduced-motion: no-preference) {
-  .reveal {
+  .reveal, .motion-enter {
     animation: reveal 160ms var(--motion-standard) both;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-enter { animation: none; }
 }
 
 @keyframes reveal {
