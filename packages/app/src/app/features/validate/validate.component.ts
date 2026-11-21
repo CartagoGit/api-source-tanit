@@ -30,7 +30,6 @@ import { I18nService } from "../../core/i18n/i18n.service";
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./validate.component.html",
-  styleUrls: ["./validate.component.scss"],
 })
 export class ValidateComponent {
   readonly i18n = inject(I18nService);

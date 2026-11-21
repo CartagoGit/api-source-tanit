@@ -329,6 +329,9 @@ The [proposal index](proposals/INDEX.md) tracks x00126: mounted shell views use 
 The [proposal index](proposals/INDEX.md) tracks the app's appearance preferences.
 Settings shows the active locale and previews persisted themes, including the system scheme.
 
+The [proposal index](proposals/INDEX.md) tracks the shared presentation for project operations.
+Operation pages explain the action and group controls, status, and results using the app theme.
+
 The [proposal index](proposals/INDEX.md) tracks x00127: signature manifest membership uses a pipefail-safe exact-line check.
 
 The [proposal index](proposals/INDEX.md) tracks export previews and consent.

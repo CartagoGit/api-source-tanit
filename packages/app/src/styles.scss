@@ -1,6 +1,7 @@
 @use "./styles/tokens";
 @use "./styles/typography";
 @use "./styles/motion";
+@use "./styles/workflow";
 
 :root {
   font-family: var(--font-ui);

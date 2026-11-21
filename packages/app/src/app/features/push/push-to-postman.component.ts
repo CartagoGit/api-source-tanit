@@ -30,7 +30,6 @@ import { I18nService } from "../../core/i18n/i18n.service";
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./push-to-postman.component.html",
-  styleUrls: ["./push-to-postman.component.scss"],
 })
 export class PushToPostmanComponent {
   readonly i18n = inject(I18nService);
