@@ -661,6 +661,19 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
 
   test("the Linux verifier accepts the dry run staging", async () => {
     const stage = await dryRunStaging("tanit-release-verified");
+    const manifest = await readManifest(stage);
+    const windowsFixture = manifest.artifacts.find((artifact) => artifact.os === "windows");
+    expect(windowsFixture, "the dry run includes a Windows artifact fixture").toBeDefined();
+    if (windowsFixture) {
+      manifest.artifacts.push(
+        ...Array.from({ length: 1024 }, (_, index) => ({
+          ...windowsFixture,
+          path: `windows/x64/nsis/fixture-${index}-${"x".repeat(160)}.exe`,
+          signature: null,
+        })),
+      );
+      await writeManifest(stage, manifest);
+    }
 
     // El criterio 8 del slice: cada verificador pasa para su OS. En
     // una máquina Linux, el de Linux es el que se puede ejecutar — y
