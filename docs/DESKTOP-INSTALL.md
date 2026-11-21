@@ -84,6 +84,10 @@ Abre `dist/desktop/windows/Tanit.exe` con doble clic. Mantén
 `apisrc.exe` en esa carpeta para que la ventana pueda comunicarse con
 el motor de Tanit. La aplicación utiliza el runtime WebView2 de Windows.
 
+Si el Explorador muestra un icono genérico en la ruta `\\wsl.localhost`,
+prueba ambos ejecutables juntos en una carpeta de Windows. El logotipo
+está incrustado en `Tanit.exe` y el Explorador puede leerlo desde esa copia.
+
 En una máquina Windows con el toolchain de Tauri, genera la carpeta
 portable con `bun run desktop:portable:windows`. El script de CLI
 `bun run build:binary:windows` genera `dist/apisrc-windows-x64.exe` para
