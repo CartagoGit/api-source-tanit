@@ -1,1 +1,27 @@
-<section aria-labelledby="live-title"><h2 id="live-title">{{ i18n.translate("live.title") }}</h2><label><input type="checkbox" [checked]="store.enabled()" (change)="toggle($event)" /> {{ i18n.translate("live.watch") }}</label><label><input type="checkbox" [checked]="store.autoExport()" (change)="store.setAutoExport(checked($event))" /> {{ i18n.translate("live.autoExport") }}</label><p>{{ i18n.translate("live.watching") }} {{ store.sourceFileCount() }} {{ i18n.translate("live.sourceFiles") }}</p>@if (store.error(); as message) { <p role="alert">{{ message }}</p> }@for (change of store.changes(); track change.path + change.kind) { <p>{{ change.kind }}: {{ change.path }}</p> }</section>
+<section class="workflow" aria-labelledby="live-title">
+  <header class="workflow-intro">
+    <h2 id="live-title">{{ i18n.translate("live.title") }}</h2>
+    <p>{{ i18n.translate("live.intro") }}</p>
+  </header>
+  <div class="workflow-panel">
+    <label class="workflow-check">
+      <input type="checkbox" [checked]="store.enabled()" (change)="toggle($event)" />
+      <span>{{ i18n.translate("live.watch") }}</span>
+    </label>
+    <label class="workflow-check">
+      <input type="checkbox" [checked]="store.autoExport()" (change)="store.setAutoExport(checked($event))" />
+      <span>{{ i18n.translate("live.autoExport") }}</span>
+    </label>
+    @if (store.enabled()) {
+      <p class="workflow-status" role="status">{{ i18n.translate("live.watching") }} {{ store.sourceFileCount() }} {{ i18n.translate("live.sourceFiles") }}</p>
+    }
+    @if (store.error(); as message) { <p class="workflow-error" role="alert">{{ message }}</p> }
+    @if (store.changes().length) {
+      <ul class="workflow-list" role="list">
+        @for (change of store.changes(); track change.path + change.kind) {
+          <li><code>{{ change.path }}</code> <em>{{ change.kind }}</em></li>
+        }
+      </ul>
+    }
+  </div>
+</section>

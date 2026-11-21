@@ -29,7 +29,6 @@ import { I18nService } from "../../core/i18n/i18n.service";
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./check.component.html",
-  styleUrls: ["./check.component.scss"],
 })
 export class CheckComponent {
   readonly i18n = inject(I18nService);
