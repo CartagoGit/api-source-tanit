@@ -32,16 +32,18 @@
       </ul>
       <div class="compare">
         <label>{{ i18n.translate("history.left") }}
-          <select [value]="left()" (change)="left.set(selected($event))">
+          <select (change)="left.set(selected($event))">
+            <option value="" [selected]="left() === ''">{{ i18n.translate("history.selectRevision") }}</option>
             @for (revision of history.revisions(); track revision.id) {
-              <option [value]="revision.id" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
+              <option [value]="revision.id" [selected]="revision.id === left()" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
             }
           </select>
         </label>
         <label>{{ i18n.translate("history.right") }}
-          <select [value]="right()" (change)="right.set(selected($event))">
+          <select (change)="right.set(selected($event))">
+            <option value="" [selected]="right() === ''">{{ i18n.translate("history.selectRevision") }}</option>
             @for (revision of history.revisions(); track revision.id) {
-              <option [value]="revision.id" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
+              <option [value]="revision.id" [selected]="revision.id === right()" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
             }
           </select>
         </label>

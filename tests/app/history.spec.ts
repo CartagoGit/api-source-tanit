@@ -173,6 +173,28 @@ describe("the history screen", () => {
     expect(component.canCompare()).toBe(true);
   });
 
+  it("shows that no revision is selected and lets the first revision be picked directly", async () => {
+    const { bridge } = fakeBridge();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: HostBridgeClient, useValue: bridge }],
+    });
+    const fixture = TestBed.createComponent(HistoryListComponent);
+    fixture.detectChanges();
+    await TestBed.inject(HistoryStore).load("/workspace");
+    fixture.detectChanges();
+    const screen = fixture.nativeElement as HTMLElement;
+    const selects = Array.from(screen.querySelectorAll("select"));
+    expect(selects.map((select) => select.value)).toEqual(["", ""]);
+
+    const first = selects[0]!;
+    first.value = "a";
+    first.dispatchEvent(new Event("change", { bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.left()).toBe("a");
+    expect(first.value).toBe("a");
+  });
+
   it("names a revision with when it was made and what it held", async () => {
     const { bridge } = fakeBridge();
     TestBed.resetTestingModule();

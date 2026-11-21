@@ -332,6 +332,8 @@ Settings shows the active locale and previews persisted themes, including the sy
 The [proposal index](proposals/INDEX.md) tracks the shared presentation for project operations.
 Operation pages explain the action and group controls, status, and results using the app theme.
 
+The [proposal index](proposals/INDEX.md) tracks the responsive layouts for endpoint, service, history, diagnostics and export views.
+
 The [proposal index](proposals/INDEX.md) tracks x00127: signature manifest membership uses a pipefail-safe exact-line check.
 
 The [proposal index](proposals/INDEX.md) tracks export previews and consent.

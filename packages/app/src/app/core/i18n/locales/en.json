@@ -172,6 +172,7 @@
   "history.operations": "operations",
   "history.revisions": "Revisions",
   "history.right": "To",
+  "history.selectRevision": "Choose a revision",
   "history.snapshotReady": "Snapshot ready",
   "history.snapshotStale": "Snapshot stale",
   "history.snapshotUnavailable": "No source snapshot was recorded for this entry.",
