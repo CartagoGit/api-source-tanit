@@ -152,6 +152,7 @@
     "desktop:build:linux": "bun run scripts/build/desktop-build.script.ts --platform linux",
     "desktop:build:mac": "bun run scripts/build/desktop-build.script.ts --platform mac",
     "desktop:build:windows": "bun run scripts/build/desktop-build.script.ts --platform windows",
+    "desktop:portable:windows": "bun run scripts/build/desktop-build.script.ts --platform windows --portable",
     "docker:validate": "docker compose -f .docker/docker-compose.yml run --rm validate",
     "docker:binaries": "docker compose -f .docker/docker-compose.yml run --rm binaries",
     "docker:installers": "docker compose -f .docker/docker-compose.yml run --rm installers",
