@@ -534,7 +534,7 @@ while IFS= read -r file; do
     release-manifest.json) continue ;;
     *.signature.json) continue ;;
   esac
-  if ! printf '%s\n' "${DESCRIBED}" | grep -Fxq -- "${relative}"; then
+  if ! grep -Fxq -- "${relative}" <<< "${DESCRIBED}"; then
     fail "${relative}: the staging holds a file the manifest does not describe"
   fi
 done < <(find "${STAGE_ABS}" -type f -not -path '*.app/*' | LC_ALL=C sort)
