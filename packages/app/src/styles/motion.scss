@@ -2,6 +2,9 @@
   .reveal {
     animation: reveal 160ms var(--motion-standard) both;
   }
+  .motion-fade {
+    animation: fade-in 160ms var(--motion-standard) both;
+  }
 }
 
 @keyframes reveal {
@@ -13,4 +16,9 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

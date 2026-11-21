@@ -10,7 +10,7 @@
       {{ i18n.translate("nav.menu") }}
     </button>
   </div>
-  <div id="sidebar-navigation" class="navigation">
+  <div id="sidebar-navigation" class="navigation" [class.reveal]="menuOpen()">
     <nav>
       @for (group of groups; track group.id) {
         @if (visibleItems(group); as items) {
