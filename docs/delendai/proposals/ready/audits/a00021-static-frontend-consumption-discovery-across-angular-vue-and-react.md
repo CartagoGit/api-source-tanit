@@ -94,14 +94,26 @@ and client analysis must remain optional.
 
 ### Pairwise comparison and selection boundary
 
-Pairwise comparison is a read-only phase after S2. It compares an explicitly selected
-frontend usage record with an explicitly selected backend operation; it must not choose a
-route merely because its path looks similar. The backend selector is a stable operation
-id when one exists, otherwise the normalized `(service, method, path)` tuple. A frontend
-selector carries source file, location and recognizer. If either selector resolves to
-multiple candidates, the result is `ambiguous`, with all candidate ids and the reason;
-the engine must not silently pick the first one. Selection by method/path is allowed only
-when it yields exactly one backend candidate.
+Pairwise comparison is a read-only phase after S2. The user selects two project roots —
+one frontend and one backend — and Tanit analyzes each root once, then automatically pairs
+unique method/path/route-prefix matches. It must not choose a route merely because its
+path looks similar. Manual pair selection is only for disambiguating a suggested pair or
+inspecting a particular pair; it is not required for ordinary unique matches. The backend
+selector is a stable operation id when one exists, otherwise the normalized
+`(service, method, path)` tuple. A frontend selector carries source file, location and
+recognizer. If either side resolves to multiple candidates, the result is `ambiguous`,
+with all candidate ids and the reason; the engine must not silently pick the first one.
+Selection by method/path is allowed only when it yields exactly one backend candidate.
+
+The project-level result must present every analyzed operation and usage as one of
+`matched`, `missing`, `ambiguous`, or `unknown`: matched means one unique pair was
+compared, missing means an operation has no visible consumer (or a consumer has no
+backend operation), ambiguous means candidate selection needs user input, and unknown
+means evidence was insufficient to decide. Every row retains frontend and backend source
+evidence where available, plus the recognizer, normalization notes, confidence and
+unresolved reason. A configurable normalization block may declare gateway prefixes,
+base URLs, and equivalent route-prefix mappings; it must never erase a known method,
+host, or path mismatch, which remains `missing` or `unknown` with evidence.
 
 The comparison reports `request` and `response` judgements independently, each as
 `compatible`, `incompatible`, or `unknown`, plus an overall judgement and evidence. URL
@@ -154,9 +166,13 @@ unavailable response/request types remain explicit unresolved evidence.
   exporters show no observable regression before S3 is deliberately enabled.
 - Every result carries evidence sufficient to explain the match or non-match, including
   file, location, recognizer and confidence.
-- A pairwise fixture selects one frontend call and one backend operation explicitly and
-  proves: unique selection, ambiguous selection, method/path mismatch, selected response
-  status, and separate request/response judgements.
+- A two-root fixture analyzes the frontend and backend roots once, automatically pairs
+  unique method/path/route-prefix matches, and presents whole-project `matched`,
+  `missing`, `ambiguous`, and `unknown` outcomes. Manual pair selection only resolves an
+  ambiguity or inspects a pair; it is not needed for unique matches.
+- The pairing fixture proves candidate ambiguity, method/path mismatch, selected response
+  status, separate request/response judgements, and retained source evidence. Gateway/base
+  URL and route-prefix normalization is configurable and a known mismatch survives it.
 - The compatibility fixture proves request direction (frontend value assignable to the
   backend input), response direction (backend output assignable to the frontend
   expectation), required/optional fields, literals/enums, unions, nullability, and both
