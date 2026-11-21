@@ -1,11 +1,11 @@
-<section class="diagnostics" aria-labelledby="diagnostics-title">
-  <header><h2 id="diagnostics-title">{{ i18n.translate("diagnostics.title") }}</h2><span>{{ diagnostics().length }}</span></header>
+<section class="tanit-section diagnostics" aria-labelledby="diagnostics-title">
+  <header><h2 class="tanit-page-title" id="diagnostics-title">{{ i18n.translate("diagnostics.title") }}</h2><span>{{ diagnostics().length }}</span></header>
   @if (diagnostics().length === 0) {
     <p class="empty">{{ i18n.translate("diagnostics.empty") }}</p>
   } @else {
     <ul>
       @for (diagnostic of diagnostics(); track diagnostic.message) {
-        <li [class.error]="diagnostic.severity === 'error'">
+        <li class="tanit-panel" [class.error]="diagnostic.severity === 'error'">
           <strong>{{ diagnostic.severity === 'error' ? i18n.translate("diagnostics.error") : i18n.translate("diagnostics.warning") }}</strong>
           <span>{{ diagnostic.message }}</span>
           @if (diagnostic.source) { <small>{{ diagnostic.source }}</small> }
@@ -16,23 +16,23 @@
 </section>
 
 @if (contractReports().length > 0) {
-  <section class="contracts" aria-labelledby="contracts-title">
-    <header><h2 id="contracts-title">{{ i18n.translate("contracts.title") }}</h2><span>{{ comparisonCount() }}</span></header>
+  <section class="tanit-section contracts" aria-labelledby="contracts-title">
+    <header><h2 class="tanit-page-title" id="contracts-title">{{ i18n.translate("contracts.title") }}</h2><span>{{ comparisonCount() }}</span></header>
     <p>{{ i18n.translate("contracts.scope") }}</p>
     @for (report of contractReports(); track $index) {
       @for (source of report.sources; track $index) {
-        <details class="contract-source">
+        <details class="tanit-panel contract-source">
           <summary>{{ source.framework }} · {{ source.serviceId }} · {{ coverageLabel(source.completeness) }}</summary>
           @for (artifact of source.artifacts; track artifact) {
             @if (source.kind === "documentation") {
-              <button class="artifact-open" type="button" (click)="openArtifact(source.serviceId, artifact)">{{ i18n.translate("contracts.openArtifact") }} <code>{{ artifact }}</code></button>
+              <button class="tanit-button artifact-open" type="button" (click)="openArtifact(source.serviceId, artifact)">{{ i18n.translate("contracts.openArtifact") }} <code>{{ artifact }}</code></button>
             } @else {
               <code>{{ artifact }}</code>
             }
           }
           @if (source.kind === "documentation") {
             @for (link of source.links ?? []; track link.url + link.file + link.pointer) {
-              <button class="artifact-open remote-artifact-open" type="button" (click)="openRemoteContract(source.serviceId, link.url)">{{ i18n.translate("contracts.openRemote") }} <code>{{ link.url }}</code></button>
+              <button class="tanit-button artifact-open remote-artifact-open" type="button" (click)="openRemoteContract(source.serviceId, link.url)">{{ i18n.translate("contracts.openRemote") }} <code>{{ link.url }}</code></button>
             }
           }
           @for (limitation of source.limitations; track $index) { <p class="muted">{{ limitation }}</p> }
@@ -40,10 +40,10 @@
       }
     }
     @if (currentPreview(); as document) {
-      <section class="artifact-preview" aria-labelledby="artifact-title">
+      <section class="tanit-panel artifact-preview" aria-labelledby="artifact-title">
         <header>
           <h3 id="artifact-title">{{ document.artifact }}</h3>
-          <button type="button" (click)="preview.set(null)">{{ i18n.translate("contracts.closeArtifact") }}</button>
+          <button type="button" class="tanit-button" (click)="preview.set(null)">{{ i18n.translate("contracts.closeArtifact") }}</button>
         </header>
         @if (document.failed) {
           <p role="alert">{{ i18n.translate(document.remote ? "contracts.remoteUnavailable" : "contracts.artifactUnavailable") }}</p>
@@ -58,7 +58,7 @@
     @if (comparisons().length === 0) { <p class="muted">{{ i18n.translate("contracts.noDifferences") }}</p> }
     <ul>
       @for (operation of visibleComparisons(); track $index) {
-        <li class="contract-operation" [class.conflict]="operation.status === 'conflict'">
+        <li class="tanit-panel contract-operation" [class.conflict]="operation.status === 'conflict'">
           <strong>{{ statusLabel(operation.status) }}</strong>
           <code>{{ operation.method }} {{ operation.path }}</code><small>{{ operation.serviceId }}</small>
           @for (evidence of operation.documented; track $index) {

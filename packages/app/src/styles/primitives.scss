@@ -1,0 +1,66 @@
+.tanit-section { display: grid; align-content: start; gap: var(--space-4); }
+
+.tanit-page-title {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 680;
+  letter-spacing: -.035em;
+  line-height: 1.18;
+}
+
+.tanit-panel {
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+}
+
+.tanit-button, .tanit-field {
+  min-block-size: 2.25rem;
+  max-inline-size: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.tanit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: 620;
+  text-align: center;
+}
+
+.tanit-button:not(:disabled):hover {
+  background: var(--color-nav-hover);
+  border-color: var(--color-focus);
+}
+
+.tanit-button--primary, .tanit-button--primary:not(:disabled):hover {
+  border-color: var(--color-action-bg);
+  background: var(--color-action-bg);
+  color: var(--color-action-text);
+}
+
+.tanit-button--primary:not(:disabled):hover { filter: brightness(.92); }
+.tanit-button:disabled { opacity: .6; cursor: default; }
+.tanit-button:focus-visible, .tanit-field:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tanit-button {
+    transition: background-color 145ms var(--motion-standard),
+      border-color 145ms var(--motion-standard),
+      filter 145ms var(--motion-standard),
+      transform 145ms var(--motion-standard);
+  }
+
+  .tanit-button:not(:disabled):hover { transform: translateY(-1px); }
+  .tanit-button:not(:disabled):active { transform: translateY(0); }
+}

@@ -1,21 +1,21 @@
 :host { display: block; min-width: 0; background: var(--color-nav-bg); }
-.sidebar { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--space-5); max-height: 100vh; min-height: 100vh; padding: var(--space-4); overflow-y: auto; color: var(--color-nav-ink); }
+.sidebar { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--space-3); height: 100dvh; padding: var(--space-3); color: var(--color-nav-ink); }
 .brand { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: 0 var(--space-2); }
 .brand-mark { flex: none; display: block; }
 strong, small { display: block; }
 strong { font-size: 16px; letter-spacing: .01em; }
 small { color: var(--color-nav-muted); font-size: 11px; }
-.navigation { display: contents; }
+.navigation { flex: 1; min-block-size: 0; overflow-y: auto; scrollbar-width: thin; }
 .menu-toggle { display: none; }
-nav { display: grid; gap: var(--space-3); }
+nav { display: grid; gap: var(--space-2); padding: 2px; }
 .group { display: grid; gap: 2px; }
 .group-title { margin: 0 0 var(--space-1); padding-inline: var(--space-3); color: var(--color-nav-muted); font-size: 11px; font-weight: 650; }
-nav button { display: block; width: 100%; min-height: 34px; border: 0; border-inline-start: 3px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--color-nav-ink); padding: 6px var(--space-2); text-align: start; }
+nav button { display: block; width: 100%; min-height: 32px; border: 0; border-inline-start: 3px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--color-nav-ink); padding: 6px var(--space-2); text-align: start; }
 nav button:hover { background: var(--color-nav-hover-dark); }
 nav button.active { border-inline-start-color: var(--color-nav-accent); background: var(--color-nav-hover-dark); font-weight: 700; }
 nav button:focus-visible { outline: 2px solid var(--color-nav-accent); outline-offset: 2px; }
 @media (max-width: 760px) {
-  .sidebar { position: static; min-height: 0; max-height: none; gap: var(--space-3); padding-block: var(--space-2); }
+  .sidebar { position: static; height: auto; gap: var(--space-1); padding-block: var(--space-2); }
   .brand { padding-inline: 0; }
   .menu-toggle {
     display: block;
@@ -30,6 +30,52 @@ nav button:focus-visible { outline: 2px solid var(--color-nav-accent); outline-o
   .menu-toggle:hover { background: var(--color-nav-hover-dark); }
   .menu-toggle:focus-visible { outline: 2px solid var(--color-nav-accent); outline-offset: 2px; }
   .navigation { display: none; }
-  .menu-open .navigation { display: grid; gap: var(--space-3); }
+  .menu-open .navigation { display: block; max-block-size: 48dvh; }
   nav { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: var(--space-1);
+  flex: none;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid color-mix(in srgb, var(--color-nav-muted) 24%, transparent);
+}
+.repository-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-nav-ink);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.repository-link tanit-github-mark { inline-size: 15px; }
+.repository-link:hover { background: var(--color-nav-hover-dark); }
+.repository-link:focus-visible { outline: 2px solid var(--color-nav-accent); outline-offset: 2px; }
+.credits { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1) var(--space-2); padding-inline: var(--space-2); }
+.version {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-nav-hover-dark);
+  font-family: var(--font-code);
+}
+.sidebar-footer p { grid-column: 1 / -1; font-size: 12px; color: var(--color-nav-muted); }
+
+@media (max-width: 760px) {
+  .sidebar-footer {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    padding-block-start: var(--space-1);
+  }
+  .credits { justify-content: flex-end; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  nav button, .repository-link, .menu-toggle {
+    transition: background-color 145ms var(--motion-standard), border-color 145ms var(--motion-standard);
+  }
 }

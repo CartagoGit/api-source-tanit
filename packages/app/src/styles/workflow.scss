@@ -1,25 +1,12 @@
-.workflow {
-  display: grid;
-  gap: var(--space-5);
-  max-inline-size: 62rem;
+.workflow { max-inline-size: 62rem;
 }
 
 .workflow-intro { display: grid; gap: var(--space-2); }
-.workflow-intro h2 {
-  font-size: clamp(1.75rem, 3vw, 2.4rem);
-  letter-spacing: -.03em;
-  line-height: 1.15;
-}
 .workflow-intro p { color: var(--color-muted); max-inline-size: 62ch; }
 
 .workflow-panel {
   display: grid;
   gap: var(--space-4);
-  min-inline-size: 0;
-  padding: clamp(var(--space-4), 3vw, var(--space-6));
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
 }
 .workflow-panel h3 { font-size: 1rem; }
 .workflow-status, .workflow-error {
@@ -32,24 +19,6 @@
 .workflow-error { border-color: var(--color-danger); color: var(--color-danger); }
 
 .workflow-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.workflow-actions button, .workflow-field input {
-  min-block-size: 2.625rem;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: inherit;
-}
-.workflow-actions button { font-weight: 600; }
-.workflow-actions button:not(:disabled):hover { border-color: var(--color-focus); }
-.workflow-actions .primary {
-  border-color: var(--color-action-bg);
-  background: var(--color-action-bg);
-  color: var(--color-action-text);
-}
-.workflow-actions .primary:not(:disabled):hover { filter: brightness(.93); }
-.workflow-actions button:disabled { opacity: .6; cursor: default; }
 .workflow :is(button, input):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .workflow-field { display: grid; gap: var(--space-2); max-inline-size: 28rem; font-weight: 600; }
 .workflow-check { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
@@ -86,7 +55,3 @@
 .workflow-list li { padding-block: var(--space-2); overflow-wrap: anywhere; }
 .workflow-list li + li { border-block-start: 1px solid var(--color-border); }
 .workflow-list em { color: var(--color-muted); font-style: normal; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .workflow-actions button { transition: border-color 140ms var(--motion-standard), filter 140ms var(--motion-standard); }
-}

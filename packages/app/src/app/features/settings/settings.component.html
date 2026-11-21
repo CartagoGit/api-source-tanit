@@ -1,10 +1,10 @@
-<section class="settings" aria-labelledby="settings-title">
+<section class="tanit-section settings" aria-labelledby="settings-title">
   <header class="intro">
-    <h2 id="settings-title">{{ i18n.translate("settings.title") }}</h2>
+    <h2 class="tanit-page-title" id="settings-title">{{ i18n.translate("settings.title") }}</h2>
     <p>{{ i18n.translate("settings.description") }}</p>
   </header>
 
-  <section class="panel" aria-labelledby="preferences-title">
+  <section class="tanit-panel panel" aria-labelledby="preferences-title">
     <div class="panel-heading">
       <h3 id="preferences-title">{{ i18n.translate("settings.appearance") }}</h3>
       <p>{{ i18n.translate("settings.preferencesHint") }}</p>
@@ -12,7 +12,7 @@
 
     <label class="language">
       <span>{{ i18n.translate("settings.language") }}</span>
-      <select (change)="changeLocale($event)">
+      <select class="tanit-field" (change)="changeLocale($event)">
         @for (locale of i18n.locales; track locale.code) {
           <option [value]="locale.code" [selected]="locale.code === i18n.locale()" [lang]="locale.code">{{ locale.nativeName }}</option>
         }
@@ -38,22 +38,22 @@
     </fieldset>
   </section>
 
-  <section class="panel" aria-labelledby="credentials-title">
+  <section class="tanit-panel panel" aria-labelledby="credentials-title">
     <div class="panel-heading">
       <h3 id="credentials-title">{{ i18n.translate("settings.credentials") }}</h3>
       <p id="storage-hint">{{ describeWhere() }}</p>
     </div>
     <label class="key">
       <span>{{ i18n.translate("settings.key") }}</span>
-      <input type="password" [value]="key()" (input)="key.set(inputValue($event))" aria-describedby="storage-hint" autocomplete="off" />
+      <input class="tanit-field" type="password" [value]="key()" (input)="key.set(inputValue($event))" aria-describedby="storage-hint" autocomplete="off" />
     </label>
     <label class="checkbox">
       <input type="checkbox" [checked]="sessionOnly()" (change)="sessionOnly.set(checked($event))" />
       <span>{{ i18n.translate("settings.sessionOnly") }}</span>
     </label>
     <div class="actions">
-      <button type="button" class="primary" [disabled]="running()" (click)="save()">{{ running() ? i18n.translate("settings.running") : i18n.translate("settings.saveKey") }}</button>
-      <button type="button" [disabled]="running()" (click)="forget()">{{ i18n.translate("settings.forgetKey") }}</button>
+      <button type="button" class="tanit-button tanit-button--primary" [disabled]="running()" (click)="save()">{{ running() ? i18n.translate("settings.running") : i18n.translate("settings.saveKey") }}</button>
+      <button type="button" class="tanit-button" [disabled]="running()" (click)="forget()">{{ i18n.translate("settings.forgetKey") }}</button>
     </div>
     @if (message(); as value) { <p class="feedback" role="status">{{ value }}</p> }
     @if (failure(); as value) { <p class="feedback error" role="alert">{{ value }}</p> }

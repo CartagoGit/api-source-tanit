@@ -1,6 +1,5 @@
-.services-list { display: grid; gap: var(--space-5); max-inline-size: 62rem; }
+.services-list { max-inline-size: 62rem; }
 header { display: flex; align-items: baseline; gap: var(--space-3); }
-h2 { font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
 header span {
   padding: 2px var(--space-2);
   border-radius: var(--radius-md);
@@ -11,11 +10,6 @@ header span {
 article {
   display: grid;
   gap: var(--space-3);
-  min-inline-size: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-panel);
 }
 .row {
   display: grid;

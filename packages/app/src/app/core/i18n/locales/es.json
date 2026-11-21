@@ -1,7 +1,9 @@
 {
+  "app.creator": "Creado por {name}",
   "app.name": "Tanit",
   "app.navigation": "Navegación principal",
   "app.subtitle": "Descubrimiento de APIs desde el código",
+  "app.version": "Versión {version}",
   "check.inSync": "La colección está al día con el código.",
   "check.intro": "Compara las rutas del código fuente con las peticiones de tu colección.",
   "check.missing": "Faltan en la colección",

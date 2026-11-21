@@ -1,3 +1,5 @@
+import { author, homepage } from "../../package.json";
+import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant";
 /**
  * The parts of the app that a person can reach — and that answer.
  *
@@ -125,6 +127,18 @@ describe("the sidebar", () => {
     fixture.detectChanges();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>);
     expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings", "Help"]);
+  });
+
+  it("shows the repository, creator and current release in the collapsed navigation", () => {
+    const fixture = TestBed.createComponent(SidebarHost);
+    fixture.componentInstance.projectOpen = false;
+    fixture.detectChanges();
+
+    const footer = (fixture.nativeElement as HTMLElement).querySelector("footer")!;
+    expect(footer.textContent).toContain(author);
+    expect(footer.textContent).toContain(CLI_VERSION);
+    expect(footer.querySelector("a")?.getAttribute("href")).toBe(homepage);
+    expect(footer.querySelector("svg")).not.toBeNull();
   });
 
   it("closes the mobile navigation after choosing a destination", () => {

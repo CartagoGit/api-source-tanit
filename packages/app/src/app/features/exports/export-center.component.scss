@@ -1,44 +1,15 @@
-.center { display: grid; gap: var(--space-5); max-inline-size: 64rem; }
+.center { max-inline-size: 64rem; }
 header, .destination {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
 }
-h1 { margin-block: var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
 h2 { margin-block-end: var(--space-1); font-size: 1.125rem; }
 p { color: var(--color-muted); }
 .eyebrow { color: var(--color-muted); font-size: .8rem; font-weight: 650; letter-spacing: .06em; }
-header > button, .destination > button {
-  min-block-size: 2.625rem;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-weight: 650;
-}
-header > button {
-  border-color: var(--color-action-bg);
-  background: var(--color-action-bg);
-  color: var(--color-action-text);
-}
-header > button:disabled { opacity: .6; cursor: default; }
-header > button:not(:disabled):hover { filter: brightness(.93); }
-.destination > button:hover { border-color: var(--color-focus); }
-.destination {
-  min-inline-size: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-panel);
-}
 .destination > div { min-inline-size: 0; }
 code { overflow-wrap: anywhere; }
 .check { display: flex; align-items: center; gap: var(--space-2); }
 .warning, .error { color: var(--color-danger); }
-:is(button, input):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 @media (max-width: 640px) { header, .destination { display: grid; } }
-@media (prefers-reduced-motion: no-preference) {
-  header > button, .destination > button { transition: border-color 140ms var(--motion-standard), filter 140ms var(--motion-standard); }
-}

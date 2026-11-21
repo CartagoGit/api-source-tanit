@@ -29,4 +29,16 @@
       }
     </nav>
   </div>
+  <footer class="sidebar-footer">
+    <a class="repository-link" [href]="metadata.repository" target="_blank" rel="noopener noreferrer"
+      (click)="openRepository($event)">
+      <tanit-github-mark />
+      <span>{{ i18n.translate("help.repository") }}</span>
+    </a>
+    <div class="credits">
+      <small>{{ i18n.translate("app.creator", { name: metadata.creator }) }}</small>
+      <small class="version" [attr.aria-label]="i18n.translate('app.version', { version: metadata.version })">v{{ metadata.version }}</small>
+    </div>
+    @if (linkFailed()) { <p role="alert">{{ i18n.translate("help.openFailed") }}</p> }
+  </footer>
 </aside>

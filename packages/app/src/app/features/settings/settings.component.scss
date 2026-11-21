@@ -1,50 +1,36 @@
-.settings {
-  display: grid;
-  gap: var(--space-6);
-  max-width: 56rem;
+.settings { max-width: 56rem;
 }
 
 .intro, .panel-heading, .language, .key { display: grid; gap: var(--space-2); }
 
-.intro h2 {
-  font-size: clamp(1.75rem, 3vw, 2.4rem);
-  letter-spacing: -.03em;
-  line-height: 1.15;
-}
 
 .intro p, .panel-heading p { color: var(--color-muted); }
 
 .panel {
   display: grid;
-  gap: var(--space-5);
-  min-inline-size: 0;
-  padding: clamp(var(--space-4), 3vw, var(--space-6));
-  background: var(--color-panel);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  gap: var(--space-4);
 }
 
 .panel-heading h3 { font-size: 1.125rem; }
 .language, .key { max-inline-size: 24rem; }
 label, legend { font-weight: 600; }
 
-select, input[type="password"], button {
-  min-block-size: 2.625rem;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-ink);
-  font: inherit;
-}
 
-fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+fieldset { container-type: inline-size; margin: 0; padding: 0; border: 0; min-inline-size: 0; }
 legend { margin-block-end: var(--space-3); padding: 0; }
 
 .themes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+}
+
+@container (min-width: 30rem) {
+  .themes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container (min-width: 47rem) {
+  .themes { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 .theme-choice {
@@ -56,15 +42,15 @@ legend { margin-block-end: var(--space-3); padding: 0; }
   cursor: pointer;
 }
 
-.theme-choice:hover, button:not(:disabled):hover { border-color: var(--color-muted); }
+.theme-choice:hover { border-color: var(--color-muted); background: var(--color-surface); }
 .theme-choice:has(input:checked) { border-color: var(--color-focus); }
-.theme-choice:has(:focus-visible), :is(select, input, button):focus-visible {
+.theme-choice:has(:focus-visible) {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .theme-choice, button { transition: border-color 140ms var(--motion-standard); }
+  .theme-choice { transition: border-color 145ms var(--motion-standard), background-color 145ms var(--motion-standard); }
 }
 
 .swatch {
@@ -108,12 +94,5 @@ input[type="radio"], input[type="checkbox"] {
 }
 
 .actions { flex-wrap: wrap; }
-.primary {
-  background: var(--color-action-bg);
-  color: var(--color-action-text);
-  border-color: var(--color-action-bg);
-  font-weight: 650;
-}
-button:disabled { opacity: .65; cursor: wait; }
 .feedback { overflow-wrap: anywhere; }
 .error { color: var(--color-danger); }
