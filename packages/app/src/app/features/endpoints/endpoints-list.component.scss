@@ -1,19 +1,8 @@
 :host { display: block; min-height: 100%; }
-.explorer { display: grid; gap: var(--space-5); }
 .heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
-h1 { margin: 0 0 var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-spacing: -.03em; line-height: 1.15; }
+h1 { margin-block-end: var(--space-1); }
 .heading p { margin: 0; color: var(--color-muted); }
 .actions { display: flex; gap: var(--space-2); align-self: start; flex-wrap: wrap; }
-.actions button {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-panel);
-  color: var(--color-ink);
-  min-block-size: 2.625rem;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-.actions button:disabled { opacity: 0.5; cursor: default; }
 .error {
   margin: 0;
   padding: 10px 12px;
@@ -26,9 +15,7 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-panel);
+  padding: 0;
 }
 .workspace.with-selection { grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); }
 .list-pane { min-width: 0; }
@@ -50,7 +37,7 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-
   cursor: pointer;
 }
 .endpoint-row:hover, .endpoint-row.selected { background: var(--color-nav-hover); }
-.endpoint-row:focus-visible, .actions button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.endpoint-row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 .verb {
   justify-self: start;
   padding: 4px 7px;
@@ -76,6 +63,5 @@ h1 { margin: 0 0 var(--space-1); font-size: clamp(1.75rem, 3vw, 2.4rem); letter-
 @media (max-width: 420px) { .endpoint-row { grid-template-columns: 56px minmax(0, 1fr) auto; gap: var(--space-2); } }
 
 @media (prefers-reduced-motion: no-preference) {
-  .endpoint-row, .actions button { transition: background-color 140ms var(--motion-standard); }
+  .endpoint-row { transition: background-color 140ms var(--motion-standard); }
 }
-.actions button:not(:disabled):hover { background: var(--color-nav-hover); }

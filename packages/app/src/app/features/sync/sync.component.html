@@ -1,12 +1,12 @@
-<section class="workflow" aria-labelledby="sync-title">
+<section class="tanit-section workflow" aria-labelledby="sync-title">
   <header class="workflow-intro">
-    <h2 id="sync-title">{{ i18n.translate("sync.title") }}</h2>
+    <h2 class="tanit-page-title" id="sync-title">{{ i18n.translate("sync.title") }}</h2>
     <p>{{ i18n.translate("sync.intro") }}</p>
   </header>
-  <div class="workflow-panel">
+  <div class="tanit-panel workflow-panel">
     <div class="workflow-actions">
-      <button type="button" [disabled]="running()" (click)="run(true)">{{ i18n.translate("sync.dryRun") }}</button>
-      <button type="button" class="primary" [disabled]="running()" (click)="run(false)">{{ running() ? i18n.translate("sync.running") : i18n.translate("sync.start") }}</button>
+      <button type="button" class="tanit-button" [disabled]="running()" (click)="run(true)">{{ i18n.translate("sync.dryRun") }}</button>
+      <button type="button" class="tanit-button tanit-button--primary" [disabled]="running()" (click)="run(false)">{{ running() ? i18n.translate("sync.running") : i18n.translate("sync.start") }}</button>
     </div>
     @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
     @if (result(); as answer) {

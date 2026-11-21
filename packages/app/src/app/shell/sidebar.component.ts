@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
 
+import { appMetadata } from "../core/app-metadata";
+import { ExternalLinkService } from "../core/host/external-link.service";
+import { GitHubMarkComponent } from "../shared/github-mark.component";
 import { I18nService } from "../core/i18n/i18n.service";
 
 /** One destination in the sidebar. */
@@ -41,11 +44,15 @@ interface NavigationGroup {
 @Component({
   selector: "tanit-sidebar",
   standalone: true,
+  imports: [GitHubMarkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./sidebar.component.html",
   styleUrls: ["./sidebar.component.scss"],
 })
 export class SidebarComponent {
+  readonly metadata = appMetadata();
+  readonly linkFailed = signal(false);
+  private readonly externalLinks = inject(ExternalLinkService);
   readonly select = output<string>();
   readonly i18n = inject(I18nService);
 
@@ -99,6 +106,11 @@ export class SidebarComponent {
   readonly activeId = input("overview");
   readonly projectOpen = input(false);
   readonly menuOpen = signal(false);
+
+  async openRepository(event: MouseEvent): Promise<void> {
+    this.linkFailed.set(false);
+    this.linkFailed.set(!(await this.externalLinks.open(event, this.metadata.repository)));
+  }
 
   choose(section: string): void {
     this.menuOpen.set(false);

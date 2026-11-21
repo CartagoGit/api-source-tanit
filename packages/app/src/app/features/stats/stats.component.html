@@ -1,11 +1,11 @@
-<section class="workflow" aria-labelledby="stats-title">
+<section class="tanit-section workflow" aria-labelledby="stats-title">
   <header class="workflow-intro">
-    <h2 id="stats-title">{{ i18n.translate("stats.title") }}</h2>
+    <h2 class="tanit-page-title" id="stats-title">{{ i18n.translate("stats.title") }}</h2>
     <p>{{ i18n.translate("stats.intro") }}</p>
   </header>
-  <div class="workflow-panel">
+  <div class="tanit-panel workflow-panel">
     <div class="workflow-actions">
-      <button type="button" class="primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("stats.running") : i18n.translate("stats.start") }}</button>
+      <button type="button" class="tanit-button tanit-button--primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("stats.running") : i18n.translate("stats.start") }}</button>
     </div>
     @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
     @if (stats(); as answer) {

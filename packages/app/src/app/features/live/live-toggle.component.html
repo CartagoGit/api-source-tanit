@@ -1,9 +1,9 @@
-<section class="workflow" aria-labelledby="live-title">
+<section class="tanit-section workflow" aria-labelledby="live-title">
   <header class="workflow-intro">
-    <h2 id="live-title">{{ i18n.translate("live.title") }}</h2>
+    <h2 class="tanit-page-title" id="live-title">{{ i18n.translate("live.title") }}</h2>
     <p>{{ i18n.translate("live.intro") }}</p>
   </header>
-  <div class="workflow-panel">
+  <div class="tanit-panel workflow-panel">
     <label class="workflow-check">
       <input type="checkbox" [checked]="store.enabled()" (change)="toggle($event)" />
       <span>{{ i18n.translate("live.watch") }}</span>

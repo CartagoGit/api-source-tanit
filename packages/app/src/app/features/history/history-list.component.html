@@ -1,11 +1,11 @@
-<section class="history">
-  <header><h2>{{ i18n.translate("history.title") }}</h2><span>{{ history.entries().length }}</span></header>
+<section class="tanit-section history">
+  <header><h2 class="tanit-page-title">{{ i18n.translate("history.title") }}</h2><span>{{ history.entries().length }}</span></header>
   @if (history.error(); as message) { <p role="alert">{{ message }}</p> }
   @if (history.loading() && !history.entries().length) {
     <p role="status">{{ i18n.translate("history.loading") }}</p>
   } @else {
     @for (entry of history.entries(); track entry.capturedAt + entry.kind) {
-      <article>
+      <article class="tanit-panel">
         <strong>{{ entry.kind === "snapshot-ready" ? i18n.translate("history.snapshotReady") : i18n.translate("history.snapshotStale") }}</strong>
         <span>{{ entry.capturedAt }}</span>
         @if (entry.changedPaths?.length) {
@@ -15,7 +15,7 @@
     } @empty { <p>{{ i18n.translate("history.empty") }}</p> }
   }
 
-  <section class="revisions">
+  <section class="tanit-panel revisions">
     <h3>{{ i18n.translate("history.revisions") }}</h3>
     @if (!history.revisions().length) {
       <p>{{ i18n.translate("history.noRevisions") }}</p>
@@ -32,7 +32,7 @@
       </ul>
       <div class="compare">
         <label>{{ i18n.translate("history.left") }}
-          <select (change)="left.set(selected($event))">
+          <select class="tanit-field" (change)="left.set(selected($event))">
             <option value="" [selected]="left() === ''">{{ i18n.translate("history.selectRevision") }}</option>
             @for (revision of history.revisions(); track revision.id) {
               <option [value]="revision.id" [selected]="revision.id === left()" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>
@@ -40,7 +40,7 @@
           </select>
         </label>
         <label>{{ i18n.translate("history.right") }}
-          <select (change)="right.set(selected($event))">
+          <select class="tanit-field" (change)="right.set(selected($event))">
             <option value="" [selected]="right() === ''">{{ i18n.translate("history.selectRevision") }}</option>
             @for (revision of history.revisions(); track revision.id) {
               <option [value]="revision.id" [selected]="revision.id === right()" [disabled]="revision.snapshotAvailable === false">{{ label(revision) }}</option>

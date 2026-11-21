@@ -2,11 +2,14 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 
 import { I18nService } from "../../core/i18n/i18n.service";
 
-const REPOSITORY = "https://github.com/CartagoGit/api-source-tanit";
+import { ExternalLinkService } from "../../core/host/external-link.service";
+import { appMetadata } from "../../core/app-metadata";
+import { GitHubMarkComponent } from "../../shared/github-mark.component";
 
 @Component({
   selector: "tanit-help",
   standalone: true,
+  imports: [GitHubMarkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./help.component.html",
   styleUrls: ["./help.component.scss"],
@@ -21,22 +24,13 @@ export class HelpComponent {
     { keys: ["Esc"], labelKey: "help.close" },
     { keys: ["Tab"], labelKey: "help.focus" },
   ];
-  readonly repository = REPOSITORY;
-  readonly issues = `${REPOSITORY}/issues`;
+  private readonly externalLinks = inject(ExternalLinkService);
+  readonly repository = appMetadata().repository;
+  readonly issues = `${this.repository}/issues`;
   readonly reportIssue = `${this.issues}/new/choose`;
 
   async openLink(event: MouseEvent, url: string): Promise<void> {
-    const tauri = (globalThis as {
-      __TAURI__?: { core?: { invoke(command: string, args: { path: string }): Promise<unknown> } };
-    }).__TAURI__;
-    if (!tauri?.core) return;
-
-    event.preventDefault();
     this.linkFailed.set(false);
-    try {
-      await tauri.core.invoke("plugin:shell|open", { path: url });
-    } catch {
-      this.linkFailed.set(true);
-    }
+    this.linkFailed.set(!(await this.externalLinks.open(event, url)));
   }
 }

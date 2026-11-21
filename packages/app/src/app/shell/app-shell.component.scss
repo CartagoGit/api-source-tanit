@@ -1,19 +1,17 @@
-.shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; background: var(--color-surface); color: var(--color-ink); }
+.shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100vh; background: var(--color-surface); color: var(--color-ink); }
+.page-view { display: block; min-inline-size: 0; }
 .content { min-width: 0; }
 .toolbar {
-  min-height: 64px; display: flex; align-items: center; justify-content: space-between;
-  gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3) clamp(16px, 4vw, 40px);
+  min-height: 52px; display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); flex-wrap: wrap; padding: var(--space-2) clamp(12px, 2.4vw, 24px);
   border-bottom: 1px solid var(--color-border); background: var(--color-panel);
 }
 .workspace-context, .toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
 .workspace-context { min-width: 0; overflow-wrap: anywhere; color: var(--color-muted); }
 .workspace-context strong { color: var(--color-ink); }
 .workspace-context strong + span { padding-inline-start: var(--space-3); border-inline-start: 1px solid var(--color-border); }
-.toolbar-button { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: transparent; color: var(--color-ink); font-weight: 600; }
-.toolbar-button:hover { background: var(--color-nav-hover); }
-.toolbar-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 kbd { padding: 1px 4px; border: 1px solid var(--color-border); border-radius: 3px; color: var(--color-muted); font: 11px var(--font-code); }
-.view { max-width: 1560px; margin: 0 auto; padding: clamp(18px, 4vw, 40px); }
+.view { max-width: 1560px; margin: 0 auto; padding: clamp(12px, 2.4vw, 24px); }
 .error { margin-bottom: var(--space-4); padding: var(--space-3); border: 1px solid var(--color-danger); border-radius: var(--radius-sm); color: var(--color-danger); }
 @media (max-width: 760px) {
   .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }

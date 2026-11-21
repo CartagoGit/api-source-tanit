@@ -1,19 +1,19 @@
-<section class="explorer">
+<section class="tanit-section explorer">
   <header class="heading">
     <div>
-      <h1>{{ i18n.translate("endpoints.title") }}</h1>
+      <h1 class="tanit-page-title">{{ i18n.translate("endpoints.title") }}</h1>
       <p>{{ store.total() }} {{ i18n.translate("endpoints.visible") }} · {{ store.indexedTotal() }} {{ i18n.translate("endpoints.indexed") }}</p>
     </div>
     <div class="actions">
-      <button type="button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? i18n.translate("endpoints.loadingShort") : i18n.translate("endpoints.refresh") }}</button>
+      <button type="button" class="tanit-button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? i18n.translate("endpoints.loadingShort") : i18n.translate("endpoints.refresh") }}</button>
       @if (store.selectedId() !== null) {
-        <button type="button" (click)="clearSelection()">{{ i18n.translate("endpoints.reset") }}</button>
+        <button type="button" class="tanit-button" (click)="clearSelection()">{{ i18n.translate("endpoints.reset") }}</button>
       }
     </div>
   </header>
   @if (store.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
   <tanit-endpoint-filters [value]="store.query()" (changed)="apply($event)" />
-  <div class="workspace" [class.with-selection]="store.selected() !== null">
+  <div class="tanit-panel workspace" [class.with-selection]="store.selected() !== null">
     <div class="list-pane">
       @if (store.loading() && !store.filtered().length) {
         <p class="state" role="status">{{ i18n.translate("endpoints.loading") }}</p>
