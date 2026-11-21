@@ -68,6 +68,14 @@ pub fn spawn(
     if let Some(workspace) = workspace {
         cmd.arg(ARG_WORKSPACE).arg(workspace);
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+
+        // The console-subsystem CLI talks to the window over pipes.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
 
     let mut child = cmd
         .spawn()

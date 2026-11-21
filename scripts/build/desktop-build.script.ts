@@ -34,9 +34,9 @@
  * falla con «resource path ... doesn't exist» y nadie sabe por qué: el
  * fichero está, pero donde Tauri no lo busca.
  */
-import { mkdir, readdir } from "node:fs/promises";
+import { copyFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { REPO_ROOT, CLI_ENTRYPOINT } from "../helpers/root.helper.js";
 import {
@@ -124,12 +124,17 @@ async function main(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
     const objetivo = resolverPlataforma(argv);
+    const portable = argv.includes("--portable");
+    if (portable && process.platform !== "win32") {
+      throw new Error("The portable desktop build requires a Windows toolchain.");
+    }
     const triple = await targetTriple();
+    const targetDir = resolve(DESKTOP, process.env["CARGO_TARGET_DIR"] ?? "target");
 
     console.log(`→ Platform: ${objetivo.label}`);
     console.log(`→ Target:   ${triple}`);
     const bundles = process.env["TANIT_BUNDLES"] ?? objetivo.bundles.join(",");
-    console.log(`→ Bundles:  ${bundles}\n`);
+    console.log(portable ? "→ Portable desktop app\n" : `→ Bundles:  ${bundles}\n`);
 
     console.log("→ Building the Angular frontend…");
     await ejecutar(["bun", "--bun", "run", "build:app"], REPO_ROOT);
@@ -157,15 +162,27 @@ async function main(): Promise<number> {
     // `linuxdeploy` con FUSE, y dentro de un contenedor falla incluso
     // dándole `/dev/fuse` y `SYS_ADMIN` —se probó—. El error que da,
     // `failed to run linuxdeploy`, no menciona FUSE por ninguna parte.
-    console.log(`\n→ Packaging with Tauri (${bundles})…`);
+    console.log("\n→ Building the Tauri application…");
+    const packaging = portable ? ["--no-bundle"] : ["--bundles", bundles];
     await ejecutar(
-      ["bunx", "--bun", "--no-install", "--package", "@tauri-apps/cli", "tauri", "build", "--bundles", bundles],
+      ["bunx", "--bun", "--no-install", "--package", "@tauri-apps/cli", "tauri", "build", ...packaging],
       DESKTOP,
     );
 
+    if (portable) {
+      const app = join(targetDir, "release", "tanit-desktop.exe");
+      if (!existsSync(app)) throw new Error(`The Windows application did not appear at ${app}`);
+      const output = join(REPO_ROOT, "dist", "desktop", "windows");
+      await mkdir(output, { recursive: true });
+      await copyFile(sidecar, join(output, "apisrc.exe"));
+      const executable = join(output, "Tanit.exe");
+      await copyFile(app, executable);
+      console.log(`\n✔ Open ${executable}`);
+      return 0;
+    }
+
     // 3. Decir qué ha salido, con su tamaño: un instalador de 2 KB es un
     //    instalador vacío, y sin mirarlo parece que todo fue bien.
-    const targetDir = process.env["CARGO_TARGET_DIR"] ?? join(DESKTOP, "target");
     const bundle = join(targetDir, "release", "bundle");
     console.log("\n✔ Installers:");
     let encontrados = 0;
