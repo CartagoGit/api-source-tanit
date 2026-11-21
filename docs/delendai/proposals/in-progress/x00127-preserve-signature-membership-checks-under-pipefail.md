@@ -29,7 +29,7 @@ With pipefail, grep -q can exit early and make printf fail with EPIPE, falsely r
 
 ### S1 — Use direct here-string membership check
 - **Status**: pending
-- **Files**: `scripts/release/verify-signature.sh`, `docs/delendai/AGENT-BOOTSTRAP.md`
+- **Files**: `scripts/release/verify-signature.sh`, `tests/release/signing.spec.ts`, `docs/delendai/AGENT-BOOTSTRAP.md`
 - **Gate**: type
 - acceptance:
   - "Manifest membership remains exact whole-line matching."
