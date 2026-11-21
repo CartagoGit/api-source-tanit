@@ -1,4 +1,4 @@
-import { author, homepage } from "../../package.json";
+import { author, repository } from "../../package.json";
 import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant";
 /**
  * The parts of the app that a person can reach — and that answer.
@@ -137,7 +137,7 @@ describe("the sidebar", () => {
     const footer = (fixture.nativeElement as HTMLElement).querySelector("footer")!;
     expect(footer.textContent).toContain(author);
     expect(footer.textContent).toContain(CLI_VERSION);
-    expect(footer.querySelector("a")?.getAttribute("href")).toBe(homepage);
+    expect(footer.querySelector("a")?.getAttribute("href")).toBe(repository.url.replace(/^git\+/, "").replace(/\.git$/, ""));
     expect(footer.querySelector("svg")).not.toBeNull();
   });
 

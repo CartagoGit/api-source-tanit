@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
 
-import { APP_METADATA } from "../core/app-metadata";
+import { APP_METADATA } from "../../../../contracts/constants/ui/app-metadata.constant";
 import { ExternalLinkService } from "../core/host/external-link.service";
 import { GitHubMarkComponent } from "../shared/github-mark.component";
 import { I18nService } from "../core/i18n/i18n.service";
