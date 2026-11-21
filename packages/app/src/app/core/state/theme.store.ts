@@ -1,57 +1,60 @@
-import { Injectable, signal } from "@angular/core";
+import { DOCUMENT } from "@angular/common";
+import { Injectable, inject, signal } from "@angular/core";
 
-/**
- * The theme, and the switch that changes it.
- *
- * ## What was wrong
- *
- * The theme lived inside the shell component: a signal, a
- * `localStorage` key and a line that set `data-theme` on the
- * document. Only the shell could see it.
- *
- * That is why the settings screen could not show which theme was on:
- * it did not know. And had it changed the theme by writing to the
- * storage, the shell would have kept drawing the old one until the
- * app was reloaded — two truths about one thing, and the one on the
- * screen is the wrong one.
- *
- * ## What it is now
- *
- * A store, like the rest of the app's state. The shell applies it,
- * the settings screen reads it and switches it, and both see the
- * same truth because there is only one truth.
- */
+const THEMES = [
+  { id: "system", labelKey: "theme.system" },
+  { id: "light", labelKey: "theme.light" },
+  { id: "dark", labelKey: "theme.dark" },
+  { id: "sand", labelKey: "theme.sand" },
+  { id: "forest", labelKey: "theme.forest" },
+  { id: "midnight", labelKey: "theme.midnight" },
+] as const;
+type Theme = (typeof THEMES)[number]["id"];
+const STORAGE_KEY = "tanit.theme";
+
+function isTheme(value: string | null | undefined): value is Theme {
+  return THEMES.some((theme) => theme.id === value);
+}
+
 @Injectable({ providedIn: "root" })
 export class ThemeStore {
-  /** The theme in use: `light` or `dark`. */
-  readonly theme = signal<"light" | "dark">(this.read());
+  private readonly document = inject(DOCUMENT);
+  private readonly selection = signal<Theme>(this.read());
+  readonly theme = this.selection.asReadonly();
+  readonly options = THEMES;
 
   constructor() {
     this.apply(this.theme());
   }
 
-  /** Switches between light and dark. */
   toggle(): void {
-    this.set(this.theme() === "light" ? "dark" : "light");
+    const dark = this.theme() === "dark" || this.theme() === "midnight"
+      || (this.theme() === "system"
+        && this.document.defaultView?.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
+    this.set(dark ? "light" : "dark");
   }
 
-  /** Sets the theme, and remembers it. */
-  set(theme: "light" | "dark"): void {
-    this.theme.set(theme);
-    this.storage()?.setItem("tanit.theme", theme);
+  set(theme: Theme): void {
+    this.selection.set(theme);
     this.apply(theme);
+    try {
+      this.document.defaultView?.localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      // Storage may be unavailable in a private or restricted browser context.
+    }
   }
 
-  private read(): "light" | "dark" {
-    return this.storage()?.getItem("tanit.theme") === "dark" ? "dark" : "light";
+  private read(): Theme {
+    try {
+      const saved = this.document.defaultView?.localStorage.getItem(STORAGE_KEY);
+      if (isTheme(saved)) return saved;
+    } catch {
+      // Use the system appearance when storage is unavailable.
+    }
+    return "system";
   }
 
-  private apply(theme: "light" | "dark"): void {
-    if (typeof document === "undefined") return;
-    document.documentElement.dataset["theme"] = theme;
-  }
-
-  private storage(): Storage | undefined {
-    return typeof localStorage === "undefined" ? undefined : localStorage;
+  private apply(theme: Theme): void {
+    this.document.documentElement.dataset["theme"] = theme;
   }
 }

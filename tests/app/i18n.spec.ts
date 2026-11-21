@@ -61,6 +61,46 @@ describe("the app's languages", () => {
     expect(heading()).toBe("Réglages");
   });
 
+  it("selects the saved language on first render and follows later locale changes", () => {
+    localStorage.setItem("tanit.locale", "es");
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector("select") as HTMLSelectElement;
+    expect(select.value).toBe("es");
+
+    fixture.componentInstance.i18n.setLocale("fr");
+    fixture.detectChanges();
+    expect(select.value).toBe("fr");
+  });
+
+  it("previews the saved theme and applies a new selection immediately", () => {
+    localStorage.setItem("tanit.theme", "midnight");
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+
+    const section = fixture.nativeElement as HTMLElement;
+    const selected = (): HTMLInputElement | null => section.querySelector('input[name="theme"]:checked');
+    const forest = section.querySelector('input[value="forest"]') as HTMLInputElement;
+    expect(selected()?.value).toBe("midnight");
+    expect(document.documentElement.dataset["theme"]).toBe("midnight");
+
+    forest.click();
+    fixture.detectChanges();
+    expect(selected()?.value).toBe("forest");
+    expect(document.documentElement.dataset["theme"]).toBe("forest");
+    expect(localStorage.getItem("tanit.theme")).toBe("forest");
+  });
+
+  it("falls back to the system theme for an unknown saved theme", () => {
+    localStorage.setItem("tanit.theme", "retired-theme");
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.themes.theme()).toBe("system");
+    expect(document.documentElement.dataset["theme"]).toBe("system");
+  });
+
   it("tells the document which language it is written in", () => {
     const service = TestBed.inject(I18nService);
     service.setLocale("es");
