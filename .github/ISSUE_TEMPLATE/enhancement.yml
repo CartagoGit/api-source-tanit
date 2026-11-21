@@ -1,0 +1,47 @@
+name: "Enhancement / Mejora"
+description: "Suggest an improvement to Tanit / Propón una mejora para Tanit"
+title: "[Enhancement] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem to solve / Problema a resolver"
+      description: "What user need or limitation should we address? / ¿Qué necesidad o limitación debemos resolver?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed change / Cambio propuesto"
+      description: "Describe the behavior you would like / Describe el comportamiento deseado"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives and impact / Alternativas e impacto"
+      description: "What alternatives have you considered, and who benefits? / ¿Qué alternativas has considerado y a quién beneficia?"
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Area / Área"
+      options:
+        - "CLI"
+        - "Endpoint detection / Detección de endpoints"
+        - "Exporters / Exportadores"
+        - "Desktop or UI / Escritorio o interfaz"
+        - "Documentation / Documentación"
+        - "Other / Otra"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Checks / Comprobaciones"
+      options:
+        - label: "I searched existing issues / He buscado en las incidencias existentes"
+          required: true
+        - label: "This is not a security report / Esto no es un informe de seguridad"
+          required: true

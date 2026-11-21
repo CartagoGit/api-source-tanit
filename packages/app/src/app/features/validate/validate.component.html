@@ -1,0 +1,35 @@
+<section class="tanit-section workflow" aria-labelledby="validate-title">
+  <header class="workflow-intro">
+    <h2 class="tanit-page-title" id="validate-title">{{ i18n.translate("validate.title") }}</h2>
+    <p>{{ i18n.translate("validate.intro") }}</p>
+  </header>
+  <div class="tanit-panel workflow-panel">
+    <div class="workflow-actions">
+      <button type="button" class="tanit-button tanit-button--primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("validate.running") : i18n.translate("validate.start") }}</button>
+    </div>
+    @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
+    @if (result(); as answer) {
+      <dl class="workflow-metrics">
+        <div><dt>{{ i18n.translate("validate.requests") }}</dt><dd>{{ answer.requests }}</dd></div>
+        <div><dt>{{ i18n.translate("validate.folders") }}</dt><dd>{{ answer.folders }}</dd></div>
+        <div><dt>{{ i18n.translate("validate.variables") }}</dt><dd>{{ answer.variables }}</dd></div>
+      </dl>
+      @if (answer.errors.length) {
+        <div>
+          <h3>{{ i18n.translate("validate.errors") }}</h3>
+          <ul class="workflow-list" role="list">
+            @for (issue of answer.errors; track issue.message) { <li>{{ issue.message }}</li> }
+          </ul>
+        </div>
+      }
+      @if (answer.warnings.length) {
+        <div>
+          <h3>{{ i18n.translate("validate.warnings") }}</h3>
+          <ul class="workflow-list" role="list">
+            @for (issue of answer.warnings; track issue.message) { <li>{{ issue.message }}</li> }
+          </ul>
+        </div>
+      }
+    }
+  </div>
+</section>

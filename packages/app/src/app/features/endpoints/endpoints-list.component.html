@@ -1,0 +1,40 @@
+<section class="tanit-section explorer">
+  <header class="heading">
+    <div>
+      <h1 class="tanit-page-title">{{ i18n.translate("endpoints.title") }}</h1>
+      <p>{{ store.total() }} {{ i18n.translate("endpoints.visible") }} · {{ store.indexedTotal() }} {{ i18n.translate("endpoints.indexed") }}</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="tanit-button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? i18n.translate("endpoints.loadingShort") : i18n.translate("endpoints.refresh") }}</button>
+      @if (store.selectedId() !== null) {
+        <button type="button" class="tanit-button" (click)="clearSelection()">{{ i18n.translate("endpoints.reset") }}</button>
+      }
+    </div>
+  </header>
+  @if (store.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+  <tanit-endpoint-filters [value]="store.query()" (changed)="apply($event)" />
+  <div class="tanit-panel workspace" [class.with-selection]="store.selected() !== null">
+    <div class="list-pane">
+      @if (store.loading() && !store.filtered().length) {
+        <p class="state" role="status">{{ i18n.translate("endpoints.loading") }}</p>
+      } @else if (!store.filtered().length) {
+        <p class="state" role="status">{{ i18n.translate("endpoints.empty") }} {{ store.indexedTotal() }} {{ i18n.translate("endpoints.emptyTail") }}</p>
+      } @else {
+        <tanit-virtual-scroller [items]="store.filtered()" [itemHeight]="rowHeight" [height]="viewportHeight()" [label]="i18n.translate('endpoints.list')" [itemTemplate]="endpointTemplate" [trackBy]="trackBy" />
+      }
+      <ng-template #endpointTemplate let-item>
+        <button class="endpoint-row" type="button" [class.selected]="item.id === store.selectedId()" [attr.aria-current]="item.id === store.selectedId() ? 'true' : null" (click)="select(item)" [attr.aria-label]="item.method + ' ' + item.path">
+          <span class="verb" [attr.data-method]="item.method">{{ item.method }}</span>
+          <span class="path">
+            <strong>{{ item.path }}</strong>
+            @if (item.description || item.operationId || item.service; as subtitle) { <small>{{ subtitle }}</small> }
+          </span>
+          @if (item.confidence) { <span class="confidence">{{ item.confidence }}</span> }
+        </button>
+      </ng-template>
+    </div>
+    @if (store.selected(); as endpoint) {
+      <tanit-endpoint-detail [endpoint]="endpoint" (closed)="clearSelection()" (transportFilter)="filterTransport($event)" />
+    }
+  </div>
+</section>

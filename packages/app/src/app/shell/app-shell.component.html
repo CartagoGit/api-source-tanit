@@ -1,0 +1,48 @@
+<div class="shell">
+  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (select)="go($event)" />
+  <main class="content">
+    <header class="toolbar">
+      <div class="workspace-context">
+        @if (project.isOpen()) { <strong>{{ project.projectName() }}</strong> }
+        <span>{{ sectionLabel() }}</span>
+      </div>
+      <div class="toolbar-actions">
+        @if (project.isOpen() && activeSection() !== 'overview') {
+          <button type="button" class="tanit-button" (click)="showProjectPicker()">{{ i18n.translate("home.open") }}</button>
+        }
+        <button type="button" class="tanit-button commands-button" aria-keyshortcuts="Control+K Meta+K"
+          (click)="paletteOpen.set(true)">
+          {{ i18n.translate("palette.placeholder") }}<kbd>{{ commandShortcut }}</kbd>
+        </button>
+      </div>
+    </header>
+    <div class="view">
+      @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+      @if (activeSection() === 'overview' || (!project.isOpen() && activeSection() !== 'settings' && activeSection() !== 'help')) {
+        @if (activeSection() !== 'overview') {
+          <p>{{ i18n.translate("home.empty") }}</p>
+        }
+        <tanit-home class="page-view" animate.enter="motion-view" (opened)="projectOpened()" />
+      } @else if (activeSection() === 'settings') {
+        <tanit-settings class="page-view" animate.enter="motion-view" />
+      } @else if (activeSection() === 'help') {
+        <tanit-help class="page-view" animate.enter="motion-view" />
+      } @else {
+        @switch (activeSection()) {
+          @case ('endpoints') { <tanit-endpoints-list class="page-view" animate.enter="motion-view" /> }
+          @case ('exports') { <tanit-export-center class="page-view" animate.enter="motion-view" /> }
+          @case ('services') { <tanit-services-list class="page-view" animate.enter="motion-view" /> }
+          @case ('history') { <tanit-history-list class="page-view" animate.enter="motion-view" /> }
+          @case ('live') { <tanit-live-toggle class="page-view" animate.enter="motion-view" /> }
+          @case ('check') { <tanit-check class="page-view" animate.enter="motion-view" /> }
+          @case ('sync') { <tanit-sync class="page-view" animate.enter="motion-view" /> }
+          @case ('validate') { <tanit-validate class="page-view" animate.enter="motion-view" /> }
+          @case ('push') { <tanit-push-to-postman class="page-view" animate.enter="motion-view" /> }
+          @case ('stats') { <tanit-stats class="page-view" animate.enter="motion-view" /> }
+          @case ('diagnostics') { <tanit-diagnostics class="page-view" animate.enter="motion-view" /> }
+        }
+      }
+    </div>
+  </main>
+  <tanit-command-palette [open]="paletteOpen()" (close)="paletteOpen.set(false)" (chosen)="runCommand($event)" />
+</div>

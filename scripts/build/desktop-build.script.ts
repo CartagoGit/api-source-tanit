@@ -1,0 +1,225 @@
+#!/usr/bin/env bun
+/**
+ * `bun run desktop:build` — los instaladores nativos.
+ *
+ * Compila Angular, prepara el sidecar del CLI y lanza el empaquetado
+ * con la versión de Tauri fijada en bun.lock. El
+ * instalador **contiene** el binario, así que empaquetar sin recompilar
+ * produce un instalador con una versión vieja dentro y nadie se entera
+ * hasta que alguien lo instala.
+ *
+ * ## Una plataforma por ejecución, y solo la propia
+ *
+ * `desktop:build:linux`, `:mac` y `:windows` existen para nombrar lo que
+ * sale, no para cruzar. **No se puede compilar el `.dmg` desde Linux**:
+ * cada instalador exige el SDK de su sistema y su firma, y Tauri
+ * enlaza contra las librerías nativas de la máquina. Pedir una
+ * plataforma que no es la actual falla aquí, con el motivo escrito, en
+ * vez de producir algo roto.
+ *
+ * Los tres a la vez los produce `.github/workflows/release-desktop.yml`,
+ * con una máquina por plataforma. Es la única forma.
+ *
+ * ## Por qué el sufijo del triple
+ *
+ * Tauri busca `binaries/apisrc-<target-triple>`, no
+ * `binaries/apisrc`. Sin el sufijo el empaquetado falla con un «no
+ * such file» que apunta a una ruta que sí existe, que es de los errores
+ * que más tiempo comen.
+ *
+ * Y el nombre no es libre: tiene que ser el que dice
+ * `packages/desktop/tauri.conf.json#bundle.externalBin` (`apisrc`),
+ * porque ese mismo nombre es el que Tauri busca al enlazar y el que el
+ * updater firma y publica como payload. Con otro nombre, el build
+ * falla con «resource path ... doesn't exist» y nadie sabe por qué: el
+ * fichero está, pero donde Tauri no lo busca.
+ */
+import { copyFile, mkdir, readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+
+import { REPO_ROOT, CLI_ENTRYPOINT } from "../helpers/root.helper.js";
+import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
+import {
+  DESKTOP_PLATFORMS,
+  type IDesktopPlatform,
+} from "../../packages/contracts/constants/cli/desktop.constant.js";
+
+/** Dónde vive el proyecto de la ventana. */
+const DESKTOP = join(REPO_ROOT, "packages", "desktop");
+
+/** La plataforma que corresponde a esta máquina. */
+function plataformaActual(): IDesktopPlatform | undefined {
+  return DESKTOP_PLATFORMS.find((p) => p.platform === process.platform);
+}
+
+/**
+ * El triple de Rust para esta máquina.
+ *
+ * Se pregunta a `rustc` en vez de deducirlo: la lista de triples es
+ * larga y adivinarla es como se acaba con un instalador que no arranca
+ * en la mitad de las máquinas.
+ */
+async function targetTriple(): Promise<string> {
+  const proc = Bun.spawn(["rustc", "-vV"], { stdout: "pipe", stderr: "pipe" });
+  const salida = await new Response(proc.stdout).text();
+  await proc.exited;
+  const linea = salida.split("\n").find((l) => l.startsWith("host:"));
+  const triple = linea?.slice("host:".length).trim();
+  if (!triple) {
+    throw new Error(
+      "Could not read the target triple from `rustc -vV`.\n" +
+        "  · Is Rust installed? `bun run docker:installers` does not need it.",
+    );
+  }
+  return triple;
+}
+
+async function ejecutar(cmd: string[], cwd: string): Promise<void> {
+  const proc = Bun.spawn(cmd, { cwd, stdout: "inherit", stderr: "inherit" });
+  const code = await proc.exited;
+  if (code !== 0) {
+    throw new Error(`\`${cmd.join(" ")}\` failed (exit ${code}).`);
+  }
+}
+
+/**
+ * Qué plataforma se ha pedido, y si esta máquina puede producirla.
+ *
+ * Sin `--platform` se construye la de la máquina. Con una que no es la
+ * suya, se explica por qué no y qué hacer, en vez de intentarlo y dejar
+ * un error de enlazado a 300 líneas de profundidad.
+ */
+function resolverPlataforma(argv: string[]): IDesktopPlatform {
+  const actual = plataformaActual();
+  const idx = argv.indexOf("--platform");
+  const pedida = idx === -1 ? undefined : argv[idx + 1];
+
+  if (!actual) {
+    throw new Error(
+      `Unsupported platform: ${process.platform}.\n` +
+        `  · Installers can be produced on: ${DESKTOP_PLATFORMS.map((p) => p.id).join(", ")}.`,
+    );
+  }
+  if (!pedida || pedida === actual.id) return actual;
+
+  const objetivo = DESKTOP_PLATFORMS.find((p) => p.id === pedida);
+  if (!objetivo) {
+    throw new Error(
+      `Unknown platform "${pedida}".\n` +
+        `  · Valid ones: ${DESKTOP_PLATFORMS.map((p) => p.id).join(", ")}.`,
+    );
+  }
+  throw new Error(
+    `Cannot build ${objetivo.label} installers from ${actual.label}.\n` +
+      `  · Every installer needs its own system SDK and signing, and Tauri\n` +
+      `    links against the machine's native libraries. Cross-building here\n` +
+      `    would produce something that does not run.\n` +
+      `  · Build the three from CI: .github/workflows/release-desktop.yml\n` +
+      `    runs one machine per platform.\n` +
+      `  · On this machine: bun run desktop:build:${actual.id}`,
+  );
+}
+
+async function main(): Promise<number> {
+  try {
+    const argv = process.argv.slice(2);
+    const objetivo = resolverPlataforma(argv);
+    const portable = argv.includes("--portable");
+    if (portable && process.platform !== "win32") {
+      throw new Error("The portable desktop build requires a Windows toolchain.");
+    }
+    const triple = await targetTriple();
+    const targetDir = resolve(DESKTOP, process.env["CARGO_TARGET_DIR"] ?? "target");
+
+    console.log(`→ Platform: ${objetivo.label}`);
+    console.log(`→ Target:   ${triple}`);
+    const bundles = process.env["TANIT_BUNDLES"] ?? objetivo.bundles.join(",");
+    console.log(portable ? "→ Portable desktop app\n" : `→ Bundles:  ${bundles}\n`);
+
+    console.log("→ Building the Angular frontend…");
+    await ejecutar(["bun", "--bun", "run", "build:app"], REPO_ROOT);
+
+    // The host-specific executable Tauri copies into its bundle.
+    const binarios = join(DESKTOP, "binaries");
+    await mkdir(binarios, { recursive: true });
+    const extension = process.platform === "win32" ? ".exe" : "";
+    const sidecar = join(binarios, `apisrc-${triple}${extension}`);
+
+    console.log("→ Compiling the sidecar…");
+    await ejecutar(
+      ["bun", "build", "--compile", CLI_ENTRYPOINT, "--outfile", sidecar],
+      REPO_ROOT,
+    );
+
+    if (!existsSync(sidecar)) {
+      throw new Error(`The sidecar did not appear at ${sidecar}`);
+    }
+
+    // 2. El empaquetado.
+    //
+    // `TANIT_BUNDLES` acota los formatos por encima de la
+    // plataforma. El contenedor pide solo `deb`: el `.AppImage` lo monta
+    // `linuxdeploy` con FUSE, y dentro de un contenedor falla incluso
+    // dándole `/dev/fuse` y `SYS_ADMIN` —se probó—. El error que da,
+    // `failed to run linuxdeploy`, no menciona FUSE por ninguna parte.
+    console.log("\n→ Building the Tauri application…");
+    const packaging = portable ? ["--no-bundle"] : ["--bundles", bundles];
+    const prerelease = CLI_VERSION.indexOf("-");
+    if (!portable && process.platform === "win32" && prerelease !== -1) {
+      // WiX accepts only a numeric ProductVersion. Keep the app and NSIS SemVer.
+      const version = CLI_VERSION.slice(0, prerelease);
+      packaging.push("--config", JSON.stringify({ bundle: { windows: { wix: { version } } } }));
+    }
+    await ejecutar(
+      ["bunx", "--bun", "--no-install", "--package", "@tauri-apps/cli", "tauri", "build", ...packaging],
+      DESKTOP,
+    );
+
+    if (portable) {
+      const app = join(targetDir, "release", "tanit-desktop.exe");
+      if (!existsSync(app)) throw new Error(`The Windows application did not appear at ${app}`);
+      const output = join(REPO_ROOT, "dist", "desktop", "windows");
+      await mkdir(output, { recursive: true });
+      await copyFile(sidecar, join(output, "apisrc.exe"));
+      const executable = join(output, "Tanit.exe");
+      await copyFile(app, executable);
+      console.log(`\n✔ Open ${executable}`);
+      return 0;
+    }
+
+    // 3. Decir qué ha salido, con su tamaño: un instalador de 2 KB es un
+    //    instalador vacío, y sin mirarlo parece que todo fue bien.
+    const bundle = join(targetDir, "release", "bundle");
+    console.log("\n✔ Installers:");
+    let encontrados = 0;
+    for (const formato of await readdir(bundle).catch(() => [])) {
+      for (const fichero of await readdir(join(bundle, formato)).catch(() => [])) {
+        const ruta = join(bundle, formato, fichero);
+        const { size } = await Bun.file(ruta);
+        console.log(`  · ${fichero}  (${(size / 1024 / 1024).toFixed(1)} MB)`);
+        encontrados++;
+      }
+    }
+    if (encontrados === 0) {
+      throw new Error(
+        `Tauri reported success but produced nothing in ${bundle}.\n` +
+          "  · That usually means the requested bundles do not apply to this\n" +
+          "    platform. Check `bundle.targets` in packages/desktop/tauri.conf.json.",
+      );
+    }
+
+    console.log(
+      `\n  · The other platforms come from .github/workflows/release-desktop.yml,\n` +
+        `    one runner each: every installer needs its own SDK and signing.`,
+    );
+    return 0;
+  } catch (error) {
+    console.error(`\n✗ ${(error as Error).message}`);
+    return 1;
+  }
+}
+
+if (import.meta.main) {
+  process.exit(await main());
+}

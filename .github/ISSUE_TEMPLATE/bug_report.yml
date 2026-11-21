@@ -1,0 +1,67 @@
+name: "Bug report / Informe de error"
+description: "Report behavior that is not working as expected / Informa de un comportamiento inesperado"
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Tanit. Please avoid secrets and personal data.
+        Gracias por mejorar Tanit. No incluyas secretos ni datos personales.
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Summary / Resumen"
+      description: "What happened? / ¿Qué ocurrió?"
+      placeholder: "A short, clear description / Una descripción breve y clara"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to reproduce / Pasos para reproducir"
+      description: "Include the smallest example or command that shows the problem / Incluye el ejemplo o comando mínimo"
+      placeholder: |
+        1. Run ... / Ejecuta ...
+        2. Open ... / Abre ...
+        3. See ... / Observa ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected behavior / Comportamiento esperado"
+      description: "What should happen? / ¿Qué debería ocurrir?"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: "Actual behavior / Comportamiento actual"
+      description: "What happens instead? / ¿Qué ocurre en su lugar?"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: "Environment / Entorno"
+      description: "Tanit version, OS, runtime, and framework / Versión de Tanit, sistema, runtime y framework"
+      placeholder: "Tanit 0.3.0, Ubuntu 24.04, Bun 1.x, Express"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs or screenshots / Registros o capturas"
+      description: "Paste relevant output; redact tokens and secrets / Pega la salida relevante; elimina tokens y secretos"
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Checks / Comprobaciones"
+      options:
+        - label: "I searched existing issues / He buscado en las incidencias existentes"
+          required: true
+        - label: "I removed secrets and private data / He eliminado secretos y datos privados"
+          required: true
