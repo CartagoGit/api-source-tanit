@@ -39,6 +39,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import { REPO_ROOT, CLI_ENTRYPOINT } from "../helpers/root.helper.js";
+import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
 import {
   DESKTOP_PLATFORMS,
   type IDesktopPlatform,
@@ -164,6 +165,12 @@ async function main(): Promise<number> {
     // `failed to run linuxdeploy`, no menciona FUSE por ninguna parte.
     console.log("\n→ Building the Tauri application…");
     const packaging = portable ? ["--no-bundle"] : ["--bundles", bundles];
+    const prerelease = CLI_VERSION.indexOf("-");
+    if (!portable && process.platform === "win32" && prerelease !== -1) {
+      // WiX accepts only a numeric ProductVersion. Keep the app and NSIS SemVer.
+      const version = CLI_VERSION.slice(0, prerelease);
+      packaging.push("--config", JSON.stringify({ bundle: { windows: { wix: { version } } } }));
+    }
     await ejecutar(
       ["bunx", "--bun", "--no-install", "--package", "@tauri-apps/cli", "tauri", "build", ...packaging],
       DESKTOP,

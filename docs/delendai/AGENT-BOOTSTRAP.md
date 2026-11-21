@@ -335,6 +335,11 @@ The [proposal index](proposals/INDEX.md) tracks the portable Windows application
 `desktop:portable:windows` builds `dist/desktop/windows/Tanit.exe` and its
 IPC sidecar. The native window launches the sidecar without a console.
 
+The [proposal index](proposals/INDEX.md) tracks the Tanit 0.3.0 alpha
+promotion and [release workflow](../DESKTOP-PUBLISH.md).
+The index also tracks WiX prerelease compatibility. Windows builds use a numeric
+MSI ProductVersion and retain the full SemVer in the application and NSIS.
+
 The [proposal index](proposals/INDEX.md) tracks Windows OpenAPI route parity.
 HTTP paths use POSIX separators across platforms. Filesystem resolution keeps
 using the native path implementation.
