@@ -1,0 +1,32 @@
+<section class="workflow" aria-labelledby="sync-title">
+  <header class="workflow-intro">
+    <h2 id="sync-title">{{ i18n.translate("sync.title") }}</h2>
+    <p>{{ i18n.translate("sync.intro") }}</p>
+  </header>
+  <div class="workflow-panel">
+    <div class="workflow-actions">
+      <button type="button" [disabled]="running()" (click)="run(true)">{{ i18n.translate("sync.dryRun") }}</button>
+      <button type="button" class="primary" [disabled]="running()" (click)="run(false)">{{ running() ? i18n.translate("sync.running") : i18n.translate("sync.start") }}</button>
+    </div>
+    @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
+    @if (result(); as answer) {
+      @if (answer.dryRun) {
+        <div>
+          <h3 id="sync-planned">{{ i18n.translate("sync.wouldWrite") }}</h3>
+          <ul class="workflow-list" role="list" aria-labelledby="sync-planned">
+            @for (file of answer.plannedFiles; track file.path) {
+              <li><code>{{ file.path }}</code> <em>({{ file.change }})</em></li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <div>
+          <h3 id="sync-written">{{ i18n.translate("sync.written") }}</h3>
+          <ul class="workflow-list" role="list" aria-labelledby="sync-written">
+            @for (file of answer.files; track file) { <li><code>{{ file }}</code></li> }
+          </ul>
+        </div>
+      }
+    }
+  </div>
+</section>
