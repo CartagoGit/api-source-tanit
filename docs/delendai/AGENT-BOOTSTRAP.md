@@ -243,7 +243,10 @@ patched release passes the existing dependency audit and full validation.
 
 The canonical project registration is **`DelendAI:Tanit`**, following
 `DelendAI:{project}`. `.mcp.json` is the source for client configuration;
-`bun run mcp:sync` derives `.vscode/mcp.json`. VS Code derives the lowercase permission reference
+`bun run mcp:sync` derives `.vscode/mcp.json` and `.codex/config.toml`.
+The [proposal index](proposals/INDEX.md) tracks Codex MCP startup. The
+generated TOML lets Codex resolve relative arguments from the thread
+workspace. VS Code derives the lowercase permission reference
 `delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
 and grant agreement, including names containing colons.
 

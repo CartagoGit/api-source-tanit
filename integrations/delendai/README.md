@@ -101,11 +101,12 @@ Tanit; nunca son una instrucción para actualizar este runtime.
 
 `.mcp.json` declara `command: "delendai"` y los argumentos `__serve`,
 `--workspace=.`, `--config=./delendai.config.json`, `--version=0.3.0`.
-El sincronizador sustituye las rutas por `${workspaceFolder}` en VS Code;
-Codex utiliza su formato TOML y rutas relativas al checkout. Codex no
-interpreta la variable de VS Code. Su configuración de proyecto desactiva
-el servidor genérico heredado `DelendAI` para evitar cargar otro runtime.
-Los otros proyectos mantienen su configuración global.
+El sincronizador sustituye las rutas por `${workspaceFolder}` en VS Code.
+El TOML de Codex usa rutas relativas y deja que Codex tome el directorio
+del hilo. En la extensión de VS Code sobre WSL, fijar `cwd = "."` puede
+resolver esas rutas desde la carpeta de instalación del editor.
+La configuración de proyecto desactiva el servidor genérico heredado
+`DelendAI` en el checkout de Tanit.
 
 El flag de versión lo consume el lanzador, antes de ejecutar el host 0.3.0.
 No basta con añadir el argumento al CLI antiguo: su parser no selecciona
