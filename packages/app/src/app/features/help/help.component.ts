@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 import { I18nService } from "../../core/i18n/i18n.service";
 
 import { ExternalLinkService } from "../../core/host/external-link.service";
-import { APP_METADATA } from "../../../../../contracts/constants/ui/app-metadata.constant";
+import { appMetadata } from "../../core/app-metadata";
 import { GitHubMarkComponent } from "../../shared/github-mark.component";
 
 @Component({
@@ -25,7 +25,7 @@ export class HelpComponent {
     { keys: ["Tab"], labelKey: "help.focus" },
   ];
   private readonly externalLinks = inject(ExternalLinkService);
-  readonly repository = APP_METADATA.repository;
+  readonly repository = appMetadata().repository;
   readonly issues = `${this.repository}/issues`;
   readonly reportIssue = `${this.issues}/new/choose`;
 
