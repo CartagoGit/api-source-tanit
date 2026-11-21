@@ -385,6 +385,7 @@ interface IWorkflowStep {
   readonly name?: string;
   readonly uses?: string;
   readonly run?: string;
+  readonly shell?: string;
   readonly if?: string;
   readonly env?: Record<string, string>;
   readonly with?: Record<string, unknown>;
@@ -1796,6 +1797,45 @@ describe("the release policy", () => {
     // Los assets se adjuntan por su `basename`: los dos bundles de
     // macOS se llamarían igual y el segundo pisaría al primero.
     expect(workflow).toContain("Tanit_${VERSION}_${{ matrix.arch }}.app.zip");
+  });
+
+  test("the release matrix uses Bash for the channel and stages the native macOS bundle", async () => {
+    const workflow = await workflowDocument();
+    const steps = workflow.jobs.build?.steps ?? [];
+    expect(steps.find((step) => step.id === "channel")?.shell).toBe("bash");
+    expect(steps.find((step) => step.name === "Preparar el staging")?.run)
+      .toContain('"${BUNDLE_DIR}/macos"/*.app');
+  });
+
+  test.each([
+    { platform: "windows", formats: ["msi", "nsis"] },
+    { platform: "linux", formats: ["deb", "appimage"] },
+  ])("stages each native bundle format on $platform", async ({ platform, formats }) => {
+    const workflow = await workflowDocument();
+    const script = workflow.jobs.build?.steps.find((step) => step.name === "Preparar el staging")?.run;
+    expect(script).toBeDefined();
+    const dir = await mkdtemp(join(tmpdir(), "tanit-release-staging-"));
+    try {
+      const bundleDir = join(dir, "packages", "desktop", "target", "release", "bundle");
+      for (const format of formats) {
+        await mkdir(join(bundleDir, format), { recursive: true });
+        await writeFile(join(bundleDir, format, "Tanit installer"), format);
+      }
+      const scriptForTarget = script
+        ?.replaceAll("${{ matrix.platform }}", platform)
+        .replaceAll("${{ matrix.arch }}", "x64");
+      const build = run("bash", ["-c", `cd -- "$1" && {\n${scriptForTarget}\n}`, "staging", dir], {
+        BUNDLES: formats.join(","),
+        STAGE: "dist",
+      });
+      expect(build.status, build.output).toBe(0);
+      for (const format of formats) {
+        expect(await readFile(join(dir, "dist", platform, "x64", format, "Tanit installer"), "utf8"))
+          .toBe(format);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   test("the workflow asks the build script for the bundles the matrix declares", async () => {

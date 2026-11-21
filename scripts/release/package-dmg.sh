@@ -101,14 +101,31 @@ ln -s /Applications "${STAGE_DIR}/Applications"
 mkdir -p "$(dirname "${OUTPUT}")"
 rm -f "${OUTPUT}"
 
+# Allocated blocks can undercount sparse or compressed binaries. Leave
+# space for their logical size, directory metadata and the image filesystem.
+payload_bytes="$(find "${STAGE_DIR}" -type f -exec stat -f '%z' {} + |
+  awk '{ total += $1 } END { printf "%.0f\n", total }')"
+payload_mib=$(( (payload_bytes + 1048575) / 1048576 ))
+image_mib=$(( payload_mib + payload_mib / 4 + 32 ))
+
 note "Packaging: ${APP} → ${OUTPUT}"
-hdiutil create \
-  -volname "${VOLUME}" \
-  -srcfolder "${STAGE_DIR}" \
-  -format UDZO \
-  -ov \
-  -quiet \
-  "${OUTPUT}" || die "hdiutil could not build the image"
+for attempt in 1 2 3; do
+  if result="$(LC_ALL=C hdiutil create \
+    -volname "${VOLUME}" \
+    -srcfolder "${STAGE_DIR}" \
+    -size "${image_mib}m" \
+    -format UDZO \
+    -ov \
+    "${OUTPUT}" 2>&1)"; then
+    break
+  fi
+  printf '%s\n' "${result}" >&2
+  if [[ "${result}" != *"Resource busy"* || "${attempt}" -eq 3 ]]; then
+    die "hdiutil could not build the image"
+  fi
+  note "The disk image is busy. Retrying (attempt ${attempt} of 3 failed)."
+  sleep "${attempt}"
+done
 
 [[ -s "${OUTPUT}" ]] || die "The image came out empty: ${OUTPUT}"
 

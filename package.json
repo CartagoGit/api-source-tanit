@@ -1,6 +1,6 @@
 {
   "name": "api-source-tanit",
-  "version": "0.2.0",
+  "version": "0.3.0-alpha.1",
   "workspaces": [
     "packages/app"
   ],
@@ -152,6 +152,7 @@
     "desktop:build:linux": "bun run scripts/build/desktop-build.script.ts --platform linux",
     "desktop:build:mac": "bun run scripts/build/desktop-build.script.ts --platform mac",
     "desktop:build:windows": "bun run scripts/build/desktop-build.script.ts --platform windows",
+    "desktop:portable:windows": "bun run scripts/build/desktop-build.script.ts --platform windows --portable",
     "docker:validate": "docker compose -f .docker/docker-compose.yml run --rm validate",
     "docker:binaries": "docker compose -f .docker/docker-compose.yml run --rm binaries",
     "docker:installers": "docker compose -f .docker/docker-compose.yml run --rm installers",
@@ -196,6 +197,7 @@
     "@angular/platform-browser-dynamic": "^20.2.0",
     "@angular/router": "^20.2.0",
     "@oxc-project/runtime": "^0.156.0",
+    "@tauri-apps/cli": "2.12.5",
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^26.1.0",

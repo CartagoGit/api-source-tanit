@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { createProofPlan, executeProof } from "../helpers/proof-plan.helper.js";
 import { executeAggregateFallback, runChangedFileCoverage } from "./changed-file-coverage.script.js";
+import { ANGULAR_COVERAGE_SOURCE, isScopedAngularSource } from "./coverage-policy.constant.js";
 import type { IProofInput, IProofPlan } from "../../packages/contracts/interfaces/quality/proof-plan.interface.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -63,10 +64,19 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (argv.includes("--affected-tests")) {
     if (!plan.specs.length) throw new Error("No affected specs; use the required full proof.");
     if (plan.mode !== "affected" || !plan.jobs["affected-tests"]) throw new Error("Affected test stage is not selected by the proof plan.");
-    const test = spawnSync("bunx", ["vitest", "run", "--coverage", "--coverage.reportOnFailure", "--coverage.thresholds=false", "--passWithNoTests", ...plan.specs], { cwd: ROOT, stdio: "inherit" });
+    const angular = plan.changedFiles.some(isScopedAngularSource);
+    const selection = angular
+      ? ["--project", "app", "--coverage.include", ANGULAR_COVERAGE_SOURCE, "--coverage.exclude", "**/*.d.ts", "--coverage.reporter", "json-summary"]
+      : ["--passWithNoTests", ...plan.specs];
+    const test = spawnSync("bunx", ["vitest", "run", "--coverage", "--coverage.reportOnFailure", "--coverage.thresholds=false", ...selection], { cwd: ROOT, stdio: "inherit" });
     if (test.status !== 0) return test.status ?? 1;
-    const coverage = runChangedFileCoverage(plan.changedFiles);
+    const coverage = runChangedFileCoverage(plan.changedFiles, undefined, angular);
     for (const failure of coverage.failures) console.error(failure);
+    if (angular) {
+      if (coverage.status !== "PASS") return 1;
+      console.log("Angular coverage passed. Compiling production templates.");
+      return spawnSync("bun", ["run", "build:app"], { cwd: ROOT, stdio: "inherit" }).status ?? 1;
+    }
     if (coverage.status === "BELOW_FLOOR") console.log("Changed-file floor not met; running the frozen aggregate coverage gate.");
     else console.log(`Changed-file coverage: ${coverage.status}`);
     return executeAggregateFallback(coverage, async () =>

@@ -243,7 +243,10 @@ patched release passes the existing dependency audit and full validation.
 
 The canonical project registration is **`DelendAI:Tanit`**, following
 `DelendAI:{project}`. `.mcp.json` is the source for client configuration;
-`bun run mcp:sync` derives `.vscode/mcp.json`. VS Code derives the lowercase permission reference
+`bun run mcp:sync` derives `.vscode/mcp.json` and `.codex/config.toml`.
+The [proposal index](proposals/INDEX.md) tracks Codex MCP startup. The
+generated TOML lets Codex resolve relative arguments from the thread
+workspace. VS Code derives the lowercase permission reference
 `delendai:tanit/*` from the canonical label. `bun run lint:mcp-server-key` verifies registration
 and grant agreement, including names containing colons.
 
@@ -316,6 +319,10 @@ The [proposal index](proposals/INDEX.md) tracks the workspace and folder picker.
 Browser project selection browses and opens folders via the shared Application
 API. Project navigation becomes available after a session opens.
 
+The [proposal index](proposals/INDEX.md) tracks export previews and consent.
+The Export Center uses the backend's preview for the active session, destination
+and selected formats. Older requests cannot change the current export state.
+
 The [proposal index](proposals/INDEX.md) tracks the Tanit branding and binary layout.
 `assets/icons/tanit.svg` is the shared artwork, and `bun run gen:brand` embeds
 it into the standalone web interface. Platform builds use `dist/`.
@@ -323,6 +330,15 @@ it into the standalone web interface. Platform builds use `dist/`.
 The [proposal index](proposals/INDEX.md) tracks the per-platform binary scripts.
 They build Linux or Windows directly, and the compiled UI scripts build Angular
 into the same output directory and launch the bundled CLI.
+
+The [proposal index](proposals/INDEX.md) tracks the portable Windows application.
+`desktop:portable:windows` builds `dist/desktop/windows/Tanit.exe` and its
+IPC sidecar. The native window launches the sidecar without a console.
+
+The [proposal index](proposals/INDEX.md) tracks the Tanit 0.3.0 alpha
+promotion and [release workflow](../DESKTOP-PUBLISH.md).
+The index also tracks WiX prerelease compatibility. Windows builds use a numeric
+MSI ProductVersion and retain the full SemVer in the application and NSIS.
 
 The [proposal index](proposals/INDEX.md) tracks Windows OpenAPI route parity.
 HTTP paths use POSIX separators across platforms. Filesystem resolution keeps
@@ -337,6 +353,13 @@ The planner compares the Git manifests at the base and head. An isolated
 `files` change runs the packlist regression, package validation, lint,
 integration verification and audit. Other manifest fields and promotions
 retain full validation.
+
+The [proposal index](proposals/INDEX.md) tracks the Angular proof scope.
+Modifications to Angular state or presentation with a contained consumer graph
+run app typechecking, the Angular suite with changed-file and aggregate coverage,
+production template compilation, lint and integration verification. Entry
+points, host bridges, resources, mixed changes and uncertain scope use full
+proof, as do integration and promotion builds.
 
 The [2026-11-08 audit](AUDIT-2026-11-08.md) records the current architecture,
 verified rename cleanup, and follow-up proposals for effective settings,
@@ -390,6 +413,11 @@ enrichment and the Linux desktop dependency gate. Their acceptance criteria
 keep static facts, documented evidence, unknowns and AI suggestions distinct.
 Before continuing optional enrichment work, read the current provider findings
 and eligibility limits in [AI-ENRICHMENT.md](../AI-ENRICHMENT.md).
+
+The [proposal index](proposals/INDEX.md) tracks x00120: native desktop builds
+compile the Angular frontend and sidecar from a clean checkout and use the
+Tauri CLI pinned in the dependency lockfile. The installer workflow shares
+that command across platforms.
 
 The [proposal index](proposals/INDEX.md) tracks t00007: focused updater coverage
 checks installer signatures independently of signed manifests and binds desktop

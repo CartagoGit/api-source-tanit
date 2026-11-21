@@ -41,7 +41,11 @@ export class ExportCenterComponent {
     // written" — until the user happened to toggle a format, which
     // is the one thing the preview is supposed to decide.
     effect(() => {
-      if (this.project.projectRoot() !== null) untracked(() => { void this.store.refresh(); });
+      // Reopening the same path can create a new backend session.
+      this.project.sessionId();
+      if (this.project.projectRoot() !== null) {
+        untracked(() => { void this.store.refresh(); });
+      }
     });
   }
 

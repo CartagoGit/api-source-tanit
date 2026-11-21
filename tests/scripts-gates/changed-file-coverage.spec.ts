@@ -47,4 +47,20 @@ describe("changed-file coverage", () => {
   test("treats test-only diffs as not applicable", () => {
     expect(evaluateChangedFileCoverage(["tests/core/example.spec.ts"], {}).status).toBe("NOT_APPLICABLE");
   });
+
+  test("checks changed Angular files and the application suite against its measured floors", () => {
+    const file = "packages/app/src/app/core/state/example.store.ts";
+    const report = { [file]: metrics(60), total: metrics(75) };
+    expect(evaluateChangedFileCoverage([file], report, true)).toEqual({ status: "PASS", failures: [] });
+    expect(evaluateChangedFileCoverage([file], { total: report.total }, true).failures[0])
+      .toContain("missing changed production file");
+    expect(evaluateChangedFileCoverage([file], { ...report, [file]: metrics(0) }, true).failures)
+      .toContain(`Angular coverage — no tests executed ${file}`);
+    expect(evaluateChangedFileCoverage([file], { [file]: report[file] }, true).failures)
+      .toContain("Angular coverage — missing suite total for lines");
+    const belowFloor = { ...report, total: { ...report.total, branches: { total: 100, covered: 52, pct: 52 } } };
+    expect(evaluateChangedFileCoverage([file], belowFloor, true)).toEqual({
+      status: "FAIL", failures: ["Angular coverage — branches 52% < Angular floor 53%"],
+    });
+  });
 });

@@ -78,6 +78,21 @@ openSUSE o donde no haya `.deb`, y para probarlo sin tocar el sistema.
 
 ## Windows
 
+### `Tanit.exe` — aplicación portable
+
+Abre `dist/desktop/windows/Tanit.exe` con doble clic. Mantén
+`apisrc.exe` en esa carpeta para que la ventana pueda comunicarse con
+el motor de Tanit. La aplicación utiliza el runtime WebView2 de Windows.
+
+Si el Explorador muestra un icono genérico en la ruta `\\wsl.localhost`,
+prueba ambos ejecutables juntos en una carpeta de Windows. El logotipo
+está incrustado en `Tanit.exe` y el Explorador puede leerlo desde esa copia.
+
+En una máquina Windows con el toolchain de Tauri, genera la carpeta
+portable con `bun run desktop:portable:windows`. El script de CLI
+`bun run build:binary:windows` genera `dist/apisrc-windows-x64.exe` para
+usar desde PowerShell o una terminal.
+
 ### `.msi` — instalación normal
 
 Doble clic. Instala en `Archivos de programa` y añade la entrada al menú
@@ -100,12 +115,12 @@ Abre la aplicación. Deberías ver la interfaz con un campo para la carpeta
 del proyecto.
 
 1. Pega la ruta absoluta de cualquier API tuya.
-2. Pulsa **Inspeccionar**: no escribe nada, solo dice qué ha detectado.
-3. Si el framework y el número de endpoints cuadran, pulsa **Generar**.
+2. Pulsa **Abrir proyecto** y comprueba los endpoints detectados.
+3. En **Exportaciones**, elige el formato y pulsa **Generar**.
 
 La colección aparece en `<tu-proyecto>/tanit/`.
 
-Si «Inspeccionar» no reconoce el framework, mira
+Si Tanit no reconoce el framework, consulta
 [FRAMEWORKS.md](FRAMEWORKS.md) para ver qué busca cada scanner: casi
 siempre es que la ruta apunta a una subcarpeta y no a la raíz del
 proyecto.
@@ -121,9 +136,12 @@ contenedor las trae:
 bun run docker:installers      # produce el .deb sin instalar nada
 ```
 
-En una máquina con Rust:
+En una máquina con Rust, instala las dependencias fijadas y ejecuta
+el comando de tu plataforma. El script compila Angular y el sidecar
+antes de empaquetarlos.
 
 ```bash
+bun install --frozen-lockfile
 bun run desktop:build:linux    # .deb + .AppImage
 bun run desktop:build:mac      # .dmg + .app
 bun run desktop:build:windows  # .msi + .exe

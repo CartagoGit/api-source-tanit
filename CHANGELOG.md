@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.0-alpha.1 (2026-11-21) — Primera prueba de la aplicación portable
+
+Esta alfa permite probar la evolución de Tanit. La release de GitHub incluye
+el CLI autocontenido y su interfaz web. La aplicación nativa de Windows se
+puede probar con la compilación portable de desarrollo.
+
+### Escritorio
+
+- `bun run desktop:portable:windows` genera `dist/desktop/windows/Tanit.exe`
+  junto a su motor `apisrc.exe`. La ventana arranca sin consola, permite
+  seleccionar un proyecto y lleva el logotipo de Tanit en el ejecutable.
+- WebView2 carga los estilos de Angular y permite cambiar de tema con la
+  política de seguridad de contenido activa. La misma compilación de Angular
+  sirve la interfaz web.
+- La compilación nativa incluye sus dependencias desde un checkout limpio.
+  CI verifica los instaladores en su plataforma y calcula el tamaño de la
+  imagen de macOS a partir de la aplicación empaquetada.
+
+### Exportaciones
+
+- Al cambiar de formato, destino o proyecto, la vista previa y la aprobación
+  se recalculan para la selección vigente. Una respuesta tardía de una
+  selección anterior ya no puede habilitar la exportación.
+
+### Integración y validación
+
+- Codex resuelve el proyecto desde el directorio del hilo con
+  `DelendAI:Tanit` fijado en DelendAI 0.3.0.
+- Los cambios acotados de Angular ejecutan las comprobaciones de la app.
+  La promoción a `main` conserva la validación completa.
+
 ## 0.2.0 (2026-11-20) — Tanit en el navegador y en un solo ejecutable
 
 Esta versión 0.x se distribuye como prerelease de GitHub. Los ejecutables

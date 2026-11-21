@@ -79,6 +79,9 @@ describe("Codex shares the project MCP source", () => {
     expect(config).toContain('[mcp_servers."DelendAI:Tanit"]');
     expect(config).toContain('command = "delendai"');
     expect(config).toContain('"--version=0.3.0"');
+    expect(config).toContain('"--workspace=."');
+    expect(config).toContain('"--config=./delendai.config.json"');
+    expect(config).not.toMatch(/^\s*cwd\s*=/m);
     expect(config).not.toContain("${workspaceFolder}");
     expect(config).not.toContain("_projects/delendai");
     expect(config).toContain("[mcp_servers.DelendAI]\nenabled = false");
