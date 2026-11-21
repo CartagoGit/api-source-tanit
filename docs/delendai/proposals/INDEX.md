@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `a00021` | `audit` | [`ready/audits/a00021-static-frontend-consumption-discovery-across-angular-vue-and-react.md`](ready/audits/a00021-static-frontend-consumption-discovery-across-angular-vue-and-react.md) |
 
 ## Bloqueadas
 
