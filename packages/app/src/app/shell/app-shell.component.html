@@ -1,0 +1,46 @@
+<div class="shell" [class.dark]="theme() === 'dark'">
+  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (theme)="toggleTheme()" (select)="go($event)" />
+  <main class="content">
+    <header class="toolbar">
+      <div class="workspace-context">
+        @if (project.isOpen()) { <strong>{{ project.projectName() }}</strong> }
+        <span>{{ sectionLabel() }}</span>
+      </div>
+      <div class="toolbar-actions">
+        @if (project.isOpen() && activeSection() !== 'overview') {
+          <button type="button" class="toolbar-button" (click)="showProjectPicker()">{{ i18n.translate("home.open") }}</button>
+        }
+        <button type="button" class="toolbar-button commands-button" aria-keyshortcuts="Control+K"
+          (click)="paletteOpen.set(true)">
+          {{ i18n.translate("palette.placeholder") }}<kbd>{{ commandShortcut }}</kbd>
+        </button>
+      </div>
+    </header>
+    <div class="view">
+      @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+      @if (activeSection() === 'overview' || (!project.isOpen() && activeSection() !== 'settings')) {
+        @if (activeSection() !== 'overview') {
+          <p>{{ i18n.translate("home.empty") }}</p>
+        }
+        <tanit-home animate.enter="motion-fade" (opened)="projectOpened()" />
+      } @else if (activeSection() === 'settings') {
+        <tanit-settings animate.enter="motion-fade" />
+      } @else {
+        @switch (activeSection()) {
+          @case ('endpoints') { <tanit-endpoints-list animate.enter="motion-fade" /> }
+          @case ('exports') { <tanit-export-center animate.enter="motion-fade" /> }
+          @case ('services') { <tanit-services-list animate.enter="motion-fade" /> }
+          @case ('history') { <tanit-history-list animate.enter="motion-fade" /> }
+          @case ('live') { <tanit-live-toggle animate.enter="motion-fade" /> }
+          @case ('check') { <tanit-check animate.enter="motion-fade" /> }
+          @case ('sync') { <tanit-sync animate.enter="motion-fade" /> }
+          @case ('validate') { <tanit-validate animate.enter="motion-fade" /> }
+          @case ('push') { <tanit-push-to-postman animate.enter="motion-fade" /> }
+          @case ('stats') { <tanit-stats animate.enter="motion-fade" /> }
+          @case ('diagnostics') { <tanit-diagnostics animate.enter="motion-fade" /> }
+        }
+      }
+    </div>
+  </main>
+  <tanit-command-palette [open]="paletteOpen()" (close)="paletteOpen.set(false)" (chosen)="runCommand($event)" />
+</div>

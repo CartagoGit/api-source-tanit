@@ -1,0 +1,58 @@
+---
+id: x00107
+title: "Exigir firma GPG detached canónica al preparar el manifest"
+kind: fix
+status: done
+type: proposal
+track: beta
+date: 2026-11-19
+last-transition-id: 22480434-50dc-454e-af4e-3e6431239058
+last-correlation-id: 22480434-50dc-454e-af4e-3e6431239058
+last-transition-from: review
+last-transition-at: 2026-11-19T20:44:51.758Z
+shipped-in:
+  - "1f2e10d642dd921974160de1d216f4d097b3d8e4"
+---
+
+# x00107 — Exigir firma GPG detached canónica al preparar el manifest
+
+## goal
+
+Impedir que un recibo GPG produzca un manifest que apunta al instalador u omite la firma: exigir directamente el sidecar regular canónico, preservando firmas embebidas y verificación existente.
+
+## why
+
+La ejecución de CI `44426868409` falló en `it does not write into the staging it verifies`: el manifest describía un recibo GPG del `.deb`, pero el verificador encontró su `.deb.sig` sin describir. El código permitía `detached.get(entry.relPath) ?? entry.relPath`; para `SHA256SUMS` omitía la firma si el listado previo no la incluía. Esto demuestra una degradación silenciosa permitida por el constructor, no la causa de una carrera de archivos.
+
+El recibo real tiene `kind: gpg-detached`. Su ruta se deriva del propietario y se comprueba con `lstat` directamente, sin depender de que aparezca en el listado. La ausencia o un objeto no regular deben impedir escribir el nuevo manifest. Las firmas embebidas conservan su comportamiento.
+
+## non-goals
+
+- No modificar verificadores, reglas de validación, versiones ni publicación de releases.
+- No tocar staging ajeno, keyring del usuario, credenciales o D-Bus.
+- No implementar `t00007` ni modificar `f00020`.
+- No atribuir el incidente a una carrera sin evidencia.
+
+## slices
+
+- global_gate: none
+
+### S1 — Exigir sidecar GPG regular y cubrir ausencia y dry run
+- **Status**: done
+- **Files**: `scripts/release/prepare-artifacts.mjs`, `tests/release/signing.spec.ts`
+- **Gate**: e2e
+- acceptance:
+  - "Con recibo GPG y sin sidecar .sig regular canónico, preparar el manifest falla claramente sin apuntar al instalador, para artefactos y SHA256SUMS."
+  - "El dry run positivo describe las firmas GPG como archivos .sig canónicos y pasa la verificación portable existente sin escribir en el staging."
+  - "La regresión usa fixtures locales sin secretos ni staging ajeno; no atribuye una carrera no probada, no debilita verificación ni modifica reglas, releases o t00007."
+- shipped-in: `08108e8f29e4`
+- review-state: done
+- review-implementer: openai-gpt-6.1-sol
+- review-reviewer: openai-gpt-6.2-sol
+- review-log: approved by openai-gpt-6.2-sol — verified at 1f2e10d642dd, validate exit 0 and tests 50/50 claimed, no recorded run cited; acceptance 3/3: (1) Los casos de signing.spec.ts comprueban recibos de artefacto y SHA256SUMS con .sig ausente o directorio, y verifican el fallo explícito sin manifest engañoso. (2) Los casos de dry run real comprueban sidecars .sig regulares y pasan el verificador Linux ya existente con inventario de staging estable. (3) Revisión del commit funcional 08108e8f y ejecución focal: solo preparación, tests y guía; el firmante usa GNUPGHOME desechable y pinentry loopback. Publicación… — Revisé el diff y ejecuté bunx vitest run --project cli tests/release/signing.spec.ts. Coinciden byte a byte las rutas de código y test con #176. Pasaron los 50 casos ejecutados y se omitió 1 de 51. CI exacta sin rebajar gates.
+
+## acceptance
+
+- Con recibo GPG y sin sidecar .sig regular canónico, preparar el manifest falla claramente sin apuntar al instalador, para artefactos y SHA256SUMS.
+- El dry run positivo describe las firmas GPG como archivos .sig canónicos y pasa la verificación portable existente sin escribir en el staging.
+- La regresión usa fixtures locales sin secretos ni staging ajeno; no atribuye una carrera no probada, no debilita verificación ni modifica reglas, releases o t00007.
