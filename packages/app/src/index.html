@@ -8,6 +8,8 @@
     <script>
       try { document.documentElement.dataset.theme = localStorage.getItem("tanit.theme") === "dark" ? "dark" : "light"; } catch {}
     </script>
+    <!-- Tauri adds a CSP nonce to static style elements at runtime. -->
+    <style id="tanit-style-nonce"></style>
     <title>Tanit</title>
     <link rel="icon" type="image/svg+xml" href="assets/tanit.svg" />
   </head>
