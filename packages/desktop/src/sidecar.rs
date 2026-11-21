@@ -41,9 +41,9 @@ pub struct SidecarPipes {
 
 /// Arranca el sidecar y devuelve `(Child, SidecarPipes)`.
 ///
-/// - `workspace`: si viene `Some`, se pasa como `--workspace` para que
-///   el sidecar sepa qué proyecto abrir. `None` deja al sidecar usar
-///   su propia resolución (la misma que `apisrc generate`).
+/// - `workspace`: carpeta base para el sidecar. Al abrir la ventana
+///   sin proyecto se usa el directorio personal. La interfaz enviará
+///   la ruta del proyecto cuando el usuario la elija.
 ///
 /// Errores:
 /// - No se encuentra el binario empaquetado (Tauri no lo copió).
@@ -58,16 +58,22 @@ pub fn spawn(
         .path()
         .resolve("apisrc", tauri::path::BaseDirectory::Resource)
         .map_err(|e| format!("no se pudo resolver la ruta del sidecar: {e}"))?;
+    let workspace = match workspace {
+        Some(path) => std::path::PathBuf::from(path),
+        None => app
+            .path()
+            .home_dir()
+            .map_err(|e| format!("no se pudo resolver el directorio personal: {e}"))?,
+    };
 
     let mut cmd = Command::new(&bin);
     cmd.arg(ARG_SERVE)
         .arg(ARG_STDIO)
+        .arg(ARG_WORKSPACE)
+        .arg(workspace)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(workspace) = workspace {
-        cmd.arg(ARG_WORKSPACE).arg(workspace);
-    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
