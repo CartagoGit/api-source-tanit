@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 460 símbolos en 185 módulos.
+> 461 símbolos en 186 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -3724,6 +3724,14 @@ registra el diagnóstico si Babel rechaza el archivo, en vez de
 lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
 Express: un solo parse por archivo alimenta el `TSFile` del
 frontend Y las primitivas del LanguageIR.
+
+### `packages/core/language-frontends/typescript/vue-client-consumption.parser.ts`
+
+#### `scanVueClientSource`
+
+```ts
+export function scanVueClientSource( source: string, file: string, options: IClientConsumptionOptions, ): Pick<IClientConsumptionResult, "usages" | "diagnostics">
+```
 
 ### `packages/core/language-ir/build-language-ir.helper.ts`
 

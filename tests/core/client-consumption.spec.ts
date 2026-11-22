@@ -151,6 +151,71 @@ describe("client consumption", () => {
     ]);
   });
 
+  it("scans one Vue script or setup block with original component locations", async () => {
+    const classicCall = 'fetch("/classic")';
+    const classicSource = [
+      '<!-- <script>fetch("/comment")</script> -->',
+      `<template><button @click="fetch('/template')">Load</button></template>`,
+      `<script>  ${classicCall};</script>`,
+    ].join("\r\n");
+    const setupCall = 'fetch(path)';
+    const setupSource = [
+      '<script setup lang="ts">',
+      'const path: string = "/setup";',
+      `  ${setupCall};`,
+      '</script>',
+    ].join("\r\n");
+
+    const result = await scan({ "classic.vue": classicSource, "setup.vue": setupSource }, {
+      backend: [{ method: "GET", uri: "/setup" }],
+    });
+    expect(result.usages).toMatchObject([
+      {
+        method: "GET", path: "/classic", correlation: { status: "missing" },
+        location: {
+          file: "classic.vue", line: 3, column: 10,
+          start: classicSource.indexOf(classicCall),
+          end: classicSource.indexOf(classicCall) + classicCall.length,
+        },
+      },
+      {
+        method: "GET", path: "/setup", correlation: { status: "matched" },
+        location: {
+          file: "setup.vue", line: 3, column: 2,
+          start: setupSource.indexOf(setupCall),
+          end: setupSource.indexOf(setupCall) + setupCall.length,
+        },
+      },
+    ]);
+    expect(result.diagnostics).toEqual([{ file: "classic.vue", reason: "unsupported-template" }]);
+  });
+
+  it.each(["jsx", "tsx"])("scans inline Vue scripts declared as %s", async (lang) => {
+    const result = await scan({
+      "view.vue": `<script lang="${lang}">export const View = () => <button onClick={() => fetch("/jsx")} />;</script>`,
+    });
+    expect(result.usages).toMatchObject([{ method: "GET", path: "/jsx" }]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it.each([
+    ['<script>fetch("/classic")</script><script setup>fetch("/setup")</script>', "unsupported-script"],
+    ['<script></script><script setup>fetch("/setup")</script>', "unsupported-script"],
+    ['<script src="./external.ts">fetch("/inline")</script>', "unsupported-script"],
+    ['<script setup src="./external.ts"></script>', "unsupported-script"],
+    ['<script lang="coffee">fetch("/coffee")</script>', "unsupported-script"],
+    ['<script lang>fetch("/invalid-lang")</script>', "unsupported-script"],
+    ['<script>fetch("/first")</script><script>fetch("/second")</script>', "parse-failed"],
+    ['<script setup>fetch("/first")</script><script setup>fetch("/second")</script>', "parse-failed"],
+    ['<script>fetch("/unclosed")', "parse-failed"],
+    ['<script>fetch("/invalid"); const =</script>', "parse-failed"],
+    ['<script>const x = 1; const x = 2; fetch("/recovered");</script>', "parse-failed"],
+  ])("rejects unsupported or malformed Vue script %s", async (source, reason) => {
+    const result = await scan({ "view.vue": source });
+    expect(result.usages).toEqual([]);
+    expect(result.diagnostics).toEqual([{ file: "view.vue", reason }]);
+  });
+
   it("correlates only known method and path within the supplied catalog", async () => {
     const matched = { method: "GET", uri: "/items", id: "items.read" } as const;
     const duplicateA = { method: "DELETE", uri: "/items", id: "items.delete.a" } as const;
@@ -165,7 +230,7 @@ describe("client consumption", () => {
         'fetch("/items", options);',
       ].join("\n"),
       "settings.component.html": '<button (click)="client.get(\'/items\')">Get</button>',
-      "view.vue": '<script setup>fetch("/items")</script>',
+      "view.vue": `<template><button @click="fetch('/items')">Get</button></template>`,
       "invalid.ts": 'const =',
     }, { backend: [matched, duplicateA, duplicateB, unused] });
 

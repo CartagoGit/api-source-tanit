@@ -63,7 +63,7 @@ export const ClientUsageOutputSchema = z.strictObject({
   usages: z.array(UsageSchema),
   diagnostics: z.array(z.strictObject({
     file: z.string(),
-    reason: z.enum(["unsupported-template", "parse-failed"]),
+    reason: z.enum(["unsupported-template", "unsupported-script", "parse-failed"]),
   })),
   counts: z.strictObject({
     resolved: z.int().nonnegative(),

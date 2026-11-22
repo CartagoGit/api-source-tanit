@@ -102,3 +102,15 @@ test("rejects a configured project root outside the workspace and malformed alia
     structuredContent: { ok: false, error: { reason: expect.stringContaining("extra") } },
   });
 });
+
+test("returns an explicit diagnostic for a Vue external script", async () => {
+  const component = join(workspace, "external-component");
+  await mkdir(component);
+  await writeFile(join(component, "external.vue"), '<script src="./client.js"></script>');
+  const response = await (await makeTool()).handler({ projectRoot: "external-component" });
+  expect(response.isError).toBeUndefined();
+  expect(response).toHaveProperty("structuredContent.diagnostics", [
+    { file: "external.vue", reason: "unsupported-script" },
+  ]);
+  expect(response).toHaveProperty("structuredContent.usages", []);
+});

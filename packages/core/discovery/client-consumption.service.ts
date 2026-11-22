@@ -67,7 +67,7 @@ function correlate(usages: readonly IClientUsage[], backend: readonly IClientBac
   return { usages: paired, operationsWithoutConfirmedConsumer: backend.filter((_, index) => !consumed.has(index)) };
 }
 
-/** Static JS/TS discovery over the caller's existing file inventory and AST cache. */
+/** Static JS/TS and Vue script discovery over the caller's existing file inventory and AST cache. */
 export async function scanClientConsumption(
   index: Pick<ProjectIndex, "files" | "ensureAst">,
   options: IClientConsumptionOptions = {},
@@ -76,12 +76,21 @@ export async function scanClientConsumption(
   const diagnostics: Array<IClientConsumptionResult["diagnostics"][number]> = [];
   const files = [...index.files()].sort((left, right) => left.relPath.localeCompare(right.relPath));
   for (const file of files) {
-    if (/\.(?:vue|component\.html)$/iu.test(file.relPath)) {
+    if (/\.component\.html$/iu.test(file.relPath)) {
       diagnostics.push({ file: file.relPath, reason: "unsupported-template" });
       continue;
     }
-    if (!isAstCapable(file.language) || /\.d\.[cm]?ts$/iu.test(file.relPath)) continue;
+    const isVue = /\.vue$/iu.test(file.relPath);
+    if (!isVue && (!isAstCapable(file.language) || /\.d\.[cm]?ts$/iu.test(file.relPath))) continue;
     try {
+      if (isVue) {
+        const { scanVueClientSource } = await import("../language-frontends/typescript/vue-client-consumption.parser.js");
+        const source = await readFile(file.absPath, "utf8");
+        const result = scanVueClientSource(source, file.relPath, options);
+        for (const usage of result.usages) usages.push(normalizeUsage(usage));
+        diagnostics.push(...result.diagnostics);
+        continue;
+      }
       const cached = await index.ensureAst(file.relPath);
       const observed = cached
         ? scanClientAst(cached, file.relPath, options)

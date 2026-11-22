@@ -56,7 +56,7 @@ export interface IClientConsumptionResult {
   readonly usages: readonly IClientUsage[];
   readonly diagnostics: readonly {
     readonly file: string;
-    readonly reason: "unsupported-template" | "parse-failed";
+    readonly reason: "unsupported-template" | "unsupported-script" | "parse-failed";
   }[];
   readonly counts: {
     readonly resolved: number;

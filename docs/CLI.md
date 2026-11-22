@@ -79,7 +79,7 @@ lint:cli-app-parity — 13 comando(s) del CLI, 28 handler(s) en la API, 26 opera
 | validate | `validate` | `validate` | covered |
 | push | `push` | `push` | covered |
 | stats | `stats` | `stats` | covered |
-| client consumption | `client-usage` | — | app integration planned in a00021 S3 |
+| client consumption | `client-usage` | — | app integration planned in a00021 S4 |
 | watch | `watch` | `watch`, `cancel` | covered |
 | history | `history` | `history` | partial |
 | projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
@@ -189,6 +189,10 @@ Use `--client-alias http=@app/api-client` for a client imported as `http`
 from that module. Repeat the flag for additional aliases. The JSON output
 uses the same report as the DelendAI MCP tool. Analysis leaves collection
 files and project state untouched.
+
+Vue components with one inline `<script>` or `<script setup>` block are scanned
+in the original source coordinates. Vue templates and mixed, external or
+unsupported scripts appear as diagnostics.
 
 ## Durable state diagnostics
 

@@ -129,7 +129,7 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     api: [],
     app: [],
     status: "gap",
-    note: "Application API and app access are planned in a00021 S3.",
+    note: "Application API and app access are planned in a00021 S4.",
   },
   {
     capability: "drift",
