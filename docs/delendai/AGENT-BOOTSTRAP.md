@@ -325,6 +325,7 @@ The [proposal index](proposals/INDEX.md) tracks the Help screen. It lists the ke
 that the shell and command palette handle and links to GitHub support.
 
 The [proposal index](proposals/INDEX.md) tracks x00126: mounted shell views use the same reduced-motion-safe entry transition.
+The index also tracks x00129: the workspace animates departure and arrival, and Overview uses the shared presentation.
 
 The [proposal index](proposals/INDEX.md) tracks the app's appearance preferences.
 Settings shows the active locale and previews persisted themes, including the system scheme.

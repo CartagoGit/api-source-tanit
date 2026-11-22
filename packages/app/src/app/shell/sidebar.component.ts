@@ -112,9 +112,15 @@ export class SidebarComponent {
     this.linkFailed.set(!(await this.externalLinks.open(event, this.metadata.repository)));
   }
 
-  choose(section: string): void {
-    this.menuOpen.set(false);
+  choose(section: string, menuButton?: HTMLButtonElement): void {
+    this.closeMenu(menuButton);
     this.select.emit(section);
+  }
+
+  closeMenu(menuButton?: HTMLButtonElement): void {
+    if (!this.menuOpen()) return;
+    menuButton?.focus({ preventScroll: true });
+    this.menuOpen.set(false);
   }
 
   /** The id of the heading that labels a group. */

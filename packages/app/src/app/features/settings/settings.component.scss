@@ -1,10 +1,10 @@
 .settings { max-width: 56rem;
 }
 
-.intro, .panel-heading, .language, .key { display: grid; gap: var(--space-2); }
+.panel-heading, .language, .key { display: grid; gap: var(--space-2); }
 
 
-.intro p, .panel-heading p { color: var(--color-muted); }
+.panel-heading p { color: var(--color-muted); }
 
 .panel {
   display: grid;

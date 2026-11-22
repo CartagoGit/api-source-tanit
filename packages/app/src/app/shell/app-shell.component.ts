@@ -1,5 +1,5 @@
-import { Location } from "@angular/common";
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal } from "@angular/core";
+import { DOCUMENT, Location } from "@angular/common";
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, DestroyRef, ErrorHandler, HostListener, inject, signal } from "@angular/core";
 
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
@@ -75,6 +75,19 @@ export class AppComponent {
   readonly paletteOpen = signal(false);
   readonly commandShortcut = "Ctrl+K";
   readonly activeSection = signal("overview");
+  readonly nativeMotion = signal(false);
+  readonly visibleSection = computed(() => {
+    const section = this.activeSection();
+    return this.project.isOpen() || section === "settings" || section === "help" ? section : "overview";
+  });
+  private readonly document = inject(DOCUMENT);
+  private readonly changeDetector = inject(ChangeDetectorRef, { optional: true });
+  private readonly errorHandler = inject(ErrorHandler);
+  private transition?: ViewTransition;
+  private requestedSection = "overview";
+  private navigationRevision = 0;
+  private fromApp = false;
+  private focusPickerOnArrival = false;
 
   /**
    * The label of each section, by section id.
@@ -103,20 +116,66 @@ export class AppComponent {
 
   constructor() {
     inject(ThemeStore);
-    this.readSection(this.location.path());
-    inject(DestroyRef).onDestroy(this.location.onUrlChange(() => this.readSection(this.location.path())));
+    this.requestedSection = this.sectionOf(this.location.path());
+    this.activeSection.set(this.requestedSection);
+    const stop = this.location.onUrlChange((url) => this.navigate(this.sectionOf(url), this.fromApp));
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      this.navigationRevision++;
+      this.transition?.skipTransition();
+    });
     void this.project.restore();
   }
 
-  private readSection(path: string): void {
+  private sectionOf(path: string): string {
     const section = path.split(/[?#]/, 1)[0]?.replace(/^\//, "").replace(/\/$/, "") ?? "";
-    this.activeSection.set(Object.hasOwn(this.sectionLabels, section) ? section : "overview");
+    return Object.hasOwn(this.sectionLabels, section) ? section : "overview";
   }
 
-  /** Goes to a section. */
+  private navigate(section: string, scrollToStart: boolean): void {
+    if (section === this.requestedSection) return;
+    this.requestedSection = section;
+    const revision = ++this.navigationRevision;
+    this.transition?.skipTransition();
+    this.transition = undefined;
+
+    const window = this.document.defaultView;
+    const update = (): void => {
+      if (revision !== this.navigationRevision) return;
+      this.activeSection.set(section);
+      this.changeDetector?.detectChanges();
+      if (scrollToStart && window?.scrollY) window.scrollTo({ top: 0, behavior: "instant" });
+      if (this.focusPickerOnArrival && section === "overview") this.focusPicker();
+      this.focusPickerOnArrival = false;
+    };
+
+    if (section === this.activeSection() || typeof this.document.startViewTransition !== "function"
+      || window?.matchMedia?.("(prefers-reduced-motion: no-preference)").matches !== true) {
+      this.nativeMotion.set(false);
+      update();
+      return;
+    }
+
+    this.nativeMotion.set(true);
+    const transition = this.document.startViewTransition(update);
+    this.transition = transition;
+    // A rapid navigation can skip the snapshots, while still invoking the queued update callback.
+    void transition.ready.catch(() => {});
+    void transition.finished.catch((error: unknown) => this.errorHandler.handleError(error)).finally(() => {
+      if (revision !== this.navigationRevision) return;
+      this.transition = undefined;
+      this.nativeMotion.set(false);
+    });
+  }
+
   go(section: string): void {
-    if (!Object.hasOwn(this.sectionLabels, section) || section === this.activeSection()) return;
-    this.location.go(section === "overview" ? "/" : `/${section}`);
+    if (!Object.hasOwn(this.sectionLabels, section) || section === this.requestedSection) return;
+    this.fromApp = true;
+    try {
+      this.location.go(section === "overview" ? "/" : `/${section}`);
+    } finally {
+      this.fromApp = false;
+    }
   }
 
   projectOpened(): void {
@@ -124,10 +183,17 @@ export class AppComponent {
   }
 
   showProjectPicker(): void {
-    this.go("overview");
-    if (typeof document !== "undefined" && typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => document.getElementById("project-path")?.focus());
+    if (this.requestedSection === "overview") {
+      if (this.activeSection() === "overview") this.focusPicker();
+      else this.focusPickerOnArrival = true;
+      return;
     }
+    this.focusPickerOnArrival = true;
+    this.go("overview");
+  }
+
+  private focusPicker(): void {
+    this.document.getElementById("project-path")?.focus();
   }
 
   runCommand(command: string): void {

@@ -19,7 +19,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestBed } from "@angular/core/testing";
-import { Location } from "@angular/common";
+import { DOCUMENT, Location } from "@angular/common";
 import { provideLocationMocks } from "@angular/common/testing";
 
 import { AppComponent } from "../../packages/app/src/app/shell/app-shell.component";
@@ -153,6 +153,38 @@ describe("ProjectStore", () => {
 });
 
 describe("the shell", () => {
+  it("ignores a superseded view transition during history navigation", async () => {
+    const updates: Array<() => void> = [];
+    const skipTransition = vi.fn();
+    const document = {
+      documentElement: globalThis.document.createElement("html"),
+      defaultView: { scrollY: 200, matchMedia: () => ({ matches: true }), scrollTo: vi.fn() },
+      startViewTransition: (update: () => void) => {
+        updates.push(update);
+        return { skipTransition, ready: Promise.resolve(), finished: Promise.resolve() };
+      },
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ...provideLocationMocks(),
+        { provide: DOCUMENT, useValue: document },
+        { provide: HostBridgeClient, useValue: { request: vi.fn() } },
+        { provide: ProjectStore, useValue: { restore: vi.fn() } },
+      ],
+    });
+
+    const shell = TestBed.runInInjectionContext(() => new AppComponent());
+    shell.go("settings");
+    shell.go("help");
+    TestBed.inject(Location).back();
+
+    expect(skipTransition).toHaveBeenCalledTimes(2);
+    for (const update of updates.toReversed()) update();
+    expect(shell.activeSection()).toBe("settings");
+    expect(document.defaultView.scrollTo).not.toHaveBeenCalled();
+  });
+
   it("mounts the features instead of a placeholder", async () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
