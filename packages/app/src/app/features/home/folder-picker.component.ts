@@ -26,6 +26,7 @@ export class FolderPickerComponent {
   readonly browsing = signal(false);
   readonly typedPath = signal("");
   readonly error = signal<string | null>(null);
+  private retryPath: string | null | undefined;
 
   async openNative(): Promise<void> {
     this.error.set(null);
@@ -40,7 +41,8 @@ export class FolderPickerComponent {
   async toggleBrowse(): Promise<void> {
     const expanded = !this.expanded();
     this.expanded.set(expanded);
-    if (expanded && this.listing() === null) await this.open(this.initialPath());
+    if (!expanded) this.error.set(null);
+    if (expanded && this.listing() === null) await this.open(this.retryPath === undefined ? this.initialPath() : this.retryPath);
   }
 
   async open(path?: string | null): Promise<void> {
@@ -49,7 +51,10 @@ export class FolderPickerComponent {
     this.browsing.set(true);
     try {
       this.listing.set(await this.client.browse(path ?? undefined));
+      this.retryPath = undefined;
     } catch (error) {
+      this.retryPath = path ?? null;
+      this.listing.set(null);
       this.error.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.browsing.set(false);
