@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 456 símbolos en 182 módulos.
+> 459 símbolos en 184 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -658,6 +658,14 @@ between iterations).
 @see `IProjectContext` for the root context. If more per-service overrides are
 added in the future (global auth, extra headers, URI prefixes, etc.), this
 helper is the natural place to extend them.
+
+### `packages/core/discovery/client-consumption.service.ts`
+
+#### `scanClientConsumption`
+
+```ts
+export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst">, options: IClientConsumptionOptions =
+```
 
 ### `packages/core/discovery/contract-reconciliation.service.ts`
 
@@ -3517,6 +3525,20 @@ of the known workspace prefixes.
 
 ```ts
 export function buildWorkspaceLookup( workspaces: ReadonlyArray<IWorkspace>, ): WorkspaceLookup
+```
+
+### `packages/core/language-frontends/typescript/client-consumption.helper.ts`
+
+#### `scanClientAst`
+
+```ts
+export function scanClientAst(ast: unknown, file: string, options: IClientConsumptionOptions): IClientUsage[]
+```
+
+#### `scanClientSource`
+
+```ts
+export function scanClientSource(source: string, file: string, options: IClientConsumptionOptions): IClientUsage[]
 ```
 
 ### `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`
