@@ -19,6 +19,7 @@ shipped-in:
   - "8e1d6ac91e447700743d2d24dd1117a428cc5edd"
   - "b35ad3528cae8dd516bb56967f8d4a3b2b34807a"
   - "b2e9b2b5c08f4abd8115ee42008404159f4e1ea6"
+  - "c026bdff4b254bd18b5b8e517b2682ee765b621f"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -183,15 +184,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at b2e9b2b5c08f, validate exit 0 and tests 95/95 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the merged S8 implementation and focused fixture. Workspace globs materialize the actual apps/admin and apps/storefront directories. Backend lookup re… (2) Focused API tests compare dispatch output to analyzeClientProjectLinks, verify both selected frontend reports, unchanged fixture file contents and directory en… (3) Focused dispatcher tests cover strict unexpected-field rejection and relative roots as INVALID_INPUT envelopes. The existing client-usage handler remains regis… — Independent g48 review of S8 at merged PR #249 source head b2e9b2b5c08f4abd8115ee42008404159f4e1ea6; implementation commit 0a1f17e99442b8b9ffaba8db2fd11ee55659d2af. Reused the 95 targeted passing tests, passing work proof, and real HTTP/stdin-stdout receipt showing identical canonical results for two expanded packages with matched, missing, and unknown statuses. Exact-head GitHub CI run 45082341463 passed including ci-summary. No tests rerun by reviewer.
 
 ### S9 — Select and compare project links in the web and desktop app
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/app/src/app/features/client-usage/client-links.component.ts`, `packages/app/src/app/features/client-usage/client-links.component.html`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `tests/app/client-links.spec.ts`.
 - **Gate**: targeted app tests, real Chromium and Windows WebView checks, and `bun run validate`
 - **Acceptance**:
   - The workspace mode uses concrete candidate roots and exact service IDs. The user selects which links to compare, and the single-project mode is still usable.
   - The view presents the canonical report grouped by frontend with call evidence, ambiguities, diagnostics and backend operations without a confirmed consumer.
   - Chromium and desktop can run selected links using the real Application API. Static web copies explain the local-service requirement.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-5.6-luna
+- review-log: approved by openai-gpt-5.6-luna — verified at c026bdff4b25, validate exit 0 and tests 145/145 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f and Chromium receipt /tmp/tanit-client-workspace-ui-browser.json; workspaceVerified … (2) Browser receipt records all four states; reviewed client-links template rendering of source positions, statuses, unresolved reasons, ambiguity candidates, diag… (3) Reused /tmp/tanit-client-workspace-ui-browser.json (mobileFits and staticExplains true), 145 Angular tests, exact native tested-head stamp, Windows build 45084… — Independent approval of S9 at exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f. Reused 145 Angular tests, Chromium receipt, Windows WebView2 smoke, native tested-head and icon receipts; no tests rerun.
 
 ### S10 — Select project links through CLI and MCP
 - **Status**: pending
