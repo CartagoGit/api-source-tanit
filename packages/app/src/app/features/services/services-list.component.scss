@@ -1,0 +1,36 @@
+.services-list { max-inline-size: 62rem; }
+header { display: flex; align-items: baseline; gap: var(--space-3); }
+header span {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-nav-hover);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+article {
+  display: grid;
+  gap: var(--space-3);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-block-size: 2.625rem;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  text-align: start;
+}
+.row:hover, .row[aria-expanded="true"] { background: var(--color-nav-hover); }
+.row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.row strong, .row small { overflow-wrap: anywhere; }
+.row small { grid-column: 1 / -1; }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+article small, .services-list p { color: var(--color-muted); }
+.services-list [role="alert"] { color: var(--color-danger); }
+@media (prefers-reduced-motion: no-preference) {
+  .row { transition: background-color 140ms var(--motion-standard); }
+}

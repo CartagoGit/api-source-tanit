@@ -1,0 +1,10 @@
+{
+  "name": "sample-express",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.0",
+    "zod": "^4.6.7",
+    "joi": "^17.12.0"
+  }
+}
