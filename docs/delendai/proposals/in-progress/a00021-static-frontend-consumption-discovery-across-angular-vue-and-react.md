@@ -16,6 +16,7 @@ shipped-in:
   - "c0f443fa43cb08b71b7f336b927bd2a348cc80ff"
   - "b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491"
   - "052525b4464628e920744eb2b8f498c6622ed870"
+  - "8e1d6ac91e447700743d2d24dd1117a428cc5edd"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -141,15 +142,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-5.6-luna — verified at 052525b44646, validate exit 0 and tests 141/141 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed exact tip 052525b4464628e920744eb2b8f498c6622ed870; Chromium scenarios in /tmp/tanit-client-native-fix-browser.json and native WebView2 smoke in /tmp/… (2) Reused /tmp/tanit-client-native-fix-browser.json and /tmp/tanit-client-native-fix-smoke.log; native run records 1 match, 1 missing, 1 unknown with no visible c… (3) Reused /tmp/tanit-client-native-fix-proof.json, /tmp/tanit-client-native-fix-tested-native-head, and CI 45023995693 as supplied; source 3f3d3b4d5c6263ce2936f5b… — Independent approval of S5 at exact merged PR #243 tip 052525b4464628e920744eb2b8f498c6622ed870. Reused supplied browser, native WebView2, proof, native-head and icon receipts; no tests rerun.
 
 ### S6 — Correlate a frontend against explicitly selected backend services
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/contracts/interfaces/core/client-consumption.interface.ts`, `packages/core/discovery/client-correlation.helper.ts`, `tests/core/client-link-correlation.spec.ts`.
 - **Gate**: scoped core and CLI regression tests plus `bun run validate`
 - **Acceptance**:
   - The matching engine evaluates the selected links together and uses an explicit hostname when it can identify the destination. Duplicate operation candidates remain ambiguous.
   - A call appears as missing only when it is attributable to a single selected service. When the destination is unclear, the result remains unknown and sibling services receive no false missing calls.
   - Only uniquely matched operations count as confirmed consumers. Ordering and source evidence are preserved, and CLI, MCP and Application API retain their original report contract.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 8e1d6ac91e44, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed client-correlation.helper.ts: exact selected backend host is preferred; operation hosts are filtered; duplicate operation candidates remain ambiguous … (2) Reviewed correlateClientUsageLinks eligibility and no-match branches: missing is emitted only for one eligible selected service; zero or multiple possible serv… (3) Only a unique candidate adds its operation index to consumed; candidate and unconsumed operation arrays preserve input order; linked calls retain the original … — Independent initial S6 review of exact source PR #245 tip 8e1d6ac91e447700743d2d24dd1117a428cc5edd, merged to develop at 4005864fadebcfb5ae56261959fa8156979ea3ac. Correlation review found explicit selected-host prioritization, stable selected-service/catalog candidate order, and unique-only consumption. Ambiguous candidates remain unconsumed; missing is attributed only when exactly one eligible selected service exists; otherwise unclear calls remain unknown. The extracted single-catalog correlator preserves the previous shape and behavior. Reused focused receipts /tmp/tanit-client-links-focused-0.log through focused-3.log (33 core/CLI and 6 MCP tests), real HTTP and stdio parity/auth/path receipts, and CLI Vue/OpenAPI legacy baseline/after JSON (byte-identical). Proof /tmp/tanit-client-links-proof.json says proved=true. Exact-head GitHub CI run 45026495225 passed including ci-summary. No tests rerun by reviewer.
 
 ### S7 — Reuse project and service inventories for selected links
 - **Status**: pending
