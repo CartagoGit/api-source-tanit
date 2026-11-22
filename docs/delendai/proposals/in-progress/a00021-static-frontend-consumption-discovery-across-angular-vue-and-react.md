@@ -17,6 +17,7 @@ shipped-in:
   - "b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491"
   - "052525b4464628e920744eb2b8f498c6622ed870"
   - "8e1d6ac91e447700743d2d24dd1117a428cc5edd"
+  - "b35ad3528cae8dd516bb56967f8d4a3b2b34807a"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -155,15 +156,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at 8e1d6ac91e44, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed client-correlation.helper.ts: exact selected backend host is preferred; operation hosts are filtered; duplicate operation candidates remain ambiguous … (2) Reviewed correlateClientUsageLinks eligibility and no-match branches: missing is emitted only for one eligible selected service; zero or multiple possible serv… (3) Only a unique candidate adds its operation index to consumed; candidate and unconsumed operation arrays preserve input order; linked calls retain the original … — Independent initial S6 review of exact source PR #245 tip 8e1d6ac91e447700743d2d24dd1117a428cc5edd, merged to develop at 4005864fadebcfb5ae56261959fa8156979ea3ac. Correlation review found explicit selected-host prioritization, stable selected-service/catalog candidate order, and unique-only consumption. Ambiguous candidates remain unconsumed; missing is attributed only when exactly one eligible selected service exists; otherwise unclear calls remain unknown. The extracted single-catalog correlator preserves the previous shape and behavior. Reused focused receipts /tmp/tanit-client-links-focused-0.log through focused-3.log (33 core/CLI and 6 MCP tests), real HTTP and stdio parity/auth/path receipts, and CLI Vue/OpenAPI legacy baseline/after JSON (byte-identical). Proof /tmp/tanit-client-links-proof.json says proved=true. Exact-head GitHub CI run 45026495225 passed including ci-summary. No tests rerun by reviewer.
 
 ### S7 — Resolve selected workspace links from canonical project inventories
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/contracts/interfaces/core/client-consumption.interface.ts`, `tests/core/client-project-links.spec.ts`.
 - **Gate**: scoped core and CLI regression tests plus `bun run validate`
 - **Acceptance**:
   - One request can compare several frontends and several explicitly selected backend services. Real paths and canonical service IDs identify links and preserve their order.
   - Each distinct frontend root is read once with the selected aliases, and each backend root generates its inventory once. Source reads close their indexes and leave project files and sessions untouched.
   - Unknown and duplicate selections fail explicitly. The existing single-frontend report and CLI, MCP and Application API output retain their format.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-5.6-luna
+- review-log: approved by openai-gpt-5.6-luna — verified at b35ad3528cae, validate exit 0 and tests 44/44 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-project-links-focused-1.log (44 scoped tests) and /tmp/tanit-client-project-links-work.json; tests cover symlinked physical-root cachi… (2) Reused /tmp/tanit-client-project-links-focused-2.log: exact before/after Vue+OpenAPI JSON is identical; focused fixture verifies host-qualified selection, ambi… (3) Reused /tmp/tanit-client-project-links-focused-0.log, focused-3.log (6 MCP tests), canonical HTTP/stdio parity receipts, and final proof: ambient symlink type … — Independent approval of S7 at exact merged PR #247 head b35ad3528cae8dd516bb56967f8d4a3b2b34807a. Reused supplied 44 scoped + 6 MCP tests, real HTTP/stdio parity, identical legacy fixture, and final ambient type-fix proof; no tests rerun.
 
 ### S8 — Expose selectable project links in the Application API and app
 - **Status**: pending
