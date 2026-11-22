@@ -22,6 +22,35 @@ export type IClientBackendOperation = Readonly<
   { readonly id?: string; readonly location?: ILocation }
 >;
 
+/** An explicitly selected backend service and its HTTP route inventory. */
+export interface ISelectedClientBackend {
+  readonly id: string;
+  /** Canonical URL.host (hostname and any explicit non-default port). */
+  readonly host?: string;
+  readonly operations: readonly IClientBackendOperation[];
+}
+
+export interface IClientLinkCandidate {
+  readonly backendId: string;
+  readonly operation: IClientBackendOperation;
+}
+
+export interface IClientLinkedCall {
+  readonly usage: IClientUsage;
+  readonly status: NonNullable<IClientUsage["correlation"]>["status"];
+  /** Set when the call matches or is attributable to exactly one selected backend. */
+  readonly backendId?: string;
+  readonly candidates: readonly IClientLinkCandidate[];
+}
+
+export interface IClientLinkComparisonResult {
+  readonly calls: readonly IClientLinkedCall[];
+  readonly backends: readonly {
+    readonly id: string;
+    readonly operationsWithoutConfirmedConsumer: readonly IClientBackendOperation[];
+  }[];
+}
+
 export type ClientUnresolvedReason =
   | "shadowed-client"
   | "unresolved-alias"

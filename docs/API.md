@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 462 símbolos en 187 módulos.
+> 465 símbolos en 188 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -673,6 +673,26 @@ helper is the natural place to extend them.
 
 ```ts
 export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst">, options: IClientConsumptionOptions =
+```
+
+### `packages/core/discovery/client-correlation.helper.ts`
+
+#### `normalizeClientUrl`
+
+```ts
+export function normalizeClientUrl(raw: string):
+```
+
+#### `correlateClientUsages`
+
+```ts
+export function correlateClientUsages(usages: readonly IClientUsage[], backend: readonly IClientBackendOperation[])
+```
+
+#### `correlateClientUsageLinks`
+
+```ts
+export function correlateClientUsageLinks( usages: readonly IClientUsage[], backends: readonly ISelectedClientBackend[], ): IClientLinkComparisonResult
 ```
 
 ### `packages/core/discovery/client-usage.service.ts`
