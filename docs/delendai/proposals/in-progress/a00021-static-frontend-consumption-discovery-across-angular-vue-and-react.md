@@ -2,10 +2,14 @@
 id: a00021
 title: "Static frontend consumption discovery across Angular, Vue, and React"
 kind: audit
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-21
+last-transition-id: 309b88f5-fbf1-46dd-a80a-a2486ebb5dc9
+last-correlation-id: 309b88f5-fbf1-46dd-a80a-a2486ebb5dc9
+last-transition-from: ready
+last-transition-at: 2026-11-22T01:06:20.840Z
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
