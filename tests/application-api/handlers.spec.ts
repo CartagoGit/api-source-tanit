@@ -123,6 +123,7 @@ describe("buildRegistry()", () => {
     const reg = buildRegistry();
     const expected = [
       "open-project",
+      "client-usage",
       "snapshot",
       "list-endpoints",
       "get-endpoint",

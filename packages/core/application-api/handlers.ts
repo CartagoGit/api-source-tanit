@@ -18,6 +18,7 @@
 import type { IHandler } from "./dispatcher.js";
 
 import { createOpenProjectHandler } from "./open-project.handler.js";
+import { createClientUsageHandler } from "./client-usage.handler.js";
 import { createSnapshotHandlers } from "./snapshot.handlers.js";
 import { createListEndpointsHandler } from "./list-endpoints.handler.js";
 import { createGetEndpointHandler } from "./get-endpoint.handler.js";
@@ -69,6 +70,7 @@ export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unkno
   const watch = createWatchHandlers();
   const map: Record<string, IHandler<unknown, unknown>> = {
     "open-project": widenHandler(createOpenProjectHandler()),
+    "client-usage": widenHandler(createClientUsageHandler()),
     "snapshot": widenHandler(snap.current),
     "list-endpoints": widenHandler(createListEndpointsHandler()),
     "get-endpoint": widenHandler(createGetEndpointHandler()),

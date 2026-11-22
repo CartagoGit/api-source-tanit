@@ -1,16 +1,11 @@
 import { z } from "zod";
-import type { IClientAlias, IClientConsumptionResult } from "../../../../../packages/contracts/interfaces/core/client-consumption.interface";
+import { ClientAnalysisInputSchema } from "../../../../../packages/contracts/constants/core/client-consumption.constant.js";
+import type { IClientConsumptionResult } from "../../../../../packages/contracts/interfaces/core/client-consumption.interface";
 
-const ClientAliasSchema = z.strictObject({
-  receiver: z.string().trim().min(1),
-  source: z.string().min(1).optional(),
-  kind: z.enum(["http", "unsupported"]).optional(),
-}) satisfies z.ZodType<IClientAlias>;
-
-export const ClientUsageInputSchema = z.strictObject({
-  projectRoot: z.string().min(1).optional().describe("Proyecto cliente dentro del workspace. Por defecto se usa el proyecto configurado."),
-  backendRoot: z.string().min(1).optional().describe("Proyecto backend dentro del workspace para correlacionar operaciones."),
-  aliases: z.array(ClientAliasSchema).optional().describe("Receptores HTTP, wrappers o SDK declarados explícitamente."),
+export const ClientUsageInputSchema = ClientAnalysisInputSchema.extend({
+  projectRoot: ClientAnalysisInputSchema.shape.projectRoot.optional().describe("Proyecto cliente dentro del workspace. Por defecto se usa el proyecto configurado."),
+  backendRoot: ClientAnalysisInputSchema.shape.backendRoot.describe("Proyecto backend dentro del workspace para correlacionar operaciones."),
+  aliases: ClientAnalysisInputSchema.shape.aliases.describe("Receptores HTTP, wrappers o SDK declarados explícitamente."),
 });
 
 const LocationSchema = z.strictObject({

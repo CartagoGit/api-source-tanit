@@ -110,17 +110,26 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-reviewer: openai-gpt-6-luna
 - review-log: approved by openai-gpt-6-luna — verified at c0f443fa43cb, validate exit 0 and tests 199/199 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed innerLoc.start.offset and offsetToPosition remapping; reused the 35 focused contract/core checks and /tmp/tanit-vue-proof.json. (2) Reviewed parseMode=sfc root-only extraction, parse error gate and duplicate/src/lang checks; reused 35 focused contract/core checks and exact-head CI. (3) Reused exact-head CI and reported 6 CLI plus 158 integration tests, /tmp/tanit-vue-wire.out structured parity, /tmp/tanit-vue-windows-smoke.log compiled Window… — Independent approval of a00021 S3 at PR #237 head c0f443fa43cb08b71b7f336b927bd2a348cc80ff, merged as develop 321ddf33; includes parser relocation follow-up 7f8a95eb. Reviewed compiler-dom parseMode=sfc top-level extraction, innerLoc source offsets, location remapping, and malformed/duplicate/external/unsupported-block rejection. S4 remains pending. Reused evidence only; no tests rerun. Exact-head CI passed (GitHub run cited here; no structured runId because it is not journaled in this checkout). Reused 35/35 focused contract/core, 6 CLI and 158 integration tests, plus /tmp/tanit-vue-proof.json, /tmp/tanit-vue-wire.out and /tmp/tanit-vue-windows-smoke.log receipts.
 
-### S4 — Remaining framework adapters, application view, and exporter sequencing
+### S4 — Read-only client usage in the Application API
 - **Status**: pending
-- **Files**: adapter and UI/export files to be selected after S1/S2 evidence.
+- **Files**: `packages/contracts/constants/core/client-consumption.constant.ts`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/core/application-api/client-usage.handler.ts`, `tests/application-api/client-usage.spec.ts`.
+- **Gate**: scoped Application API and MCP tests plus `bun run validate`
+- **Acceptance**:
+  - Dispatching `client-usage` returns the canonical analyzer's complete result for frontend discovery with and without an explicit backend.
+  - The handler validates absolute roots, reports input and execution errors through the API envelope, and neither opens sessions nor writes project files.
+  - The API and MCP share alias validation, and the parity manifest records GUI integration as pending.
+
+### S5 — Framework adapters, application view, and exporter sequencing
+- **Status**: pending
+- **Files**: adapter and UI/export files to be selected from the analysis and Application API evidence.
 - **Gate**: scoped tests plus `bun run validate`
 
-Sequence adapters after the generic engine: (a) React TSX/JSX call sites, which reuse the
-existing parser; (b) Angular TypeScript plus a separate Angular-template extractor; (c)
-Vue SFC mixed script scopes and template bindings. Only after the
-read-only result is stable should the Application API expose a client-usage view and an
-exporter optionally add consumer metadata. Export output must remain backward compatible
-and client analysis must remain optional.
+Continue after the generic TS/JS/JSX/TSX and Vue inline-script support. Plan an
+Angular-template extractor plus Vue mixed script scopes and template bindings.
+Use the read-only Application API to implement project selection and the client
+usage report. Sequence the pairwise selector, directional checks and optional
+exporter consumer metadata after that first view. Export output must remain
+backward compatible and client analysis must remain optional.
 
 ### Pairwise comparison and selection boundary
 
