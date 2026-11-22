@@ -14,6 +14,7 @@ shipped-in:
   - "34f558b81e2271078f388a248649f1450f8f08cf"
   - "6f466445e63e701e3095cb6b077d24070b011cc2"
   - "c0f443fa43cb08b71b7f336b927bd2a348cc80ff"
+  - "b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -111,15 +112,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at c0f443fa43cb, validate exit 0 and tests 199/199 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed innerLoc.start.offset and offsetToPosition remapping; reused the 35 focused contract/core checks and /tmp/tanit-vue-proof.json. (2) Reviewed parseMode=sfc root-only extraction, parse error gate and duplicate/src/lang checks; reused 35 focused contract/core checks and exact-head CI. (3) Reused exact-head CI and reported 6 CLI plus 158 integration tests, /tmp/tanit-vue-wire.out structured parity, /tmp/tanit-vue-windows-smoke.log compiled Window… — Independent approval of a00021 S3 at PR #237 head c0f443fa43cb08b71b7f336b927bd2a348cc80ff, merged as develop 321ddf33; includes parser relocation follow-up 7f8a95eb. Reviewed compiler-dom parseMode=sfc top-level extraction, innerLoc source offsets, location remapping, and malformed/duplicate/external/unsupported-block rejection. S4 remains pending. Reused evidence only; no tests rerun. Exact-head CI passed (GitHub run cited here; no structured runId because it is not journaled in this checkout). Reused 35/35 focused contract/core, 6 CLI and 158 integration tests, plus /tmp/tanit-vue-proof.json, /tmp/tanit-vue-wire.out and /tmp/tanit-vue-windows-smoke.log receipts.
 
 ### S4 — Read-only client usage in the Application API
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/contracts/constants/core/client-consumption.constant.ts`, `packages/contracts/constants/core/application-api.constant.ts`, `packages/contracts/interfaces/core/application-api.interface.ts`, `packages/core/application-api/client-usage.handler.ts`, `tests/application-api/client-usage.spec.ts`.
 - **Gate**: scoped Application API and MCP tests plus `bun run validate`
 - **Acceptance**:
   - Dispatching `client-usage` returns the canonical analyzer's complete result for frontend discovery with and without an explicit backend.
   - The handler validates absolute roots, reports input and execution errors through the API envelope, and neither opens sessions nor writes project files.
   - The API and MCP share alias validation, and the parity manifest records GUI integration as pending.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at b31ac1028f91, validate exit 0 and tests 208/208 claimed, no recorded run cited; acceptance 3/3: (1) The API handler returns analyzeClientProjects directly; focused API tests compare exact results to the shared analyzer with and without backendRoot. Reused the… (2) Reviewed absolute-path and orchestrator checks plus dispatcher error mapping; tests assert invalid inputs, null sessions and unchanged file tree/source. HTTP r… (3) API and MCP use the shared ClientAnalysisInputSchema; parity row lists client-usage in API, no app operation, and partial status with project selection/report … — Independent approval of a00021 S4 at PR #239 exact head b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491, merged into develop 88151ec9eeff6a99c5436bb5bc7f0d53373442dd. Reused evidence; no tests rerun. GitHub CI run 45011594729 and ci-summary succeeded. Reused 50/50 focused Application API checks and 158/158 pinned MCP integration checks; /tmp/tanit-app-client-work.json records the work, /tmp/tanit-app-client-wire.json confirms HTTP report parity/token rejection/relative-path rejection, /tmp/tanit-app-client-stdio.json confirms stdio result parity, and /tmp/tanit-app-client-integration.log records the pinned suite. No structured runId: the run is cited here, not claimed as present in the local test journal.
 
 ### S5 — Framework adapters, application view, and exporter sequencing
 - **Status**: pending
