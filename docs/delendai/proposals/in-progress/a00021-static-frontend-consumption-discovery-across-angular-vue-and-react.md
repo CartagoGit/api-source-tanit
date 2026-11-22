@@ -200,8 +200,8 @@ unavailable response/request types remain explicit unresolved evidence.
   guessed URL or operation is emitted.
 - Known calls correlate against discovered operations by normalized method/path, while
   unmatched calls and unconsumed operations are separately counted.
-- Angular templates and Vue SFCs are reported as unsupported/unresolved until their
-  adapters land; their absence does not make the generic scan fail.
+- Angular templates, Vue template bindings and mixed Vue script scopes retain diagnostics
+  until their adapters land. Their absence does not make the generic scan fail.
 - CLI and MCP use the same engine and structured contract; `generate` and existing
   exporters show no observable regression before exporter integration is deliberately enabled.
 - Every result carries evidence sufficient to explain the match or non-match, including

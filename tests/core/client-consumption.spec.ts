@@ -205,6 +205,8 @@ describe("client consumption", () => {
     ['<script setup src="./external.ts"></script>', "unsupported-script"],
     ['<script lang="coffee">fetch("/coffee")</script>', "unsupported-script"],
     ['<script lang>fetch("/invalid-lang")</script>', "unsupported-script"],
+    ['<script>fetch("/first")</script><script>fetch("/second")</script>', "parse-failed"],
+    ['<script setup>fetch("/first")</script><script setup>fetch("/second")</script>', "parse-failed"],
     ['<script>fetch("/unclosed")', "parse-failed"],
     ['<script>fetch("/invalid"); const =</script>', "parse-failed"],
     ['<script>const x = 1; const x = 2; fetch("/recovered");</script>', "parse-failed"],
