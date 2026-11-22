@@ -78,7 +78,7 @@ than a false match.
 - review-log: approved by openai-gpt-6-luna — verified at 34f558b81e22, validate exit 0 and tests 32/32 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed scanClientConsumption, AST cache reuse and parser fallback at PR #233 head 34f558b81e2271078f388a248649f1450f8f08cf; GitHub CI validation run 44970766… (2) Reviewed typed Babel traversal, binding shadowing, fetch/Axios/configured alias recognition, static strings, option/method handling, and parse diagnostics at m… (3) Reviewed normalized URL host/path behavior and correlation candidate matching/ambiguity in packages/core/discovery/client-consumption.service.ts at merged PR #…
 
 ### S2 — CLI and MCP read-only surface
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/cli/commands/client-usage.script.ts` (planning target),
   `integrations/delendai/src/lib/tools/client-usage.tool.ts` (planning target), contracts
   and command tests.
@@ -89,6 +89,8 @@ the usage records, matched/unmatched operation counts, unresolved reasons, and d
 Do not alter `generate`, collection files, or persisted project state in this slice. The
 CLI and MCP entry points must call the same shared engine and return structured data rather
 than parse human output.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S3 — Framework adapters, application view, and exporter sequencing
 - **Status**: pending

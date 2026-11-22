@@ -39,6 +39,7 @@ El host se declara una vez en `.mcp.json` (sincronizado a
 | `tanit_list` | Lista las rutas detectadas por framework. |
 | `tanit_stats` | Métricas del proyecto (rutas, frameworks, cobertura). |
 | `tanit_scan` | Muestra qué ve el discovery sin generar nada. |
+| `delendai_tanit_client_usage` | Analiza llamadas HTTP del frontend y, con `backendRoot`, las compara con un catálogo de operaciones. Devuelve el mismo informe estructurado que `apisrc client-usage --format json`. Las carpetas deben estar dentro del workspace del servidor. |
 | `tanit_summary` | El proyecto ya interpretado (framework, config, salud). |
 | `tanit_test` | Ejecuta la batería de tests del CLI contra el proyecto. |
 | `tanit_push` | Publica la colección (el único que sale de la máquina). |
@@ -56,9 +57,9 @@ Cada tool sigue el contrato estándar de delendai:
   para utilidades puras.
 - **SOLID**: cada tool recibe sus dependencias vía `IMcpPluginContext`,
   nunca toca `process.cwd()` ni `process.env` directamente.
-- **Agnóstico**: este plugin NO importa el código del repo en runtime.
-  Solo define herramientas que invocan al CLI
-  (`packages/cli/cli.script.ts`) vía spawn.
+- **Agnóstico**. Tanit funciona por separado y este plugin es opcional.
+  Las herramientas reutilizan servicios compartidos. Las que necesitan
+  ejecutar un proceso usan el CLI como entrada.
 
 ## Runtime de desarrollo fijado a 0.3.0
 

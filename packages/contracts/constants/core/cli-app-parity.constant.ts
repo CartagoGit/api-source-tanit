@@ -124,6 +124,14 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
       "over a list the client had made up.",
   },
   {
+    capability: "client-usage",
+    cli: ["client-usage"],
+    api: [],
+    app: [],
+    status: "gap",
+    note: "Application API and app access are planned in a00021 S3.",
+  },
+  {
     capability: "drift",
     cli: ["check"],
     api: ["check"],

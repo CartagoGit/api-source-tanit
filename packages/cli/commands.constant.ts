@@ -51,6 +51,10 @@ export const COMMANDS: Record<string, ICommand> = {
     summary: "List the detected endpoints, grouped by folder",
     load: () => import("./commands/list-endpoints.script.js"),
   },
+  "client-usage": {
+    summary: "Report observed frontend API calls and compare against an optional backend",
+    load: () => import("./commands/client-usage.script.js"),
+  },
   stats: {
     summary: "Endpoint counts per HTTP method and folder",
     load: () => import("./commands/stats.script.js"),

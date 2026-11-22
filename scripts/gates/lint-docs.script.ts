@@ -34,6 +34,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
 import { PACKAGE_JSON, REPO_ROOT } from "../helpers/root.helper.js";
+import { COMMANDS } from "../../packages/cli/commands.constant.js";
 import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Carpetas de documentación que se revisan. */
@@ -437,7 +438,7 @@ async function checkCommandsDocumented(
   // Solo la documentación de usuario: `docs/` y el README. Las notas
   // para agentes de `.github/` no cuentan — no las lee quien instala
   // la herramienta.
-  const sources = ["README.md", "docs/INSTALL.md", "docs/FRAMEWORKS.md", "docs/POSTMAN.md"];
+  const sources = ["README.md", "docs/CLI.md", "docs/INSTALL.md", "docs/FRAMEWORKS.md", "docs/POSTMAN.md"];
   const texts: string[] = [];
   for (const rel of sources) {
     try {
@@ -467,13 +468,7 @@ async function main(): Promise<number> {
 
   // Los comandos del CLI salen de su propio registro, no de una lista
   // a mano: una lista paralela se queda vieja igual que la doc.
-  const cliSource = await readFile(
-    join(REPO_ROOT, "packages", "cli", "commands.constant.ts"),
-    "utf8",
-  );
-  const commands = new Set(
-    [...cliSource.matchAll(/^\s{2}(\w[\w-]*):\s*\{/gm)].map((match) => match[1]!),
-  );
+  const commands = new Set(Object.keys(COMMANDS));
 
   const files = new Set<string>();
   for (const root of DOC_ROOTS) {

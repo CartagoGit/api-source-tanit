@@ -67,8 +67,8 @@ The table below is the map, as `bun run lint:cli-app-parity` reads it.
 The gate prints the same counts on every build:
 
 ```text
-lint:cli-app-parity — 12 comando(s) del CLI, 20 handler(s) en la API, 23 operación(es) pedidas por la app.
-  Paridad: 10 completa(s), 2 parcial(es), 0 con hueco(s).
+lint:cli-app-parity — 13 comando(s) del CLI, 28 handler(s) en la API, 26 operación(es) pedidas por la app.
+  Paridad: 10 completa(s), 2 parcial(es), 1 con hueco(s).
 ```
 
 | Capability | CLI | Application API | Status |
@@ -79,6 +79,7 @@ lint:cli-app-parity — 12 comando(s) del CLI, 20 handler(s) en la API, 23 opera
 | validate | `validate` | `validate` | covered |
 | push | `push` | `push` | covered |
 | stats | `stats` | `stats` | covered |
+| client consumption | `client-usage` | — | app integration planned in a00021 S3 |
 | watch | `watch` | `watch`, `cancel` | covered |
 | history | `history` | `history` | partial |
 | projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
@@ -170,6 +171,24 @@ two implementations that agree by accident.
 | Push | `apisrc push --project-root <path> --workspace <id>` | Collection/environment actions; keys are never written to disk or diagnostics. The app sends the key it has saved, and the key does not come back. |
 | Stats | `apisrc stats --project-root <path>` | Counts per method and per zone. The app shows the same numbers, because there is only one function that counts. |
 | Live | `apisrc watch --project-root <path>` | Watches source changes; auto-export is opt-in and off by default. |
+
+## Client API consumption
+
+`client-usage` reads frontend source and reports recognized HTTP calls,
+including their source locations and any evidence that could not be resolved.
+With `--backend-root`, Tanit discovers the HTTP operations of one backend
+project in memory and reports matched, missing, ambiguous, and unknown calls.
+Operations without a confirmed caller are listed separately.
+
+```bash
+apisrc client-usage --project-root ./frontend
+apisrc client-usage --project-root ./frontend --backend-root ./api --format json
+```
+
+Use `--client-alias http=@app/api-client` for a client imported as `http`
+from that module. Repeat the flag for additional aliases. The JSON output
+uses the same report as the DelendAI MCP tool. Analysis leaves collection
+files and project state untouched.
 
 ## Durable state diagnostics
 
