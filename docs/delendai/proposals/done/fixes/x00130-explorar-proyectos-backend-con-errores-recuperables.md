@@ -2,14 +2,14 @@
 id: x00130
 title: "Explorar proyectos backend con errores recuperables"
 kind: fix
-status: review
+status: done
 type: proposal
 track: ux
 date: 2026-11-22
-last-transition-id: 999fbfd2-a998-488a-8e46-c0e0e0180694
-last-correlation-id: 999fbfd2-a998-488a-8e46-c0e0e0180694
-last-transition-from: in-progress
-last-transition-at: 2026-11-22T00:23:56.857Z
+last-transition-id: bc8f135b-dcac-46ea-a7ab-0ee81599139a
+last-correlation-id: bc8f135b-dcac-46ea-a7ab-0ee81599139a
+last-transition-from: review
+last-transition-at: 2026-11-22T00:39:49.026Z
 shipped-in:
   - "0d211bd064221ee796cde34bcb34b3a5025500fe"
 ---
