@@ -602,7 +602,8 @@ async function buildForService(
     specs,
     routes: service.endpoints,
     config: localConfig,
-    match: discovery.match,
+    // Keep the project match for the synthetic aggregate and the undetected fallback.
+    match: combinedComparison || discovery.match === null ? discovery.match : service.match,
     // x00024: we propagate the descriptor's serviceId so the multi-
     // service branch of `generateCollection()` can report which
     // services it detected when constructing the error. Single-

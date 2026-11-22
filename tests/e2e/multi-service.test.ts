@@ -72,9 +72,9 @@ function methodsByUri(collection: { item: ReadonlyArray<unknown> }): Map<string,
 }
 
 function findResultByServiceId(
-  results: ReadonlyArray<{ readonly serviceId?: string; readonly collection: { item: ReadonlyArray<unknown> } }>,
+  results: ReadonlyArray<IGenerationResult>,
   needle: RegExp,
-): { readonly serviceId?: string; readonly collection: { item: ReadonlyArray<unknown> } } | undefined {
+): IGenerationResult | undefined {
   return results.find((r) => needle.test(r.serviceId ?? ""));
 }
 
@@ -221,6 +221,8 @@ describe("c00010 S3 — multi-service monorepo (NestJS users-api + FastAPI billi
     const billingResult = findResultByServiceId(results, /billing|invoices/i);
     expect(usersResult, "users-api result exists").toBeDefined();
     expect(billingResult, "billing-api result exists").toBeDefined();
+    expect(usersResult?.match?.framework).toBe("nestjs");
+    expect(billingResult?.match?.framework).toBe("fastapi");
   });
 
   test("cada servicio expone SOLO sus rutas; los prefijos no se cruzan", async () => {
