@@ -34,9 +34,10 @@ const WRITE_ROOTS: readonly string[] = [
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
 
-/** The 4 tools the plugin promises, by id. */
+/** The tools the plugin promises, by id. */
 const EXPECTED_TOOLS = [
   "check",
+  "client_usage",
   "generate",
   "init",
   "list",
@@ -74,6 +75,7 @@ describe("arranque del plugin", () => {
     expect(byId.get("test")?.effects).toContain("spawn");
     // `summary` only inspects: it must not declare effects.
     expect(byId.get("summary")?.effects ?? []).toEqual([]);
+    expect(byId.get("client_usage")?.effects).toEqual([]);
   });
 
   /**

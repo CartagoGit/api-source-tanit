@@ -1,6 +1,6 @@
 {
   "name": "tanit-delendai-integration",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Integraci\u00f3n de Tanit con Delendai (MCP). Expone Tanit como tools de Delendai. NO es parte del producto Tanit: el CLI, el binario y la UI de Tanit funcionan sin este paquete. Aqu\u00ed vive por conveniencia del usuario.",
