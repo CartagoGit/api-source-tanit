@@ -154,17 +154,25 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-reviewer: openai-gpt-6-luna
 - review-log: approved by openai-gpt-6-luna — verified at 8e1d6ac91e44, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed client-correlation.helper.ts: exact selected backend host is preferred; operation hosts are filtered; duplicate operation candidates remain ambiguous … (2) Reviewed correlateClientUsageLinks eligibility and no-match branches: missing is emitted only for one eligible selected service; zero or multiple possible serv… (3) Only a unique candidate adds its operation index to consumed; candidate and unconsumed operation arrays preserve input order; linked calls retain the original … — Independent initial S6 review of exact source PR #245 tip 8e1d6ac91e447700743d2d24dd1117a428cc5edd, merged to develop at 4005864fadebcfb5ae56261959fa8156979ea3ac. Correlation review found explicit selected-host prioritization, stable selected-service/catalog candidate order, and unique-only consumption. Ambiguous candidates remain unconsumed; missing is attributed only when exactly one eligible selected service exists; otherwise unclear calls remain unknown. The extracted single-catalog correlator preserves the previous shape and behavior. Reused focused receipts /tmp/tanit-client-links-focused-0.log through focused-3.log (33 core/CLI and 6 MCP tests), real HTTP and stdio parity/auth/path receipts, and CLI Vue/OpenAPI legacy baseline/after JSON (byte-identical). Proof /tmp/tanit-client-links-proof.json says proved=true. Exact-head GitHub CI run 45026495225 passed including ci-summary. No tests rerun by reviewer.
 
-### S7 — Reuse project and service inventories for selected links
+### S7 — Resolve selected workspace links from canonical project inventories
 - **Status**: pending
-- **Files**: project inventory and Application API files to be selected from S6 evidence.
-- **Gate**: scoped tests plus `bun run validate`
+- **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/contracts/interfaces/core/client-consumption.interface.ts`, `tests/core/client-project-links.spec.ts`.
+- **Gate**: scoped core and CLI regression tests plus `bun run validate`
+- **Acceptance**:
+  - One request can compare several frontends and several explicitly selected backend services. Real paths and canonical service IDs identify links and preserve their order.
+  - Each distinct frontend root is read once with the selected aliases, and each backend root generates its inventory once. Source reads close their indexes and leave project files and sessions untouched.
+  - Unknown and duplicate selections fail explicitly. The existing single-frontend report and CLI, MCP and Application API output retain their format.
 
-Resolve explicitly chosen frontend roots and backend service identities from the
-canonical inventories. Analyze each distinct root once and keep manual selection
-available for mixed-role workspaces. Surface the selected links and their reports
-through the shared Application API, CLI and desktop/web UI.
+### S8 — Expose selectable project links in the Application API and app
+- **Status**: pending
+- **Files**: Application API and app selection files to be selected from S7 evidence.
+- **Gate**: scoped API and app tests, empirical browser report and `bun run validate`
 
-### S8 — Framework adapters, directional checks and exporter sequencing
+Offer canonical service and workspace choices, keep manual selection available
+for mixed-role workspaces, and display reports for exactly the links the user
+selected. Share the result through the Application API, CLI and desktop/web UI.
+
+### S9 — Framework adapters, directional checks and exporter sequencing
 - **Status**: pending
 - **Files**: adapter, type-comparison and exporter files to be selected from the report evidence.
 - **Gate**: scoped tests plus `bun run validate`

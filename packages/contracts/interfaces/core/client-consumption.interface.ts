@@ -51,6 +51,35 @@ export interface IClientLinkComparisonResult {
   }[];
 }
 
+/** A workspace comparison between explicitly declared frontends and backend services. */
+export interface IClientProjectLinksInput {
+  readonly frontends: readonly {
+    readonly root: string;
+    readonly aliases?: readonly IClientAlias[];
+  }[];
+  readonly links: readonly {
+    readonly frontendRoot: string;
+    readonly backendRoot: string;
+    readonly serviceId: string;
+    /** Optional canonical URL.host of the selected backend. */
+    readonly host?: string;
+  }[];
+}
+
+export interface IClientProjectLinksReport {
+  readonly frontends: readonly {
+    readonly root: string;
+    readonly diagnostics: IClientConsumptionResult["diagnostics"];
+    readonly calls: IClientLinkComparisonResult["calls"];
+    readonly backends: readonly {
+      readonly id: string;
+      readonly root: string;
+      readonly serviceId: string;
+      readonly operationsWithoutConfirmedConsumer: readonly IClientBackendOperation[];
+    }[];
+  }[];
+}
+
 export type ClientUnresolvedReason =
   | "shadowed-client"
   | "unresolved-alias"
