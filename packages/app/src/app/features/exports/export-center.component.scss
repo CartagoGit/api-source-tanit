@@ -1,0 +1,15 @@
+.center { max-inline-size: 64rem; }
+header, .destination {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+h2 { margin-block-end: var(--space-1); font-size: 1.125rem; }
+p { color: var(--color-muted); }
+.eyebrow { color: var(--color-muted); font-size: .8rem; font-weight: 650; letter-spacing: .06em; }
+.destination > div { min-inline-size: 0; }
+code { overflow-wrap: anywhere; }
+.check { display: flex; align-items: center; gap: var(--space-2); }
+.warning, .error { color: var(--color-danger); }
+@media (max-width: 640px) { header, .destination { display: grid; } }

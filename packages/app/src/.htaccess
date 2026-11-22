@@ -1,0 +1,7 @@
+# Apache 2.4. Serve SPA navigations while preserving API and asset responses.
+RewriteEngine On
+RewriteRule ^(?:api|assets|health)(?:/|$) - [END]
+RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^[a-z][a-z-]*/?$ index.html [END]

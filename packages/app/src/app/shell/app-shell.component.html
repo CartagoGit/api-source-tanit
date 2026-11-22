@@ -1,0 +1,47 @@
+<div class="shell">
+  <tanit-sidebar [activeId]="activeSection()" [projectOpen]="project.isOpen()" (select)="go($event)" />
+  <main class="content">
+    <header class="toolbar">
+      <div class="workspace-context">
+        @if (project.isOpen()) { <strong>{{ project.projectName() }}</strong> }
+        <span>{{ sectionLabel() }}</span>
+      </div>
+      <div class="toolbar-actions">
+        @if (project.isOpen()) {
+          <button type="button" class="tanit-button" (click)="showProjectPicker()">{{ i18n.translate("home.open") }}</button>
+        }
+        <button type="button" class="tanit-button commands-button" aria-keyshortcuts="Control+K Meta+K"
+          (click)="paletteOpen.set(true)">
+          {{ i18n.translate("palette.placeholder") }}<kbd>{{ commandShortcut }}</kbd>
+        </button>
+      </div>
+    </header>
+    <div class="view" [class.native-view-motion]="nativeMotion()">
+      @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
+      @for (section of [visibleSection()]; track section) {
+        <div class="page-view" animate.enter="motion-view">
+          @switch (section) {
+            @case ('overview') {
+              @if (activeSection() !== 'overview') { <p class="missing-project">{{ i18n.translate("home.empty") }}</p> }
+              <tanit-home (opened)="projectOpened()" />
+            }
+            @case ('settings') { <tanit-settings /> }
+            @case ('help') { <tanit-help /> }
+            @case ('endpoints') { <tanit-endpoints-list /> }
+            @case ('exports') { <tanit-export-center /> }
+            @case ('services') { <tanit-services-list /> }
+            @case ('history') { <tanit-history-list /> }
+            @case ('live') { <tanit-live-toggle /> }
+            @case ('check') { <tanit-check /> }
+            @case ('sync') { <tanit-sync /> }
+            @case ('validate') { <tanit-validate /> }
+            @case ('push') { <tanit-push-to-postman /> }
+            @case ('stats') { <tanit-stats /> }
+            @case ('diagnostics') { <tanit-diagnostics /> }
+          }
+        </div>
+      }
+    </div>
+  </main>
+  <tanit-command-palette [open]="paletteOpen()" (close)="paletteOpen.set(false)" (chosen)="runCommand($event)" />
+</div>

@@ -1,0 +1,9 @@
+h1 { overflow-wrap: anywhere; }
+.home-grid { display: grid; gap: var(--space-4); align-items: start; }
+.home-grid.has-recents { grid-template-columns: minmax(0, 1.65fr) minmax(240px, 1fr); }
+tanit-recent-projects { display: block; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin: 0; }
+dt { color: var(--color-muted); font-size: 13px; }
+dd { margin: var(--space-1) 0 0; font-size: 21px; font-weight: 650; overflow-wrap: anywhere; }
+@media (max-width: 920px) { .home-grid.has-recents { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .metrics { grid-template-columns: 1fr; } }

@@ -1,0 +1,98 @@
+.settings { max-width: 56rem;
+}
+
+.panel-heading, .language, .key { display: grid; gap: var(--space-2); }
+
+
+.panel-heading p { color: var(--color-muted); }
+
+.panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.panel-heading h3 { font-size: 1.125rem; }
+.language, .key { max-inline-size: 24rem; }
+label, legend { font-weight: 600; }
+
+
+fieldset { container-type: inline-size; margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+legend { margin-block-end: var(--space-3); padding: 0; }
+
+.themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@container (min-width: 30rem) {
+  .themes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container (min-width: 47rem) {
+  .themes { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.theme-choice {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.theme-choice:hover { border-color: var(--color-muted); background: var(--color-surface); }
+.theme-choice:has(input:checked) { border-color: var(--color-focus); }
+.theme-choice:has(:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .theme-choice { transition: border-color 145ms var(--motion-standard), background-color 145ms var(--motion-standard); }
+}
+
+.swatch {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  height: 2.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.swatch-nav { background: var(--color-nav-bg); border-radius: 3px; }
+.swatch-panel {
+  display: grid;
+  align-items: end;
+  padding: var(--space-1);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+.swatch-accent {
+  width: 55%;
+  height: var(--space-1);
+  background: var(--color-action-bg);
+  border-radius: 2px;
+}
+
+.choice-label, .checkbox, .actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+input[type="radio"], input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--color-focus);
+}
+
+.actions { flex-wrap: wrap; }
+.feedback { overflow-wrap: anywhere; }
+.error { color: var(--color-danger); }
