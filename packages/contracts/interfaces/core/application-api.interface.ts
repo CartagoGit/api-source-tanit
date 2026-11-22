@@ -5,6 +5,7 @@ import type {
   BrowseInputSchema,
   CancelInputSchema,
   CheckInputSchema,
+  ClientCandidatesInputSchema,
   ClientUsageInputSchema,
   CloseInputSchema,
   DryRunInputSchema,
@@ -36,7 +37,7 @@ import type {
   ValidateInputSchema,
   WatchInputSchema,
 } from "../../constants/core/application-api.constant.js";
-import type { IClientConsumptionResult } from "./client-consumption.interface.js";
+import type { ClientProjectCandidates, IClientConsumptionResult, IClientProjectLinksInput, IClientProjectLinksReport } from "./client-consumption.interface.js";
 import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { IBrowseListing } from "./browse.interface.js";
 import type { IExporterDiagnostic } from "./exporter.interface.js";
@@ -79,6 +80,10 @@ export type ApiResult<T> =
 export type OpenProjectInput = z.infer<typeof OpenProjectInputSchema>;
 export type ClientUsageInput = z.infer<typeof ClientUsageInputSchema>;
 export type ClientUsageOutput = IClientConsumptionResult;
+export type ClientCandidatesInput = z.infer<typeof ClientCandidatesInputSchema>;
+export type ClientCandidatesOutput = ClientProjectCandidates;
+export type ClientLinksInput = IClientProjectLinksInput;
+export type ClientLinksOutput = IClientProjectLinksReport;
 export type SnapshotInput = z.infer<typeof SnapshotInputSchema>;
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 export type GetEndpointInput = z.infer<typeof GetEndpointInputSchema>;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ClientAnalysisInputSchema } from "./client-consumption.constant.js";
+import { ClientAnalysisInputSchema, ClientProjectCandidatesInputSchema, ClientProjectLinksInputSchema } from "./client-consumption.constant.js";
 import { ContractDocumentationUrlSchema, ContractEvidenceReportSchema } from "./contract-evidence.constant.js";
 
 export const ProjectRootSchema = z.string().min(1, "projectRoot must not be empty");
@@ -13,6 +13,8 @@ export const OpenProjectInputSchema = z.object({
   collectionName: z.string().min(1).optional(),
 });
 export const ClientUsageInputSchema = ClientAnalysisInputSchema;
+export const ClientCandidatesInputSchema = ClientProjectCandidatesInputSchema;
+export const ClientLinksInputSchema = ClientProjectLinksInputSchema;
 export const SnapshotInputSchema = z.object({ projectRoot: ProjectRootSchema });
 export const ListEndpointsInputSchema = z.object({
   projectRoot: ProjectRootSchema,
@@ -287,7 +289,7 @@ export const ProjectEntrySchema = z.object({
 });
 
 export const HANDLER_NAMES = [
-  "open-project", "client-usage", "snapshot", "list-endpoints", "get-endpoint",
+  "open-project", "client-usage", "client-candidates", "client-links", "snapshot", "list-endpoints", "get-endpoint",
   "get-schema", "read-contract-artifact", "read-remote-contract", "list-services", "service-detail", "dry-run", "export",
   "history", "history-list", "history-diff", "history-compare-config",
   "history-re-export", "history-restore",
