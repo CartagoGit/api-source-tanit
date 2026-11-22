@@ -124,6 +124,8 @@ describe("buildRegistry()", () => {
     const expected = [
       "open-project",
       "client-usage",
+      "client-candidates",
+      "client-links",
       "snapshot",
       "list-endpoints",
       "get-endpoint",

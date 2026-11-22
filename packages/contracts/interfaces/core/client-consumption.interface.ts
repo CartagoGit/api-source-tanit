@@ -80,6 +80,26 @@ export interface IClientProjectLinksReport {
   }[];
 }
 
+export type ClientProjectRole = "frontend" | "backend";
+
+/** The concrete workspace folders or discovered backend services a host can offer for selection. */
+export type ClientProjectCandidates =
+  | {
+      readonly role: "frontend";
+      readonly root: string;
+      readonly projects: readonly { readonly root: string; readonly relativePath: string }[];
+    }
+  | {
+      readonly role: "backend";
+      readonly root: string;
+      readonly services: readonly {
+        readonly serviceId: string;
+        readonly relativePath: string;
+        readonly framework: string;
+        readonly httpOperationCount: number;
+      }[];
+    };
+
 export type ClientUnresolvedReason =
   | "shadowed-client"
   | "unresolved-alias"

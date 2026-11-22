@@ -1,6 +1,9 @@
 import { realpath, stat } from "node:fs/promises";
+import { join } from "node:path";
 
 import type {
+  ClientProjectCandidates,
+  ClientProjectRole,
   IClientAlias,
   IClientBackendOperation,
   IClientConsumptionResult,
@@ -14,6 +17,7 @@ import { ProjectIndex } from "../index/project-index.service.js";
 import { correlateClientUsageLinks } from "./client-correlation.helper.js";
 import { scanClientConsumption } from "./client-consumption.service.js";
 import { generateCollections } from "./generation.pipeline.js";
+import { detectMonorepo } from "./monorepo-detector.helper.js";
 
 interface IClientProjects {
   readonly projectRoot: string;
@@ -50,6 +54,38 @@ function readServiceOperations(result: IGenerationResult): readonly IClientBacke
     .map(({ method, uri, name, serviceId }) => ({
       method, uri, name, serviceId: serviceId ?? result.serviceId,
     }));
+}
+
+/** Inspect workspace directories or detected backend services before explicit selection. */
+export async function inspectClientProjectCandidates(
+  projectRoot: string,
+  role: ClientProjectRole,
+  orchestrator: IDiscoveryOrchestrator,
+): Promise<ClientProjectCandidates> {
+  const root = await canonicalDirectory(projectRoot, role === "frontend" ? "Frontend" : "Backend");
+  if (role === "frontend") {
+    const { workspaceDirs } = await detectMonorepo(root);
+    return {
+      role,
+      root,
+      projects: [
+        { root, relativePath: "" },
+        ...workspaceDirs.map((relativePath) => ({ root: join(root, relativePath), relativePath })),
+      ],
+    };
+  }
+
+  const services = await readBackendServices(root, orchestrator);
+  return {
+    role,
+    root,
+    services: services.flatMap((service) => service.serviceId === undefined ? [] : [{
+      serviceId: service.serviceId,
+      relativePath: service.match?.frameworkSearchRoot ?? "",
+      framework: service.match?.framework ?? "unknown",
+      httpOperationCount: readServiceOperations(service).length,
+    }]),
+  };
 }
 
 /** Reads client call sites and optionally compares them with a backend catalog in memory. */

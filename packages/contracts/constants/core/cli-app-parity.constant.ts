@@ -132,6 +132,14 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     note: "The CLI and Application API return the shared analysis, which the app displays for explicitly selected roots.",
   },
   {
+    capability: "client-links",
+    cli: [],
+    api: ["client-candidates", "client-links"],
+    app: [],
+    status: "partial",
+    note: "The Application API exposes real candidate folders, service IDs and selected-link comparison. CLI and app integration follow in a00021 S9.",
+  },
+  {
     capability: "drift",
     cli: ["check"],
     api: ["check"],
