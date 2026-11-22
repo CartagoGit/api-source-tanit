@@ -67,8 +67,8 @@ The table below is the map, as `bun run lint:cli-app-parity` reads it.
 The gate prints the same counts on every build:
 
 ```text
-lint:cli-app-parity — 13 comando(s) del CLI, 31 handler(s) en la API, 29 operación(es) pedidas por la app.
-  Paridad: 11 completa(s), 3 parcial(es), 0 con hueco(s).
+lint:cli-app-parity — 15 comando(s) del CLI, 31 handler(s) en la API, 29 operación(es) pedidas por la app.
+  Paridad: 12 completa(s), 2 parcial(es), 0 con hueco(s).
 ```
 
 | Capability | CLI | Application API | Status |
@@ -80,7 +80,7 @@ lint:cli-app-parity — 13 comando(s) del CLI, 31 handler(s) en la API, 29 opera
 | push | `push` | `push` | covered |
 | stats | `stats` | `stats` | covered |
 | client consumption | `client-usage` | `client-usage` | covered |
-| selected project links | — | `client-candidates`, `client-links` | partial (available in the app, CLI and MCP planned in a00021 S10) |
+| selected project links | `client-candidates`, `client-links` | `client-candidates`, `client-links` | covered |
 | watch | `watch` | `watch`, `cancel` | covered |
 | history | `history` | `history` | partial |
 | projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
@@ -190,6 +190,34 @@ Use `--client-alias http=@app/api-client` for a client imported as `http`
 from that module. Repeat the flag for additional aliases. The JSON output
 uses the same report as the DelendAI MCP tool. Analysis leaves collection
 files and project state untouched.
+
+### Compare several projects
+
+Find frontend folders and backend service IDs, then pass a JSON selection plan
+to Tanit. Both commands print a JSON result.
+
+```bash
+apisrc client-candidates --project-root ./workspace --role frontend
+apisrc client-candidates --project-root ./workspace --role backend
+apisrc client-links --plan ./selected-links.json
+```
+
+The plan lists each frontend and the links you want to check. Copy the service
+ID from the backend candidate report. Relative paths are resolved from the
+directory containing the plan. Set a link's optional `host` to the backend's
+hostname, including its port when present. Configure named HTTP clients with
+`aliases` on the frontend that uses them.
+
+```json
+{
+  "frontends": [{ "root": "./workspace/apps/storefront" }],
+  "links": [{
+    "frontendRoot": "./workspace/apps/storefront",
+    "backendRoot": "./workspace",
+    "serviceId": "apps_catalog-api"
+  }]
+}
+```
 
 Application API clients can call `client-candidates` with an absolute
 `projectRoot` and the role `frontend` or `backend`. Frontend discovery
