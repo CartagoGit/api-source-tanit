@@ -212,6 +212,7 @@ propuesta con sus SHAs (`shipped-in` y el alias histórico `shippedIn`).
 - `x00110` — Excluir artefactos Rust del paquete npm — `9f1de060c47c96616704467aa639e1707587f8f3`
 - `x00111` — Arranque autónomo de UI en binario compilado — `4961ed70795d0eedddf63bddc8cf8cb30fa17b3e`
 - `x00112` — Proyectar en el índice las entregas canónicas de propuestas — `9b801474d2489138d4497db1e417e84ef608930a`
+- `x00130` — Explorar proyectos backend con errores recuperables — `0d211bd064221ee796cde34bcb34b3a5025500fe`
 
 ### infra
 
