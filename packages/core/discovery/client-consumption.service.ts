@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import type {
-  IClientBackendOperation,
   IClientConsumptionOptions,
   IClientConsumptionResult,
   IClientUsage,
@@ -8,28 +7,13 @@ import type {
 import { isAstCapable } from "../index/ast-cache.service.js";
 import type { ProjectIndex } from "../index/project-index.service.js";
 import { scanClientAst, scanClientSource } from "../language-frontends/typescript/client-consumption.helper.js";
-
-function normalizedUrl(raw: string): { path: string; host?: string } | undefined {
-  if (raw.trim() !== raw || !raw || /[\\\u0000-\u0020\u007f]/u.test(raw)) return undefined;
-  const absolute = /^[a-z][a-z0-9+.-]*:/iu.test(raw);
-  const authority = absolute || raw.startsWith("//");
-  if (!authority && !raw.startsWith("/")) return undefined;
-  try {
-    const url = new URL(raw, "http://tanit.invalid/");
-    if (!["http:", "https:"].includes(url.protocol) || (absolute && !/^https?:\/\//iu.test(raw))) {
-      return undefined;
-    }
-    return { path: url.pathname, ...(authority ? { host: url.host } : {}) };
-  } catch {
-    return undefined;
-  }
-}
+import { correlateClientUsages, normalizeClientUrl } from "./client-correlation.helper.js";
 
 function normalizeUsage(usage: IClientUsage): IClientUsage {
   const { url } = usage;
   if (url === undefined || (usage.unresolvedReason === "unknown-options" &&
     usage.evidence.recognizer === "axios")) return usage;
-  const target = normalizedUrl(url);
+  const target = normalizeClientUrl(url);
   if (target) return { ...usage, ...target };
   const pathRelative = url !== "" && !url.startsWith("/") && !/^[a-z][a-z0-9+.-]*:/iu.test(url);
   return {
@@ -37,34 +21,6 @@ function normalizeUsage(usage: IClientUsage): IClientUsage {
     confidence: "low",
     unresolvedReason: usage.unresolvedReason ?? (pathRelative ? "relative-url" : "invalid-url"),
   };
-}
-
-function correlate(usages: readonly IClientUsage[], backend: readonly IClientBackendOperation[]) {
-  const key = (method: string, path: string) => `${method.toUpperCase()} ${path}`;
-  const catalog = new Map<string, Array<{ operation: IClientBackendOperation; index: number; host?: string }>>();
-  for (const [index, operation] of backend.entries()) {
-    const target = normalizedUrl(operation.uri);
-    if (!target) continue;
-    const id = key(operation.method, target.path);
-    const operations = catalog.get(id) ?? [];
-    operations.push({ operation, index, host: target.host });
-    catalog.set(id, operations);
-  }
-  const consumed = new Set<number>();
-  const paired = usages.map((usage): IClientUsage => {
-    if (usage.unresolvedReason || !usage.method || !usage.path) {
-      return { ...usage, correlation: { status: "unknown", candidates: [] } };
-    }
-    const matches = (catalog.get(key(usage.method, usage.path)) ?? []).filter(({ host }) =>
-      host === undefined || usage.host === undefined || host === usage.host);
-    const [match] = matches;
-    if (matches.length === 1 && match) consumed.add(match.index);
-    return { ...usage, correlation: {
-      status: matches.length === 0 ? "missing" : matches.length === 1 ? "matched" : "ambiguous",
-      candidates: matches.map(({ operation }) => operation),
-    } };
-  });
-  return { usages: paired, operationsWithoutConfirmedConsumer: backend.filter((_, index) => !consumed.has(index)) };
 }
 
 /** Static JS/TS and Vue script discovery over the caller's existing file inventory and AST cache. */
@@ -100,7 +56,7 @@ export async function scanClientConsumption(
       diagnostics.push({ file: file.relPath, reason: "parse-failed" });
     }
   }
-  const result = options.backend === undefined ? { usages } : correlate(usages, options.backend);
+  const result = options.backend === undefined ? { usages } : correlateClientUsages(usages, options.backend);
   const unresolved = usages.filter((usage) => usage.unresolvedReason !== undefined).length;
   return { ...result, diagnostics, counts: {
     resolved: usages.length - unresolved,

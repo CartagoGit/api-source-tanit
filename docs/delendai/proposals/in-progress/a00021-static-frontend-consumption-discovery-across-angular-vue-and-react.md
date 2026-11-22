@@ -140,17 +140,34 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: resubmitted by openai-gpt-6.2-sol — resubmitted; answers the request above: 3f3d3b4d5c6263ce2936f5b52277edbaa3d39f9b. Fixed Tauri HashLocationStrategy navigation by reading the normalized Location.path on URL changes. The regression test with real HashLocationStrategy was red before and green after the fix. All 141 Angular tests and DelendAI work prove passed. Compiled Chromium retained both analysis modes, direct route reload, and the static-web explanation. Windows build 45023995693 tested the same SHA in real WebView2. Clicking the Spanish sidebar item opened Consumo de API at #/client-usage, selected frontend and backend folders, and displayed 1 matched, 1 missing, 1 unknown with no visible sidecar console.
 - review-log: approved by openai-gpt-5.6-luna — verified at 052525b44646, validate exit 0 and tests 141/141 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed exact tip 052525b4464628e920744eb2b8f498c6622ed870; Chromium scenarios in /tmp/tanit-client-native-fix-browser.json and native WebView2 smoke in /tmp/… (2) Reused /tmp/tanit-client-native-fix-browser.json and /tmp/tanit-client-native-fix-smoke.log; native run records 1 match, 1 missing, 1 unknown with no visible c… (3) Reused /tmp/tanit-client-native-fix-proof.json, /tmp/tanit-client-native-fix-tested-native-head, and CI 45023995693 as supplied; source 3f3d3b4d5c6263ce2936f5b… — Independent approval of S5 at exact merged PR #243 tip 052525b4464628e920744eb2b8f498c6622ed870. Reused supplied browser, native WebView2, proof, native-head and icon receipts; no tests rerun.
 
-### S6 — Framework adapters, pairwise workspace and exporter sequencing
+### S6 — Correlate a frontend against explicitly selected backend services
 - **Status**: pending
-- **Files**: adapter, comparison and exporter files to be selected from the report evidence.
+- **Files**: `packages/contracts/interfaces/core/client-consumption.interface.ts`, `packages/core/discovery/client-correlation.helper.ts`, `tests/core/client-link-correlation.spec.ts`.
+- **Gate**: scoped core and CLI regression tests plus `bun run validate`
+- **Acceptance**:
+  - The matching engine evaluates the selected links together and uses an explicit hostname when it can identify the destination. Duplicate operation candidates remain ambiguous.
+  - A call appears as missing only when it is attributable to a single selected service. When the destination is unclear, the result remains unknown and sibling services receive no false missing calls.
+  - Only uniquely matched operations count as confirmed consumers. Ordering and source evidence are preserved, and CLI, MCP and Application API retain their original report contract.
+
+### S7 — Reuse project and service inventories for selected links
+- **Status**: pending
+- **Files**: project inventory and Application API files to be selected from S6 evidence.
 - **Gate**: scoped tests plus `bun run validate`
 
-Continue after generic TS/JS/JSX/TSX and Vue inline-script support. Plan an
-Angular-template extractor plus Vue mixed script scopes and template bindings.
-Use the existing report as the entry point to the pairwise selector and
-directional contract checks described below. Sequence optional exporter consumer
-metadata after that comparison. Export output must remain backward compatible
-and client analysis must remain optional.
+Resolve explicitly chosen frontend roots and backend service identities from the
+canonical inventories. Analyze each distinct root once and keep manual selection
+available for mixed-role workspaces. Surface the selected links and their reports
+through the shared Application API, CLI and desktop/web UI.
+
+### S8 — Framework adapters, directional checks and exporter sequencing
+- **Status**: pending
+- **Files**: adapter, type-comparison and exporter files to be selected from the report evidence.
+- **Gate**: scoped tests plus `bun run validate`
+
+Plan an Angular-template extractor plus Vue mixed script scopes and template
+bindings. Add directional request and response checks to the pairwise report.
+Sequence optional exporter consumer metadata after that comparison. Keep export
+output backward compatible and client analysis optional.
 
 ### Pairwise comparison and selection boundary
 
