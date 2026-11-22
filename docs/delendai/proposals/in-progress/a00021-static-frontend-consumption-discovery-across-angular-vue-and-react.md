@@ -52,7 +52,7 @@ explicit rather than inferred.
 - global_gate: none
 
 ### S1 — Shared client-consumption contract and engine
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/contracts/interfaces/core/client-consumption.interface.ts`,
   `packages/core/discovery/client-consumption.service.ts` (names are planning targets),
   tests/fixtures for JS/TS/JSX/TSX.
@@ -70,6 +70,8 @@ Expected unresolved cases include computed URLs, concatenation with unknown valu
 aliases crossing packages, wrapper functions whose implementation is unavailable,
 generated SDKs, and framework-specific template syntax. Each must carry a reason rather
 than a false match.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S2 — CLI and MCP read-only surface
 - **Status**: pending
