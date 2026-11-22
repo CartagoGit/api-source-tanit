@@ -10,6 +10,8 @@ last-transition-id: 309b88f5-fbf1-46dd-a80a-a2486ebb5dc9
 last-correlation-id: 309b88f5-fbf1-46dd-a80a-a2486ebb5dc9
 last-transition-from: ready
 last-transition-at: 2026-11-22T01:06:20.840Z
+shipped-in:
+  - "34f558b81e2271078f388a248649f1450f8f08cf"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -52,7 +54,7 @@ explicit rather than inferred.
 - global_gate: none
 
 ### S1 — Shared client-consumption contract and engine
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/contracts/interfaces/core/client-consumption.interface.ts`,
   `packages/core/discovery/client-consumption.service.ts` (names are planning targets),
   tests/fixtures for JS/TS/JSX/TSX.
@@ -70,8 +72,10 @@ Expected unresolved cases include computed URLs, concatenation with unknown valu
 aliases crossing packages, wrapper functions whose implementation is unavailable,
 generated SDKs, and framework-specific template syntax. Each must carry a reason rather
 than a false match.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 34f558b81e22, validate exit 0 and tests 32/32 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed scanClientConsumption, AST cache reuse and parser fallback at PR #233 head 34f558b81e2271078f388a248649f1450f8f08cf; GitHub CI validation run 44970766… (2) Reviewed typed Babel traversal, binding shadowing, fetch/Axios/configured alias recognition, static strings, option/method handling, and parse diagnostics at m… (3) Reviewed normalized URL host/path behavior and correlation candidate matching/ambiguity in packages/core/discovery/client-consumption.service.ts at merged PR #…
 
 ### S2 — CLI and MCP read-only surface
 - **Status**: pending
