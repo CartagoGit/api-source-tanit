@@ -12,6 +12,7 @@ last-transition-from: ready
 last-transition-at: 2026-11-22T01:06:20.840Z
 shipped-in:
   - "34f558b81e2271078f388a248649f1450f8f08cf"
+  - "6f466445e63e701e3095cb6b077d24070b011cc2"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -78,7 +79,7 @@ than a false match.
 - review-log: approved by openai-gpt-6-luna — verified at 34f558b81e22, validate exit 0 and tests 32/32 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed scanClientConsumption, AST cache reuse and parser fallback at PR #233 head 34f558b81e2271078f388a248649f1450f8f08cf; GitHub CI validation run 44970766… (2) Reviewed typed Babel traversal, binding shadowing, fetch/Axios/configured alias recognition, static strings, option/method handling, and parse diagnostics at m… (3) Reviewed normalized URL host/path behavior and correlation candidate matching/ambiguity in packages/core/discovery/client-consumption.service.ts at merged PR #…
 
 ### S2 — CLI and MCP read-only surface
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/cli/commands/client-usage.script.ts` (planning target),
   `integrations/delendai/src/lib/tools/client-usage.tool.ts` (planning target), contracts
   and command tests.
@@ -89,8 +90,10 @@ the usage records, matched/unmatched operation counts, unresolved reasons, and d
 Do not alter `generate`, collection files, or persisted project state in this slice. The
 CLI and MCP entry points must call the same shared engine and return structured data rather
 than parse human output.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 6f466445e63e, validate exit 0 and tests 163/163 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed client-usage service and both adapters; /tmp/tanit-consumers-wire.out records structured parity and matching, missing, unresolved outcomes. (2) Reviewed strict schemas, lexical plus realpath containment, in-memory ProjectIndex lifecycle and backend spec scan; 157 integration tests are reported green by… (3) GitHub CI run 44973565080 passed at 6f466445e63e701e3095cb6b077d24070b011cc2; 6 focused CLI tests passed per CI. Reused /tmp/tanit-consumers-proof.json and Win… — Independent review of a00021 S2 at PR #235 head 6f466445e63e701e3095cb6b077d24070b011cc2 (source change faa084a9; follow-up docs/gate fix ef05691d). Reviewed shared client-usage service, CLI, strict MCP schema/tool and workspace containment, tests and docs. No actionable issue found. Reused evidence; no tests rerun. GitHub CI run 44973565080 passed for the exact PR head; 6 focused CLI tests and 157 integration tests are reported as passing by the CI/proof artifacts, not locally journaled in this review checkout. /tmp/tanit-consumers-proof.json and /tmp/tanit-consumers-wire.out show proof/parity; /tmp/tanit-consumers-windows-smoke.log shows compiled Windows smoke.
 
 ### S3 — Framework adapters, application view, and exporter sequencing
 - **Status**: pending
