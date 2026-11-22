@@ -5,11 +5,13 @@ import { HostBridgeClient } from "../../core/api/host-bridge.client";
 import { I18nService } from "../../core/i18n/i18n.service";
 import { ProjectStore } from "../../core/state/project.store";
 import { FolderPickerComponent } from "../home/folder-picker.component";
+import { ClientLinksComponent } from "./client-links.component";
+import { clientUsageReasonLabel, clientUsageStatusLabel } from "./client-usage-labels.helper";
 
 @Component({
   selector: "tanit-client-usage",
   standalone: true,
-  imports: [FolderPickerComponent],
+  imports: [FolderPickerComponent, ClientLinksComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./client-usage.component.html",
   styleUrls: ["./client-usage.component.scss"],
@@ -18,6 +20,7 @@ export class ClientUsageComponent {
   readonly i18n = inject(I18nService);
   private readonly bridge = inject(HostBridgeClient);
   readonly openProjectRoot = inject(ProjectStore).projectRoot;
+  readonly mode = signal<"single" | "workspace">("single");
   readonly frontendRoot = signal<string | null>(null);
   readonly backendRoot = signal<string | null>(null);
   readonly picker = signal<"frontend" | "backend" | null>(null);
@@ -31,15 +34,6 @@ export class ClientUsageComponent {
     if (report === null) return "idle";
     return report.usages.length > 0 ? "ready" : "empty";
   });
-
-  private readonly stateKeys: Readonly<Record<string, string>> = {
-    resolved: "clientUsage.resolved",
-    unresolved: "clientUsage.unresolved",
-    matched: "clientUsage.matched",
-    missing: "clientUsage.missing",
-    ambiguous: "clientUsage.ambiguous",
-    unknown: "clientUsage.unknown",
-  };
 
   setRoot(role: "frontend" | "backend", path: string | null): void {
     if (this.running()) return;
@@ -76,22 +70,10 @@ export class ClientUsageComponent {
   }
 
   stateLabel(state: string): string {
-    return this.i18n.translate(this.stateKeys[state] ?? state);
+    return clientUsageStatusLabel(this.i18n, state);
   }
 
   reasonLabel(reason: ClientUnresolvedReason | IClientConsumptionResult["diagnostics"][number]["reason"]): string {
-    switch (reason) {
-      case "shadowed-client": return this.i18n.translate("clientUsage.reasons.shadowed-client");
-      case "unresolved-alias": return this.i18n.translate("clientUsage.reasons.unresolved-alias");
-      case "unsupported-call": return this.i18n.translate("clientUsage.reasons.unsupported-call");
-      case "dynamic-url": return this.i18n.translate("clientUsage.reasons.dynamic-url");
-      case "invalid-url": return this.i18n.translate("clientUsage.reasons.invalid-url");
-      case "relative-url": return this.i18n.translate("clientUsage.reasons.relative-url");
-      case "dynamic-method": return this.i18n.translate("clientUsage.reasons.dynamic-method");
-      case "unknown-options": return this.i18n.translate("clientUsage.reasons.unknown-options");
-      case "unsupported-template": return this.i18n.translate("clientUsage.reasons.unsupported-template");
-      case "unsupported-script": return this.i18n.translate("clientUsage.reasons.unsupported-script");
-      case "parse-failed": return this.i18n.translate("clientUsage.reasons.parse-failed");
-    }
+    return clientUsageReasonLabel(this.i18n, reason);
   }
 }

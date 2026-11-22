@@ -4,130 +4,143 @@
     <p>{{ i18n.translate("clientUsage.description") }}</p>
   </header>
 
-  <div class="client-usage-roots">
-    <section class="tanit-panel client-usage-root" aria-labelledby="client-usage-frontend">
-      <h2 id="client-usage-frontend">{{ i18n.translate("clientUsage.frontend") }}</h2>
-      @if (frontendRoot(); as path) { <code>{{ path }}</code> }
-      @else { <p>{{ i18n.translate("clientUsage.noFrontend") }}</p> }
-      <div class="workflow-actions">
-        <button #frontendButton class="tanit-button" type="button" [disabled]="running()"
-          [attr.aria-expanded]="picker() === 'frontend'" (click)="picker.set('frontend')">
-          {{ i18n.translate("clientUsage.chooseFrontend") }}
-        </button>
-      </div>
-    </section>
-    <section class="tanit-panel client-usage-root" aria-labelledby="client-usage-backend">
-      <h2 id="client-usage-backend">{{ i18n.translate("clientUsage.backend") }}</h2>
-      @if (backendRoot(); as path) { <code>{{ path }}</code> }
-      @else { <p>{{ i18n.translate("clientUsage.noBackend") }}</p> }
-      <div class="workflow-actions">
-        <button #backendButton class="tanit-button" type="button" [disabled]="running()"
-          [attr.aria-expanded]="picker() === 'backend'" (click)="picker.set('backend')">
-          {{ i18n.translate("clientUsage.chooseBackend") }}
-        </button>
-        @if (openProjectRoot(); as openRoot) {
-          <button class="tanit-button" type="button" [disabled]="running() || backendRoot() === openRoot"
-            (click)="setRoot('backend', openRoot)">{{ i18n.translate("clientUsage.useOpenBackend") }}</button>
-        }
-        @if (backendRoot() !== null) {
-          <button class="tanit-button" type="button" [disabled]="running()" (click)="setRoot('backend', null)">
-            {{ i18n.translate("clientUsage.clearBackend") }}
+  <div class="client-usage-modes" role="group" [attr.aria-label]="i18n.translate('clientLinks.mode')">
+    <button class="tanit-button" type="button" [attr.aria-pressed]="mode() === 'single'" (click)="mode.set('single')">
+      {{ i18n.translate("clientLinks.singleMode") }}
+    </button>
+    <button class="tanit-button" type="button" [attr.aria-pressed]="mode() === 'workspace'" (click)="mode.set('workspace')">
+      {{ i18n.translate("clientLinks.workspaceMode") }}
+    </button>
+  </div>
+
+  @if (mode() === "workspace") {
+    <tanit-client-links animate.enter="reveal" />
+  } @else {
+    <div class="client-usage-roots">
+      <section class="tanit-panel client-usage-root" aria-labelledby="client-usage-frontend">
+        <h2 id="client-usage-frontend">{{ i18n.translate("clientUsage.frontend") }}</h2>
+        @if (frontendRoot(); as path) { <code>{{ path }}</code> }
+        @else { <p>{{ i18n.translate("clientUsage.noFrontend") }}</p> }
+        <div class="workflow-actions">
+          <button #frontendButton class="tanit-button" type="button" [disabled]="running()"
+            [attr.aria-expanded]="picker() === 'frontend'" (click)="picker.set('frontend')">
+            {{ i18n.translate("clientUsage.chooseFrontend") }}
           </button>
-        }
-      </div>
-    </section>
-  </div>
-
-  @if (picker(); as role) {
-    <div class="client-usage-picker">
-      <tanit-folder-picker [purpose]="'select'" [busy]="running()"
-        [initialPath]="role === 'frontend' ? frontendRoot() : backendRoot()"
-        (selected)="setRoot(role, $event); (role === 'frontend' ? frontendButton : backendButton).focus()" />
-      <button class="tanit-button" type="button" [disabled]="running()"
-        (click)="picker.set(null); (role === 'frontend' ? frontendButton : backendButton).focus()">
-        {{ i18n.translate("clientUsage.closePicker") }}
-      </button>
-    </div>
-  }
-
-  <div class="workflow-actions">
-    <button class="tanit-button tanit-button--primary" type="button" [disabled]="frontendRoot() === null || running()"
-      (click)="analyze()">{{ i18n.translate("clientUsage.analyze") }}</button>
-    @if (running()) { <span role="status">{{ i18n.translate("clientUsage.running") }}</span> }
-  </div>
-
-  @if (error(); as message) {
-    <p class="workflow-error" role="alert"><strong>{{ i18n.translate("clientUsage.error") }}</strong> {{ message }}</p>
-  }
-
-  @if (report(); as result) {
-    <section class="tanit-section client-usage-results" animate.enter="reveal" aria-labelledby="client-usage-results">
-      <h2 id="client-usage-results">{{ i18n.translate("clientUsage.results") }}</h2>
-      <dl class="workflow-metrics">
-        <div><dt>{{ i18n.translate("clientUsage.resolved") }}</dt><dd>{{ result.counts.resolved }}</dd></div>
-        <div><dt>{{ i18n.translate("clientUsage.unresolved") }}</dt><dd>{{ result.counts.unresolved }}</dd></div>
-        @if (result.operationsWithoutConfirmedConsumer !== undefined) {
-          <div><dt>{{ i18n.translate("clientUsage.matched") }}</dt><dd>{{ result.counts.matched }}</dd></div>
-          <div><dt>{{ i18n.translate("clientUsage.missing") }}</dt><dd>{{ result.counts.missing }}</dd></div>
-          <div><dt>{{ i18n.translate("clientUsage.ambiguous") }}</dt><dd>{{ result.counts.ambiguous }}</dd></div>
-        }
-      </dl>
-
-      @if (result.usages.length) {
-        <ul class="tanit-panel workflow-list client-usage-calls">
-          @for (usage of result.usages; track $index) {
-            <li class="client-usage-row" [attr.data-state]="usageState(usage)">
-              <div class="client-usage-call">
-                @if (usage.method) { <code class="client-usage-method">{{ usage.method }}</code> }
-                <code>{{ usage.evidence.callee }}</code>
-                @if (usage.url || usage.path; as target) { <code>{{ target }}</code> }
-              </div>
-              <code class="client-usage-location">{{ usage.location.file }}:{{ usage.location.line }}:{{ usage.location.column + 1 }}</code>
-              <p>
-                <strong>{{ stateLabel(usageState(usage)) }}</strong>
-                @if (usage.unresolvedReason; as reason) { <span> · {{ reasonLabel(reason) }}</span> }
-              </p>
-              @if (usage.correlation?.status === "ambiguous") {
-                <ul class="client-usage-candidates">
-                  @for (candidate of usage.correlation?.candidates ?? []; track $index) {
-                    <li><code>{{ candidate.method }} {{ candidate.uri }}</code>
-                      @if (candidate.serviceId) { <span> · {{ candidate.serviceId }}</span> }
-                    </li>
-                  }
-                </ul>
-              }
-            </li>
+        </div>
+      </section>
+      <section class="tanit-panel client-usage-root" aria-labelledby="client-usage-backend">
+        <h2 id="client-usage-backend">{{ i18n.translate("clientUsage.backend") }}</h2>
+        @if (backendRoot(); as path) { <code>{{ path }}</code> }
+        @else { <p>{{ i18n.translate("clientUsage.noBackend") }}</p> }
+        <div class="workflow-actions">
+          <button #backendButton class="tanit-button" type="button" [disabled]="running()"
+            [attr.aria-expanded]="picker() === 'backend'" (click)="picker.set('backend')">
+            {{ i18n.translate("clientUsage.chooseBackend") }}
+          </button>
+          @if (openProjectRoot(); as openRoot) {
+            <button class="tanit-button" type="button" [disabled]="running() || backendRoot() === openRoot"
+              (click)="setRoot('backend', openRoot)">{{ i18n.translate("clientUsage.useOpenBackend") }}</button>
           }
-        </ul>
-      } @else {
-        <p role="status">{{ i18n.translate("clientUsage.empty") }}</p>
-      }
+          @if (backendRoot() !== null) {
+            <button class="tanit-button" type="button" [disabled]="running()" (click)="setRoot('backend', null)">
+              {{ i18n.translate("clientUsage.clearBackend") }}
+            </button>
+          }
+        </div>
+      </section>
+    </div>
 
-      @if (result.diagnostics.length) {
-        <section class="tanit-panel client-usage-detail" aria-labelledby="client-usage-diagnostics">
-          <h3 id="client-usage-diagnostics">{{ i18n.translate("clientUsage.diagnostics") }}</h3>
-          <ul class="workflow-list">
-            @for (diagnostic of result.diagnostics; track $index) {
-              <li><code>{{ diagnostic.file }}</code><span> · {{ reasonLabel(diagnostic.reason) }}</span></li>
+    @if (picker(); as role) {
+      <div class="client-usage-picker">
+        <tanit-folder-picker [purpose]="'select'" [busy]="running()"
+          [initialPath]="role === 'frontend' ? frontendRoot() : backendRoot()"
+          (selected)="setRoot(role, $event); (role === 'frontend' ? frontendButton : backendButton).focus()" />
+        <button class="tanit-button" type="button" [disabled]="running()"
+          (click)="picker.set(null); (role === 'frontend' ? frontendButton : backendButton).focus()">
+          {{ i18n.translate("clientUsage.closePicker") }}
+        </button>
+      </div>
+    }
+
+    <div class="workflow-actions">
+      <button class="tanit-button tanit-button--primary" type="button" [disabled]="frontendRoot() === null || running()"
+        (click)="analyze()">{{ i18n.translate("clientUsage.analyze") }}</button>
+      @if (running()) { <span role="status">{{ i18n.translate("clientUsage.running") }}</span> }
+    </div>
+
+    @if (error(); as message) {
+      <p class="workflow-error" role="alert"><strong>{{ i18n.translate("clientUsage.error") }}</strong> {{ message }}</p>
+    }
+
+    @if (report(); as result) {
+      <section class="tanit-section client-usage-results" animate.enter="reveal" aria-labelledby="client-usage-results">
+        <h2 id="client-usage-results">{{ i18n.translate("clientUsage.results") }}</h2>
+        <dl class="workflow-metrics">
+          <div><dt>{{ i18n.translate("clientUsage.resolved") }}</dt><dd>{{ result.counts.resolved }}</dd></div>
+          <div><dt>{{ i18n.translate("clientUsage.unresolved") }}</dt><dd>{{ result.counts.unresolved }}</dd></div>
+          @if (result.operationsWithoutConfirmedConsumer !== undefined) {
+            <div><dt>{{ i18n.translate("clientUsage.matched") }}</dt><dd>{{ result.counts.matched }}</dd></div>
+            <div><dt>{{ i18n.translate("clientUsage.missing") }}</dt><dd>{{ result.counts.missing }}</dd></div>
+            <div><dt>{{ i18n.translate("clientUsage.ambiguous") }}</dt><dd>{{ result.counts.ambiguous }}</dd></div>
+          }
+        </dl>
+
+        @if (result.usages.length) {
+          <ul class="tanit-panel workflow-list client-usage-calls">
+            @for (usage of result.usages; track $index) {
+              <li class="client-usage-row" [attr.data-state]="usageState(usage)">
+                <div class="client-usage-call">
+                  @if (usage.method) { <code class="client-usage-method">{{ usage.method }}</code> }
+                  <code>{{ usage.evidence.callee }}</code>
+                  @if (usage.url || usage.path; as target) { <code>{{ target }}</code> }
+                </div>
+                <code class="client-usage-location">{{ usage.location.file }}:{{ usage.location.line }}:{{ usage.location.column + 1 }}</code>
+                <p>
+                  <strong>{{ stateLabel(usageState(usage)) }}</strong>
+                  @if (usage.unresolvedReason; as reason) { <span> · {{ reasonLabel(reason) }}</span> }
+                </p>
+                @if (usage.correlation?.status === "ambiguous") {
+                  <ul class="client-usage-candidates">
+                    @for (candidate of usage.correlation?.candidates ?? []; track $index) {
+                      <li><code>{{ candidate.method }} {{ candidate.uri }}</code>
+                        @if (candidate.serviceId) { <span> · {{ candidate.serviceId }}</span> }
+                      </li>
+                    }
+                  </ul>
+                }
+              </li>
             }
           </ul>
-        </section>
-      }
+        } @else {
+          <p role="status">{{ i18n.translate("clientUsage.empty") }}</p>
+        }
 
-      @if (result.operationsWithoutConfirmedConsumer; as operations) {
-        @if (operations.length) {
-          <section class="tanit-panel client-usage-detail" aria-labelledby="client-usage-unconfirmed">
-            <h3 id="client-usage-unconfirmed">{{ i18n.translate("clientUsage.unconfirmedOperations") }}</h3>
+        @if (result.diagnostics.length) {
+          <section class="tanit-panel client-usage-detail" aria-labelledby="client-usage-diagnostics">
+            <h3 id="client-usage-diagnostics">{{ i18n.translate("clientUsage.diagnostics") }}</h3>
             <ul class="workflow-list">
-              @for (operation of operations; track $index) {
-                <li><code>{{ operation.method }} {{ operation.uri }}</code>
-                  @if (operation.serviceId) { <span> · {{ operation.serviceId }}</span> }
-                </li>
+              @for (diagnostic of result.diagnostics; track $index) {
+                <li><code>{{ diagnostic.file }}</code><span> · {{ reasonLabel(diagnostic.reason) }}</span></li>
               }
             </ul>
           </section>
         }
-      }
-    </section>
+
+        @if (result.operationsWithoutConfirmedConsumer; as operations) {
+          @if (operations.length) {
+            <section class="tanit-panel client-usage-detail" aria-labelledby="client-usage-unconfirmed">
+              <h3 id="client-usage-unconfirmed">{{ i18n.translate("clientUsage.unconfirmedOperations") }}</h3>
+              <ul class="workflow-list">
+                @for (operation of operations; track $index) {
+                  <li><code>{{ operation.method }} {{ operation.uri }}</code>
+                    @if (operation.serviceId) { <span> · {{ operation.serviceId }}</span> }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        }
+      </section>
+    }
   }
 </section>

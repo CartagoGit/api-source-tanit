@@ -182,16 +182,26 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-reviewer: openai-gpt-6-luna
 - review-log: approved by openai-gpt-6-luna — verified at b2e9b2b5c08f, validate exit 0 and tests 95/95 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the merged S8 implementation and focused fixture. Workspace globs materialize the actual apps/admin and apps/storefront directories. Backend lookup re… (2) Focused API tests compare dispatch output to analyzeClientProjectLinks, verify both selected frontend reports, unchanged fixture file contents and directory en… (3) Focused dispatcher tests cover strict unexpected-field rejection and relative roots as INVALID_INPUT envelopes. The existing client-usage handler remains regis… — Independent g48 review of S8 at merged PR #249 source head b2e9b2b5c08f4abd8115ee42008404159f4e1ea6; implementation commit 0a1f17e99442b8b9ffaba8db2fd11ee55659d2af. Reused the 95 targeted passing tests, passing work proof, and real HTTP/stdin-stdout receipt showing identical canonical results for two expanded packages with matched, missing, and unknown statuses. Exact-head GitHub CI run 45082341463 passed including ci-summary. No tests rerun by reviewer.
 
-### S9 — Select and compare project links in the app, CLI and MCP
+### S9 — Select and compare project links in the web and desktop app
+- **Status**: review
+- **Files**: `packages/app/src/app/features/client-usage/client-links.component.ts`, `packages/app/src/app/features/client-usage/client-links.component.html`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `tests/app/client-links.spec.ts`.
+- **Gate**: targeted app tests, real Chromium and Windows WebView checks, and `bun run validate`
+- **Acceptance**:
+  - The workspace mode uses concrete candidate roots and exact service IDs. The user selects which links to compare, and the single-project mode is still usable.
+  - The view presents the canonical report grouped by frontend with call evidence, ambiguities, diagnostics and backend operations without a confirmed consumer.
+  - Chromium and desktop can run selected links using the real Application API. Static web copies explain the local-service requirement.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+
+### S10 — Select project links through CLI and MCP
 - **Status**: pending
-- **Files**: application, CLI and integration files to be selected from S8 evidence.
-- **Gate**: scoped UI and CLI tests, real browser and desktop checks, and `bun run validate`
+- **Files**: CLI and MCP adapter files to be selected from S8 and S9 evidence.
+- **Gate**: scoped carrier tests plus `bun run validate`
 
-Use canonical service and workspace choices and keep manual selection available
-for mixed-role workspaces. Display results for exactly the links the user
-selected and reuse the shared analysis through the CLI and MCP.
+Reuse the same candidate selection and report inputs in the CLI and MCP. Preserve
+single-project invocations and validate workspace boundaries where required.
 
-### S10 — Framework adapters, directional checks and exporter sequencing
+### S11 — Framework adapters, directional checks and exporter sequencing
 - **Status**: pending
 - **Files**: adapter, type-comparison and exporter files to be selected from the report evidence.
 - **Gate**: scoped tests plus `bun run validate`

@@ -95,6 +95,22 @@ describe("client usage report", () => {
     return { fixture, root, label, button, click, chooseFolder };
   }
 
+  test("switches between workspace and single-project reports without scanning automatically", () => {
+    const { fixture, root, button } = render();
+    const byText = (text: string) => Array.from(root.querySelectorAll("button"))
+      .find((candidate) => candidate.textContent?.trim() === text);
+    expect(button("chooseFrontend")).toBeDefined();
+    byText("Multiple projects")?.click();
+    fixture.detectChanges();
+    expect(root.querySelector("tanit-client-links")).not.toBeNull();
+    expect(byText("Multiple projects")?.getAttribute("aria-pressed")).toBe("true");
+    byText("Single project")?.click();
+    fixture.detectChanges();
+    expect(root.querySelector("tanit-client-links")).toBeNull();
+    expect(button("chooseFrontend")).toBeDefined();
+    expect(request).not.toHaveBeenCalled();
+  });
+
   test("waits for an explicit frontend-only request, disables actions while busy and reports an empty scan", async () => {
     let resolveReport!: (value: IClientConsumptionResult) => void;
     request.mockReturnValue(new Promise(resolve => { resolveReport = resolve; }));

@@ -174,7 +174,7 @@ export class HostBridgeClient implements IHostBridge {
   private async requestBrowser(frame: string, operation: string, input: unknown): Promise<unknown> {
     const browse = operation === "browse";
     const controller = browse ? new AbortController() : undefined;
-    const clientAnalysis = operation === "client-usage";
+    const clientAnalysis = operation === "client-usage" || operation === "client-candidates" || operation === "client-links";
     const request = async () => {
       const token = await this.browserToken().catch((error: unknown) => {
         if (clientAnalysis) throw new Error(translate("clientUsage.browserUnavailable"));

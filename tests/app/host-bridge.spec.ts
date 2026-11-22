@@ -214,6 +214,14 @@ describe("browser client usage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  test("explains why workspace candidates cannot be read from a static copy", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("<html>Static app</html>", { headers: { "content-type": "text/html" } }));
+    await expect(new HostBridgeClient().request("client-candidates", { projectRoot: "/frontend", role: "frontend" }))
+      .rejects.toThrow("local Tanit service");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test("preserves the real analysis error from the Application API", async () => {
     document.documentElement.dataset.tanitToken = "local-token";
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(Response.json({

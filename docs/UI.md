@@ -35,6 +35,11 @@ su ubicación en el código y los casos que Tanit no pudo resolver. Con un backe
 seleccionado, muestra las coincidencias, las llamadas sin operación y las que
 tienen varias candidatas.
 
+En **Varios proyectos**, busca las carpetas de frontend y los servicios de
+backend que quieras usar. Selecciona los candidatos y añade cada vínculo de
+forma explícita. Si una misma ruta encaja con varios servicios seleccionados,
+el informe mantiene visibles las candidaturas y marca la llamada como ambigua.
+
 En escritorio puedes usar el selector del sistema. En el navegador, usa la URL
 de `apisrc ui` y elige una ruta que pueda leer el proceso de Tanit. Una web
 estática no puede leer las carpetas de tu equipo.

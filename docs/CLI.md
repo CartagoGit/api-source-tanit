@@ -67,7 +67,7 @@ The table below is the map, as `bun run lint:cli-app-parity` reads it.
 The gate prints the same counts on every build:
 
 ```text
-lint:cli-app-parity — 13 comando(s) del CLI, 31 handler(s) en la API, 27 operación(es) pedidas por la app.
+lint:cli-app-parity — 13 comando(s) del CLI, 31 handler(s) en la API, 29 operación(es) pedidas por la app.
   Paridad: 11 completa(s), 3 parcial(es), 0 con hueco(s).
 ```
 
@@ -80,7 +80,7 @@ lint:cli-app-parity — 13 comando(s) del CLI, 31 handler(s) en la API, 27 opera
 | push | `push` | `push` | covered |
 | stats | `stats` | `stats` | covered |
 | client consumption | `client-usage` | `client-usage` | covered |
-| selected project links | — | `client-candidates`, `client-links` | partial (CLI and app integration planned in a00021 S9) |
+| selected project links | — | `client-candidates`, `client-links` | partial (available in the app, CLI and MCP planned in a00021 S10) |
 | watch | `watch` | `watch`, `cancel` | covered |
 | history | `history` | `history` | partial |
 | projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
