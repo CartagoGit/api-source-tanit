@@ -121,7 +121,8 @@ export class AppComponent {
     inject(ThemeStore);
     this.requestedSection = this.sectionOf(this.location.path());
     this.activeSection.set(this.requestedSection);
-    const stop = this.location.onUrlChange((url) => this.navigate(this.sectionOf(url), this.fromApp));
+    // The notification can contain the external hash URL on desktop.
+    const stop = this.location.onUrlChange(() => this.navigate(this.sectionOf(this.location.path()), this.fromApp));
     inject(DestroyRef).onDestroy(() => {
       stop();
       this.navigationRevision++;
