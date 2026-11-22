@@ -125,15 +125,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at b31ac1028f91, validate exit 0 and tests 208/208 claimed, no recorded run cited; acceptance 3/3: (1) The API handler returns analyzeClientProjects directly; focused API tests compare exact results to the shared analyzer with and without backendRoot. Reused the… (2) Reviewed absolute-path and orchestrator checks plus dispatcher error mapping; tests assert invalid inputs, null sessions and unchanged file tree/source. HTTP r… (3) API and MCP use the shared ClientAnalysisInputSchema; parity row lists client-usage in API, no app operation, and partial status with project selection/report … — Independent approval of a00021 S4 at PR #239 exact head b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491, merged into develop 88151ec9eeff6a99c5436bb5bc7f0d53373442dd. Reused evidence; no tests rerun. GitHub CI run 45011594729 and ci-summary succeeded. Reused 50/50 focused Application API checks and 158/158 pinned MCP integration checks; /tmp/tanit-app-client-work.json records the work, /tmp/tanit-app-client-wire.json confirms HTTP report parity/token rejection/relative-path rejection, /tmp/tanit-app-client-stdio.json confirms stdio result parity, and /tmp/tanit-app-client-integration.log records the pinned suite. No structured runId: the run is cited here, not claimed as present in the local test journal.
 
 ### S5 — Frontend call report and one optional backend in the app
-- **Status**: review
+- **Status**: pending
 - **Files**: `packages/app/src/app/features/client-usage/client-usage.component.ts`, `packages/app/src/app/features/client-usage/client-usage.component.html`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `tests/app/client-usage.spec.ts`.
 - **Gate**: scoped app tests, Chromium with the actual Application API and `bun run validate`
 - **Acceptance**:
   - The browser and desktop app expose the same read-only report without requiring a backend session. The user explicitly selects a frontend and may select a backend separately.
   - The view displays the canonical counts, source positions, unresolved reasons, diagnostics and backend operations without confirmed consumers. Localized status and errors explain what the analyzer verified.
   - The compiled browser route works on reload. When a static web copy has no Application API, it directs the user to the local Tanit service or desktop app.
-- review-state: in_review
+- review-state: changes_requested
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: requested_changes by openai-gpt-6-luna — Request changes for S5 criterion 1. Native Windows WebView smoke in /tmp/tanit-client-ui-native-smoke.log does not reach API usage from the visible sidebar. With HashLocationStrategy, the navigation callback receives the external hash route; app-shell.component.ts sectionOf splits at # before extracting the section, turning that route into Overview. `go` delegates to Location.go and does not directly set the selected section. Root reproduced the failure twice. The remaining criteria and supplied browser/HTTP evidence were reviewed positively; approval is withheld until desktop navigation is fixed and the actual native journey succeeds. Reused 140/140 Angular tests and CI run 45013452696 as passing evidence; no tests rerun by reviewer. Native package verification is still ongoing; no native app pass is claimed.
 
 ### S6 — Framework adapters, pairwise workspace and exporter sequencing
 - **Status**: pending
