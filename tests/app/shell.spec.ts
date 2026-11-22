@@ -180,7 +180,7 @@ describe("the shell", () => {
     TestBed.inject(Location).back();
 
     expect(skipTransition).toHaveBeenCalledTimes(2);
-    for (const update of updates.toReversed()) update();
+    for (const update of updates.reverse()) update();
     expect(shell.activeSection()).toBe("settings");
     expect(document.defaultView.scrollTo).not.toHaveBeenCalled();
   });
