@@ -19,8 +19,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TestBed } from "@angular/core/testing";
-import { DOCUMENT, Location } from "@angular/common";
-import { provideLocationMocks } from "@angular/common/testing";
+import { DOCUMENT, HashLocationStrategy, Location, LocationStrategy, PlatformLocation } from "@angular/common";
+import { MockPlatformLocation, provideLocationMocks } from "@angular/common/testing";
 
 import { AppComponent } from "../../packages/app/src/app/shell/app-shell.component";
 import { ProjectStore } from "../../packages/app/src/app/core/state/project.store";
@@ -153,6 +153,34 @@ describe("ProjectStore", () => {
 });
 
 describe("the shell", () => {
+  it("updates the visible section immediately when using native hash navigation", () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PlatformLocation, useClass: MockPlatformLocation },
+        { provide: LocationStrategy, useClass: HashLocationStrategy },
+        { provide: HostBridgeClient, useValue: { request: vi.fn() } },
+        ProjectStore,
+      ],
+    });
+
+    const platform = TestBed.inject(PlatformLocation);
+    const location = TestBed.inject(Location);
+    const shell = TestBed.runInInjectionContext(() => new AppComponent());
+
+    shell.go("client-usage");
+    expect(platform.hash).toBe("#/client-usage");
+    expect(location.path()).toBe("/client-usage");
+    expect(shell.visibleSection()).toBe("client-usage");
+
+    shell.go("settings");
+    expect(shell.visibleSection()).toBe("settings");
+
+    location.back();
+    expect(platform.hash).toBe("#/client-usage");
+    expect(shell.visibleSection()).toBe("client-usage");
+  });
+
   it("ignores a superseded view transition during history navigation", async () => {
     const updates: Array<() => void> = [];
     const skipTransition = vi.fn();
