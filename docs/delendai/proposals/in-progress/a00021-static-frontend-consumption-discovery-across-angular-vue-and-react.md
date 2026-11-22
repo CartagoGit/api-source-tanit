@@ -169,13 +169,15 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-5.6-luna — verified at b35ad3528cae, validate exit 0 and tests 44/44 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-project-links-focused-1.log (44 scoped tests) and /tmp/tanit-client-project-links-work.json; tests cover symlinked physical-root cachi… (2) Reused /tmp/tanit-client-project-links-focused-2.log: exact before/after Vue+OpenAPI JSON is identical; focused fixture verifies host-qualified selection, ambi… (3) Reused /tmp/tanit-client-project-links-focused-0.log, focused-3.log (6 MCP tests), canonical HTTP/stdio parity receipts, and final proof: ambient symlink type … — Independent approval of S7 at exact merged PR #247 head b35ad3528cae8dd516bb56967f8d4a3b2b34807a. Reused supplied 44 scoped + 6 MCP tests, real HTTP/stdio parity, identical legacy fixture, and final ambient type-fix proof; no tests rerun.
 
 ### S8 — Read-only project candidates and selected links in the Application API
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/contracts/constants/core/client-consumption.constant.ts`, `packages/core/application-api/client-candidates.handler.ts`, `packages/core/application-api/client-links.handler.ts`, `tests/application-api/client-links.spec.ts`.
 - **Gate**: scoped Application API tests, actual HTTP and stdio bridge checks, and `bun run validate`
 - **Acceptance**:
   - Candidate lookup shows concrete workspace folders and canonical backend service IDs, with the detected framework for each service. The IDs round-trip into comparison.
   - The typed API returns the complete shared multi-project result and performs no project writes or session changes.
   - Invalid payloads and relative roots return structured errors, and the existing single-project report remains available.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S9 — Select and compare project links in the app, CLI and MCP
 - **Status**: pending
