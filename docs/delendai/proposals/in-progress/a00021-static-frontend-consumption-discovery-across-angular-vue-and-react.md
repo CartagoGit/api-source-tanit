@@ -80,29 +80,39 @@ than a false match.
 
 ### S2 — CLI and MCP read-only surface
 - **Status**: done
-- **Files**: `packages/cli/commands/client-usage.script.ts` (planning target),
-  `integrations/delendai/src/lib/tools/client-usage.tool.ts` (planning target), contracts
-  and command tests.
+- **Files**: `packages/cli/commands/client-usage.script.ts`, `packages/core/discovery/client-usage.service.ts`, `tests/e2e/client-usage.test.ts`.
 - **Gate**: `bun run typecheck && bun run test:core`
 
 Expose a dedicated `clients`/`client-usage` read-only command and MCP tool. It should return
 the usage records, matched/unmatched operation counts, unresolved reasons, and diagnostics.
 Do not alter `generate`, collection files, or persisted project state in this slice. The
 CLI and MCP entry points must call the same shared engine and return structured data rather
-than parse human output.
+than parse human output. The optional MCP entry point is
+`integrations/delendai/src/lib/tools/client-usage.tool.ts`. DelendAI 0.3.0
+normalizes the nested integration's `src/` as a workspace root in the Files field.
 - review-state: done
 - review-implementer: openai-gpt-6.2-sol
 - review-reviewer: openai-gpt-6-luna
 - review-log: approved by openai-gpt-6-luna — verified at 6f466445e63e, validate exit 0 and tests 163/163 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed client-usage service and both adapters; /tmp/tanit-consumers-wire.out records structured parity and matching, missing, unresolved outcomes. (2) Reviewed strict schemas, lexical plus realpath containment, in-memory ProjectIndex lifecycle and backend spec scan; 157 integration tests are reported green by… (3) GitHub CI run 44973565080 passed at 6f466445e63e701e3095cb6b077d24070b011cc2; 6 focused CLI tests passed per CI. Reused /tmp/tanit-consumers-proof.json and Win… — Independent review of a00021 S2 at PR #235 head 6f466445e63e701e3095cb6b077d24070b011cc2 (source change faa084a9; follow-up docs/gate fix ef05691d). Reviewed shared client-usage service, CLI, strict MCP schema/tool and workspace containment, tests and docs. No actionable issue found. Reused evidence; no tests rerun. GitHub CI run 44973565080 passed for the exact PR head; 6 focused CLI tests and 157 integration tests are reported as passing by the CI/proof artifacts, not locally journaled in this review checkout. /tmp/tanit-consumers-proof.json and /tmp/tanit-consumers-wire.out show proof/parity; /tmp/tanit-consumers-windows-smoke.log shows compiled Windows smoke.
 
-### S3 — Framework adapters, application view, and exporter sequencing
+### S3 — Detect client calls in an inline Vue script
+- **Status**: pending
+- **Files**: `packages/core/language-frontends/vue/vue-client-consumption.parser.ts`, `packages/core/discovery/client-consumption.service.ts`, `tests/core/client-consumption.spec.ts`.
+- **Gate**: `bun run typecheck && bun run test:core`
+
+- acceptance:
+  - A Vue component with one inline script or one script setup returns calls with exact original file, line, column and range.
+  - Vue templates remain explicit unsupported evidence. Mixed, external and unsupported script blocks produce diagnostics without confirming calls.
+  - The shared result and the MCP schema carry the same diagnostics. Existing CLI and template behavior remains covered.
+
+### S4 — Remaining framework adapters, application view, and exporter sequencing
 - **Status**: pending
 - **Files**: adapter and UI/export files to be selected after S1/S2 evidence.
 - **Gate**: scoped tests plus `bun run validate`
 
 Sequence adapters after the generic engine: (a) React TSX/JSX call sites, which reuse the
 existing parser; (b) Angular TypeScript plus a separate Angular-template extractor; (c)
-Vue SFC extraction for `<script>`/`<script setup>` and template bindings. Only after the
+Vue SFC mixed script scopes and template bindings. Only after the
 read-only result is stable should the Application API expose a client-usage view and an
 exporter optionally add consumer metadata. Export output must remain backward compatible
 and client analysis must remain optional.
@@ -193,7 +203,7 @@ unavailable response/request types remain explicit unresolved evidence.
 - Angular templates and Vue SFCs are reported as unsupported/unresolved until their
   adapters land; their absence does not make the generic scan fail.
 - CLI and MCP use the same engine and structured contract; `generate` and existing
-  exporters show no observable regression before S3 is deliberately enabled.
+  exporters show no observable regression before exporter integration is deliberately enabled.
 - Every result carries evidence sufficient to explain the match or non-match, including
   file, location, recognizer and confidence.
 - A two-root fixture analyzes each root once and automatically matches unique operations.
