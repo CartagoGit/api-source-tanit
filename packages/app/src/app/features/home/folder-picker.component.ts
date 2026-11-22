@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from "@angular/core";
 
 import type { IBrowseListing } from "../../../../../contracts/interfaces/core/browse.interface";
 import { RecentProjectsClient } from "../../core/api/recent-projects.client";
@@ -26,6 +26,8 @@ export class FolderPickerComponent {
   readonly browsing = signal(false);
   readonly typedPath = signal("");
   readonly error = signal<string | null>(null);
+  private readonly retryPath = signal<string | null | undefined>(undefined);
+  readonly canRetry = computed(() => this.retryPath() !== undefined);
 
   async openNative(): Promise<void> {
     this.error.set(null);
@@ -40,7 +42,16 @@ export class FolderPickerComponent {
   async toggleBrowse(): Promise<void> {
     const expanded = !this.expanded();
     this.expanded.set(expanded);
-    if (expanded && this.listing() === null) await this.open(this.initialPath());
+    if (!expanded) this.error.set(null);
+    if (expanded && this.listing() === null) {
+      const path = this.retryPath();
+      await this.open(path === undefined ? this.initialPath() : path);
+    }
+  }
+
+  async retryBrowse(): Promise<void> {
+    const path = this.retryPath();
+    if (path !== undefined) await this.open(path);
   }
 
   async open(path?: string | null): Promise<void> {
@@ -49,7 +60,10 @@ export class FolderPickerComponent {
     this.browsing.set(true);
     try {
       this.listing.set(await this.client.browse(path ?? undefined));
+      this.retryPath.set(undefined);
     } catch (error) {
+      this.retryPath.set(path ?? null);
+      this.listing.set(null);
       this.error.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.browsing.set(false);

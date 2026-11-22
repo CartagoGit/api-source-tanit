@@ -29,6 +29,9 @@ let originalTauri: unknown;
 afterEach(() => {
   globals.__TAURI__ = originalTauri;
   delete globals.__TAURI__;
+  delete document.documentElement.dataset.tanitToken;
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 /** Puts a Tauri-shaped global in place, and hands back its pieces. */
@@ -82,7 +85,7 @@ describe("the connector", () => {
     const tauri = fakeTauri(true);
     const client = new HostBridgeClient();
     const pending = client.request("list-services", { projectRoot: "/workspace" });
-    expect(tauri.invoke).toHaveBeenCalledWith("send_to_sidecar", expect.anything());
+    await vi.waitFor(() => expect(tauri.invoke).toHaveBeenCalledWith("send_to_sidecar", expect.anything()));
     tauri.emit(JSON.stringify({ jsonrpc: "2.0", id: "ui-1", result: { ok: true, value: { services: [] } } }));
     await expect(pending).resolves.toEqual({ services: [] });
   });
@@ -92,10 +95,11 @@ describe("the connector", () => {
     const tauri = fakeTauri();
     const client = new HostBridgeClient();
 
-    void client.request("list-services", { projectRoot: "/workspace" });
-
-    // The listener has to exist by the time the answer comes back.
-    expect(tauri.listeners.length).toBe(1);
+    tauri.invoke.mockImplementation(async () => {
+      expect(tauri.listeners.length).toBe(1);
+      tauri.emit(JSON.stringify({ jsonrpc: "2.0", id: "ui-1", result: { services: [] } }));
+    });
+    await expect(client.request("list-services", { projectRoot: "/workspace" })).resolves.toEqual({ services: [] });
   });
 
   test("unwraps the ApiResult the bridge answers with", async () => {
@@ -156,8 +160,10 @@ describe("the connector", () => {
     const tauri = fakeTauri();
     const client = new HostBridgeClient();
 
-    void client.request("list-services", { projectRoot: "/workspace" });
-
+    tauri.invoke.mockImplementation(async () => {
+      tauri.emit(JSON.stringify({ jsonrpc: "2.0", id: "ui-1", result: { services: [] } }));
+    });
+    await client.request("list-services", { projectRoot: "/workspace" });
     expect(tauri.invoke).toHaveBeenCalledWith("send_to_sidecar", {
       frame: JSON.stringify({
         jsonrpc: "2.0",
@@ -166,6 +172,74 @@ describe("the connector", () => {
         params: { projectRoot: "/workspace" },
       }),
     });
+  });
+
+  test("handles a desktop browse invoke failure and allows a retry", async () => {
+    const tauri = fakeTauri(true);
+    const client = new HostBridgeClient();
+    tauri.invoke.mockRejectedValueOnce(new Error("sidecar disconnected"));
+    await expect(client.request("browse", {})).rejects.toThrow("Tanit desktop service");
+    tauri.invoke.mockImplementationOnce(async () => {
+      tauri.emit({ jsonrpc: "2.0", id: "ui-2", result: { ok: true, value: { listing: { path: "/workspace" } } } });
+    });
+    await expect(client.request("browse", {})).resolves.toEqual({ listing: { path: "/workspace" } });
+    expect(tauri.listeners).toHaveLength(1);
+  });
+
+  test("times out when desktop IPC does not return", async () => {
+    vi.useFakeTimers();
+    const tauri = fakeTauri(true);
+    tauri.invoke.mockImplementationOnce(() => new Promise(() => undefined));
+    const result = expect(new HostBridgeClient().request("browse", {})).rejects.toThrow("Tanit desktop service");
+    await vi.advanceTimersByTimeAsync(5_000);
+    await result;
+  });
+
+  test("rejects application errors emitted by the desktop sidecar", async () => {
+    const tauri = fakeTauri(true);
+    tauri.invoke.mockImplementationOnce(async () => {
+      tauri.emit({ jsonrpc: "2.0", id: "ui-1", result: { ok: false, error: { message: "Permission denied" } } });
+    });
+    await expect(new HostBridgeClient().request("browse", {})).rejects.toThrow("Permission denied");
+  });
+
+});
+
+describe("browser folder browsing", () => {
+  test("reports a static site and retries the local bridge after it becomes reachable", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("<html>Static app</html>", { headers: { "content-type": "text/html" } }))
+      .mockResolvedValueOnce(Response.json({ token: "local-token" }))
+      .mockResolvedValueOnce(Response.json({
+        jsonrpc: "2.0", id: "ui-2", result: { ok: true, value: { listing: { path: "/workspace" } } },
+      }));
+    const client = new HostBridgeClient();
+    await expect(client.request("browse", {})).rejects.toThrow("apisrc ui");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await expect(client.request("browse", { path: "/workspace" })).resolves.toEqual({ listing: { path: "/workspace" } });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api", expect.objectContaining({
+      headers: { "content-type": "application/json", "x-tanit-token": "local-token" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "ui-2", method: "browse", params: { path: "/workspace" } }),
+    }));
+  });
+
+  test.each(["bootstrap", "folder request"])("times out a stalled %s and aborts its fetch", async (phase) => {
+    vi.useFakeTimers();
+    if (phase === "folder request") document.documentElement.dataset.tanitToken = "local-token";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => undefined));
+    const result = expect(new HostBridgeClient().request("browse", {})).rejects.toThrow("apisrc ui");
+    await vi.advanceTimersByTimeAsync(5_000);
+    await result;
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  });
+
+  test("keeps the Application API's folder errors", async () => {
+    document.documentElement.dataset.tanitToken = "local-token";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(Response.json({
+      jsonrpc: "2.0", id: "ui-1", result: { ok: false, error: { message: "Permission denied" } },
+    }));
+    await expect(new HostBridgeClient().request("browse", {})).rejects.toThrow("Permission denied");
   });
 });
 

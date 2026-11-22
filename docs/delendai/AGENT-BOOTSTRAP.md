@@ -318,6 +318,7 @@ sibling-repo generated markdown file.
 The [proposal index](proposals/INDEX.md) tracks the workspace and folder picker.
 Browser project selection browses and opens folders via the shared Application
 API. Project navigation becomes available after a session opens.
+The index also tracks x00130: folder browsing recovers when the local bridge is unavailable and explains backend and monorepo root selection.
 
 The [proposal index](proposals/INDEX.md) tracks x00124: mobile menu and command-palette entry motion honor the user's reduced-motion preference.
 

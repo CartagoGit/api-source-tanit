@@ -38,6 +38,7 @@ interface IWireFrame {
  * user is not left staring.
  */
 const REQUEST_TIMEOUT_MS = 30_000;
+const BROWSE_TIMEOUT_MS = 5_000;
 
 /**
  * The connector.
@@ -71,7 +72,7 @@ export class HostBridgeClient implements IHostBridge {
   private browserTokenRequest: Promise<string> | undefined;
   private readonly listeners = new Set<(event: unknown) => void>();
   private readonly pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
-  private listening = false;
+  private listening: Promise<void> | undefined;
   private readonly streams = new Map<string, AbortController>();
 
   request<K extends keyof IHostRequestMap>(
@@ -83,7 +84,7 @@ export class HostBridgeClient implements IHostBridge {
 
   subscribe(listener: (event: unknown) => void): () => void {
     this.listeners.add(listener);
-    this.ensureListening();
+    if (this.tauri()) void this.ensureListening().catch(() => undefined);
     return () => {
       this.listeners.delete(listener);
       if (this.listeners.size === 0) {
@@ -108,10 +109,7 @@ export class HostBridgeClient implements IHostBridge {
     });
     const tauri = this.tauri();
     const invoke = tauri?.core?.invoke ?? tauri?.invoke;
-    if (invoke) {
-      this.ensureListening();
-      return this.requestTauri(id, frame, invoke);
-    }
+    if (invoke) return this.requestTauri(id, frame, operation, invoke);
     return this.requestBrowser(frame, operation, input);
   }
 
@@ -124,58 +122,89 @@ export class HostBridgeClient implements IHostBridge {
    * request from hanging: before, the listener only existed if
    * something had called `subscribe()`, and nothing did.
    */
-  private ensureListening(): void {
-    if (this.listening) return;
-    this.listening = true;
-    const tauri = this.tauri();
-    void tauri?.event?.listen?.("tanit://ipc-message", (event) => {
-      this.dispatch(event.payload);
-    });
+  private ensureListening(): Promise<void> {
+    if (!this.listening) {
+      let expired = false;
+      const register = async () => {
+        const event = this.tauri()?.event;
+        if (!event?.listen) throw new Error(translate("common.hostRequestFailed"));
+        const unlisten = await event.listen("tanit://ipc-message", (message) => {
+          if (!expired) this.dispatch(message.payload);
+        });
+        if (expired) unlisten();
+      };
+      this.listening = withTimeout(register(), BROWSE_TIMEOUT_MS,
+        () => new Error(translate("common.hostRequestFailed")), () => { expired = true; },
+      ).catch((error: unknown) => {
+        this.listening = undefined;
+        throw error;
+      });
+    }
+    return this.listening;
   }
 
   private async requestTauri(
     id: string,
     frame: string,
+    operation: string,
     invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>,
   ): Promise<unknown> {
+    const browse = operation === "browse";
     const response = new Promise<unknown>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
     });
-    try {
-      await invoke("send_to_sidecar", { frame });
-    } catch (error) {
-      // The sidecar could not be reached. Without this, the entry
-      // stayed in `pending` for ever: a leak per failed call, and a
-      // promise that never settled.
-      const waiting = this.pending.get(id);
-      this.pending.delete(id);
-      waiting?.reject(error instanceof Error ? error : new Error(String(error)));
+    const send = this.ensureListening().then(async () => {
+      if (this.pending.has(id)) await invoke("send_to_sidecar", { frame });
+    }).catch((error: unknown) => {
+      if (browse) throw new Error(translate("home.pickerDesktopUnavailable"));
       throw error instanceof Error ? error : new Error(String(error));
-    }
-    return withTimeout(response, REQUEST_TIMEOUT_MS, id, () => {
-      this.pending.delete(id);
     });
+    const deadline = browse ? BROWSE_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+    try {
+      const [value] = await withTimeout(Promise.all([response, send]), deadline, () =>
+        new Error(browse ? translate("home.pickerDesktopUnavailable")
+          : `The host did not answer request ${id} within ${deadline / 1000} seconds.`),
+      );
+      return value;
+    } finally {
+      this.pending.delete(id);
+    }
   }
 
   private async requestBrowser(frame: string, operation: string, input: unknown): Promise<unknown> {
-    const token = await this.browserToken();
-    const response = await fetch("/api", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-tanit-token": token,
-      },
-      body: frame,
-    });
-    // The body may not be JSON at all: a proxy in the middle, or a
-    // server that answered with an HTML error page. Saying "the
-    // answer was not JSON" beats a `SyntaxError` about a character
-    // the user never wrote.
-    const payload = await readFrame(response);
-    if (!response.ok || payload.error) {
-      throw new Error(payload.error?.message ?? `${translate("common.hostRequestFailed")} (${response.status})`);
+    const browse = operation === "browse";
+    const controller = browse ? new AbortController() : undefined;
+    const request = async () => {
+      const token = await this.browserToken();
+      controller?.signal.throwIfAborted();
+      const response = await fetch("/api", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-tanit-token": token,
+        },
+        body: frame,
+        signal: controller?.signal,
+      });
+      if (browse && (response.status === 401 || response.status === 403)) {
+        this.browserTokenRequest = undefined;
+        throw new Error(translate("common.hostRequestFailed"));
+      }
+      const payload = await readFrame(response);
+      if (browse && (!payload || !("result" in payload || payload.error))) {
+        throw new Error(translate("common.hostRequestFailed"));
+      }
+      return { token, response, payload };
+    };
+    const unavailable = () => new Error(translate("home.pickerBrowserUnavailable"));
+    const { token, response, payload } = controller
+      ? await withTimeout(request().catch(() => { throw unavailable(); }),
+          BROWSE_TIMEOUT_MS, unavailable, () => controller.abort())
+      : await request();
+    if (!response.ok || payload?.error) {
+      throw new Error(payload?.error?.message ?? `${translate("common.hostRequestFailed")} (${response.status})`);
     }
-    const value = unwrap(payload.result, translate("common.hostRequestFailed"));
+    const value = unwrap(payload?.result, translate("common.hostRequestFailed"));
     if (operation === "watch") {
       const id = subscriptionIdOf(value);
       if (id !== null) {
@@ -196,20 +225,28 @@ export class HostBridgeClient implements IHostBridge {
   private async browserToken(): Promise<string> {
     const embedded = document.documentElement.dataset.tanitToken;
     if (embedded) return embedded;
-    return this.browserTokenRequest ??= fetch("/api/bootstrap", {
-      headers: { "x-tanit-bootstrap": "1" },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    }).then(async (response) => {
-      if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
-        const body: unknown = await response.json();
-        if (typeof body === "object" && body !== null && "token" in body &&
-            typeof body.token === "string" && body.token.length > 0) return body.token;
-      }
-      throw new Error(`${translate("common.hostRequestFailed")} (${response.status})`);
-    }).catch((error: unknown) => {
-      this.browserTokenRequest = undefined;
-      throw error;
-    });
+    if (!this.browserTokenRequest) {
+      const controller = new AbortController();
+      const loadToken = async () => {
+        const response = await fetch("/api/bootstrap", {
+          headers: { "x-tanit-bootstrap": "1" },
+          signal: controller.signal,
+        });
+        if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
+          const body: unknown = await response.json();
+          if (typeof body === "object" && body !== null && "token" in body &&
+              typeof body.token === "string" && body.token.length > 0) return body.token;
+        }
+        throw new Error(`${translate("common.hostRequestFailed")} (${response.status})`);
+      };
+      this.browserTokenRequest = withTimeout(loadToken(), BROWSE_TIMEOUT_MS,
+        () => new Error(translate("common.hostRequestFailed")), () => controller.abort(),
+      ).catch((error: unknown) => {
+        this.browserTokenRequest = undefined;
+        throw error;
+      });
+    }
+    return this.browserTokenRequest;
   }
 
   private async openBrowserStream(subscriptionId: string, token: string): Promise<void> {
@@ -281,7 +318,11 @@ export class HostBridgeClient implements IHostBridge {
         if (frame.error) {
           waiting.reject(new Error(frame.error.message ?? translate("common.hostRequestFailed")));
         } else {
-          waiting.resolve(unwrap(frame.result, translate("common.hostRequestFailed")));
+          try {
+            waiting.resolve(unwrap(frame.result, translate("common.hostRequestFailed")));
+          } catch (error) {
+            waiting.reject(error instanceof Error ? error : new Error(String(error)));
+          }
         }
         return;
       }
@@ -325,13 +366,8 @@ function parseFrame(raw: unknown): IWireFrame | null {
  * was not JSON" beats a `SyntaxError` about a character the user
  * never wrote.
  */
-async function readFrame(response: Response): Promise<IWireFrame> {
-  const text = await response.text();
-  try {
-    return parseFrame(JSON.parse(text) as unknown) ?? { jsonrpc: "2.0" };
-  } catch {
-    return { jsonrpc: "2.0" };
-  }
+async function readFrame(response: Response): Promise<IWireFrame | null> {
+  return parseFrame(await response.text());
 }
 
 /**
@@ -346,13 +382,13 @@ async function readFrame(response: Response): Promise<IWireFrame> {
 function withTimeout<T>(
   promise: Promise<T>,
   ms: number,
-  id: string,
-  onTimeout: () => void,
+  timeoutError: () => Error,
+  onTimeout?: () => void,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
-      onTimeout();
-      reject(new Error(`The host did not answer request ${id} within ${ms / 1000} seconds.`));
+      onTimeout?.();
+      reject(timeoutError());
     }, ms);
     promise.then(
       (value) => { clearTimeout(timer); resolve(value); },
