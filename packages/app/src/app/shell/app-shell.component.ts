@@ -4,11 +4,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, Destro
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
 import { ThemeStore } from "../core/state/theme.store";
-import { SidebarComponent } from "./sidebar.component";
+import { isProjectIndependentSection, SidebarComponent } from "./sidebar.component";
 import { CommandPaletteComponent } from "./command-palette.component";
 import { HomeComponent } from "../features/home/home.component";
 import { EndpointsListComponent } from "../features/endpoints/endpoints-list.component";
 import { ExportCenterComponent } from "../features/exports/export-center.component";
+import { ClientUsageComponent } from "../features/client-usage/client-usage.component";
 import { ServicesListComponent } from "../features/services/services-list.component";
 import { HistoryListComponent } from "../features/history/history-list.component";
 import { SettingsComponent } from "../features/settings/settings.component";
@@ -51,6 +52,7 @@ import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.compon
     CommandPaletteComponent,
     HomeComponent,
     EndpointsListComponent,
+    ClientUsageComponent,
     ExportCenterComponent,
     ServicesListComponent,
     HistoryListComponent,
@@ -78,7 +80,7 @@ export class AppComponent {
   readonly nativeMotion = signal(false);
   readonly visibleSection = computed(() => {
     const section = this.activeSection();
-    return this.project.isOpen() || section === "settings" || section === "help" ? section : "overview";
+    return this.project.isOpen() || isProjectIndependentSection(section) ? section : "overview";
   });
   private readonly document = inject(DOCUMENT);
   private readonly changeDetector = inject(ChangeDetectorRef, { optional: true });
@@ -100,6 +102,7 @@ export class AppComponent {
   readonly sectionLabels: Readonly<Record<string, string>> = {
     overview: "nav.overview",
     endpoints: "nav.endpoints",
+    "client-usage": "nav.clientUsage",
     services: "nav.services",
     exports: "nav.exports",
     stats: "nav.stats",

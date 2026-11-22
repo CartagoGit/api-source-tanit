@@ -15,7 +15,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
 export class FolderPickerComponent {
   readonly i18n = inject(I18nService);
   readonly busy = input(false);
-  readonly purpose = input<"project" | "export">("project");
+  readonly purpose = input<"project" | "export" | "select">("project");
   readonly initialPath = input<string | null>(null);
   readonly selected = output<string>();
   private readonly dialog = inject(DialogService);

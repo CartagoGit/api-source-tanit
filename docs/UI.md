@@ -27,6 +27,18 @@ bun run build:app             # compila el frontend que usa Tauri
 bun run ui:web                # sirve ese build y la API en el mismo origen
 ```
 
+### Analizar el consumo de API
+
+Abre **Consumo de API**, elige la carpeta del frontend y, si quieres comparar
+rutas, elige también un backend. El informe muestra las llamadas observadas,
+su ubicación en el código y los casos que Tanit no pudo resolver. Con un backend
+seleccionado, muestra las coincidencias, las llamadas sin operación y las que
+tienen varias candidatas.
+
+En escritorio puedes usar el selector del sistema. En el navegador, usa la URL
+de `apisrc ui` y elige una ruta que pueda leer el proceso de Tanit. Una web
+estática no puede leer las carpetas de tu equipo.
+
 ### Servir el build con Apache
 
 Construye la web y arranca la Application API en otra terminal.
