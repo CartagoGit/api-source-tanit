@@ -174,8 +174,12 @@ export class HostBridgeClient implements IHostBridge {
   private async requestBrowser(frame: string, operation: string, input: unknown): Promise<unknown> {
     const browse = operation === "browse";
     const controller = browse ? new AbortController() : undefined;
+    const clientAnalysis = operation === "client-usage";
     const request = async () => {
-      const token = await this.browserToken();
+      const token = await this.browserToken().catch((error: unknown) => {
+        if (clientAnalysis) throw new Error(translate("clientUsage.browserUnavailable"));
+        throw error;
+      });
       controller?.signal.throwIfAborted();
       const response = await fetch("/api", {
         method: "POST",
@@ -191,6 +195,7 @@ export class HostBridgeClient implements IHostBridge {
         throw new Error(translate("common.hostRequestFailed"));
       }
       const payload = await readFrame(response);
+      if (clientAnalysis && payload === null) throw new Error(translate("clientUsage.browserUnavailable"));
       if (browse && (!payload || !("result" in payload || payload.error))) {
         throw new Error(translate("common.hostRequestFailed"));
       }

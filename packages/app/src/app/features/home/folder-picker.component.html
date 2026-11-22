@@ -1,10 +1,10 @@
 <section class="tanit-panel picker" aria-labelledby="folder-picker-title" [attr.aria-busy]="busy() || browsing()">
   <header class="tanit-page-header">
-    <h2 id="folder-picker-title">{{ purpose() === "project" ? i18n.translate("home.open") : i18n.translate("export.choose") }}</h2>
+    <h2 id="folder-picker-title">{{ purpose() === "project" ? i18n.translate("home.open") : purpose() === "export" ? i18n.translate("export.choose") : i18n.translate("clientUsage.chooseFolder") }}</h2>
     @if (purpose() === "project") { <p>{{ i18n.translate("home.pickerHelp") }}</p> }
   </header>
   <form class="path-form" (submit)="submitPath($event)">
-    <label for="project-path">{{ purpose() === "project" ? i18n.translate("home.path") : i18n.translate("export.output") }}</label>
+    <label for="project-path">{{ purpose() === "export" ? i18n.translate("export.output") : i18n.translate("home.path") }}</label>
     <div class="path-row">
       <input class="tanit-field" id="project-path" #path type="text" [value]="typedPath()" (input)="typedPath.set(path.value)"
         [placeholder]="i18n.translate('home.pathPlaceholder')" autocomplete="off" spellcheck="false" />

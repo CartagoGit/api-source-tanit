@@ -76,6 +76,8 @@ import type {
   ListProjectsOutput,
   ListServicesInput,
   ListServicesOutput,
+  ClientUsageInput,
+  ClientUsageOutput,
   OpenProjectInput,
   OpenProjectOutput,
   PushInput,
@@ -106,6 +108,7 @@ export type HostTheme = "light" | "dark";
  */
 export interface IHostRequestMap {
   "open-project": OpenProjectInput;
+  "client-usage": ClientUsageInput;
   "snapshot": SnapshotInput;
   "list-endpoints": ListEndpointsInput;
   "get-endpoint": GetEndpointInput;
@@ -155,6 +158,7 @@ export interface IHostRequestMap {
 /** What each operation answers. */
 export interface IHostResponseMap {
   "open-project": OpenProjectOutput;
+  "client-usage": ClientUsageOutput;
   "snapshot": SnapshotOutput;
   "list-endpoints": ListEndpointsOutput;
   "get-endpoint": GetEndpointOutput;

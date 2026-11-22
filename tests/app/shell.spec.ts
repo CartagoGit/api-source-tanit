@@ -200,6 +200,10 @@ describe("the shell", () => {
     location.go("/history");
     const shell = TestBed.runInInjectionContext(() => new AppComponent());
     expect(shell.activeSection()).toBe("history");
+    expect(shell.project.isOpen()).toBe(false);
+    shell.go("client-usage");
+    expect(shell.visibleSection()).toBe("client-usage");
+    expect(location.path()).toBe("/client-usage");
 
     // The sections are real: the shell knows how to go to each one.
     for (const section of [

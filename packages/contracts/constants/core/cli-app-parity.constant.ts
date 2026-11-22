@@ -127,9 +127,9 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     capability: "client-usage",
     cli: ["client-usage"],
     api: ["client-usage"],
-    app: [],
-    status: "partial",
-    note: "CLI and Application API return the shared analysis. Project selection and report display are planned in a00021 S5.",
+    app: ["client-usage"],
+    status: "covered",
+    note: "The CLI and Application API return the shared analysis, which the app displays for explicitly selected roots.",
   },
   {
     capability: "drift",

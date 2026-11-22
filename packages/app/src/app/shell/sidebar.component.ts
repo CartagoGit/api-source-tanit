@@ -5,6 +5,12 @@ import { ExternalLinkService } from "../core/host/external-link.service";
 import { GitHubMarkComponent } from "../shared/github-mark.component";
 import { I18nService } from "../core/i18n/i18n.service";
 
+const PROJECT_INDEPENDENT_SECTIONS = new Set(["overview", "settings", "help", "client-usage"]);
+
+export function isProjectIndependentSection(section: string): boolean {
+  return PROJECT_INDEPENDENT_SECTIONS.has(section);
+}
+
 /** One destination in the sidebar. */
 interface NavigationItem {
   readonly id: string;
@@ -69,6 +75,7 @@ export class SidebarComponent {
       items: [
         { id: "overview", labelKey: "nav.overview" },
         { id: "endpoints", labelKey: "nav.endpoints" },
+        { id: "client-usage", labelKey: "nav.clientUsage" },
         { id: "services", labelKey: "nav.services" },
       ],
     },
@@ -131,6 +138,6 @@ export class SidebarComponent {
   visibleItems(group: NavigationGroup): ReadonlyArray<NavigationItem> {
     return this.projectOpen()
       ? group.items
-      : group.items.filter(({ id }) => id === "overview" || id === "settings" || id === "help");
+      : group.items.filter(({ id }) => isProjectIndependentSection(id));
   }
 }

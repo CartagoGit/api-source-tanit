@@ -124,17 +124,28 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-reviewer: openai-gpt-6-luna
 - review-log: approved by openai-gpt-6-luna — verified at b31ac1028f91, validate exit 0 and tests 208/208 claimed, no recorded run cited; acceptance 3/3: (1) The API handler returns analyzeClientProjects directly; focused API tests compare exact results to the shared analyzer with and without backendRoot. Reused the… (2) Reviewed absolute-path and orchestrator checks plus dispatcher error mapping; tests assert invalid inputs, null sessions and unchanged file tree/source. HTTP r… (3) API and MCP use the shared ClientAnalysisInputSchema; parity row lists client-usage in API, no app operation, and partial status with project selection/report … — Independent approval of a00021 S4 at PR #239 exact head b31ac1028f916a0dc0b4b3ee2f6a180fe7b9c491, merged into develop 88151ec9eeff6a99c5436bb5bc7f0d53373442dd. Reused evidence; no tests rerun. GitHub CI run 45011594729 and ci-summary succeeded. Reused 50/50 focused Application API checks and 158/158 pinned MCP integration checks; /tmp/tanit-app-client-work.json records the work, /tmp/tanit-app-client-wire.json confirms HTTP report parity/token rejection/relative-path rejection, /tmp/tanit-app-client-stdio.json confirms stdio result parity, and /tmp/tanit-app-client-integration.log records the pinned suite. No structured runId: the run is cited here, not claimed as present in the local test journal.
 
-### S5 — Framework adapters, application view, and exporter sequencing
+### S5 — Frontend call report and one optional backend in the app
+- **Status**: review
+- **Files**: `packages/app/src/app/features/client-usage/client-usage.component.ts`, `packages/app/src/app/features/client-usage/client-usage.component.html`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `tests/app/client-usage.spec.ts`.
+- **Gate**: scoped app tests, Chromium with the actual Application API and `bun run validate`
+- **Acceptance**:
+  - The browser and desktop app expose the same read-only report without requiring a backend session. The user explicitly selects a frontend and may select a backend separately.
+  - The view displays the canonical counts, source positions, unresolved reasons, diagnostics and backend operations without confirmed consumers. Localized status and errors explain what the analyzer verified.
+  - The compiled browser route works on reload. When a static web copy has no Application API, it directs the user to the local Tanit service or desktop app.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+
+### S6 — Framework adapters, pairwise workspace and exporter sequencing
 - **Status**: pending
-- **Files**: adapter and UI/export files to be selected from the analysis and Application API evidence.
+- **Files**: adapter, comparison and exporter files to be selected from the report evidence.
 - **Gate**: scoped tests plus `bun run validate`
 
-Continue after the generic TS/JS/JSX/TSX and Vue inline-script support. Plan an
+Continue after generic TS/JS/JSX/TSX and Vue inline-script support. Plan an
 Angular-template extractor plus Vue mixed script scopes and template bindings.
-Use the read-only Application API to implement project selection and the client
-usage report. Sequence the pairwise selector, directional checks and optional
-exporter consumer metadata after that first view. Export output must remain
-backward compatible and client analysis must remain optional.
+Use the existing report as the entry point to the pairwise selector and
+directional contract checks described below. Sequence optional exporter consumer
+metadata after that comparison. Export output must remain backward compatible
+and client analysis must remain optional.
 
 ### Pairwise comparison and selection boundary
 

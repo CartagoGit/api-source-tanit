@@ -121,12 +121,12 @@ describe("the sidebar", () => {
     expect(current[0].textContent?.trim()).toContain("Endpoints");
   });
 
-  it("shows workspace, settings and help before a project opens", () => {
+  it("shows project-independent screens before a backend opens", () => {
     const fixture = TestBed.createComponent(SidebarHost);
     fixture.componentInstance.projectOpen = false;
     fixture.detectChanges();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll("nav button") as NodeListOf<HTMLButtonElement>);
-    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "Settings", "Help"]);
+    expect(buttons.map((button) => button.textContent?.trim())).toEqual(["Overview", "API usage", "Settings", "Help"]);
   });
 
   it("shows the repository, creator and current release in the collapsed navigation", () => {
