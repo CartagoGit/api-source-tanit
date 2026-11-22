@@ -84,7 +84,7 @@ export async function scanClientConsumption(
     if (!isVue && (!isAstCapable(file.language) || /\.d\.[cm]?ts$/iu.test(file.relPath))) continue;
     try {
       if (isVue) {
-        const { scanVueClientSource } = await import("../language-frontends/vue/vue-client-consumption.parser.js");
+        const { scanVueClientSource } = await import("../language-frontends/typescript/vue-client-consumption.parser.js");
         const source = await readFile(file.absPath, "utf8");
         const result = scanVueClientSource(source, file.relPath, options);
         for (const usage of result.usages) usages.push(normalizeUsage(usage));

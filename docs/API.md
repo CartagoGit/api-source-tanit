@@ -3725,7 +3725,7 @@ lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
 Express: un solo parse por archivo alimenta el `TSFile` del
 frontend Y las primitivas del LanguageIR.
 
-### `packages/core/language-frontends/vue/vue-client-consumption.parser.ts`
+### `packages/core/language-frontends/typescript/vue-client-consumption.parser.ts`
 
 #### `scanVueClientSource`
 

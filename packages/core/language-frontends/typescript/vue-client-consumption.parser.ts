@@ -5,7 +5,7 @@ import type {
 } from "../../../contracts/interfaces/core/client-consumption.interface.js";
 import { parseAst } from "../../index/ast-cache.service.js";
 import { offsetToPosition } from "../../language-ir/scanner-bridge.helper.js";
-import { scanClientAst } from "../typescript/client-consumption.helper.js";
+import { scanClientAst } from "./client-consumption.helper.js";
 
 function attribute(node: ElementNode, name: string): AttributeNode | undefined {
   return node.props.find((prop): prop is AttributeNode =>

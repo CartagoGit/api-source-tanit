@@ -97,7 +97,7 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 
 ### S3 — Detect client calls in an inline Vue script
 - **Status**: pending
-- **Files**: `packages/core/language-frontends/vue/vue-client-consumption.parser.ts`, `packages/core/discovery/client-consumption.service.ts`, `tests/core/client-consumption.spec.ts`.
+- **Files**: `packages/core/language-frontends/typescript/vue-client-consumption.parser.ts`, `packages/core/discovery/client-consumption.service.ts`, `tests/core/client-consumption.spec.ts`.
 - **Gate**: `bun run typecheck && bun run test:core`
 
 - acceptance:
