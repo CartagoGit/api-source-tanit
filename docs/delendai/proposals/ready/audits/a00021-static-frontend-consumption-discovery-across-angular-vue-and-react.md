@@ -94,26 +94,41 @@ and client analysis must remain optional.
 
 ### Pairwise comparison and selection boundary
 
-Pairwise comparison is a read-only phase after S2. The user selects two project roots —
-one frontend and one backend — and Tanit analyzes each root once, then automatically pairs
-unique method/path/route-prefix matches. It must not choose a route merely because its
-path looks similar. Manual pair selection is only for disambiguating a suggested pair or
-inspecting a particular pair; it is not required for ordinary unique matches. The backend
-selector is a stable operation id when one exists, otherwise the normalized
-`(service, method, path)` tuple. A frontend selector carries source file, location and
-recognizer. If either side resolves to multiple candidates, the result is `ambiguous`,
-with all candidate ids and the reason; the engine must not silently pick the first one.
-Selection by method/path is allowed only when it yields exactly one backend candidate.
+Pairwise comparison is a read-only phase after S2. Accept separately selected roots and a
+monorepo root. For a monorepo, reuse existing workspace and service discovery and show
+candidate frontends and backend services with their relative paths and detected roles.
+Allow the user to add or correct candidates manually, including applications with both
+roles. Discovery proposes candidates; the user chooses which frontend-to-backend links
+to compare. A single frontend and single backend selected explicitly make one link.
 
-The project-level result must present every analyzed operation and usage as one of
-`matched`, `missing`, `ambiguous`, or `unknown`: matched means one unique pair was
-compared, missing means an operation has no visible consumer (or a consumer has no
-backend operation), ambiguous means candidate selection needs user input, and unknown
-means evidence was insufficient to decide. Every row retains frontend and backend source
-evidence where available, plus the recognizer, normalization notes, confidence and
-unresolved reason. A configurable normalization block may declare gateway prefixes,
-base URLs, and equivalent route-prefix mappings; it must never erase a known method,
-host, or path mismatch, which remains `missing` or `unknown` with evidence.
+Each link connects a frontend application to a backend service. A frontend can use
+several services, and several frontends can use the same service. Analyze each distinct
+root once and evaluate only selected links. Use canonical workspace-relative paths with
+project identity for frontend applications and the snapshot's service id within its
+backend root. Display names are labels. For example, `apps/storefront` can use
+`apps/catalog-api` and `apps/orders-api`, while `apps/admin` uses only
+`apps/catalog-api`. This selection creates three links.
+
+Within a link, pair unique matches on HTTP method and normalized path. A link may
+declare its own base URL, gateway prefix, or route-prefix mapping. Respect known hosts
+and keep method, path, and normalization evidence. If a call in a frontend with several
+selected links can reach more than one service, report `ambiguous` with the candidate
+links and operations until host or prefix evidence, or an explicit user choice, resolves
+it. A selected link scopes comparison; identical method and path on two selected
+services alone is insufficient evidence to assign a call to either. Within a service,
+report ambiguity for duplicate operation candidates as well. Use a stable operation id
+where available, otherwise the service, method and path with source position to
+distinguish duplicates. Retain the frontend's source file, location and recognizer.
+
+Report `matched`, `missing`, `ambiguous`, or `unknown` by approved link. A missing
+backend operation means the call is attributable to that link and no operation matches.
+A backend operation may have no statically visible consumer in the selected frontend.
+A call attributed to one backend does not contribute a missing call to its siblings.
+Track insufficient evidence as `unknown`, including unresolved calls whose intended
+destination is unclear. Each row includes available evidence from both sides, with
+the recognizer, normalization notes, confidence, and reason. Hosted web uses the
+same Application API and only offers project selection where a backend can read
+the chosen directories.
 
 The comparison reports `request` and `response` judgements independently, each as
 `compatible`, `incompatible`, or `unknown`, plus an overall judgement and evidence. URL
@@ -166,13 +181,16 @@ unavailable response/request types remain explicit unresolved evidence.
   exporters show no observable regression before S3 is deliberately enabled.
 - Every result carries evidence sufficient to explain the match or non-match, including
   file, location, recognizer and confidence.
-- A two-root fixture analyzes the frontend and backend roots once, automatically pairs
-  unique method/path/route-prefix matches, and presents whole-project `matched`,
-  `missing`, `ambiguous`, and `unknown` outcomes. Manual pair selection only resolves an
-  ambiguity or inspects a pair; it is not needed for unique matches.
-- The pairing fixture proves candidate ambiguity, method/path mismatch, selected response
-  status, separate request/response judgements, and retained source evidence. Gateway/base
-  URL and route-prefix normalization is configurable and a known mismatch survives it.
+- A two-root fixture analyzes each root once and automatically matches unique operations.
+  A monorepo fixture discovers multiple candidate applications and verifies manual
+  additions, one frontend with two backends, and two frontends sharing a backend. Only
+  selected links produce results, which retain project and service identity across runs.
+- Two selected backend services both expose `GET /v1/items`. An unqualified call remains
+  ambiguous. A known host, a per-link gateway prefix, or an explicit resolution assigns
+  the call to one service without a missing-call error against the other. The selected
+  status and separate request and response judgements use only that service's schemas.
+- The pairing fixture separately proves `matched`, `missing`, `ambiguous`, and `unknown`,
+  with source evidence, a known method mismatch, and deterministic per-link totals.
 - The compatibility fixture proves request direction (frontend value assignable to the
   backend input), response direction (backend output assignable to the frontend
   expectation), required/optional fields, literals/enums, unions, nullability, and both
