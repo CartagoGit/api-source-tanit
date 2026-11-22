@@ -77,7 +77,7 @@ declare module "node:fs/promises" {
     mtimeMs: number;
   }>;
   export function copyFile(src: string, dest: string): Promise<void>;
-  export function symlink(target: string, path: string): Promise<void>;
+  export function symlink(target: string, path: string, type?: "file" | "dir" | "junction" | null): Promise<void>;
   export function chmod(path: string, mode: number): Promise<void>;
   export function cp(
     src: string,
