@@ -468,6 +468,7 @@ The plan separates observed client call sites, unresolved expressions, and confi
 The [proposal index](proposals/INDEX.md) tracks x00103. Endpoint fusion and the
 service graph must use the same service identity for overlapping HTTP
 observations, while keeping workspaces and scanner evidence distinguishable.
+The index also tracks x00131: per-service generation results preserve the match for that workspace.
 
 ## 4. Project invariants — local additions
 
