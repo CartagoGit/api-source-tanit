@@ -39,7 +39,7 @@ El host se declara una vez en `.mcp.json` (sincronizado a
 | `tanit_list` | Lista las rutas detectadas por framework. |
 | `tanit_stats` | Métricas del proyecto (rutas, frameworks, cobertura). |
 | `tanit_scan` | Muestra qué ve el discovery sin generar nada. |
-| `tanit_client_usage` | Analiza llamadas HTTP del frontend y, con `backendRoot`, las compara con un catálogo de operaciones. Devuelve el mismo informe estructurado que `apisrc client-usage --format json`. Las carpetas deben estar dentro del workspace del servidor. |
+| `delendai_tanit_client_usage` | Analiza llamadas HTTP del frontend y, con `backendRoot`, las compara con un catálogo de operaciones. Devuelve el mismo informe estructurado que `apisrc client-usage --format json`. Las carpetas deben estar dentro del workspace del servidor. |
 | `tanit_summary` | El proyecto ya interpretado (framework, config, salud). |
 | `tanit_test` | Ejecuta la batería de tests del CLI contra el proyecto. |
 | `tanit_push` | Publica la colección (el único que sale de la máquina). |
