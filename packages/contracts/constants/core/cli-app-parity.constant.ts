@@ -135,9 +135,9 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     capability: "client-links",
     cli: [],
     api: ["client-candidates", "client-links"],
-    app: [],
+    app: ["client-candidates", "client-links"],
     status: "partial",
-    note: "The Application API exposes real candidate folders, service IDs and selected-link comparison. CLI and app integration follow in a00021 S9.",
+    note: "The app uses Application API candidates and the shared selected-link report. CLI and MCP integration follow in a00021 S10.",
   },
   {
     capability: "drift",
