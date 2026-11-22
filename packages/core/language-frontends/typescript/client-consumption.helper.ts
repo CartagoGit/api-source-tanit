@@ -1,4 +1,4 @@
-import { getBindingIdentifiers, isFunction, VISITOR_KEYS } from "@babel/types";
+import { getBindingIdentifiers, isFunction, traverse } from "@babel/types";
 import type {
   CallExpression,
   ImportDeclaration,
@@ -30,6 +30,7 @@ interface IBinding {
 }
 
 interface IScope {
+  readonly node?: Node;
   readonly parent?: IScope;
   readonly bindings: Map<string, IBinding[]>;
   readonly functionBoundary: boolean;
@@ -120,37 +121,30 @@ function registerDeclarations(node: Node, scope: IScope, axiosNames: Set<string>
 function callSites(program: Program): { sites: ICallSite[]; axiosNames: Set<string> } {
   const sites: ICallSite[] = [];
   const axiosNames = new Set<string>();
-  const root: IScope = { bindings: new Map(), functionBoundary: true };
+  let scope: IScope = { bindings: new Map(), functionBoundary: true };
 
-  function visit(node: Node, parentScope: IScope): void {
-    registerDeclarations(node, parentScope, axiosNames);
-    const functionBoundary = isFunction(node) || node.type === "StaticBlock" || node.type === "TSModuleBlock";
-    const block = ["BlockStatement", "CatchClause", "ClassExpression", "ForStatement",
-      "ForInStatement", "ForOfStatement", "SwitchStatement"].includes(node.type);
-    const scope: IScope = functionBoundary || block
-      ? { parent: parentScope, bindings: new Map(), functionBoundary }
-      : parentScope;
-
-    if (isFunction(node)) {
-      for (const param of node.params) bindPattern(scope, param, { node: param });
-      if (node.type === "FunctionExpression" && node.id) bind(scope, node.id.name, { node });
-    }
-    if (node.type === "ClassExpression" && node.id) bind(scope, node.id.name, { node });
-    if (node.type === "CatchClause" && node.param) bindPattern(scope, node.param, { node: node.param });
-    if (node.type === "CallExpression" || node.type === "OptionalCallExpression") sites.push({ node, scope });
-
-    const fields = node as unknown as Record<string, Node | readonly Node[] | null | undefined>;
-    for (const key of VISITOR_KEYS[node.type] ?? []) {
-      const child = fields[key];
-      if (Array.isArray(child)) {
-        for (const item of child) if (item) visit(item, scope);
-      } else if (child) {
-        visit(child as Node, scope);
+  traverse(program, {
+    enter(node) {
+      registerDeclarations(node, scope, axiosNames);
+      const functionBoundary = isFunction(node) || node.type === "StaticBlock" || node.type === "TSModuleBlock";
+      const block = ["BlockStatement", "CatchClause", "ClassExpression", "ForStatement",
+        "ForInStatement", "ForOfStatement", "SwitchStatement"].includes(node.type);
+      if (functionBoundary || block) {
+        scope = { node, parent: scope, bindings: new Map(), functionBoundary };
       }
-    }
-  }
 
-  visit(program, root);
+      if (isFunction(node)) {
+        for (const param of node.params) bindPattern(scope, param, { node: param });
+        if (node.type === "FunctionExpression" && node.id) bind(scope, node.id.name, { node });
+      }
+      if (node.type === "ClassExpression" && node.id) bind(scope, node.id.name, { node });
+      if (node.type === "CatchClause" && node.param) bindPattern(scope, node.param, { node: node.param });
+      if (node.type === "CallExpression" || node.type === "OptionalCallExpression") sites.push({ node, scope });
+    },
+    exit(node) {
+      if (scope.node === node && scope.parent) scope = scope.parent;
+    },
+  });
   return { sites, axiosNames };
 }
 
