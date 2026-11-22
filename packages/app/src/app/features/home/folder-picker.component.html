@@ -1,33 +1,33 @@
-<section class="picker" aria-labelledby="folder-picker-title" [attr.aria-busy]="busy() || browsing()">
-  <header>
+<section class="tanit-panel picker" aria-labelledby="folder-picker-title" [attr.aria-busy]="busy() || browsing()">
+  <header class="tanit-page-header">
     <h2 id="folder-picker-title">{{ purpose() === "project" ? i18n.translate("home.open") : i18n.translate("export.choose") }}</h2>
     @if (purpose() === "project") { <p>{{ i18n.translate("home.pickerHelp") }}</p> }
   </header>
   <form class="path-form" (submit)="submitPath($event)">
     <label for="project-path">{{ purpose() === "project" ? i18n.translate("home.path") : i18n.translate("export.output") }}</label>
     <div class="path-row">
-      <input id="project-path" #path type="text" [value]="typedPath()" (input)="typedPath.set(path.value)"
+      <input class="tanit-field" id="project-path" #path type="text" [value]="typedPath()" (input)="typedPath.set(path.value)"
         [placeholder]="i18n.translate('home.pathPlaceholder')" autocomplete="off" spellcheck="false" />
-      <button class="primary" type="submit" [disabled]="!typedPath().trim() || busy()">
+      <button class="tanit-button tanit-button--primary" type="submit" [disabled]="!typedPath().trim() || busy()">
         {{ purpose() === "project" ? i18n.translate("home.pickerOpen") : i18n.translate("export.useDirectory") }}
       </button>
     </div>
   </form>
   <div class="picker-actions">
-    <button type="button" class="picker-toggle" (click)="toggleBrowse()" [disabled]="busy() || browsing()"
+    <button type="button" class="tanit-button picker-toggle" (click)="toggleBrowse()" [disabled]="busy() || browsing()"
       [attr.aria-expanded]="expanded()" aria-controls="project-directories">{{ i18n.translate("home.pickerBrowse") }}</button>
     @if (canPickNatively) {
-      <button type="button" class="secondary" (click)="openNative()" [disabled]="busy()">{{ i18n.translate("home.pickerNative") }}</button>
+      <button type="button" class="tanit-button secondary" (click)="openNative()" [disabled]="busy()">{{ i18n.translate("home.pickerNative") }}</button>
     }
   </div>
   @if (busy()) { <p class="status" role="status">{{ i18n.translate("home.opening") }}</p> }
   @if (error(); as message) { <p class="error" role="alert">{{ message }}</p> }
   @if (expanded()) {
-    <section id="project-directories" class="directories">
+    <section id="project-directories" class="directories" animate.enter="reveal">
       @if (browsing()) { <p class="status" role="status">{{ i18n.translate("home.pickerLoading") }}</p> }
       @if (listing(); as current) {
         <div class="directory-toolbar">
-          <button type="button" class="secondary" [disabled]="!current.parent || browsing() || busy()"
+          <button type="button" class="tanit-button secondary" [disabled]="!current.parent || browsing() || busy()"
             (click)="open(current.parent)">{{ i18n.translate("home.pickerUp") }}</button>
           <code class="directory-path">{{ current.path }}</code>
         </div>
@@ -36,13 +36,13 @@
         } @else {
           <ul class="directory-list">
             @for (entry of current.entries; track entry.path) {
-              <li><button type="button" class="directory-entry" [disabled]="!entry.readable || browsing() || busy()"
+              <li><button type="button" class="tanit-button directory-entry" [disabled]="!entry.readable || browsing() || busy()"
                   (click)="open(entry.path)"><span>{{ entry.name }}</span><span aria-hidden="true">›</span></button></li>
             } @empty { <li class="status">{{ i18n.translate("home.pickerEmpty") }}</li> }
           </ul>
           @if (current.truncated) { <p class="status">{{ current.reason }}</p> }
           <div class="directory-open">
-            <button type="button" class="primary" [disabled]="browsing() || busy()" (click)="useCurrent()">
+            <button type="button" class="tanit-button tanit-button--primary" [disabled]="browsing() || busy()" (click)="useCurrent()">
               {{ purpose() === "project" ? i18n.translate("home.pickerUse") : i18n.translate("export.useDirectory") }}
             </button>
           </div>

@@ -1,5 +1,6 @@
 .shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100vh; background: var(--color-surface); color: var(--color-ink); }
 .page-view { display: block; min-inline-size: 0; }
+.missing-project { margin-block-end: var(--space-3); }
 .content { min-width: 0; }
 .toolbar {
   min-height: 52px; display: flex; align-items: center; justify-content: space-between;
@@ -11,9 +12,14 @@
 .workspace-context strong { color: var(--color-ink); }
 .workspace-context strong + span { padding-inline-start: var(--space-3); border-inline-start: 1px solid var(--color-border); }
 kbd { padding: 1px 4px; border: 1px solid var(--color-border); border-radius: 3px; color: var(--color-muted); font: 11px var(--font-code); }
-.view { max-width: 1560px; margin: 0 auto; padding: clamp(12px, 2.4vw, 24px); }
+.view { view-transition-name: tanit-workspace; max-width: 1560px; margin: 0 auto; padding: clamp(12px, 2.4vw, 24px); }
 .error { margin-bottom: var(--space-4); padding: var(--space-3); border: 1px solid var(--color-danger); border-radius: var(--radius-sm); color: var(--color-danger); }
 @media (max-width: 760px) {
   .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   kbd { display: none; }
+}
+
+.native-view-motion .motion-view { animation: none; }
+@media (max-width: 540px) {
+  .toolbar { align-items: stretch; flex-direction: column; gap: var(--space-1); }
 }

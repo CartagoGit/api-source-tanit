@@ -5,12 +5,12 @@
       <strong>{{ i18n.translate("app.name") }}</strong>
       <small>{{ i18n.translate("app.subtitle") }}</small>
     </div>
-    <button class="menu-toggle" type="button" [attr.aria-expanded]="menuOpen()" aria-controls="sidebar-navigation"
+    <button #menuButton class="menu-toggle" type="button" [attr.aria-expanded]="menuOpen()" aria-controls="sidebar-navigation"
       (click)="menuOpen.set(!menuOpen())">
       {{ i18n.translate("nav.menu") }}
     </button>
   </div>
-  <div id="sidebar-navigation" class="navigation" [class.reveal]="menuOpen()">
+  <div id="sidebar-navigation" class="navigation" (keydown.escape)="closeMenu(menuButton)">
     <nav>
       @for (group of groups; track group.id) {
         @if (visibleItems(group); as items) {
@@ -19,7 +19,7 @@
               <h2 class="group-title" [id]="groupId(group)">{{ i18n.translate(group.labelKey) }}</h2>
               @for (item of items; track item.id) {
                 <button type="button" [class.active]="activeId() === item.id"
-                  [attr.aria-current]="activeId() === item.id ? 'page' : null" (click)="choose(item.id)">
+                  [attr.aria-current]="activeId() === item.id ? 'page' : null" (click)="choose(item.id, menuButton)">
                   {{ i18n.translate(item.labelKey) }}
                 </button>
               }
