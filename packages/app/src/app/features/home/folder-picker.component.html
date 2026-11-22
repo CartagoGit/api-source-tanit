@@ -25,6 +25,11 @@
   @if (expanded()) {
     <section id="project-directories" class="directories">
       @if (browsing()) { <p class="status" role="status">{{ i18n.translate("home.pickerLoading") }}</p> }
+      @if (canRetry() && !browsing()) {
+        <button type="button" class="tanit-button" (click)="retryBrowse()" [disabled]="busy()">
+          {{ i18n.translate("home.pickerRetry") }}
+        </button>
+      }
       @if (listing(); as current) {
         <div class="directory-toolbar">
           <button type="button" class="secondary" [disabled]="!current.parent || browsing() || busy()"
