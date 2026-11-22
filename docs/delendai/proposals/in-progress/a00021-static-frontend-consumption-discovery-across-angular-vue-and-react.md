@@ -18,6 +18,7 @@ shipped-in:
   - "052525b4464628e920744eb2b8f498c6622ed870"
   - "8e1d6ac91e447700743d2d24dd1117a428cc5edd"
   - "b35ad3528cae8dd516bb56967f8d4a3b2b34807a"
+  - "b2e9b2b5c08f4abd8115ee42008404159f4e1ea6"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -169,15 +170,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-5.6-luna — verified at b35ad3528cae, validate exit 0 and tests 44/44 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-project-links-focused-1.log (44 scoped tests) and /tmp/tanit-client-project-links-work.json; tests cover symlinked physical-root cachi… (2) Reused /tmp/tanit-client-project-links-focused-2.log: exact before/after Vue+OpenAPI JSON is identical; focused fixture verifies host-qualified selection, ambi… (3) Reused /tmp/tanit-client-project-links-focused-0.log, focused-3.log (6 MCP tests), canonical HTTP/stdio parity receipts, and final proof: ambient symlink type … — Independent approval of S7 at exact merged PR #247 head b35ad3528cae8dd516bb56967f8d4a3b2b34807a. Reused supplied 44 scoped + 6 MCP tests, real HTTP/stdio parity, identical legacy fixture, and final ambient type-fix proof; no tests rerun.
 
 ### S8 — Read-only project candidates and selected links in the Application API
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/contracts/constants/core/client-consumption.constant.ts`, `packages/core/application-api/client-candidates.handler.ts`, `packages/core/application-api/client-links.handler.ts`, `tests/application-api/client-links.spec.ts`.
 - **Gate**: scoped Application API tests, actual HTTP and stdio bridge checks, and `bun run validate`
 - **Acceptance**:
   - Candidate lookup shows concrete workspace folders and canonical backend service IDs, with the detected framework for each service. The IDs round-trip into comparison.
   - The typed API returns the complete shared multi-project result and performs no project writes or session changes.
   - Invalid payloads and relative roots return structured errors, and the existing single-project report remains available.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at b2e9b2b5c08f, validate exit 0 and tests 95/95 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the merged S8 implementation and focused fixture. Workspace globs materialize the actual apps/admin and apps/storefront directories. Backend lookup re… (2) Focused API tests compare dispatch output to analyzeClientProjectLinks, verify both selected frontend reports, unchanged fixture file contents and directory en… (3) Focused dispatcher tests cover strict unexpected-field rejection and relative roots as INVALID_INPUT envelopes. The existing client-usage handler remains regis… — Independent g48 review of S8 at merged PR #249 source head b2e9b2b5c08f4abd8115ee42008404159f4e1ea6; implementation commit 0a1f17e99442b8b9ffaba8db2fd11ee55659d2af. Reused the 95 targeted passing tests, passing work proof, and real HTTP/stdin-stdout receipt showing identical canonical results for two expanded packages with matched, missing, and unknown statuses. Exact-head GitHub CI run 45082341463 passed including ci-summary. No tests rerun by reviewer.
 
 ### S9 — Select and compare project links in the app, CLI and MCP
 - **Status**: pending
