@@ -25,6 +25,13 @@ export type IClientResponseExpectation = ReadonlyMap<string, {
   readonly accepts: readonly ClientResponseType[];
 }>;
 
+/** One independently parsed inline block and its coordinates in the Vue component. */
+export interface IVueClientScript {
+  readonly ast: unknown;
+  readonly setup: boolean;
+  readonly mapLocation: (location: ILocation) => ILocation;
+}
+
 export interface IClientConsumptionOptions {
   readonly aliases?: readonly IClientAlias[];
   /** Internal observer for static JSON evidence retained only during comparison. */

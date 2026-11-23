@@ -252,9 +252,12 @@ The report also recognizes direct event handlers such as
 verified owner. It retains original call coordinates and keeps unsupported
 template constructs visible as diagnostics.
 
-Vue components with one inline `<script>` or `<script setup>` block are scanned
-in the original source coordinates. Vue templates and mixed, external or
-unsupported scripts appear as diagnostics.
+Vue components support one inline `<script>`, one inline `<script setup>`,
+or both blocks together in the same supported language. Imports are shared at
+module scope and setup declarations remain local. Reports use the original
+component coordinates, including for request and response evidence. External
+scripts, conflicting imports, mixed languages and template expressions produce
+diagnostics.
 
 ## Durable state diagnostics
 

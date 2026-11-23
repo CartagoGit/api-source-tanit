@@ -284,14 +284,14 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-reviewer: openai-gpt-5.6-luna
 - review-log: approved by openai-gpt-5.6-luna — verified at e6238b2c6bdd, validate exit 0 and tests 104/104 claimed, no recorded run cited; acceptance 3/3: (1) 104/104 targeted tests; /tmp/tanit-s15-proof.json proved=true; source review of response parser/scanner and /tmp/tanit-s15-wire.json status=200. (2) tests/core/client-response-contract.spec.ts covers compatible/incompatible/unknown verdicts, nullable/integer/open/multiple-status cases; exact-head CI 4519382… (3) /tmp/tanit-s15-wire.json parity=true and omitsSchemaValues=true; supplied CLI/WebView2 receipts plus 162 pinned integration tests; typechecks green. — Independent official g62 review: S15 satisfies all three acceptance criteria. Backend-to-frontend assignability is directional and handles guaranteed fields, optionality, nullability, and supported scalar/literal unions; unsupported or ambiguous evidence remains unknown. Response selection requires exactly one concrete declared 2xx JSON response and one proven inline Axios expectation. Comparison is opt-in and request checks compose without changing existing reports. Raw schema values are omitted and CLI/Application API/pinned MCP parity is proven. Minor conservative handling of OpenAPI default response keys does not violate the stated acceptance. Exact-head CI 45193827693 and ci-summary were supplied by the review record (not present in this checkout journal).
 
-### S16 — Analyze mixed Vue script scopes and template bindings
+### S16 — Analyze mixed Vue script scopes
 - **Status**: pending
-- **Files**: `packages/core/language-frontends/typescript/vue-client-consumption.parser.ts`, `tests/core/client-consumption.spec.ts`.
-- **Gate**: focused Vue script and template scope fixtures plus `bun run validate`
-
-Cover Vue normal and setup script scopes with original source offsets.
-Resolve template bindings before reporting calls and retain diagnostics for
-unproved receivers.
+- **Files**: `packages/core/language-frontends/typescript/vue-client-consumption.parser.ts`, `packages/core/language-frontends/typescript/client-consumption.helper.ts`, `tests/core/client-consumption.spec.ts`.
+- **Gate**: focused Vue script and cross-carrier fixtures plus `bun run validate`
+- **Acceptance**:
+  - One normal script and one setup script of the same supported language share hoisted imports while their local declarations resolve in the correct scope.
+  - Both script blocks retain original Vue locations, including request and response evidence consumed by the linked-project report.
+  - Conflicting and unsupported scripts and unmodeled Vue templates remain explicit diagnostics. CLI, Application API and pinned MCP return the canonical result.
 
 ### S17 — Expose optional consumer evidence to exporters
 - **Status**: pending
@@ -300,6 +300,14 @@ unproved receivers.
 
 Sequence exporter metadata after directional comparison. Existing output
 retains its format when consumer analysis is absent.
+
+### S18 — Resolve Vue template client bindings
+- **Status**: pending
+- **Files**: Vue template binding analysis and its source-coordinate fixtures.
+- **Gate**: focused Vue event scope fixtures plus `bun run validate`
+
+Resolve template bindings before reporting calls. Preserve diagnostics for
+unproved receivers, references and template-generated scopes.
 
 ### Pairwise comparison and selection boundary
 

@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 473 símbolos en 192 módulos.
+> 474 símbolos en 192 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -3606,6 +3606,15 @@ export function scanAngularClientTemplate( source: string, file: string, members
 ```ts
 export function isAngularHttpVerb(member: string): boolean
 ```
+
+#### `scanVueClientScripts`
+
+```ts
+export function scanVueClientScripts( scripts: readonly IVueClientScript[], file: string, options: IClientConsumptionOptions, ): IClientUsage[] | undefined
+```
+
+Share module imports across both Vue script blocks. Setup declarations have
+their own scope and cannot change binding resolution in the classic script.
 
 #### `scanClientAst`
 

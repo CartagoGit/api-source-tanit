@@ -436,6 +436,120 @@ describe("client consumption", () => {
     expect(result.diagnostics).toEqual([{ file: "classic.vue", reason: "unsupported-template" }]);
   });
 
+  it("shares hoisted imports across Vue scripts while retaining setup scope and CRLF locations", async () => {
+    const setupCall = 'classicHttp.get("/setup")';
+    const classicCall = 'setupHttp.get("/classic")';
+    const source = [
+      '<script setup lang="ts">',
+      'import setupHttp from "axios";',
+      `  ${setupCall};`,
+      'function run(classicHttp: { get(url: string): void }) { classicHttp.get("/shadowed"); }',
+      'classicHttp.get(classicPath);',
+      '</script>',
+      '<template><button>Load</button></template>',
+      '<script lang="ts">',
+      'import classicHttp from "axios";',
+      'const classicPath = "/module-constant";',
+      `  ${classicCall};`,
+      '</script>',
+    ].join("\r\n");
+    const result = await scan({ "mixed.vue": source });
+    const location = (call: string, line: number) => ({
+      file: "mixed.vue", line, column: 2, start: source.indexOf(call), end: source.indexOf(call) + call.length,
+    });
+
+    expect(result.usages).toMatchObject([
+      {
+        method: "GET", path: "/setup",
+        evidence: { recognizer: "axios", callee: "classicHttp.get" },
+        location: location(setupCall, 3),
+      },
+      { unresolvedReason: "shadowed-client", location: { file: "mixed.vue", line: 4 } },
+      { unresolvedReason: "dynamic-url", location: { file: "mixed.vue", line: 5 } },
+      {
+        method: "GET", path: "/classic",
+        evidence: { recognizer: "axios", callee: "setupHttp.get" },
+        location: location(classicCall, 11),
+      },
+    ]);
+    expect(result.usages[2]?.path).toBeUndefined();
+    expect(result.diagnostics).toEqual([{ file: "mixed.vue", reason: "unsupported-template" }]);
+  });
+
+  it("keeps a Vue setup declaration from shadowing the normal script", async () => {
+    const result = await scan({
+      "shadow.vue": [
+        '<script lang="ts">',
+        'import http from "axios";',
+        'http.get("/module");',
+        '</script>',
+        '<script setup lang="ts">',
+        'const http = { get(_url: string) {} };',
+        'http.get("/local");',
+        '</script>',
+      ].join("\n"),
+    });
+    expect(result.usages).toMatchObject([
+      { method: "GET", path: "/module", location: { line: 3 } },
+      { unresolvedReason: "shadowed-client", location: { line: 7 } },
+    ]);
+    expect(result.usages[1]?.path).toBeUndefined();
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("deduplicates identical Vue value imports and diagnoses conflicting local aliases", async () => {
+    const source = (secondSource: string) => [
+      '<script>import http from "axios"; http.get("/classic");</script>',
+      `<script setup>import http from "${secondSource}"; http.get("/setup");</script>`,
+    ].join("\n");
+    const result = await scan({ "identical.vue": source("axios"), "conflicting.vue": source("./other") });
+    expect(result.usages).toMatchObject([
+      { method: "GET", path: "/classic", location: { file: "identical.vue", line: 1 } },
+      { method: "GET", path: "/setup", location: { file: "identical.vue", line: 2 } },
+    ]);
+    expect(result.diagnostics).toEqual([{ file: "conflicting.vue", reason: "unsupported-script" }]);
+  });
+
+  it.each([false, true])("preserves Vue contract observer locations with two script blocks: %s", async (twoBlocks) => {
+    const requestCall = `fetch("/items", {method: "POST", headers: {"Content-Type": "application/json"}, body: '{"name":"A"}'})`;
+    const responseCall = 'axios.get<{ state: "ready" }>("/items")';
+    const source = [
+      '<script lang="ts">',
+      'import axios from "axios";',
+      `  ${responseCall};`,
+      ...(twoBlocks ? ["</script>", '<script setup lang="ts">'] : []),
+      `  ${requestCall};`,
+      "</script>",
+    ].join("\r\n");
+
+    const requests: Parameters<NonNullable<IClientConsumptionOptions["observeJsonRequest"]>>[] = [];
+    const responses: Parameters<NonNullable<IClientConsumptionOptions["observeJsonResponse"]>>[] = [];
+    const result = await scan({ "view.vue": source }, {
+      observeJsonRequest: (...args) => { requests.push(args); },
+      observeJsonResponse: (...args) => { responses.push(args); },
+    });
+
+    expect(result.usages).toHaveLength(2);
+    expect(requests).toHaveLength(1);
+    expect(responses).toHaveLength(1);
+    expect(requests[0]?.[1]).toBe('{"name":"A"}');
+    expect(responses[0]?.[0]).toBe(result.usages[0]?.location);
+    expect(requests[0]?.[0]).toBe(result.usages[1]?.location);
+    for (const [location, text, line] of [
+      [responses[0]?.[0], responseCall, 3],
+      [requests[0]?.[0], requestCall, twoBlocks ? 6 : 4],
+    ] as const) {
+      expect(location).toEqual({
+        file: "view.vue",
+        line,
+        column: 2,
+        start: source.indexOf(text),
+        end: source.indexOf(text) + text.length,
+      });
+      expect(source.slice(location?.start, location?.end)).toBe(text);
+    }
+  });
+
   it.each(["jsx", "tsx"])("scans inline Vue scripts declared as %s", async (lang) => {
     const result = await scan({
       "view.vue": `<script lang="${lang}">export const View = () => <button onClick={() => fetch("/jsx")} />;</script>`,
@@ -445,7 +559,7 @@ describe("client consumption", () => {
   });
 
   it.each([
-    ['<script>fetch("/classic")</script><script setup>fetch("/setup")</script>', "unsupported-script"],
+    ['<script lang="ts">fetch("/classic")</script><script setup>fetch("/setup")</script>', "unsupported-script"],
     ['<script></script><script setup>fetch("/setup")</script>', "unsupported-script"],
     ['<script src="./external.ts">fetch("/inline")</script>', "unsupported-script"],
     ['<script setup src="./external.ts"></script>', "unsupported-script"],

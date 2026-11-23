@@ -16,7 +16,9 @@ import type {
   IAngularClientTemplateOwner,
   IClientConsumptionOptions,
   IClientUsage,
+  IVueClientScript,
 } from "../../../contracts/interfaces/core/client-consumption.interface.js";
+import type { ILocation } from "../../../contracts/interfaces/language-ir/location.interface.js";
 import { collectMethodCallsFromProgram } from "../../language-ir/collect-method-calls.helper.js";
 import { parseWithProgram } from "./typescript.parser.js";
 
@@ -122,14 +124,19 @@ function registerDeclarations(node: Node, scope: IScope, axiosNames: Set<string>
   }
 }
 
-function callSites(program: Program, templateScopes?: IScope[]): { sites: ICallSite[]; axiosNames: Set<string> } {
+function callSites(
+  program: Program,
+  templateScopes?: IScope[],
+  rootScope: IScope = { bindings: new Map(), functionBoundary: true },
+  axiosNames = new Set<string>(),
+  hoisted?: ReadonlySet<Node>,
+): { sites: ICallSite[]; axiosNames: Set<string> } {
   const sites: ICallSite[] = [];
-  const axiosNames = new Set<string>();
-  let scope: IScope = { bindings: new Map(), functionBoundary: true };
+  let scope = rootScope;
 
   traverse(program, {
     enter(node) {
-      registerDeclarations(node, scope, axiosNames);
+      if (!hoisted?.has(node)) registerDeclarations(node, scope, axiosNames);
       const functionBoundary = isFunction(node) || node.type === "StaticBlock" || node.type === "TSModuleBlock";
       const block = ["BlockStatement", "CatchClause", "ClassDeclaration", "ClassExpression", "ForStatement",
         "ForInStatement", "ForOfStatement", "SwitchStatement"].includes(node.type);
@@ -540,13 +547,15 @@ function scanProgram(
   file: string,
   options: IClientConsumptionOptions,
   collectTemplate?: (owner: IAngularClientTemplateOwner) => void,
+  mapLocation?: IVueClientScript["mapLocation"],
+  collected?: ReturnType<typeof callSites>,
 ): IClientUsage[] {
   const members = new Map(collectMethodCallsFromProgram(program, file).map((call) => [call.range.start, call]));
   const templateScopes: IScope[] | undefined = collectTemplate && program.body.some((node) =>
     node.type === "ImportDeclaration" && node.source.value === "@angular/core")
     ? []
     : undefined;
-  const { sites, axiosNames } = callSites(program, templateScopes);
+  const { sites, axiosNames } = collected ?? callSites(program, templateScopes);
   if (templateScopes && collectTemplate) collectAngularTemplates(templateScopes, collectTemplate);
   const usages: IClientUsage[] = [];
   const angularClasses = program.body.some((node) =>
@@ -562,7 +571,10 @@ function scanProgram(
     const url = staticString(observed.url, site.scope);
     const unresolvedReason = observed.reason ?? (url === undefined ? "dynamic-url" : undefined);
     const staticUrl = url === undefined ? undefined : unwrap(observed.url)?.type === "StringLiteral" ? "literal" : "expression";
-    const location = { file, line: loc.start.line, column: loc.start.column, start: start ?? undefined, end: end ?? undefined };
+    const original: ILocation = {
+      file, line: loc.start.line, column: loc.start.column, start: start ?? undefined, end: end ?? undefined,
+    };
+    const location = mapLocation?.(original) ?? original;
     if (!unresolvedReason && observed.jsonBody !== undefined) options.observeJsonRequest?.(location, observed.jsonBody);
     if (!unresolvedReason && found.recognizer === "axios" && found.member === "get" && options.observeJsonResponse) {
       const expectation = readAxiosResponseExpectation(site);
@@ -580,6 +592,82 @@ function scanProgram(
   return usages.sort((left, right) => (left.location.start ?? 0) - (right.location.start ?? 0));
 }
 
+function readProgram(ast: unknown): Program {
+  const parsed = ast as ICachedProgram;
+  if (!parsed?.program || parsed.errors?.length) throw new SyntaxError("Client source did not parse cleanly");
+  return parsed.program;
+}
+
+function importIdentity({ node, source }: IBinding): string | undefined {
+  switch (node.type) {
+    case "ImportNamespaceSpecifier": return JSON.stringify([source, "namespace"]);
+    case "ImportDefaultSpecifier": return JSON.stringify([source, "member", "default"]);
+    case "ImportSpecifier": return JSON.stringify([
+      source, "member", node.imported.type === "Identifier" ? node.imported.name : node.imported.value,
+    ]);
+    default: return undefined;
+  }
+}
+
+/**
+ * Share module imports across both Vue script blocks. Setup declarations have
+ * their own scope and cannot change binding resolution in the classic script.
+ */
+export function scanVueClientScripts(
+  scripts: readonly IVueClientScript[],
+  file: string,
+  options: IClientConsumptionOptions,
+): IClientUsage[] | undefined {
+  const [first, second] = scripts;
+  if (!first) return [];
+  if (!second) return scanProgram(readProgram(first.ast), file, options, undefined, first.mapLocation);
+
+  if (scripts.length !== 2 || first.setup === second.setup) return undefined;
+  const classic = first.setup ? second : first;
+  const setup = first.setup ? first : second;
+  const classicProgram = readProgram(classic.ast);
+  const setupProgram = readProgram(setup.ast);
+  if (setupProgram.body.some((node) => node.type === "ExportDefaultDeclaration" ||
+    node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && node.exportKind !== "type"))) {
+    return undefined;
+  }
+
+  const moduleScope: IScope = { bindings: new Map(), functionBoundary: true };
+  const moduleAxios = new Set<string>();
+  const imports = new Set<Node>();
+  for (const program of [classicProgram, setupProgram]) {
+    for (const node of program.body) {
+      if (node.type !== "ImportDeclaration") continue;
+      if (node.attributes?.length || node.assertions?.length || node.phase) return undefined;
+      imports.add(node);
+      bindImports(node, moduleScope, moduleAxios);
+    }
+  }
+  for (const [name, entries] of moduleScope.bindings) {
+    const [firstImport] = entries;
+    if (!firstImport) continue;
+    const identity = importIdentity(firstImport);
+    if (entries.some((entry) => importIdentity(entry) !== identity)) return undefined;
+    if (entries.length > 1) moduleScope.bindings.set(name, [firstImport]);
+  }
+
+  const classicSites = callSites(classicProgram, undefined, moduleScope, moduleAxios, imports);
+  const setupParent: IScope = { bindings: new Map(), functionBoundary: true };
+  for (const [name, entries] of moduleScope.bindings) {
+    if (entries.length > 1 && entries.some((entry) => importIdentity(entry) !== undefined)) return undefined;
+    // Classic declarations still shadow globals in setup, but cross-block
+    // initializer offsets are incomparable and cannot prove a static value.
+    setupParent.bindings.set(name, entries.map(({ init: _init, ...binding }) => binding));
+  }
+  const setupRoot: IScope = { parent: setupParent, bindings: new Map(), functionBoundary: true };
+  const setupSites = callSites(setupProgram, undefined, setupRoot, new Set(moduleAxios), imports);
+
+  return [
+    ...scanProgram(classicProgram, file, options, undefined, classic.mapLocation, classicSites),
+    ...scanProgram(setupProgram, file, options, undefined, setup.mapLocation, setupSites),
+  ].sort((left, right) => (left.location.start ?? 0) - (right.location.start ?? 0));
+}
+
 /** Scans the same parse tree supplied to the TypeScript LanguageIR collector. */
 export function scanClientAst(
   ast: unknown,
@@ -587,9 +675,7 @@ export function scanClientAst(
   options: IClientConsumptionOptions,
   collectTemplate?: (owner: IAngularClientTemplateOwner) => void,
 ): IClientUsage[] {
-  const parsed = ast as ICachedProgram;
-  if (parsed.errors?.length) throw new SyntaxError("Client source did not parse cleanly");
-  return scanProgram(parsed.program, file, options, collectTemplate);
+  return scanProgram(readProgram(ast), file, options, collectTemplate);
 }
 
 /** Fallback for syntax that the current shared AST cache cannot parse, including decorators. */
