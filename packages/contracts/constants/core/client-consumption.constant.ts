@@ -1,6 +1,9 @@
 import { z } from "zod";
 import type { ClientProjectRole, IClientAlias, IClientProjectLinksInput } from "../../interfaces/core/client-consumption.interface.js";
 
+/** Private route metadata that is never serialized to legacy artifacts. */
+export const DECLARED_JSON_REQUEST = Symbol("declared-json-request");
+
 const ClientAliasSchema = z.strictObject({
   receiver: z.string().trim().min(1),
   source: z.string().min(1).optional(),
@@ -21,6 +24,7 @@ export const ClientProjectCandidatesInputSchema = z.strictObject({
 });
 
 export const ClientProjectLinksInputSchema = z.strictObject({
+  compareRequestBodies: z.boolean().optional(),
   frontends: z.array(z.strictObject({
     root: ClientAnalysisInputSchema.shape.projectRoot,
     aliases: ClientAnalysisInputSchema.shape.aliases,

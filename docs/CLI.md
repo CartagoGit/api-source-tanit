@@ -229,6 +229,13 @@ integration exposes the same operations as `delendai_tanit_client_candidates`
 and `delendai_tanit_client_links`. In MCP, paths are relative to the server
 workspace when they are not absolute, and all project roots must be inside it.
 
+Set `"compareRequestBodies": true` at the top level of the selection plan to
+check JSON request bodies for uniquely matched operations. The first supported
+case is a literal `fetch` body with an explicit JSON content type and an
+unambiguous, inline OpenAPI 3.0 declaration for a closed object. Each check
+reports compatibility, incompatibility, or unknown and includes the contract
+source when available. Reports omit request body values.
+
 Angular instance methods recognize `HttpClient` declared as a constructor
 parameter property or initialized with Angular's `inject(HttpClient)`.
 Recognized calls include HTTP verb methods and `request(method, url)`.

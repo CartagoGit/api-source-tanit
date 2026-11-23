@@ -39,7 +39,7 @@ export function buildClientLinksToolRegistration(ctx: IMcpPluginContext): IToolR
               const backendRoot = await resolve(link.backendRoot, `links[${index}].backendRoot`);
               links.push({ ...link, frontendRoot, backendRoot });
             }
-            return toolJson(await analyzeClientProjectLinks({ frontends, links }, defaultOrchestrator()));
+            return toolJson(await analyzeClientProjectLinks({ ...parsed.data, frontends, links }, defaultOrchestrator()));
           } catch (error) {
             return toolError(
               `No se pudieron analizar los vínculos: ${error instanceof Error ? error.message : String(error)}`,

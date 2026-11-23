@@ -30,6 +30,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     const directory = dirname(planPath);
     const { frontends, links } = selection.data;
     const report = await analyzeClientProjectLinks({
+      ...selection.data,
       frontends: frontends.map(frontend => ({ ...frontend, root: resolve(directory, frontend.root) })),
       links: links.map(link => ({
         ...link,

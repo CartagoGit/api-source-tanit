@@ -43,6 +43,7 @@ interface ICallSite {
 }
 
 interface IRequest {
+  readonly jsonBody?: string;
   readonly url?: Node;
   readonly method?: string;
   readonly reason?: ClientUnresolvedReason;
@@ -337,10 +338,23 @@ export function isAngularHttpVerb(member: string): boolean {
   return ["get", "post", "put", "patch", "delete", "head", "options"].includes(member);
 }
 
+/** Fetch body evidence is limited to a literal JSON string and an explicit static media type. */
+function fetchJsonBody(fields: ReadonlyMap<string, Node>, scope: IScope): string | undefined {
+  const body = unwrap(fields.get("body"));
+  if (body?.type !== "StringLiteral" || body.value.length > 65_536) return undefined;
+  const headers = optionsFields(fields.get("headers"), scope);
+  if (!headers) return undefined;
+  const contentTypes = [...headers].filter(([name]) => name.toLowerCase() === "content-type");
+  if (contentTypes.length !== 1) return undefined;
+  const value = staticString(contentTypes[0]?.[1], scope)?.trim();
+  return /^application\/json(?:\s*;\s*charset\s*=\s*utf-8)?$/iu.test(value ?? "") ? body.value : undefined;
+}
+
 function request(
   site: ICallSite,
   recognizer: IClientUsage["evidence"]["recognizer"],
   member?: string,
+  observeJson = false,
 ): IRequest {
   const [first, second, third] = site.node.arguments;
   const { scope } = site;
@@ -350,7 +364,12 @@ function request(
     const fields = optionsFields(second, scope);
     if (!fields) return { url: first, reason: "unknown-options" };
     const method = requestMethod(fields.get("method"), scope);
-    return { url: first, method, reason: method ? undefined : "dynamic-method" };
+    const mode = fields.get("mode");
+    const jsonBody = observeJson && method && ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"].includes(method) &&
+      (!mode || ["cors", "same-origin"].includes(staticString(mode, scope) ?? ""))
+      ? fetchJsonBody(fields, scope)
+      : undefined;
+    return { url: first, method, jsonBody, reason: method ? undefined : "dynamic-method" };
   }
 
   const verb = member?.toUpperCase();
@@ -474,12 +493,15 @@ function scanProgram(
     const found = recognize(site, members, axiosNames, options.aliases, angularClasses);
     const { start, end, loc } = site.node;
     if (!found || !loc) continue;
-    const observed = found.reason ? { reason: found.reason } : request(site, found.recognizer, found.member);
+    const observed = found.reason ? { reason: found.reason }
+      : request(site, found.recognizer, found.member, options.observeJsonRequest !== undefined);
     const url = staticString(observed.url, site.scope);
     const unresolvedReason = observed.reason ?? (url === undefined ? "dynamic-url" : undefined);
     const staticUrl = url === undefined ? undefined : unwrap(observed.url)?.type === "StringLiteral" ? "literal" : "expression";
+    const location = { file, line: loc.start.line, column: loc.start.column, start: start ?? undefined, end: end ?? undefined };
+    if (!unresolvedReason && observed.jsonBody !== undefined) options.observeJsonRequest?.(location, observed.jsonBody);
     usages.push({
-      location: { file, line: loc.start.line, column: loc.start.column, start: start ?? undefined, end: end ?? undefined },
+      location,
       evidence: { recognizer: found.recognizer, callee: found.callee, staticUrl },
       method: observed.method,
       url,
