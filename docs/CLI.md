@@ -1,0 +1,314 @@
+# CLI parity
+
+The product has two faces and one backend.
+
+- The **CLI** (`apisrc <command>`) is the functional reference: what
+  the tool can do.
+- The **desktop app** (`packages/app`, Angular inside Tauri) is the
+  same tool with a face instead of commands.
+- The **Application API** (`packages/core/application-api`) is the one
+  place that knows how to do it. The CLI and the app are both clients
+  of it; neither reimplements it.
+
+## How the app talks to the backend
+
+Through the **connector** (`packages/contracts/interfaces/ui/host-bridge.interface.ts`).
+It declares the operations the app can ask for, with their real inputs
+and outputs, named exactly as the API registers them.
+
+Two carriers, one contract:
+
+| Carrier | Transport | Used by |
+| --- | --- | --- |
+| Tauri | the `apisrc serve --stdio` sidecar, over IPC | the desktop app |
+| Browser | `POST /api` on loopback, with a per-run token | the app in a browser |
+
+The app does not know which one is running. That is the point: what is
+verified in the browser is what runs in the app, because both go
+through the same connector over the same registry.
+
+```bash
+bun run ui:dev      # run Angular from source with live reload and the API
+bun run build:app   # compile the app
+bun run ui:web      # serve that build in the browser with the API
+```
+
+`ui:web` serves the compiled app and the Application API on **one
+origin** — the page asks for `POST /api` with a relative path, and a
+relative path means "the origin that served me". The token travels in
+the served HTML (`data-tanit-token` on the `<html>` element). Angular's
+development server and the local Apache proxy obtain the token through
+a same-origin bootstrap request. See [Apache deployment](UI.md#servir-el-build-con-apache).
+
+## The map, and the gate that checks it
+
+The map of what each face can reach lives in
+[`packages/contracts/constants/core/cli-app-parity.constant.ts`](../packages/contracts/constants/core/cli-app-parity.constant.ts),
+and
+[`scripts/gates/lint-cli-app-parity.script.ts`](../scripts/gates/lint-cli-app-parity.script.ts)
+checks it on every build. The gate fails when:
+
+- a CLI command is not in the map — a new command with no app
+  counterpart is invisible drift;
+- a map entry names an Application API handler that does not exist;
+- the app asks for an operation that has no handler and does not
+  declare it pending — that call would answer `UNKNOWN_HANDLER`;
+- a pending operation **already has** a handler — the backlog entry
+  has expired and the app has to use it;
+- a pending operation the app no longer asks for — the list has to
+  shrink with the app.
+
+The last two are what make the backlog a list of work that empties
+itself instead of a comment that rots.
+
+## The map, today
+
+The table below is the map, as `bun run lint:cli-app-parity` reads it.
+The gate prints the same counts on every build:
+
+```text
+lint:cli-app-parity — 15 comando(s) del CLI, 31 handler(s) en la API, 29 operación(es) pedidas por la app.
+  Paridad: 12 completa(s), 2 parcial(es), 0 con hueco(s).
+```
+
+| Capability | CLI | Application API | Status |
+| --- | --- | --- | --- |
+| generate | `generate`, `sync` | `export`, `dry-run`, `sync` | covered |
+| detect | `scan`, `list` | `snapshot`, `list-endpoints`, `list-services`, `get-endpoint`, `get-schema` | covered |
+| drift | `check` | `check` | covered |
+| validate | `validate` | `validate` | covered |
+| push | `push` | `push` | covered |
+| stats | `stats` | `stats` | covered |
+| client consumption | `client-usage` | `client-usage` | covered |
+| selected project links | `client-candidates`, `client-links` | `client-candidates`, `client-links` | covered |
+| watch | `watch` | `watch`, `cancel` | covered |
+| history | `history` | `history` | partial |
+| projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
+| settings | — | `settings` | partial |
+| interface | `ui` | — | covered (carrier) |
+| service | `serve` | — | covered (carrier) |
+
+**A gap is not a bug in the map; it is the map doing its job.** The
+honest thing is to write it down rather than pretend the two faces are
+equal when they are not. Each gap says, in the map, what would have to
+exist for the app to reach it.
+
+`interface` and `service` are carriers: they are how each face is
+reached, not a business capability. They are in the map so the gate can
+see that every command is accounted for.
+
+## What the app does now
+
+The app is a real client of the Application API. Nothing on the screen
+is a fixture.
+
+- **Opening a project opens a session.** The backend scans it and
+  answers with the summary — the frameworks it recognized, how many
+  endpoints, how many services. The app keeps the session id, so
+  "this project is open" means a session exists, not that a folder name
+  is on the screen. A failed open leaves the app **closed**, not
+  half-open.
+- **The endpoint list is the backend's list.** The filters — service,
+  transport, auth, validation, framework, responses, confidence, source
+  file, free text — are sent to the API, which answers with the
+  matching page and the totals. The client walks the pages.
+- **The detail panel asks for the endpoint.** `get-endpoint` and
+  `get-schema` answer with the real spec: the transport, the auth
+  scheme that was detected, the validation rules, the response
+  statuses, and the file and line the route was found in.
+- **The Export Center writes.** `dry-run` answers with the files that
+  would be written, their size, and whether each would replace
+  something that is already there; `export` writes them, atomically,
+  into the chosen directory — the same directory the dry run looked at.
+- **The five verbs that were CLI-only now answer.** `check` compares
+  the collection with the routes in the code and says what is missing
+  on either side; `validate` separates the errors from the warnings;
+  `stats` counts the requests per method and per zone; `sync`
+  generates and writes, or only says what it would write; `push`
+  uploads the collection, with the key the app has saved — and the key
+  does not come back.
+- **The shell mounts every feature.** Overview, endpoints, exports,
+  services, history, live, check, sync, validate, stats, push and
+  settings are all reachable from the sidebar, and the ones that need
+  a project say so instead of showing an empty screen.
+
+## What the app cannot do yet
+
+**Nothing.** The list of operations the app asks for that the
+Application API does not have
+([`PENDING_APP_OPERATIONS`](../packages/contracts/constants/core/cli-app-parity.constant.ts))
+is empty.
+
+It was not always. The five operations it held — `history-diff`,
+`history-compare-config`, `history-re-export`, `history-restore` and
+`service-detail` — were about the **persisted** history (the past
+revisions, with their hashes, that can be compared, exported again or
+restored) and about the detail of one service. They asked for them
+explicitly so the call answered "not yet" instead of `UNKNOWN_HANDLER`,
+and the screen said in a note that the history was not exposed.
+
+They are exposed now. The history is on disk — in
+`~/.tanit/history/`, one file per revision — so a revision outlives
+the session that made it, and the CLI's generation writes to the same
+store. The app lists the revisions, compares two, says how they were
+configured, exports one again and restores one.
+
+What the CLI still cannot do is **compare or restore**: its `history`
+command lists the generations and stops there. The parity map says so,
+in the note of the `history` capability.
+
+## What the CLI offers, action by action
+
+Every row here is reachable from the app too. The verbs that used to
+be CLI-only — `check`, `validate`, `push`, `stats` and `sync` — moved
+their logic to the core, so both faces run **the same code** and not
+two implementations that agree by accident.
+
+| GUI action | CLI command | Output and diagnostics |
+| --- | --- | --- |
+| Check | `apisrc check --project-root <path>` | Drift report with exit code 0/1 and actionable diagnostics. The app shows the routes the collection is missing and the requests the code does not declare. |
+| Sync | `apisrc sync --project-root <path>` | Uses the existing generation pipeline; `--dry-run` inspects without writing. The app reaches the same pipeline through `sync`, `export` and `dry-run`. |
+| Validate | `apisrc validate --project-root <path>` | Schema/collection diagnostics and non-zero exit on errors. The app separates the errors from the warnings. |
+| Push | `apisrc push --project-root <path> --workspace <id>` | Collection/environment actions; keys are never written to disk or diagnostics. The app sends the key it has saved, and the key does not come back. |
+| Stats | `apisrc stats --project-root <path>` | Counts per method and per zone. The app shows the same numbers, because there is only one function that counts. |
+| Live | `apisrc watch --project-root <path>` | Watches source changes; auto-export is opt-in and off by default. |
+
+## Client API consumption
+
+`client-usage` reads frontend source and reports recognized HTTP calls,
+including their source locations and any evidence that could not be resolved.
+With `--backend-root`, Tanit discovers the HTTP operations of one backend
+project in memory and reports matched, missing, ambiguous, and unknown calls.
+Operations without a confirmed caller are listed separately.
+
+```bash
+apisrc client-usage --project-root ./frontend
+apisrc client-usage --project-root ./frontend --backend-root ./api --format json
+```
+
+Use `--client-alias http=@app/api-client` for a client imported as `http`
+from that module. Repeat the flag for additional aliases. The JSON output
+uses the same report as the DelendAI MCP tool. Analysis leaves collection
+files and project state untouched. See the verified language, framework and
+transport boundaries in the [frontend coverage reference](CLIENT-COVERAGE.md).
+
+Vue single-file components can report direct HTTP calls from inline
+`@event` and `v-on:event` handlers when the receiver is an Axios import
+or a configured module import visible from `<script setup>`. The call
+links to its original component coordinates. Templates with generated
+scopes, delegated handlers or unresolved expressions keep an explicit
+diagnostic. This event support was verified with Vue 3.5.46.
+
+### Compare several projects
+
+Find frontend folders and backend service IDs, then pass a JSON selection plan
+to Tanit. Both commands print a JSON result.
+
+```bash
+apisrc client-candidates --project-root ./workspace --role frontend
+apisrc client-candidates --project-root ./workspace --role backend
+apisrc client-links --plan ./selected-links.json
+```
+
+The plan lists each frontend and the links you want to check. Copy the service
+ID from the backend candidate report. Relative paths are resolved from the
+directory containing the plan. Set a link's optional `host` to the backend's
+hostname, including its port when present. Configure named HTTP clients with
+`aliases` on the frontend that uses them.
+
+```json
+{
+  "frontends": [{ "root": "./workspace/apps/storefront" }],
+  "links": [{
+    "frontendRoot": "./workspace/apps/storefront",
+    "backendRoot": "./workspace",
+    "serviceId": "apps_catalog-api"
+  }]
+}
+```
+
+Application API clients can call `client-candidates` with an absolute
+`projectRoot` and the role `frontend` or `backend`. Frontend discovery
+returns the selected root and existing workspace directories. Backend
+discovery returns canonical service IDs and HTTP operation counts. Pass
+these roots and service IDs to `client-links` as explicit frontend-to-backend
+links to compare several projects in a single request. The optional DelendAI
+integration exposes the same operations as `delendai_tanit_client_candidates`
+and `delendai_tanit_client_links`. In MCP, paths are relative to the server
+workspace when they are not absolute, and all project roots must be inside it.
+
+Set `"compareRequestBodies": true` at the top level of the selection plan to
+check JSON request bodies for uniquely matched operations. The first supported
+case is a literal `fetch` body with an explicit JSON content type and an
+unambiguous, inline OpenAPI 3.0 declaration for a closed object. Each check
+reports compatibility, incompatibility, or unknown and includes the contract
+source when available. Reports omit request body values.
+
+Set `"compareResponseBodies": true` to check the opposite direction. Tanit
+compares an inline `axios.get<{ ... }>()` type with the selected operation's
+single declared OpenAPI 3.0 JSON success response. Supported objects have
+named scalar fields, and the backend declaration must close the object.
+Multiple success statuses, custom Axios options and unresolved types produce
+an unknown verdict. The result can include the HTTP status and schema
+location. Both checks can run on the same plan.
+
+Angular instance methods recognize `HttpClient` declared as a constructor
+parameter property or initialized with Angular's `inject(HttpClient)`.
+Recognized calls include HTTP verb methods and `request(method, url)`.
+The report also recognizes direct event handlers such as
+`(click)="this.api.get('/items')"` in external templates with one statically
+verified owner. It retains original call coordinates and keeps unsupported
+template constructs visible as diagnostics.
+
+Vue components support one inline `<script>`, one inline `<script setup>`,
+or both blocks together in the same supported language. Imports are shared at
+module scope and setup declarations remain local. Reports use the original
+component coordinates, including for request and response evidence. External
+scripts, conflicting imports, mixed languages and template expressions produce
+diagnostics.
+
+### OpenAPI consumer counts through the Application API
+
+Pass `consumerFrontends` to `dry-run` and `export` with target `openapi` to
+include `x-tanit-consumers` on uniquely matched operations. The input uses
+the same frontend roots and optional alias mappings as `client-links`.
+The open backend snapshot must contain one identified service. The extension
+counts matched calls and distinct frontend roots. It omits client paths,
+bodies, ambiguous matches and operations expanded from `ALL`. An absolute
+frontend URL must match the host in the exported backend configuration. Re-exporting
+that OpenAPI revision reuses the counts recorded at export time.
+
+## Durable state diagnostics
+
+State persistence is shadow-only and opt-in. A normal scan continues to use
+the legacy in-memory result as its authority. Use `--shadow` to write the
+complete snapshot to the SQLite state database without activating it:
+
+```text
+apisrc scan --project-root <path> --shadow
+```
+
+Use `doctor --json` (or run `packages/cli/commands/doctor.script.ts` directly
+while the command is being exposed by the host) to inspect database version,
+migration status, active snapshot, last write, corruption and parity
+diagnostics. Secret values are never printed; the report only says that they
+were omitted. An absent or unavailable database does not change scan behavior.
+
+`sync` is a carrier over the existing generation handler. It does not scan or
+export through a second pipeline. GUI dry-run, retry, cancellation and native
+secure storage are host concerns around the same operation contract.
+
+### One persisted history for all clients
+
+CLI generation and summary runs, the web application and desktop use the
+same core repository at `~/.tanit/history/` (`TANIT_HISTORY_DIR` can override
+it). The CLI projects these records into its text/JSONL output; the app
+projects them into revision summaries. No rescan is needed to read history.
+
+The old `history.jsonl` is a read-only migration input. Import is idempotent,
+preserves duplicates and reports malformed lines without discarding valid
+records. New writes never append to that file. Historical run metadata
+without a source snapshot has no invented snapshot hash and cannot be
+compared, restored or exported again. The UI labels that limitation.
+`history --clear` explicitly clears the shared repository and legacy input,
+so cleared legacy data is not silently imported again.

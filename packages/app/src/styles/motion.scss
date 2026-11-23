@@ -1,0 +1,57 @@
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: reveal 160ms var(--motion-standard) both;
+  }
+  .motion-view {
+    animation: view-enter 210ms var(--motion-standard) both;
+  }
+  .motion-fade {
+    animation: fade-in 160ms var(--motion-standard) both;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes view-enter {
+  from { opacity: .75; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The shell stays live while the browser crossfades the workspace snapshots. */
+::view-transition { pointer-events: none; }
+::view-transition-old(root) { display: none; }
+::view-transition-new(root) { animation: none; }
+::view-transition-group(tanit-workspace) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--motion-standard);
+}
+::view-transition-old(tanit-workspace),
+::view-transition-new(tanit-workspace) {
+  height: auto;
+  animation-duration: 300ms;
+  animation-timing-function: var(--motion-standard);
+  animation-fill-mode: both;
+}
+::view-transition-old(tanit-workspace) { animation-name: workspace-out; }
+::view-transition-new(tanit-workspace) { animation-name: workspace-in; }
+
+@keyframes workspace-out {
+  to { opacity: 0; transform: translateY(-3px); }
+}
+@keyframes workspace-in {
+  from { opacity: 0; transform: translateY(5px); }
+}

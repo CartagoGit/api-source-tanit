@@ -1,0 +1,31 @@
+<section class="tanit-section workflow" aria-labelledby="stats-title">
+  <header class="tanit-page-header">
+    <h2 class="tanit-page-title" id="stats-title">{{ i18n.translate("stats.title") }}</h2>
+    <p>{{ i18n.translate("stats.intro") }}</p>
+  </header>
+  <div class="tanit-panel workflow-panel">
+    <div class="workflow-actions">
+      <button type="button" class="tanit-button tanit-button--primary" [disabled]="running()" (click)="run()">{{ running() ? i18n.translate("stats.running") : i18n.translate("stats.start") }}</button>
+    </div>
+    @if (message(); as value) { <p class="workflow-status" role="status">{{ value }}</p> }
+    @if (stats(); as answer) {
+      <dl class="workflow-metrics">
+        <div><dt>{{ i18n.translate("stats.requests") }}</dt><dd>{{ answer.total }}</dd></div>
+      </dl>
+      <div>
+        <h3>{{ i18n.translate("stats.byMethod") }}</h3>
+        <ul class="workflow-list breakdown" role="list">
+          @for (entry of answer.byMethod; track entry.method) { <li><code>{{ entry.method }}</code><span>{{ entry.count }}</span></li> }
+        </ul>
+      </div>
+      @for (zone of answer.zones; track zone.zone) {
+        <div>
+          <h3>{{ zone.zone }} ({{ zone.total }})</h3>
+          <ul class="workflow-list breakdown" role="list">
+            @for (entry of zone.byFolder; track entry.folder) { <li><span>{{ entry.folder }}</span><span>{{ entry.count }}</span></li> }
+          </ul>
+        </div>
+      }
+    }
+  </div>
+</section>

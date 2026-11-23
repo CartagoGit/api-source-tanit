@@ -1,0 +1,92 @@
+.client-usage { max-inline-size: 68rem; }
+
+.client-usage-roots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: var(--space-3);
+}
+
+.client-usage-root,
+.client-usage-detail,
+.client-usage-picker {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.client-usage-root h2,
+.client-usage-results h2 { font-size: 1.125rem; }
+
+.client-usage-detail h3 { font-size: 1rem; }
+
+:is(h2, h3, p) { margin: 0; }
+
+.client-usage-root code,
+.client-usage-row { overflow-wrap: anywhere; }
+
+.client-usage-root p,
+.client-usage-location,
+.client-usage-row p span,
+.client-usage-detail li span { color: var(--color-muted); }
+
+.client-usage-picker > button { justify-self: start; }
+
+.client-usage-row {
+  display: grid;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-inline: var(--space-3);
+}
+
+.client-usage-call {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.client-usage-method {
+  padding-inline: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 650;
+}
+
+@media (min-width: 60rem) {
+  .client-usage-row { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+  .client-usage-location { text-align: end; }
+  .client-usage-row > p,
+  .client-usage-candidates { grid-column: 1 / -1; }
+}
+
+.client-usage-row[data-state="matched"] strong { color: var(--color-focus); }
+
+.client-usage-row[data-state="missing"] strong { color: var(--color-danger); }
+
+.client-usage-location { font-size: .875rem; }
+
+.client-usage-candidates {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  color: var(--color-muted);
+}
+
+.workflow-list .client-usage-candidates li {
+  padding-block: var(--space-1);
+  border: 0;
+}
+
+.client-usage-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.client-usage-modes button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}

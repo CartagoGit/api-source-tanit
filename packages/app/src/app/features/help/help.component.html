@@ -1,0 +1,41 @@
+<section class="tanit-section help" aria-labelledby="help-title">
+  <header class="tanit-page-header">
+    <h2 class="tanit-page-title" id="help-title">{{ i18n.translate("nav.help") }}</h2>
+    <p>{{ i18n.translate("help.intro") }}</p>
+  </header>
+  <div class="help-grid">
+    <section class="tanit-panel panel" aria-labelledby="shortcut-title">
+      <h3 id="shortcut-title">{{ i18n.translate("help.shortcuts") }}</h3>
+      <dl>
+        @for (shortcut of shortcuts; track shortcut.labelKey) {
+          <div>
+            <dt>
+              @for (key of shortcut.keys; track key) { <kbd>{{ key }}</kbd> }
+            </dt>
+            <dd>{{ i18n.translate(shortcut.labelKey) }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+    <section class="tanit-panel panel links" aria-labelledby="links-title">
+      <h3 id="links-title">{{ i18n.translate("help.links") }}</h3>
+      <a [href]="repository" target="_blank" rel="noopener noreferrer" (click)="openLink($event, repository)">
+        <tanit-github-mark class="brand-icon" />
+        <span><strong>{{ i18n.translate("help.repository") }}</strong><small>{{ i18n.translate("help.repositoryDescription") }}</small></span>
+      </a>
+      <a [href]="issues" target="_blank" rel="noopener noreferrer" (click)="openLink($event, issues)">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M12 7v6m0 3h.01" stroke-linecap="round" />
+        </svg>
+        <span><strong>{{ i18n.translate("help.issues") }}</strong><small>{{ i18n.translate("help.issuesDescription") }}</small></span>
+      </a>
+      <a [href]="reportIssue" target="_blank" rel="noopener noreferrer" (click)="openLink($event, reportIssue)">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M8 12h8m-4-4v8" stroke-linecap="round" />
+        </svg>
+        <span><strong>{{ i18n.translate("help.reportIssue") }}</strong><small>{{ i18n.translate("help.reportIssueDescription") }}</small></span>
+      </a>
+      @if (linkFailed()) { <p class="error" role="alert">{{ i18n.translate("help.openFailed") }}</p> }
+    </section>
+  </div>
+</section>
