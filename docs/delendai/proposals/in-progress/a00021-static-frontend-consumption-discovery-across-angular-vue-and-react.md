@@ -243,13 +243,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-6-luna — verified at 00b784c445ff, validate exit 0 and tests 40/40 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the exact source diff and focused fixtures: the recognizer requires named imports from @angular/common/http and @angular/core, associates candidate cl… (2) Focused tests cover static HTTP verbs, request("PATCH", "/items"), dynamic method and URL, and receiver scoping. The real decorated-component wire receipt conf… (3) Core contract and pinned integration output schema both include angular-http-client; pinned MCP integration tests verify the same matched usage. The actual dec… — Independent g56 review of S12 at merged PR #257 exact head 00b784c445ffda7259309a0ca3086cd4b8679499, integrated at develop b005f546. Reused 40 core tests, core typecheck, 162 pinned integration tests plus typecheck, local work prove, real decorated-component wire parity with exact column/start/end offsets, Chromium ui:dev browser receipt and native Windows WebView2 receipt with no visible console. Exact-head CI 45128239841 passed. No tests rerun by reviewer.
 
 ### S13 — Recognize verified Angular HttpClient calls in external templates
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/core/discovery/client-consumption.service.ts`, `packages/core/language-frontends/typescript/angular-client-template.parser.ts`, `tests/core/client-consumption.spec.ts`.
 - **Gate**: Angular template parser, package proof and shared client parity plus `bun run validate`
 - **Acceptance**:
   - A literal external template referenced by exactly one component with a real Angular Component decorator recognizes a direct event call on its explicitly qualified HttpClient receiver.
   - Static and unresolved calls preserve original HTML file and source coordinates. Unproved ownership, non-explicit receivers and unsupported syntax remain diagnostics.
   - The generic scanner retains existing behavior for JavaScript, TypeScript and Vue, and the packaged CLI loads the template parser without project dependencies.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S14 — Compare request and response contracts directionally
 - **Status**: pending
