@@ -32,6 +32,7 @@ import type { OpenApiScannerOptions } from "../../contracts/interfaces/framework
 import { readBoundedText } from "../../core/helpers/read-bounded-text.helper.js";
 import { ensureInside } from "../../core/helpers/path-containment.helper.js";
 import { parseWithProgram } from "../../core/language-frontends/typescript/index.js";
+import { DECLARED_JSON_REQUEST } from "../../contracts/constants/core/client-consumption.constant.js";
 import { ContractDocumentationUrlSchema } from "../../contracts/constants/core/contract-evidence.constant.js";
 
 /** Look for OpenAPI in the most common locations. */
@@ -502,9 +503,16 @@ export class OpenApiRouteScanner implements IRouteScanner {
           if (!member) continue;
           const { file: sourceFile, pointer: sourcePointer } = member;
           const sourceReferences = uniqueReferences([...member.references, ...pathReferences]);
+          const declaration = directJsonRequestDeclaration(spec, pathItemValue, method);
           routes.push({
             framework: "openapi", method: method.toUpperCase(), uri, rawUri: pathTemplate,
             sourceFile, sourcePointer, sourceDocument: document.file,
+            ...(declaration === undefined ? {} : {
+              [DECLARED_JSON_REQUEST]: {
+                schema: declaration,
+                source: { file: document.file, pointer: `${pathPointer}/${method}/requestBody/content/application~1json/schema` },
+              },
+            }),
             ...(sourceReferences.length ? { sourceReferences } : {}),
             lineNumber: 0, prefixChain: basePath ? [basePath] : [],
             displayName: operationId || summary || `${method.toUpperCase()} ${pathTemplate}`,
@@ -532,6 +540,16 @@ export class OpenApiRouteScanner implements IRouteScanner {
     };
   }
 
+}
+
+/** Read the declaration before the route resolver can elide an unresolved reference. */
+function directJsonRequestDeclaration(document: unknown, rawPath: unknown, method: string): unknown {
+  if (!/^3\.0\.[0-9]+$/u.test(readString(document, "openapi") ?? "") ||
+      !isRecord(rawPath) || Object.hasOwn(rawPath, "$ref")) return undefined;
+  const operation = readObject(rawPath, method);
+  const request = readObject(operation, "requestBody");
+  if (!operation || !request || Object.hasOwn(operation, "$ref") || Object.hasOwn(request, "$ref")) return undefined;
+  return readObject(readObject(request, "content"), "application/json")?.schema;
 }
 
 function serverPath(servers: unknown[] | undefined): string {

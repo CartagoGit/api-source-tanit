@@ -256,23 +256,24 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-reviewer: openai-gpt-5.6-luna
 - review-log: approved by openai-gpt-5.6-luna — verified at 7eb6f3d925b2, validate exit 0 and tests 162/162 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-s13-angular-proof.json and 45 targeted checks; prior source inspection found literal templateUrl ownership, conservative this.member HTTP mat… (2) Reused pinned integration suite 162/typecheck, real CLI/stdio CRLF span receipts, Chromium and compiled Windows/WebView2 receipts; g57 returned the normal shar… (3) Reused /tmp/tanit-s13-angular-packed-cli.json clean installed tarball proof, package proof, scoped typecheck and pinned integration evidence; no tests rerun by… — Independent approval of S13 at exact merged PR #259 tip 7eb6f3d925b23ab8002858eacca8ed8d86a403d7. Reused Angular proof, 45 targeted plus 162 pinned integration checks/typecheck, CRLF CLI/stdio spans, clean tarball, Chromium and Windows/WebView2 receipts; no tests rerun.
 
-### S14 — Compare request and response contracts directionally
+### S14 — Compare static JSON requests with a selected backend contract
+- **Status**: review
+- **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/core/schema/json-request-comparison.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/client-request-contract.spec.ts`.
+- **Gate**: focused contract and carrier tests plus `bun run validate`
+- **Acceptance**:
+  - An opt-in plan compares a literal fetch JSON body with the direct OpenAPI declaration on the uniquely selected operation.
+  - Unsupported evidence stays unknown. Incompatible requests have specific reasons, and request body values never enter the report.
+  - CLI, Application API and the pinned integration return one canonical result. Plans without the option keep the existing report.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+
+### S15 — Compare backend responses with frontend expectations
 - **Status**: pending
-- **Files**: client contract evidence, directional comparison and shared report.
-- **Gate**: linked-project contract and carrier parity tests plus `bun run validate`
+- **Files**: response evidence extraction and shared client report.
+- **Gate**: selected response status and cross-carrier tests plus `bun run validate`
 
-Compare frontend request shapes against accepted backend input, and backend
-response shapes against frontend expectations. Reuse the selected operation
-and response status, and retain unknown evidence for missing declarations or
-unsupported constructs.
-
-### S15 — Expose optional consumer evidence to exporters
-- **Status**: pending
-- **Files**: exporter adapters and evidence fixtures.
-- **Gate**: backward compatibility and exporter tests plus `bun run validate`
-
-Sequence exporter metadata after directional comparison. Existing output
-retains its format when consumer analysis is absent.
+Compare backend response shapes in the opposite direction, from the selected
+status to the frontend type. Preserve unknown results for incomplete evidence.
 
 ### S16 — Analyze mixed Vue script scopes and template bindings
 - **Status**: pending
@@ -282,6 +283,14 @@ retains its format when consumer analysis is absent.
 Cover Vue normal and setup script scopes with original source offsets.
 Resolve template bindings before reporting calls and retain diagnostics for
 unproved receivers.
+
+### S17 — Expose optional consumer evidence to exporters
+- **Status**: pending
+- **Files**: exporter adapters and evidence fixtures.
+- **Gate**: backward compatibility and exporter tests plus `bun run validate`
+
+Sequence exporter metadata after directional comparison. Existing output
+retains its format when consumer analysis is absent.
 
 ### Pairwise comparison and selection boundary
 

@@ -1,12 +1,16 @@
 import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+import { DECLARED_JSON_REQUEST } from "../../contracts/constants/core/client-consumption.constant.js";
 import type {
   ClientProjectCandidates,
   ClientProjectRole,
   IClientAlias,
   IClientBackendOperation,
   IClientConsumptionResult,
+  IClientLinkedCall,
+  IClientUsage,
+  IDeclaredJsonRequestContract,
   IClientProjectLinksInput,
   IClientProjectLinksReport,
   ISelectedClientBackend,
@@ -14,6 +18,7 @@ import type {
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IDiscoveryOrchestrator } from "../../contracts/interfaces/core/scanner.interface.js";
 import { ProjectIndex } from "../index/project-index.service.js";
+import { compareJsonRequestBody } from "../schema/json-request-comparison.helper.js";
 import { correlateClientUsageLinks } from "./client-correlation.helper.js";
 import { scanClientConsumption } from "./client-consumption.service.js";
 import { generateCollections } from "./generation.pipeline.js";
@@ -40,8 +45,13 @@ async function canonicalDirectory(path: string, role: "Frontend" | "Backend"): P
 async function readBackendServices(
   root: string,
   orchestrator: IDiscoveryOrchestrator,
+  collectJsonRequestContracts = false,
 ): Promise<readonly IGenerationResult[]> {
-  const results = await generateCollections(root, { orchestrator, combineServices: false });
+  const results = await generateCollections(root, {
+    orchestrator,
+    combineServices: false,
+    ...(collectJsonRequestContracts ? { collectJsonRequestContracts: true } : {}),
+  });
   if (!results.some(({ match, specs }) => match !== null || specs.length > 0)) {
     throw new Error(`No backend API discovered in ${root}`);
   }
@@ -54,6 +64,39 @@ function readServiceOperations(result: IGenerationResult): readonly IClientBacke
     .map(({ method, uri, name, serviceId }) => ({
       method, uri, name, serviceId: serviceId ?? result.serviceId,
     }));
+}
+
+function indexJsonDeclarations(
+  service: IGenerationResult,
+  operations: readonly IClientBackendOperation[],
+  declarations: WeakMap<IClientBackendOperation, IDeclaredJsonRequestContract>,
+): void {
+  const routes = new Map<string, IDeclaredJsonRequestContract | undefined>();
+  for (const route of service.jsonRequestContractRoutes ?? []) {
+    const key = `${route.method} ${route.uri}`;
+    routes.set(key, routes.has(key) ? undefined : route[DECLARED_JSON_REQUEST]);
+  }
+  for (const operation of operations) {
+    const declaration = routes.get(`${operation.method} ${operation.uri}`);
+    if (declaration) declarations.set(operation, declaration);
+  }
+}
+
+function assessRequestBody(
+  call: IClientLinkedCall,
+  payloads: WeakMap<IClientUsage["location"], string>,
+  declarations: WeakMap<IClientBackendOperation, IDeclaredJsonRequestContract>,
+): IClientLinkedCall {
+  const [candidate] = call.candidates;
+  if (call.status !== "matched" || !candidate) return call;
+  const raw = payloads.get(call.usage.location);
+  if (raw === undefined) return { ...call, requestContract: { verdict: "unknown", reason: "missing-client-json" } };
+  const declaration = declarations.get(candidate.operation);
+  if (!declaration) return { ...call, requestContract: { verdict: "unknown", reason: "missing-backend-schema" } };
+  return {
+    ...call,
+    requestContract: { ...compareJsonRequestBody(declaration.schema, raw), source: declaration.source },
+  };
 }
 
 /** Inspect workspace directories or detected backend services before explicit selection. */
@@ -148,6 +191,7 @@ export async function analyzeClientProjectLinks(
   }
 
   const catalogs = new Map<string, Map<string, readonly IClientBackendOperation[]>>();
+  const declarations = new WeakMap<IClientBackendOperation, IDeclaredJsonRequestContract>();
   const prepared = [];
   for (const [root, { aliases, links }] of frontends) {
     const backends: ISelectedClientBackend[] = [];
@@ -155,10 +199,11 @@ export async function analyzeClientProjectLinks(
       let services = catalogs.get(backendRoot);
       if (!services) {
         services = new Map();
-        for (const service of await readBackendServices(backendRoot, orchestrator)) {
-          if (service.serviceId !== undefined) {
-            services.set(service.serviceId, readServiceOperations(service));
-          }
+        for (const service of await readBackendServices(backendRoot, orchestrator, input.compareRequestBodies)) {
+          if (service.serviceId === undefined) continue;
+          const discovered = readServiceOperations(service);
+          services.set(service.serviceId, discovered);
+          if (input.compareRequestBodies) indexJsonDeclarations(service, discovered, declarations);
         }
         catalogs.set(backendRoot, services);
       }
@@ -176,12 +221,20 @@ export async function analyzeClientProjectLinks(
   for (const { root, aliases, links, backends } of prepared) {
     const index = await ProjectIndex.open(root);
     try {
-      const { usages, diagnostics } = await scanClientConsumption(index, { aliases });
+      const payloads = new WeakMap<IClientUsage["location"], string>();
+      const { usages, diagnostics } = await scanClientConsumption(index, {
+        aliases,
+        ...(input.compareRequestBodies ? {
+          observeJsonRequest: (location, body) => { payloads.set(location, body); },
+        } : {}),
+      });
       const comparison = correlateClientUsageLinks(usages, backends);
       reports.push({
         root,
         diagnostics,
-        calls: comparison.calls,
+        calls: input.compareRequestBodies
+          ? comparison.calls.map((call) => assessRequestBody(call, payloads, declarations))
+          : comparison.calls,
         backends: comparison.backends.map((backend) => {
           const { backendRoot, serviceId } = links.get(backend.id)!;
           return { ...backend, root: backendRoot, serviceId };

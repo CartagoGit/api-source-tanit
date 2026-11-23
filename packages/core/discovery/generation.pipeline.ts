@@ -597,7 +597,11 @@ async function buildForService(
     .map(scan => ({ ...scan, source: { ...scan.source, serviceId: combinedComparison ? scan.source.serviceId : service.serviceId } }));
   const contractEvidence = comparisonScans ? reconcileContracts(comparisonScans) : undefined;
 
+  const jsonRequestContractRoutes = options.collectJsonRequestContracts
+    ? (comparisonScans ?? []).flatMap(({ source, routes }) => source.framework === "openapi" ? routes : [])
+    : undefined;
   const result: IGenerationResult = {
+    ...(jsonRequestContractRoutes === undefined ? {} : { jsonRequestContractRoutes }),
     collection,
     specs,
     routes: service.endpoints,

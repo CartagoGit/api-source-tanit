@@ -18,6 +18,8 @@ export interface IAngularClientTemplateOwner {
 
 export interface IClientConsumptionOptions {
   readonly aliases?: readonly IClientAlias[];
+  /** Internal observer for static JSON evidence retained only during comparison. */
+  readonly observeJsonRequest?: (location: ILocation, body: string) => void;
   /** Explicitly selected operation catalog for one backend. An empty catalog is valid. */
   readonly backend?: readonly IClientBackendOperation[];
 }
@@ -41,12 +43,31 @@ export interface IClientLinkCandidate {
   readonly operation: IClientBackendOperation;
 }
 
+export interface IClientContractSource {
+  readonly file: string;
+  readonly pointer: string;
+}
+
+export interface IDeclaredJsonRequestContract {
+  readonly source: IClientContractSource;
+  readonly schema: unknown;
+}
+
+export interface IJsonRequestCheck {
+  readonly verdict: "compatible" | "incompatible" | "unknown";
+  readonly reason?: "unsupported-schema" | "invalid-json" | "missing-field" | "unexpected-field" |
+    "type-mismatch" | "enum-mismatch" | "unsupported-json" | "missing-client-json" | "missing-backend-schema";
+  readonly field?: string;
+  readonly source?: IClientContractSource;
+}
+
 export interface IClientLinkedCall {
   readonly usage: IClientUsage;
   readonly status: NonNullable<IClientUsage["correlation"]>["status"];
   /** Set when the call matches or is attributable to exactly one selected backend. */
   readonly backendId?: string;
   readonly candidates: readonly IClientLinkCandidate[];
+  readonly requestContract?: IJsonRequestCheck;
 }
 
 export interface IClientLinkComparisonResult {
@@ -59,6 +80,7 @@ export interface IClientLinkComparisonResult {
 
 /** A workspace comparison between explicitly declared frontends and backend services. */
 export interface IClientProjectLinksInput {
+  readonly compareRequestBodies?: boolean;
   readonly frontends: readonly {
     readonly root: string;
     readonly aliases?: readonly IClientAlias[];
