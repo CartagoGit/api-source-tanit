@@ -313,13 +313,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 0733526aa1c2, validate exit 0 and tests 55/55 claimed, no recorded run cited; acceptance 3/3: (1) 55/55 focused tests; /tmp/tanit-s17-proof.json proved=true; /tmp/tanit-s17-wire.json and /tmp/tanit-s17-windows.json report previewReadOnly=true and byteParity… (2) Focused exporter/e2e fixtures cover attribution exclusions and sanitized artifacts; WSL/Windows receipts report confirmedCalls=2, frontends=2, aliasPreserved=t… (3) /tmp/tanit-s17-history-wire.json and /tmp/tanit-s17-history-windows.json report historyRestored=true and byteParity=true; target normalization and history-rest… — Independent official g66 review: S17 satisfies all three acceptance criteria. Explicit frontend selection reuses the canonical link analyzer against the identified single-service snapshot; preview and write share the prepared artifact and byte counts. Aggregation admits only uniquely attributable concrete operations, excludes unknown/ambiguous calls, duplicate rendered operations, and ALL expansions, and persists only sanitized method/URI/count evidence. Default bytes remain unchanged and persisted history re-export preserves the original annotated revision, including target normalization and restored history behavior. Evidence includes 55/55 focused tests, 162 pinned integration tests, exact CI 45262622070 with ci-summary and desktop-tests, /tmp/tanit-s17-proof.json, real WSL/Windows three-carrier and history receipts, and publish proof.
 
 ### S18 — Resolve Vue template client bindings
-- **Status**: pending
+- **Status**: review
 - **Files**: Vue component parser, the shared TypeScript call recognizer and Vue client discovery fixtures.
 - **Gate**: focused Vue event scope fixtures, real Vue 3.5.46 compiler evidence, canonical report parity and `bun run validate`
 - **Acceptance**:
   - Static named Vue events report single direct HTTP calls only for proven Axios or configured module imports visible through script setup, including shared runtime imports from a paired script.
   - Original file, CRLF line and column and exact source ranges accompany calls. The existing script analysis and operation matching remain canonical across CLI, Application API and pinned MCP.
   - Template-generated scopes, unproved receivers, delegated handlers and unsupported expressions preserve an explicit diagnostic. Plain markup produces no unsupported-call diagnostic.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S19 — Verify frontend syntaxes and HTTP transports independently
 - **Status**: pending
