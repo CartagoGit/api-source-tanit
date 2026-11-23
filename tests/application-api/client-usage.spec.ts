@@ -32,7 +32,7 @@ beforeAll(async () => {
       'fetch(runtimeUrl());',
     ].join("\n")),
     writeFile(join(projectRoot, "Users.vue"), [
-      '<template><button>Load users</button></template>',
+      '<template><button @click="loadUsers">Load users</button></template>',
       '<script setup lang="ts">fetch("/api/users", { method: "POST" });</script>',
     ].join("\n")),
   ]);

@@ -21,7 +21,7 @@ beforeAll(async () => {
       'http.post("/outside-catalog");',
       'client.get("/items");',
     ].join("\n")),
-    writeFile(join(frontend, "View.vue"), '<template><div /></template>'),
+    writeFile(join(frontend, "View.vue"), '<template><button @click="loadUsers">Load users</button></template>'),
     writeFile(join(backend, "openapi.json"), JSON.stringify({
       openapi: "3.0.0",
       info: { title: "Inventory", version: "1.0.0" },

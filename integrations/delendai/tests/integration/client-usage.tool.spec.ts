@@ -26,7 +26,7 @@ beforeAll(async () => {
     'http.get("/api/unknown");',
     "fetch(dynamicUrl);",
   ].join("\n"));
-  await writeFile(join(frontend, "app.vue"), "<template />");
+  await writeFile(join(frontend, "app.vue"), '<template><button @click="loadItems">Load</button></template>');
   await copyFile(
     join(workspaceRoot(import.meta.url), "tests/smoke-fixtures/openapi-mini/openapi.yaml"),
     join(backend, "openapi.yaml"),

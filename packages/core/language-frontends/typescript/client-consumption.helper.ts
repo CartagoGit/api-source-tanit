@@ -609,6 +609,44 @@ function importIdentity({ node, source }: IBinding): string | undefined {
   }
 }
 
+function scanVueEvents(
+  events: readonly Omit<IVueClientScript, "setup">[],
+  setupScope: IScope | undefined,
+  file: string,
+  options: IClientConsumptionOptions,
+): IClientUsage[] {
+  if (!setupScope) return [];
+  const usages: IClientUsage[] = [];
+  for (const event of events) {
+    let program: Program;
+    try {
+      program = readProgram(event.ast);
+    } catch {
+      continue;
+    }
+    const [statement] = program.body;
+    if (program.body.length !== 1 || statement?.type !== "ExpressionStatement" ||
+        statement.expression.type !== "CallExpression") continue;
+    const node = statement.expression;
+    const { callee } = node;
+    if (callee.type !== "MemberExpression" || callee.computed ||
+        callee.object.type !== "Identifier" || callee.property.type !== "Identifier") continue;
+
+    const name = callee.object.name;
+    const active = bindings(setupScope, name);
+    const [binding] = active;
+    if (active.length !== 1 || !binding || importIdentity(binding) === undefined) continue;
+    // Template code has a separate source coordinate system. Only the
+    // verified receiver binding can travel between the two scopes.
+    const scope: IScope = { bindings: new Map([[name, [binding]]]), functionBoundary: true };
+    const axiosNames = new Set(binding.axios ? [name] : []);
+    usages.push(...scanProgram(program, file, options, undefined, event.mapLocation, {
+      sites: [{ node, scope }], axiosNames,
+    }));
+  }
+  return usages;
+}
+
 /**
  * Share module imports across both Vue script blocks. Setup declarations have
  * their own scope and cannot change binding resolution in the classic script.
@@ -617,10 +655,29 @@ export function scanVueClientScripts(
   scripts: readonly IVueClientScript[],
   file: string,
   options: IClientConsumptionOptions,
+  template?: {
+    readonly events: readonly Omit<IVueClientScript, "setup">[];
+    readonly onUnsupported: () => void;
+  },
 ): IClientUsage[] | undefined {
+  function combine(scriptUsages: IClientUsage[], setupScope?: IScope): IClientUsage[] {
+    if (template && template.events.length > 0) {
+      const templateUsages = scanVueEvents(template.events, setupScope, file, options);
+      if (templateUsages.length !== template.events.length) template.onUnsupported();
+      scriptUsages.push(...templateUsages);
+    }
+    return scriptUsages.sort((left, right) => (left.location.start ?? 0) - (right.location.start ?? 0));
+  }
+
   const [first, second] = scripts;
-  if (!first) return [];
-  if (!second) return scanProgram(readProgram(first.ast), file, options, undefined, first.mapLocation);
+  if (!first) return combine([]);
+  if (!second) {
+    const program = readProgram(first.ast);
+    const root: IScope = { bindings: new Map(), functionBoundary: true };
+    const sites = callSites(program, undefined, root);
+    const setupScope = first.setup ? root : undefined;
+    return combine(scanProgram(program, file, options, undefined, first.mapLocation, sites), setupScope);
+  }
 
   if (scripts.length !== 2 || first.setup === second.setup) return undefined;
   const classic = first.setup ? second : first;
@@ -662,10 +719,10 @@ export function scanVueClientScripts(
   const setupRoot: IScope = { parent: setupParent, bindings: new Map(), functionBoundary: true };
   const setupSites = callSites(setupProgram, undefined, setupRoot, new Set(moduleAxios), imports);
 
-  return [
+  return combine([
     ...scanProgram(classicProgram, file, options, undefined, classic.mapLocation, classicSites),
     ...scanProgram(setupProgram, file, options, undefined, setup.mapLocation, setupSites),
-  ].sort((left, right) => (left.location.start ?? 0) - (right.location.start ?? 0));
+  ], setupRoot);
 }
 
 /** Scans the same parse tree supplied to the TypeScript LanguageIR collector. */
