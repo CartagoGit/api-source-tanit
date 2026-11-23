@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { ClientAnalysisInputSchema } from "../../../../../packages/contracts/constants/core/client-consumption.constant.js";
-import type { IClientConsumptionResult } from "../../../../../packages/contracts/interfaces/core/client-consumption.interface";
+import { ClientAnalysisInputSchema, ClientProjectCandidatesInputSchema } from "../../../../../packages/contracts/constants/core/client-consumption.constant.js";
+import type { IClientConsumptionResult, IClientProjectLinksReport } from "../../../../../packages/contracts/interfaces/core/client-consumption.interface";
 
 export const ClientUsageInputSchema = ClientAnalysisInputSchema.extend({
   projectRoot: ClientAnalysisInputSchema.shape.projectRoot.optional().describe("Proyecto cliente dentro del workspace. Por defecto se usa el proyecto configurado."),
@@ -25,6 +25,8 @@ const BackendOperationSchema = z.strictObject({
   location: LocationSchema.optional(),
 });
 
+const CorrelationStatusSchema = z.enum(["matched", "missing", "ambiguous", "unknown"]);
+
 const UsageSchema = z.strictObject({
   method: z.string().optional(),
   url: z.string().optional(),
@@ -48,7 +50,7 @@ const UsageSchema = z.strictObject({
     "unknown-options",
   ]).optional(),
   correlation: z.strictObject({
-    status: z.enum(["matched", "missing", "ambiguous", "unknown"]),
+    status: CorrelationStatusSchema,
     candidates: z.array(BackendOperationSchema),
   }).optional(),
 });
@@ -69,3 +71,43 @@ export const ClientUsageOutputSchema = z.strictObject({
   }),
   operationsWithoutConfirmedConsumer: z.array(BackendOperationSchema).optional(),
 }) satisfies z.ZodType<IClientConsumptionResult>;
+
+/**
+ * Keep a top-level object for the pinned MCP SDK, which only registers
+ * object schemas. Each role still requires its own inventory field.
+ */
+export const ClientCandidatesOutputSchema = z.strictObject({
+  role: ClientProjectCandidatesInputSchema.shape.role,
+  root: z.string(),
+  projects: z.array(z.strictObject({ root: z.string(), relativePath: z.string() })).optional(),
+  services: z.array(z.strictObject({
+    serviceId: z.string(),
+    relativePath: z.string(),
+    framework: z.string(),
+    httpOperationCount: z.int().nonnegative(),
+  })).optional(),
+}).refine(({ role, projects, services }) => role === "frontend"
+  ? projects !== undefined && services === undefined
+  : services !== undefined && projects === undefined, {
+  message: "El inventario debe contener el campo correspondiente al rol.",
+});
+
+/** The shared comparison report for explicitly linked projects. */
+export const ClientLinksOutputSchema = z.strictObject({
+  frontends: z.array(z.strictObject({
+    root: z.string(),
+    diagnostics: ClientUsageOutputSchema.shape.diagnostics,
+    calls: z.array(z.strictObject({
+      usage: UsageSchema,
+      status: CorrelationStatusSchema,
+      backendId: z.string().optional(),
+      candidates: z.array(z.strictObject({ backendId: z.string(), operation: BackendOperationSchema })),
+    })),
+    backends: z.array(z.strictObject({
+      id: z.string(),
+      root: z.string(),
+      serviceId: z.string(),
+      operationsWithoutConfirmedConsumer: z.array(BackendOperationSchema),
+    })),
+  })),
+}) satisfies z.ZodType<IClientProjectLinksReport>;

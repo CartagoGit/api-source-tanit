@@ -1,8 +1,4 @@
-import { realpath } from "node:fs/promises";
-import { relative } from "node:path";
-
 import {
-  resolveWorkspaceContainedLexical,
   toolError,
   toolJson,
   type IMcpPluginContext,
@@ -13,27 +9,9 @@ import type { IClientConsumptionResult } from "../../../../../packages/contracts
 import { analyzeClientProjects } from "../../../../../packages/core/discovery/client-usage.service";
 import { defaultOrchestrator } from "../../../../../packages/frameworks/index";
 import { ClientUsageInputSchema, ClientUsageOutputSchema } from "../contracts/client-usage.interface";
-import { resolvePluginPath, resolvePluginProjectRoot } from "../helpers/project-root.helper";
+import { createContainedProjectResolver, resolvePluginProjectRoot } from "../helpers/project-root.helper";
 
 const TOOL_ID = "client_usage";
-
-async function resolveContainedRoot(
-  workspace: string,
-  realWorkspace: string,
-  path: string,
-  argument: string,
-): Promise<string> {
-  const lexical = resolveWorkspaceContainedLexical(workspace, relative(workspace, path));
-  if (!lexical.ok) throw new Error(`${argument} debe estar dentro del workspace: ${path}`);
-
-  const physical = await realpath(lexical.abs).catch((error: unknown) => {
-    throw new Error(`${argument} debe ser un directorio legible: ${path}`, { cause: error });
-  });
-  if (!resolveWorkspaceContainedLexical(realWorkspace, relative(realWorkspace, physical)).ok) {
-    throw new Error(`${argument} debe estar dentro del workspace: ${path}`);
-  }
-  return physical;
-}
 
 /** Register read-only static API consumption discovery and optional backend correlation. */
 export function buildClientUsageToolRegistration(ctx: IMcpPluginContext): IToolRegistration {
@@ -58,16 +36,11 @@ export function buildClientUsageToolRegistration(ctx: IMcpPluginContext): IToolR
           }
 
           try {
-            const workspace = ctx.workspace.root;
-            const realWorkspace = await realpath(workspace);
-            const projectRoot = await resolveContainedRoot(
-              workspace, realWorkspace, resolvePluginProjectRoot(ctx, parsed.data.projectRoot), "projectRoot",
-            );
+            const resolveRoot = await createContainedProjectResolver(ctx);
+            const projectRoot = await resolveRoot(resolvePluginProjectRoot(ctx, parsed.data.projectRoot), "projectRoot");
             const backendRoot = parsed.data.backendRoot === undefined
               ? undefined
-              : await resolveContainedRoot(
-                workspace, realWorkspace, resolvePluginPath(ctx, parsed.data.backendRoot), "backendRoot",
-              );
+              : await resolveRoot(parsed.data.backendRoot, "backendRoot");
 
             const out: IClientConsumptionResult = await analyzeClientProjects({
               projectRoot,

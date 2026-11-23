@@ -37,6 +37,8 @@ const makeCtx = (options: Record<string, unknown> = {}) =>
 /** The tools the plugin promises, by id. */
 const EXPECTED_TOOLS = [
   "check",
+  "client_candidates",
+  "client_links",
   "client_usage",
   "generate",
   "init",
@@ -76,6 +78,8 @@ describe("arranque del plugin", () => {
     // `summary` only inspects: it must not declare effects.
     expect(byId.get("summary")?.effects ?? []).toEqual([]);
     expect(byId.get("client_usage")?.effects).toEqual([]);
+    expect(byId.get("client_candidates")?.effects).toEqual([]);
+    expect(byId.get("client_links")?.effects).toEqual([]);
   });
 
   /**

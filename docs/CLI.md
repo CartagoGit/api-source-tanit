@@ -224,7 +224,10 @@ Application API clients can call `client-candidates` with an absolute
 returns the selected root and existing workspace directories. Backend
 discovery returns canonical service IDs and HTTP operation counts. Pass
 these roots and service IDs to `client-links` as explicit frontend-to-backend
-links to compare several projects in a single request.
+links to compare several projects in a single request. The optional DelendAI
+integration exposes the same operations as `delendai_tanit_client_candidates`
+and `delendai_tanit_client_links`. In MCP, paths are relative to the server
+workspace when they are not absolute, and all project roots must be inside it.
 
 Vue components with one inline `<script>` or `<script setup>` block are scanned
 in the original source coordinates. Vue templates and mixed, external or
