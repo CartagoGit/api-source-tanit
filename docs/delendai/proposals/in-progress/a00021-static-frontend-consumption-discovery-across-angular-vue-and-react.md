@@ -328,11 +328,11 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 
 ### S19 — Verify frontend syntaxes and HTTP transports independently
 - **Status**: pending
-- **Files**: client analysis fixtures and the supported syntax and transport reference.
-- **Gate**: representative version-pinned fixtures and canonical report parity plus `bun run validate`
+- **Files**: `docs/CLIENT-COVERAGE.md`, client analysis documentation and the proposal.
+- **Gate**: focused carrier fixtures, canonical report parity and `bun run validate`
 - **Acceptance**:
-  - Document verified combinations by language, source form, relevant framework version and client transport. Report dynamic or unverified forms as unknown when static evidence is insufficient.
-  - Reuse JavaScript and TypeScript call recognizers wherever import and receiver evidence survives. Cover native Fetch, XMLHttpRequest and client libraries by proven call forms. Add framework adapters for distinct semantics, such as AngularJS services and framework templates, with their own fixtures.
+  - Publish a reference for already verified source forms and HTTP transports. Identify compiler versions when pinned and distinguish tested call syntax, project dependency evidence and framework compatibility.
+  - Document unresolved forms and track unverified transport and template adapters as separate fixture-backed slices. Reuse JavaScript and TypeScript call recognizers wherever import and receiver evidence survives.
 
 ### S20 — Present contract comparisons and source evidence in Angular
 - **Status**: pending
@@ -360,6 +360,54 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
   - In project and service summaries, show detected frontend and backend technologies with text labels and known logos, observed HTTP mechanisms, version evidence and official documentation. Use compatible practical fallbacks for unknown values and missing icons.
   - Let users expand specific requests and endpoints to see how they were recognized and how that relates to the scanned version. Keep advertised support, detected versions and observed syntax visually distinct.
   - Verify equivalent project facts in the desktop and web views and usable layout at compact widths, with keyboard and screen-reader support.
+
+### S23 — Recognize native XMLHttpRequest calls
+- **Status**: pending
+- **Files**: shared frontend call recognizer and native XMLHttpRequest fixtures.
+- **Gate**: positive, shadowing and lifecycle fixtures plus `bun run validate`
+- **Acceptance**:
+  - Report a static method and URL when a native XMLHttpRequest instance and its open/send sequence can be proved.
+  - Keep reassigned receivers, uncertain sequencing and dynamic method or URL values unresolved.
+
+### S24 — Verify AngularJS HTTP service calls
+- **Status**: pending
+- **Files**: AngularJS service binding adapter and version-pinned fixtures.
+- **Gate**: matching and shadowed service fixtures plus `bun run validate`
+- **Acceptance**:
+  - Prove AngularJS service injection and known `$http` method or configuration forms in explicitly recorded AngularJS 1.x fixtures.
+  - Distinguish AngularJS service bindings from modern Angular HttpClient. Keep unproved names and custom transport wrappers unresolved.
+
+### S25 — Verify jQuery AJAX imports and aliases
+- **Status**: pending
+- **Files**: shared JavaScript call recognizer and version-pinned jQuery fixtures.
+- **Gate**: import, configured global and shadowing fixtures plus `bun run validate`
+- **Acceptance**:
+  - Recognize statically evidenced `ajax`, `get` and `post` on a verified jQuery binding. Record the library versions and supported call forms.
+  - Preserve unresolved aliases, conflicting options and uncertain method or URL fields.
+
+### S26 — Verify Svelte component source forms
+- **Status**: pending
+- **Files**: Svelte source carrier and fixtures for JS, TS and component scopes.
+- **Gate**: version-pinned Svelte fixtures, exact locations and canonical report parity plus `bun run validate`
+- **Acceptance**:
+  - Analyze supported script forms with the existing JS/TS recognizers and retain source locations in the component.
+  - Verify any supported markup event form against the corresponding compiler version and keep generated or ambiguous scopes unresolved.
+
+### S27 — Verify Astro frontmatter and component scripts
+- **Status**: pending
+- **Files**: Astro source carrier and version-pinned frontmatter and script fixtures.
+- **Gate**: exact source locations, source roles and canonical report parity plus `bun run validate`
+- **Acceptance**:
+  - Distinguish frontmatter and supported client script blocks and reuse the existing JS/TS recognizers while preserving source locations.
+  - Keep deferred or unsupported Astro expressions and compiler-generated boundaries explicit.
+
+### S28 — Verify legacy Vue and Options API source forms
+- **Status**: pending
+- **Files**: Vue version and binding fixtures, with adapter changes where required.
+- **Gate**: representative Vue 1, Vue 2 and Vue 3 Options API fixtures plus `bun run validate`
+- **Acceptance**:
+  - Publish the exact tested Vue versions and binding forms. Use evidence from the corresponding compiler or fixture environment before confirming Options API template receivers.
+  - Separate Vue Resource, Axios and native Fetch profiles when their proven call forms differ. Keep injectors, plugins and global properties unresolved when their binding cannot be proved.
 
 ### Pairwise comparison and selection boundary
 
@@ -420,17 +468,9 @@ type is assignable to the frontend expected type. Required fields, enum/literal 
 nullability and union branches follow those directions. Reversing either direction is
 not compatibility.
 
-The first framework matrix is intentionally bounded:
-
-| Source family | MVP static surface | Template status |
-| --- | --- | --- |
-| JS/TS | `fetch`, Axios, configurable clients; TS annotations when statically available | n/a |
-| jQuery | `$.ajax`, `$.get`, `$.post`, configured aliases | n/a |
-| Solid/React | JS/TS/JSX/TSX call sites using generic recognizers | JSX/TSX supported by shared parser |
-| Astro | frontmatter and client `<script>` JS/TS | template expressions unresolved |
-| Svelte | `<script>` and `<script lang="ts">` | markup/event-generated calls unresolved |
-| Angular | component `.ts` `HttpClient` calls | Angular HTML unresolved until its adapter |
-| Vue | `<script>` and `<script setup>` JS/TS in SFCs | template bindings unresolved until its adapter |
+The frontend coverage reference in `docs/CLIENT-COVERAGE.md` lists verified
+source forms and their transport boundaries. S23–S28 track the pending
+recognizers and source carriers.
 
 Unsupported wrappers, generated SDK boundaries, dynamic URLs, unknown spreads, and
 unavailable response/request types remain explicit unresolved evidence.

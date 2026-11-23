@@ -189,7 +189,8 @@ apisrc client-usage --project-root ./frontend --backend-root ./api --format json
 Use `--client-alias http=@app/api-client` for a client imported as `http`
 from that module. Repeat the flag for additional aliases. The JSON output
 uses the same report as the DelendAI MCP tool. Analysis leaves collection
-files and project state untouched.
+files and project state untouched. See the verified language, framework and
+transport boundaries in the [frontend coverage reference](CLIENT-COVERAGE.md).
 
 Vue single-file components can report direct HTTP calls from inline
 `@event` and `v-on:event` handlers when the receiver is an Axios import
