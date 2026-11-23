@@ -327,12 +327,14 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 950f537a1f2e, validate exit 0 and tests 63/63 claimed, no recorded run cited; acceptance 3/3: (1) 63/63 final focused tests; /tmp/tanit-s18-template-wire.json provenEvents=3, scopedHandlerDiagnosed=true, compilerVersion=3.5.46; source/fixture review covers … (2) /tmp/tanit-s18-template-wire.json exactOffsets=true and parity=true; Windows receipt exactOffsets=true; supplied binary-equivalence head bf16b00723ed67b36f4b45… (3) Wire receipt scopedHandlerDiagnosed=true; focused fixtures cover v-for/v-slot/unknown/delegated branches and plain markup; final 162/162 integration receipt at… — Independent official g68 review: S18 satisfies all three acceptance criteria. Direct Vue events are emitted only for proven Axios/configured imports visible through script setup, including paired-script shared imports; generated scopes and unproved receivers remain unsupported. Source mapping preserves original CRLF coordinates and exact ranges, and the canonical scanner/report path remains shared across carriers. Plain markup is quiet while v-for/v-slot/delegated/unsupported handlers retain diagnostics. Final evidence is 63/63 focused tests, final 162/162 integration tests (the earlier appended failure predates the fixture fix), compiler 3.5.46 parity, Windows binary equivalence tested at the supplied head, exact offsets, work proof, and CI 45267772829 with ci-summary and desktop-tests.
 
 ### S19 — Verify frontend syntaxes and HTTP transports independently
-- **Status**: pending
+- **Status**: review
 - **Files**: `docs/CLIENT-COVERAGE.md`, client analysis documentation and the proposal.
 - **Gate**: focused carrier fixtures, canonical report parity and `bun run validate`
 - **Acceptance**:
   - Publish a reference for already verified source forms and HTTP transports. Identify compiler versions when pinned and distinguish tested call syntax, project dependency evidence and framework compatibility.
   - Document unresolved forms and track unverified transport and template adapters as separate fixture-backed slices. Reuse JavaScript and TypeScript call recognizers wherever import and receiver evidence survives.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S20 — Present contract comparisons and source evidence in Angular
 - **Status**: pending
