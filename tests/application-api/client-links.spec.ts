@@ -30,7 +30,7 @@ beforeAll(async () => {
     "apps/admin/client.ts": 'import http from "./transport";\nhttp.get("/api/users");',
     "apps/storefront/package.json": JSON.stringify({ name: "storefront", dependencies: { vue: "^3.5.0" } }),
     "apps/storefront/Users.vue": [
-      "<template><button>Load users</button></template>",
+      '<template><button @click="loadUsers">Load users</button></template>',
       '<script setup lang="ts">fetch("/outside-catalog"); fetch(runtimeUrl());</script>',
     ].join("\n"),
   }, "tanit-app-client-links-");
