@@ -236,6 +236,14 @@ unambiguous, inline OpenAPI 3.0 declaration for a closed object. Each check
 reports compatibility, incompatibility, or unknown and includes the contract
 source when available. Reports omit request body values.
 
+Set `"compareResponseBodies": true` to check the opposite direction. Tanit
+compares an inline `axios.get<{ ... }>()` type with the selected operation's
+single declared OpenAPI 3.0 JSON success response. Supported objects have
+named scalar fields, and the backend declaration must close the object.
+Multiple success statuses, custom Axios options and unresolved types produce
+an unknown verdict. The result can include the HTTP status and schema
+location. Both checks can run on the same plan.
+
 Angular instance methods recognize `HttpClient` declared as a constructor
 parameter property or initialized with Angular's `inject(HttpClient)`.
 Recognized calls include HTTP verb methods and `request(method, url)`.

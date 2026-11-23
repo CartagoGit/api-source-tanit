@@ -272,11 +272,12 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 
 ### S15 — Compare backend responses with frontend expectations
 - **Status**: pending
-- **Files**: response evidence extraction and shared client report.
+- **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/core/schema/json-request-comparison.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/client-response-contract.spec.ts`.
 - **Gate**: selected response status and cross-carrier tests plus `bun run validate`
-
-Compare backend response shapes in the opposite direction, from the selected
-status to the frontend type. Preserve unknown results for incomplete evidence.
+- **Acceptance**:
+  - An opt-in comparison uses one declared JSON success response from the uniquely matched backend operation and one proven inline Axios expectation.
+  - The backend-to-frontend check accounts for guaranteed fields, optionality, nullability and supported scalar unions. Unsupported or ambiguous evidence stays unknown.
+  - CLI, Application API and pinned MCP return the same verdict and source without raw schema values. Existing plans keep their report and response checks can run alongside request checks.
 
 ### S16 — Analyze mixed Vue script scopes and template bindings
 - **Status**: pending

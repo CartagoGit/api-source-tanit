@@ -3,6 +3,7 @@ import type { ClientProjectRole, IClientAlias, IClientProjectLinksInput } from "
 
 /** Private route metadata that is never serialized to legacy artifacts. */
 export const DECLARED_JSON_REQUEST = Symbol("declared-json-request");
+export const DECLARED_JSON_RESPONSE = Symbol("declared-json-response");
 
 const ClientAliasSchema = z.strictObject({
   receiver: z.string().trim().min(1),
@@ -25,6 +26,7 @@ export const ClientProjectCandidatesInputSchema = z.strictObject({
 
 export const ClientProjectLinksInputSchema = z.strictObject({
   compareRequestBodies: z.boolean().optional(),
+  compareResponseBodies: z.boolean().optional(),
   frontends: z.array(z.strictObject({
     root: ClientAnalysisInputSchema.shape.projectRoot,
     aliases: ClientAnalysisInputSchema.shape.aliases,
