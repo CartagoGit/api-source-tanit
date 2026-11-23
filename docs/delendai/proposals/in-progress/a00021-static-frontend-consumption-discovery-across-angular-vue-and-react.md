@@ -229,13 +229,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 11f8b444dca8, validate exit 0 and tests 161/161 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-workspace-mcp-wire.json: sameCLI=true, newToolsAdvertised=true, originalTool=true, and the pinned live MCP/CLI result matches. (2) Reused /tmp/tanit-client-workspace-mcp-wire.json (readOnly=true, statuses ambiguous/matched/missing/unknown), targeted 53/53 log, and inspected createContained… (3) Reused /tmp/tanit-client-workspace-mcp-integration.log (161/161 integration tests plus typecheck), /tmp/tanit-client-workspace-mcp-targeted.log (53/53), and pr… — Independent approval of S11 at exact merged PR #255 tip 11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6. Reused 161/161 integration plus typecheck, 53/53 targeted, real pinned MCP/CLI wire parity and proof receipts; no tests rerun.
 
 ### S12 — Recognize Angular HttpClient in TypeScript
-- **Status**: pending
+- **Status**: review
 - **Files**: `packages/core/language-frontends/typescript/client-consumption.helper.ts`, `packages/contracts/interfaces/core/client-consumption.interface.ts`, `tests/core/client-consumption.spec.ts`.
 - **Gate**: core client analysis and pinned MCP tests plus `bun run validate`
 - **Acceptance**:
   - Angular instance methods and their lexical callbacks recognize constructor parameter properties typed as the imported Angular HttpClient and instance fields initialized with the imported Angular inject function.
   - Static verb calls and the method and URL overload of request preserve source coordinates. Dynamic requests retain unresolved evidence and unproven receivers do not produce confirmed calls.
   - The same recognizer appears in the canonical report and the pinned MCP schema. Angular HTML remains a template diagnostic.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S13 — Analyze Angular templates and mixed Vue component scopes
 - **Status**: pending
