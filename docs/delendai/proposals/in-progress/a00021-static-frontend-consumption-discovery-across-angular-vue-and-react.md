@@ -304,7 +304,7 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - **Gate**: backward compatibility and exporter tests plus `bun run validate`
 - **Acceptance**:
   - An explicit frontend selection previews and writes an OpenAPI artifact for a single identified snapshot service using the canonical link analysis, with read-only preview and matching byte counts.
-  - Only attributable operations receive positive call and distinct frontend counts. Unknown, ambiguous, duplicate rendered and expanded ALL operations lack the extension. Client paths and values stay outside artifacts and persisted export evidence.
+  - Only attributable operations receive positive call and distinct frontend counts. Unknown or ambiguous calls and calls to a different host are excluded. Duplicate rendered and expanded ALL operations lack the extension. Client paths and values stay outside artifacts and persisted export evidence.
   - Default exports retain their bytes and previously recorded exports remain readable. Re-exporting an annotated OpenAPI revision preserves the original counts even after edits to the frontend.
 
 ### S18 — Resolve Vue template client bindings

@@ -5,6 +5,7 @@ import type { IClientProjectLinksInput } from "../../contracts/interfaces/core/c
 import type { IExportConsumerCount } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { IDiscoveryOrchestrator } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
+import { normalizeClientUrl } from "../discovery/client-correlation.helper.js";
 import { analyzeClientProjectLinks } from "../discovery/client-usage.service.js";
 import { exporterFor } from "../exporters/export-registry.service.js";
 import { apiError } from "./error.js";
@@ -20,8 +21,8 @@ export async function collectExportConsumerCounts(
   if (exporterFor(target)?.format !== "openapi") {
     throw apiError("INVALID_INPUT", "Consumer evidence is available only for OpenAPI exports");
   }
-  const serviceId = snapshot.results[0]?.serviceId;
-  if (snapshot.results.length !== 1 || serviceId === undefined) {
+  const service = snapshot.results[0];
+  if (snapshot.results.length !== 1 || service?.serviceId === undefined) {
     throw apiError("INVALID_INPUT", "Consumer evidence requires an open snapshot with one identified backend service");
   }
   if (frontends.some(({ root }) => !isAbsolute(root))) {
@@ -31,14 +32,17 @@ export async function collectExportConsumerCounts(
     throw apiError("EXECUTION_FAILED", "Consumer evidence requires a discovery orchestrator");
   }
 
+  const { serviceId, config } = service;
+  const host = normalizeClientUrl(config.baseUrl)?.host;
   const report = await analyzeClientProjectLinks({
     frontends,
-    links: frontends.map(({ root }) => ({ frontendRoot: root, backendRoot: snapshot.projectRoot, serviceId })),
+    links: frontends.map(({ root }) => ({ frontendRoot: root, backendRoot: snapshot.projectRoot, serviceId, host })),
   }, context.orchestrator as IDiscoveryOrchestrator, snapshot);
   const totals = new Map<string, { method: string; uri: string; calls: number; roots: Set<string> }>();
   for (const { root, calls } of report.frontends) {
     for (const call of calls) {
       if (call.status !== "matched" || call.candidates.length !== 1) continue;
+      if (call.usage.host !== undefined && call.usage.host !== host) continue;
       const { method, uri } = call.candidates[0]!.operation;
       if (method === "ALL") continue;
       const key = JSON.stringify([method, uri]);

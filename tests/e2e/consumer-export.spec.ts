@@ -32,6 +32,7 @@ test("opts into sanitized per-operation consumer counts with preview and history
     "frontend/client.ts": [
       'fetch("/items");',
       'fetch("/items");',
+      'fetch("https://unrelated.invalid/items");',
       'fetch("/missing", { method: "POST", body: "private-consumer-body-sentinel" });',
       'fetch(runtimeUrl());',
     ].join("\n"),

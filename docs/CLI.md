@@ -266,7 +266,8 @@ include `x-tanit-consumers` on uniquely matched operations. The input uses
 the same frontend roots and optional alias mappings as `client-links`.
 The open backend snapshot must contain one identified service. The extension
 counts matched calls and distinct frontend roots. It omits client paths,
-bodies, ambiguous matches and operations expanded from `ALL`. Re-exporting
+bodies, ambiguous matches and operations expanded from `ALL`. An absolute
+frontend URL must match the host in the exported backend configuration. Re-exporting
 that OpenAPI revision reuses the counts recorded at export time.
 
 ## Durable state diagnostics
