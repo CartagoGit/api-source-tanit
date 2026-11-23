@@ -28,6 +28,7 @@ shipped-in:
   - "e6238b2c6bdd1f2de3c3c8b000008c83ced8d85d"
   - "3b68e86151ccaa1d914525802b9a250104c1606e"
   - "0733526aa1c2cf5e35284122b7ecacc10843f487"
+  - "950f537a1f2e736ea68585a116d89bf80ef1c705"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -313,15 +314,17 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 0733526aa1c2, validate exit 0 and tests 55/55 claimed, no recorded run cited; acceptance 3/3: (1) 55/55 focused tests; /tmp/tanit-s17-proof.json proved=true; /tmp/tanit-s17-wire.json and /tmp/tanit-s17-windows.json report previewReadOnly=true and byteParity… (2) Focused exporter/e2e fixtures cover attribution exclusions and sanitized artifacts; WSL/Windows receipts report confirmedCalls=2, frontends=2, aliasPreserved=t… (3) /tmp/tanit-s17-history-wire.json and /tmp/tanit-s17-history-windows.json report historyRestored=true and byteParity=true; target normalization and history-rest… — Independent official g66 review: S17 satisfies all three acceptance criteria. Explicit frontend selection reuses the canonical link analyzer against the identified single-service snapshot; preview and write share the prepared artifact and byte counts. Aggregation admits only uniquely attributable concrete operations, excludes unknown/ambiguous calls, duplicate rendered operations, and ALL expansions, and persists only sanitized method/URI/count evidence. Default bytes remain unchanged and persisted history re-export preserves the original annotated revision, including target normalization and restored history behavior. Evidence includes 55/55 focused tests, 162 pinned integration tests, exact CI 45262622070 with ci-summary and desktop-tests, /tmp/tanit-s17-proof.json, real WSL/Windows three-carrier and history receipts, and publish proof.
 
 ### S18 — Resolve Vue template client bindings
-- **Status**: review
+- **Status**: done
 - **Files**: Vue component parser, the shared TypeScript call recognizer and Vue client discovery fixtures.
 - **Gate**: focused Vue event scope fixtures, real Vue 3.5.46 compiler evidence, canonical report parity and `bun run validate`
 - **Acceptance**:
   - Static named Vue events report single direct HTTP calls only for proven Axios or configured module imports visible through script setup, including shared runtime imports from a paired script.
   - Original file, CRLF line and column and exact source ranges accompany calls. The existing script analysis and operation matching remain canonical across CLI, Application API and pinned MCP.
   - Template-generated scopes, unproved receivers, delegated handlers and unsupported expressions preserve an explicit diagnostic. Plain markup produces no unsupported-call diagnostic.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-5.6-luna
+- review-log: approved by openai-gpt-5.6-luna — verified at 950f537a1f2e, validate exit 0 and tests 63/63 claimed, no recorded run cited; acceptance 3/3: (1) 63/63 final focused tests; /tmp/tanit-s18-template-wire.json provenEvents=3, scopedHandlerDiagnosed=true, compilerVersion=3.5.46; source/fixture review covers … (2) /tmp/tanit-s18-template-wire.json exactOffsets=true and parity=true; Windows receipt exactOffsets=true; supplied binary-equivalence head bf16b00723ed67b36f4b45… (3) Wire receipt scopedHandlerDiagnosed=true; focused fixtures cover v-for/v-slot/unknown/delegated branches and plain markup; final 162/162 integration receipt at… — Independent official g68 review: S18 satisfies all three acceptance criteria. Direct Vue events are emitted only for proven Axios/configured imports visible through script setup, including paired-script shared imports; generated scopes and unproved receivers remain unsupported. Source mapping preserves original CRLF coordinates and exact ranges, and the canonical scanner/report path remains shared across carriers. Plain markup is quiet while v-for/v-slot/delegated/unsupported handlers retain diagnostics. Final evidence is 63/63 focused tests, final 162/162 integration tests (the earlier appended failure predates the fixture fix), compiler 3.5.46 parity, Windows binary equivalence tested at the supplied head, exact offsets, work proof, and CI 45267772829 with ci-summary and desktop-tests.
 
 ### S19 — Verify frontend syntaxes and HTTP transports independently
 - **Status**: pending
