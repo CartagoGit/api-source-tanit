@@ -118,7 +118,7 @@ function registerDeclarations(node: Node, scope: IScope, axiosNames: Set<string>
   }
 }
 
-function callSites(program: Program): { sites: ICallSite[]; axiosNames: Set<string> } {
+function callSites(program: Program, templateScopes?: IScope[]): { sites: ICallSite[]; axiosNames: Set<string> } {
   const sites: ICallSite[] = [];
   const axiosNames = new Set<string>();
   let scope: IScope = { bindings: new Map(), functionBoundary: true };
@@ -131,6 +131,7 @@ function callSites(program: Program): { sites: ICallSite[]; axiosNames: Set<stri
         "ForInStatement", "ForOfStatement", "SwitchStatement"].includes(node.type);
       if (functionBoundary || block) {
         scope = { node, parent: scope, bindings: new Map(), functionBoundary };
+        if (node.type === "ClassDeclaration" || node.type === "ClassExpression") templateScopes?.push(scope);
       }
 
       if (isFunction(node)) {
@@ -309,6 +310,38 @@ function angularMemberCall(
   return { member, callee: member === undefined ? `this.${propertyName}` : `this.${propertyName}.${member}` };
 }
 
+/** A static, external template declared by an imported Angular Component decorator. */
+export interface IAngularClientTemplateOwner {
+  readonly templateUrl: string;
+  readonly members: ReadonlySet<string>;
+}
+
+function collectAngularTemplates(
+  scopes: readonly IScope[],
+  collect: (owner: IAngularClientTemplateOwner) => void,
+): void {
+  for (const scope of scopes) {
+    const node = scope.node;
+    if (node?.type !== "ClassDeclaration" && node?.type !== "ClassExpression") continue;
+    for (const decorator of node.decorators ?? []) {
+      const expression = decorator.expression;
+      if (expression.type !== "CallExpression" || expression.arguments.length !== 1 ||
+        !isNamedImport(expression.callee, scope, "@angular/core", "Component")) continue;
+      const [metadata] = expression.arguments;
+      if (metadata?.type !== "ObjectExpression") continue;
+      const fields = objectFields(metadata, scope);
+      const template = fields?.get("templateUrl");
+      if (template?.type !== "StringLiteral" || fields?.has("template")) continue;
+      collect({ templateUrl: template.value, members: angularMemberNames(scope) });
+    }
+  }
+}
+
+/** HTTP shorthand methods on Angular HttpClient. */
+export function isAngularHttpVerb(member: string): boolean {
+  return ["get", "post", "put", "patch", "delete", "head", "options"].includes(member);
+}
+
 function request(
   site: ICallSite,
   recognizer: IClientUsage["evidence"]["recognizer"],
@@ -333,7 +366,7 @@ function request(
       const method = requestMethod(first, scope);
       return { url: second, method, reason: method ? undefined : "dynamic-method" };
     }
-    if (member !== undefined && ["get", "post", "put", "patch", "delete", "head", "options"].includes(member)) {
+    if (member !== undefined && isAngularHttpVerb(member)) {
       return { url: first, method: verb };
     }
     return { reason: "unsupported-call" };
@@ -424,9 +457,19 @@ function recognize(
   };
 }
 
-function scanProgram(program: Program, file: string, options: IClientConsumptionOptions): IClientUsage[] {
+function scanProgram(
+  program: Program,
+  file: string,
+  options: IClientConsumptionOptions,
+  collectTemplate?: (owner: IAngularClientTemplateOwner) => void,
+): IClientUsage[] {
   const members = new Map(collectMethodCallsFromProgram(program, file).map((call) => [call.range.start, call]));
-  const { sites, axiosNames } = callSites(program);
+  const templateScopes: IScope[] | undefined = collectTemplate && program.body.some((node) =>
+    node.type === "ImportDeclaration" && node.source.value === "@angular/core")
+    ? []
+    : undefined;
+  const { sites, axiosNames } = callSites(program, templateScopes);
+  if (templateScopes && collectTemplate) collectAngularTemplates(templateScopes, collectTemplate);
   const usages: IClientUsage[] = [];
   const angularClasses = program.body.some((node) =>
     node.type === "ImportDeclaration" && node.source.value === "@angular/common/http")
@@ -453,13 +496,23 @@ function scanProgram(program: Program, file: string, options: IClientConsumption
 }
 
 /** Scans the same parse tree supplied to the TypeScript LanguageIR collector. */
-export function scanClientAst(ast: unknown, file: string, options: IClientConsumptionOptions): IClientUsage[] {
+export function scanClientAst(
+  ast: unknown,
+  file: string,
+  options: IClientConsumptionOptions,
+  collectTemplate?: (owner: IAngularClientTemplateOwner) => void,
+): IClientUsage[] {
   const parsed = ast as ICachedProgram;
   if (parsed.errors?.length) throw new SyntaxError("Client source did not parse cleanly");
-  return scanProgram(parsed.program, file, options);
+  return scanProgram(parsed.program, file, options, collectTemplate);
 }
 
 /** Fallback for syntax that the current shared AST cache cannot parse, including decorators. */
-export function scanClientSource(source: string, file: string, options: IClientConsumptionOptions): IClientUsage[] {
-  return scanProgram(parseWithProgram(source, file).program as Program, file, options);
+export function scanClientSource(
+  source: string,
+  file: string,
+  options: IClientConsumptionOptions,
+  collectTemplate?: (owner: IAngularClientTemplateOwner) => void,
+): IClientUsage[] {
+  return scanProgram(parseWithProgram(source, file).program as Program, file, options, collectTemplate);
 }

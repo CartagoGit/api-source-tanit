@@ -232,8 +232,10 @@ workspace when they are not absolute, and all project roots must be inside it.
 Angular instance methods recognize `HttpClient` declared as a constructor
 parameter property or initialized with Angular's `inject(HttpClient)`.
 Recognized calls include HTTP verb methods and `request(method, url)`.
-The report retains call coordinates, and Angular templates remain diagnostic
-evidence until template analysis is available.
+The report also recognizes direct event handlers such as
+`(click)="this.api.get('/items')"` in external templates with one statically
+verified owner. It retains original call coordinates and keeps unsupported
+template constructs visible as diagnostics.
 
 Vue components with one inline `<script>` or `<script setup>` block are scanned
 in the original source coordinates. Vue templates and mixed, external or

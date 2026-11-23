@@ -181,6 +181,7 @@
   },
   "dependencies": {
     "@angular/cdk": "^20.2.0",
+    "@angular/compiler": "^20.2.0",
     "@babel/parser": "7.29.8",
     "@babel/types": "7.29.8",
     "@vue/compiler-dom": "3.5.46",
@@ -191,7 +192,6 @@
     "@angular/build": "20.3.30",
     "@angular/cli": "^20.2.0",
     "@angular/common": "^20.2.0",
-    "@angular/compiler": "^20.2.0",
     "@angular/compiler-cli": "^20.2.0",
     "@angular/core": "^20.2.0",
     "@angular/platform-browser": "^20.2.0",
