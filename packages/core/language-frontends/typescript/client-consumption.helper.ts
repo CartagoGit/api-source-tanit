@@ -127,7 +127,7 @@ function callSites(program: Program): { sites: ICallSite[]; axiosNames: Set<stri
     enter(node) {
       registerDeclarations(node, scope, axiosNames);
       const functionBoundary = isFunction(node) || node.type === "StaticBlock" || node.type === "TSModuleBlock";
-      const block = ["BlockStatement", "CatchClause", "ClassExpression", "ForStatement",
+      const block = ["BlockStatement", "CatchClause", "ClassDeclaration", "ClassExpression", "ForStatement",
         "ForInStatement", "ForOfStatement", "SwitchStatement"].includes(node.type);
       if (functionBoundary || block) {
         scope = { node, parent: scope, bindings: new Map(), functionBoundary };
@@ -222,6 +222,93 @@ function requestMethod(node: Node | undefined, scope: IScope): string | undefine
   return method && /^[!#$%&'*+.^_`|~0-9A-Z-]+$/u.test(method) ? method : undefined;
 }
 
+function isNamedImport(
+  node: Node | undefined,
+  scope: IScope,
+  source: string,
+  exported: string,
+): boolean {
+  if (node?.type !== "Identifier") return false;
+  const active = bindings(scope, node.name);
+  if (active.length !== 1) return false;
+  const [binding] = active;
+  if (binding?.source !== source || binding.node.type !== "ImportSpecifier") return false;
+  const { imported } = binding.node;
+  return (imported.type === "Identifier" ? imported.name : imported.value) === exported;
+}
+
+function isAngularHttpClient(node: Node | undefined, scope: IScope): boolean {
+  return isNamedImport(node, scope, "@angular/common/http", "HttpClient");
+}
+
+function angularMemberNames(scope: IScope): ReadonlySet<string> {
+  const owner = scope.node;
+  const clients = new Set<string>();
+  if (owner?.type !== "ClassDeclaration" && owner?.type !== "ClassExpression") return clients;
+  for (const member of owner.body.body) {
+    if (member.type === "ClassProperty" && !member.static && !member.computed &&
+      member.key.type === "Identifier" && member.value?.type === "CallExpression" &&
+      member.value.arguments.length === 1 &&
+      isNamedImport(member.value.callee, scope, "@angular/core", "inject") &&
+      isAngularHttpClient(member.value.arguments[0], scope)) {
+      clients.add(member.key.name);
+    }
+    if (member.type !== "ClassMethod" || member.kind !== "constructor") continue;
+    for (const param of member.params) {
+      if (param.type !== "TSParameterProperty" || param.decorators?.length) continue;
+      const { parameter } = param;
+      if (parameter.type !== "Identifier" || parameter.decorators?.length) continue;
+      const annotation = parameter.typeAnnotation;
+      if (annotation?.type !== "TSTypeAnnotation" || annotation.typeAnnotation.type !== "TSTypeReference") continue;
+      const { typeName } = annotation.typeAnnotation;
+      if (typeName.type === "Identifier" && owner.typeParameters?.type === "TSTypeParameterDeclaration" &&
+        owner.typeParameters.params.some(({ name }) => name === typeName.name)) continue;
+      if (isAngularHttpClient(typeName, scope)) clients.add(parameter.name);
+    }
+  }
+  return clients;
+}
+
+/** Only an instance method and its lexical arrows prove the meaning of `this`. */
+function angularInstanceScope(site: ICallSite): IScope | undefined {
+  const callStart = site.node.start;
+  for (let current: IScope | undefined = site.scope; current; current = current.parent) {
+    const node = current.node;
+    if (node?.type === "ClassMethod" || node?.type === "ClassPrivateMethod") {
+      if (node.static || callStart == null || node.body.start == null || node.body.end == null ||
+        callStart < node.body.start || callStart >= node.body.end) return undefined;
+      return current.parent;
+    }
+    if (current.functionBoundary && node?.type !== "ArrowFunctionExpression") return undefined;
+  }
+  return undefined;
+}
+
+function angularMemberCall(
+  site: ICallSite,
+  cache: Map<IScope, ReadonlySet<string>>,
+): { member?: string; callee: string } | undefined {
+  const { callee } = site.node;
+  if (callee.type !== "MemberExpression" && callee.type !== "OptionalMemberExpression") return undefined;
+  const receiver = callee.object;
+  if ((receiver.type !== "MemberExpression" && receiver.type !== "OptionalMemberExpression") ||
+    receiver.object.type !== "ThisExpression") return undefined;
+
+  const scope = angularInstanceScope(site);
+  if (!scope) return undefined;
+  let clients = cache.get(scope);
+  if (!clients) {
+    clients = angularMemberNames(scope);
+    cache.set(scope, clients);
+  }
+  const propertyName = receiver.computed ? staticString(receiver.property, site.scope)
+    : receiver.property.type === "Identifier" ? receiver.property.name : undefined;
+  if (propertyName === undefined || !clients.has(propertyName)) return undefined;
+  const member = callee.computed ? staticString(callee.property, site.scope)
+    : callee.property.type === "Identifier" ? callee.property.name : undefined;
+  return { member, callee: member === undefined ? `this.${propertyName}` : `this.${propertyName}.${member}` };
+}
+
 function request(
   site: ICallSite,
   recognizer: IClientUsage["evidence"]["recognizer"],
@@ -239,6 +326,18 @@ function request(
   }
 
   const verb = member?.toUpperCase();
+  if (recognizer === "angular-http-client") {
+    if (member === "request") {
+      if (second === undefined) return { reason: "unsupported-call" };
+      if (second.type === "SpreadElement") return { reason: "unknown-options" };
+      const method = requestMethod(first, scope);
+      return { url: second, method, reason: method ? undefined : "dynamic-method" };
+    }
+    if (member !== undefined && ["get", "post", "put", "patch", "delete", "head", "options"].includes(member)) {
+      return { url: first, method: verb };
+    }
+    return { reason: "unsupported-call" };
+  }
   if (member !== undefined && member !== "request") {
     if (!SUPPORTED_METHODS.some((method) => method !== "ALL" && method.toLowerCase() === member)) {
       return { reason: "unsupported-call" };
@@ -273,6 +372,7 @@ function recognize(
   members: ReadonlyMap<number, ReturnType<typeof collectMethodCallsFromProgram>[number]>,
   axiosNames: ReadonlySet<string>,
   aliases: IClientConsumptionOptions["aliases"],
+  angularClasses?: Map<IScope, ReadonlySet<string>>,
 ): { recognizer: IClientUsage["evidence"]["recognizer"]; callee: string; member?: string; reason?: ClientUnresolvedReason } | undefined {
   const { node, scope } = site;
   const callee = node.callee;
@@ -280,6 +380,14 @@ function recognize(
   if (callee.type === "Identifier" && callee.name === "fetch") {
     return { recognizer: "fetch", callee: "fetch",
       reason: bindings(scope, "fetch").length ? "shadowed-client" : undefined };
+  }
+  const angular = angularClasses && angularMemberCall(site, angularClasses);
+  if (angular) {
+    return {
+      recognizer: "angular-http-client",
+      ...angular,
+      reason: angular.member === undefined ? "unsupported-call" : undefined,
+    };
   }
   const memberCall = callee.type === "MemberExpression" || callee.type === "OptionalMemberExpression";
   const receiver = callee.type === "Identifier" ? callee.name : ir?.receiver;
@@ -320,8 +428,12 @@ function scanProgram(program: Program, file: string, options: IClientConsumption
   const members = new Map(collectMethodCallsFromProgram(program, file).map((call) => [call.range.start, call]));
   const { sites, axiosNames } = callSites(program);
   const usages: IClientUsage[] = [];
+  const angularClasses = program.body.some((node) =>
+    node.type === "ImportDeclaration" && node.source.value === "@angular/common/http")
+    ? new Map<IScope, ReadonlySet<string>>()
+    : undefined;
   for (const site of sites) {
-    const found = recognize(site, members, axiosNames, options.aliases);
+    const found = recognize(site, members, axiosNames, options.aliases, angularClasses);
     const { start, end, loc } = site.node;
     if (!found || !loc) continue;
     const observed = found.reason ? { reason: found.reason } : request(site, found.recognizer, found.member);

@@ -229,6 +229,12 @@ integration exposes the same operations as `delendai_tanit_client_candidates`
 and `delendai_tanit_client_links`. In MCP, paths are relative to the server
 workspace when they are not absolute, and all project roots must be inside it.
 
+Angular instance methods recognize `HttpClient` declared as a constructor
+parameter property or initialized with Angular's `inject(HttpClient)`.
+Recognized calls include HTTP verb methods and `request(method, url)`.
+The report retains call coordinates, and Angular templates remain diagnostic
+evidence until template analysis is available.
+
 Vue components with one inline `<script>` or `<script setup>` block are scanned
 in the original source coordinates. Vue templates and mixed, external or
 unsupported scripts appear as diagnostics.

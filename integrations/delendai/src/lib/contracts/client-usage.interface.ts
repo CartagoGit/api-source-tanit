@@ -34,7 +34,7 @@ const UsageSchema = z.strictObject({
   host: z.string().optional(),
   location: LocationSchema,
   evidence: z.strictObject({
-    recognizer: z.enum(["fetch", "axios", "configured-alias"]),
+    recognizer: z.enum(["fetch", "axios", "angular-http-client", "configured-alias"]),
     callee: z.string(),
     staticUrl: z.enum(["literal", "expression"]).optional(),
   }),
