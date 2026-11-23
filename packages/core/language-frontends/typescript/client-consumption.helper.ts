@@ -11,6 +11,7 @@ import type {
 import { SUPPORTED_METHODS } from "../../../contracts/constants/core/postman.constant.js";
 import type {
   ClientUnresolvedReason,
+  IAngularClientTemplateOwner,
   IClientConsumptionOptions,
   IClientUsage,
 } from "../../../contracts/interfaces/core/client-consumption.interface.js";
@@ -308,12 +309,6 @@ function angularMemberCall(
   const member = callee.computed ? staticString(callee.property, site.scope)
     : callee.property.type === "Identifier" ? callee.property.name : undefined;
   return { member, callee: member === undefined ? `this.${propertyName}` : `this.${propertyName}.${member}` };
-}
-
-/** A static, external template declared by an imported Angular Component decorator. */
-export interface IAngularClientTemplateOwner {
-  readonly templateUrl: string;
-  readonly members: ReadonlySet<string>;
 }
 
 function collectAngularTemplates(

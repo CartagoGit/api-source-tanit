@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import type {
+  IAngularClientTemplateOwner,
   IClientConsumptionOptions,
   IClientConsumptionResult,
   IClientUsage,
@@ -9,7 +10,7 @@ import { ensureInside } from "../helpers/path-containment.helper.js";
 import { isAstCapable } from "../index/ast-cache.service.js";
 import { toPosix } from "../index/file-cache.service.js";
 import type { ProjectIndex } from "../index/project-index.service.js";
-import { scanClientAst, scanClientSource, type IAngularClientTemplateOwner } from "../language-frontends/typescript/client-consumption.helper.js";
+import { scanClientAst, scanClientSource } from "../language-frontends/typescript/client-consumption.helper.js";
 import { correlateClientUsages, normalizeClientUrl } from "./client-correlation.helper.js";
 
 function normalizeUsage(usage: IClientUsage): IClientUsage {
