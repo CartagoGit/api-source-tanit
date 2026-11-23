@@ -25,6 +25,7 @@ shipped-in:
   - "00b784c445ffda7259309a0ca3086cd4b8679499"
   - "7eb6f3d925b23ab8002858eacca8ed8d86a403d7"
   - "a15dcfb6600cd11d2d2a9c3252710e4380e92493"
+  - "e6238b2c6bdd1f2de3c3c8b000008c83ced8d85d"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -271,15 +272,17 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-6-luna — verified at a15dcfb6600c, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the exact source diff and S14 fixture: request bodies are compared only when compareRequestBodies is enabled, the call uniquely matches a selected ope… (2) The bounded checker returns unknown for unsupported schema/body evidence and specific reasons for invalid JSON, missing/unexpected fields, type and enum mismat… (3) The real wire receipt reports canonicalParity=true across CLI, Application API stdio and DelendAI MCP stdio, including compatible/incompatible/unknown results … — Independent g60 review of S14 at merged source PR #261 exact head a15dcfb6600cd11d2d2a9c3252710e4380e92493, integrated at develop b83e3328. Reused 39 targeted tests, 85 OpenAPI tests, 162 pinned integration tests, core/framework/CLI typechecks, local work proof, real CLI/Application API stdio/pinned MCP canonical parity receipt, and Windows native receipt confirming no body values in output. Exact-head CI 45133301603 and ci-summary passed. No tests rerun by reviewer.
 
 ### S15 — Compare backend responses with frontend expectations
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/core/schema/json-request-comparison.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/client-response-contract.spec.ts`.
 - **Gate**: selected response status and cross-carrier tests plus `bun run validate`
 - **Acceptance**:
   - An opt-in comparison uses one declared JSON success response from the uniquely matched backend operation and one proven inline Axios expectation.
   - The backend-to-frontend check accounts for guaranteed fields, optionality, nullability and supported scalar unions. Unsupported or ambiguous evidence stays unknown.
   - CLI, Application API and pinned MCP return the same verdict and source without raw schema values. Existing plans keep their report and response checks can run alongside request checks.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-5.6-luna
+- review-log: approved by openai-gpt-5.6-luna — verified at e6238b2c6bdd, validate exit 0 and tests 104/104 claimed, no recorded run cited; acceptance 3/3: (1) 104/104 targeted tests; /tmp/tanit-s15-proof.json proved=true; source review of response parser/scanner and /tmp/tanit-s15-wire.json status=200. (2) tests/core/client-response-contract.spec.ts covers compatible/incompatible/unknown verdicts, nullable/integer/open/multiple-status cases; exact-head CI 4519382… (3) /tmp/tanit-s15-wire.json parity=true and omitsSchemaValues=true; supplied CLI/WebView2 receipts plus 162 pinned integration tests; typechecks green. — Independent official g62 review: S15 satisfies all three acceptance criteria. Backend-to-frontend assignability is directional and handles guaranteed fields, optionality, nullability, and supported scalar/literal unions; unsupported or ambiguous evidence remains unknown. Response selection requires exactly one concrete declared 2xx JSON response and one proven inline Axios expectation. Comparison is opt-in and request checks compose without changing existing reports. Raw schema values are omitted and CLI/Application API/pinned MCP parity is proven. Minor conservative handling of OpenAPI default response keys does not violate the stated acceptance. Exact-head CI 45193827693 and ci-summary were supplied by the review record (not present in this checkout journal).
 
 ### S16 — Analyze mixed Vue script scopes and template bindings
 - **Status**: pending
