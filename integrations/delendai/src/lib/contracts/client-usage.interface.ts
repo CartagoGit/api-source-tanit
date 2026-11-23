@@ -102,6 +102,14 @@ export const ClientLinksOutputSchema = z.strictObject({
       status: CorrelationStatusSchema,
       backendId: z.string().optional(),
       candidates: z.array(z.strictObject({ backendId: z.string(), operation: BackendOperationSchema })),
+      responseContract: z.strictObject({
+        verdict: z.enum(["compatible", "incompatible", "unknown"]),
+        reason: z.enum(["unsupported-schema", "missing-client-type", "missing-backend-schema",
+          "missing-field", "optional-field", "type-mismatch"]).optional(),
+        field: z.string().optional(),
+        source: z.strictObject({ file: z.string(), pointer: z.string() }).optional(),
+        status: z.int().min(200).max(299).optional(),
+      }).optional(),
       requestContract: z.strictObject({
         verdict: z.enum(["compatible", "incompatible", "unknown"]),
         reason: z.enum(["unsupported-schema", "invalid-json", "missing-field", "unexpected-field",

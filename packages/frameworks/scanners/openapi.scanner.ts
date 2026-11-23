@@ -32,7 +32,7 @@ import type { OpenApiScannerOptions } from "../../contracts/interfaces/framework
 import { readBoundedText } from "../../core/helpers/read-bounded-text.helper.js";
 import { ensureInside } from "../../core/helpers/path-containment.helper.js";
 import { parseWithProgram } from "../../core/language-frontends/typescript/index.js";
-import { DECLARED_JSON_REQUEST } from "../../contracts/constants/core/client-consumption.constant.js";
+import { DECLARED_JSON_REQUEST, DECLARED_JSON_RESPONSE } from "../../contracts/constants/core/client-consumption.constant.js";
 import { ContractDocumentationUrlSchema } from "../../contracts/constants/core/contract-evidence.constant.js";
 
 /** Look for OpenAPI in the most common locations. */
@@ -503,7 +503,9 @@ export class OpenApiRouteScanner implements IRouteScanner {
           if (!member) continue;
           const { file: sourceFile, pointer: sourcePointer } = member;
           const sourceReferences = uniqueReferences([...member.references, ...pathReferences]);
-          const declaration = directJsonRequestDeclaration(spec, pathItemValue, method);
+          const rawOperation = directOpenApiOperation(spec, pathItemValue, method);
+          const declaration = directJsonRequestDeclaration(rawOperation);
+          const response = directJsonResponseDeclaration(rawOperation);
           routes.push({
             framework: "openapi", method: method.toUpperCase(), uri, rawUri: pathTemplate,
             sourceFile, sourcePointer, sourceDocument: document.file,
@@ -511,6 +513,13 @@ export class OpenApiRouteScanner implements IRouteScanner {
               [DECLARED_JSON_REQUEST]: {
                 schema: declaration,
                 source: { file: document.file, pointer: `${pathPointer}/${method}/requestBody/content/application~1json/schema` },
+              },
+            }),
+            ...(response === undefined ? {} : {
+              [DECLARED_JSON_RESPONSE]: {
+                status: Number(response.status),
+                schema: response.schema,
+                source: { file: document.file, pointer: `${pathPointer}/${method}/responses/${response.status}/content/application~1json/schema` },
               },
             }),
             ...(sourceReferences.length ? { sourceReferences } : {}),
@@ -543,13 +552,32 @@ export class OpenApiRouteScanner implements IRouteScanner {
 }
 
 /** Read the declaration before the route resolver can elide an unresolved reference. */
-function directJsonRequestDeclaration(document: unknown, rawPath: unknown, method: string): unknown {
+function directOpenApiOperation(document: unknown, rawPath: unknown, method: string) {
   if (!/^3\.0\.[0-9]+$/u.test(readString(document, "openapi") ?? "") ||
       !isRecord(rawPath) || Object.hasOwn(rawPath, "$ref")) return undefined;
   const operation = readObject(rawPath, method);
+  return operation && !Object.hasOwn(operation, "$ref") ? operation : undefined;
+}
+
+function directJsonRequestDeclaration(operation: unknown): unknown {
   const request = readObject(operation, "requestBody");
-  if (!operation || !request || Object.hasOwn(operation, "$ref") || Object.hasOwn(request, "$ref")) return undefined;
+  if (!request || Object.hasOwn(request, "$ref")) return undefined;
   return readObject(readObject(request, "content"), "application/json")?.schema;
+}
+
+function directJsonResponseDeclaration(operation: unknown) {
+  const responses = readObject(operation, "responses");
+  if (!responses || Object.keys(responses).some((key) =>
+    !/^[1-5][0-9]{2}$/u.test(key) && !key.startsWith("x-"))) return undefined;
+  const statuses = Object.keys(responses).filter((key) => /^2[0-9]{2}$/u.test(key));
+  const [status] = statuses;
+  if (statuses.length !== 1 || status === undefined || status === "204" || status === "205") return undefined;
+  const response = readObject(responses, status);
+  if (!response || Object.hasOwn(response, "$ref")) return undefined;
+  const content = readObject(response, "content");
+  if (!content || Object.keys(content).length !== 1) return undefined;
+  const schema = readObject(content, "application/json")?.schema;
+  return schema === undefined ? undefined : { status, schema };
 }
 
 function serverPath(servers: unknown[] | undefined): string {

@@ -16,10 +16,21 @@ export interface IAngularClientTemplateOwner {
   readonly members: ReadonlySet<string>;
 }
 
+export type ClientResponseType =
+  | { readonly kind: "string" | "number" | "boolean" | "null" }
+  | { readonly kind: "literal"; readonly value: string | boolean };
+
+export type IClientResponseExpectation = ReadonlyMap<string, {
+  readonly required: boolean;
+  readonly accepts: readonly ClientResponseType[];
+}>;
+
 export interface IClientConsumptionOptions {
   readonly aliases?: readonly IClientAlias[];
   /** Internal observer for static JSON evidence retained only during comparison. */
   readonly observeJsonRequest?: (location: ILocation, body: string) => void;
+  /** Statically declared frontend response expectations, retained only during comparison. */
+  readonly observeJsonResponse?: (location: ILocation, expectation: IClientResponseExpectation) => void;
   /** Explicitly selected operation catalog for one backend. An empty catalog is valid. */
   readonly backend?: readonly IClientBackendOperation[];
 }
@@ -53,6 +64,19 @@ export interface IDeclaredJsonRequestContract {
   readonly schema: unknown;
 }
 
+export interface IDeclaredJsonResponseContract extends IDeclaredJsonRequestContract {
+  readonly status: number;
+}
+
+export interface IJsonResponseCheck {
+  readonly verdict: "compatible" | "incompatible" | "unknown";
+  readonly reason?: "unsupported-schema" | "missing-client-type" | "missing-backend-schema" |
+    "missing-field" | "optional-field" | "type-mismatch";
+  readonly field?: string;
+  readonly source?: IClientContractSource;
+  readonly status?: number;
+}
+
 export interface IJsonRequestCheck {
   readonly verdict: "compatible" | "incompatible" | "unknown";
   readonly reason?: "unsupported-schema" | "invalid-json" | "missing-field" | "unexpected-field" |
@@ -68,6 +92,7 @@ export interface IClientLinkedCall {
   readonly backendId?: string;
   readonly candidates: readonly IClientLinkCandidate[];
   readonly requestContract?: IJsonRequestCheck;
+  readonly responseContract?: IJsonResponseCheck;
 }
 
 export interface IClientLinkComparisonResult {
@@ -81,6 +106,7 @@ export interface IClientLinkComparisonResult {
 /** A workspace comparison between explicitly declared frontends and backend services. */
 export interface IClientProjectLinksInput {
   readonly compareRequestBodies?: boolean;
+  readonly compareResponseBodies?: boolean;
   readonly frontends: readonly {
     readonly root: string;
     readonly aliases?: readonly IClientAlias[];

@@ -1,4 +1,4 @@
-import type { IJsonRequestCheck } from "../../contracts/interfaces/core/client-consumption.interface.js";
+import type { ClientResponseType, IClientResponseExpectation, IJsonRequestCheck, IJsonResponseCheck } from "../../contracts/interfaces/core/client-consumption.interface.js";
 import { isRecord, parseJson } from "../helpers/parse-json.helper.js";
 
 function isMetadata(key: string): boolean {
@@ -96,6 +96,44 @@ export function compareJsonRequestBody(schema: unknown, body: string): IJsonRequ
     if (property.values !== undefined && !property.values.includes(value)) {
       return { verdict: "incompatible", reason: "enum-mismatch", field };
     }
+  }
+  return { verdict: "compatible" };
+}
+
+function acceptsValue(accepts: readonly ClientResponseType[], value: unknown): boolean {
+  return accepts.some((type) => {
+    if (type.kind === "literal") return type.value === value;
+    return type.kind === "null" ? value === null : typeof value === type.kind;
+  });
+}
+
+function responseTypeFits(
+  producer: NonNullable<ReturnType<typeof readScalar>>,
+  accepts: readonly ClientResponseType[],
+): boolean {
+  if (producer.values) return producer.values.every((value: unknown) => acceptsValue(accepts, value));
+  if (producer.nullable && !acceptsValue(accepts, null)) return false;
+  if (producer.type === "boolean") return acceptsValue(accepts, true) && acceptsValue(accepts, false);
+  return accepts.some(({ kind }) => kind === (producer.type === "integer" ? "number" : producer.type));
+}
+
+/** Checks that the declared JSON response values fit the frontend's expected fields. */
+export function compareJsonResponseBody(schema: unknown, expected: IClientResponseExpectation): IJsonResponseCheck {
+  const declared = readClosedObject(schema);
+  if (declared === undefined || [...declared.fields.values()].some((field) =>
+    field.values?.some((value: unknown) => typeof value === "number"))) {
+    return { verdict: "unknown", reason: "unsupported-schema" };
+  }
+
+  const required = new Set(declared.required);
+  for (const [field, expectation] of expected) {
+    const producer = declared.fields.get(field);
+    if (!producer) {
+      if (expectation.required) return { verdict: "incompatible", reason: "missing-field", field };
+      continue;
+    }
+    if (expectation.required && !required.has(field)) return { verdict: "incompatible", reason: "optional-field", field };
+    if (!responseTypeFits(producer, expectation.accepts)) return { verdict: "incompatible", reason: "type-mismatch", field };
   }
   return { verdict: "compatible" };
 }

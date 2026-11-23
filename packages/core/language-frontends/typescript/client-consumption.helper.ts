@@ -10,7 +10,9 @@ import type {
 
 import { SUPPORTED_METHODS } from "../../../contracts/constants/core/postman.constant.js";
 import type {
+  ClientResponseType,
   ClientUnresolvedReason,
+  IClientResponseExpectation,
   IAngularClientTemplateOwner,
   IClientConsumptionOptions,
   IClientUsage,
@@ -471,6 +473,68 @@ function recognize(
   };
 }
 
+function readAxiosResponseScalar(node: Node): ClientResponseType | undefined {
+  switch (node.type) {
+    case "TSStringKeyword": return { kind: "string" };
+    case "TSNumberKeyword": return { kind: "number" };
+    case "TSBooleanKeyword": return { kind: "boolean" };
+    case "TSNullKeyword": return { kind: "null" };
+    case "TSLiteralType": {
+      const { literal } = node;
+      if (literal.type === "StringLiteral" || literal.type === "BooleanLiteral") {
+        return { kind: "literal", value: literal.value };
+      }
+      return undefined;
+    }
+    default: return undefined;
+  }
+}
+
+function readAxiosResponseExpectation(site: ICallSite): IClientResponseExpectation | undefined {
+  const { node } = site;
+  const [url, config] = node.arguments;
+  if (node.type !== "CallExpression" || node.optional || node.callee.type !== "MemberExpression" ||
+      node.callee.computed || node.callee.property.type !== "Identifier" || node.callee.property.name !== "get" ||
+      !url || url.type === "SpreadElement" || node.arguments.length > 2) return undefined;
+
+  const options = unwrap(config);
+  if (options !== undefined) {
+    if (options.type !== "ObjectExpression" || options.properties.length > 1) return undefined;
+    const [option] = options.properties;
+    if (option !== undefined && (option.type !== "ObjectProperty" || option.computed ||
+        (option.key.type === "Identifier" ? option.key.name : option.key.type === "StringLiteral" ? option.key.value : undefined) !== "responseType" ||
+        option.value.type !== "StringLiteral" || option.value.value !== "json")) return undefined;
+  }
+
+  const params = node.typeParameters?.params;
+  const shape = params?.[0];
+  if (params?.length !== 1 || shape?.type !== "TSTypeLiteral" || !shape.members.length ||
+      shape.members.length > 64) return undefined;
+
+  const fields = new Map<string, NonNullable<ReturnType<IClientResponseExpectation["get"]>>>();
+  for (const member of shape.members) {
+    if (member.type !== "TSPropertySignature" || member.computed || member.kind != null) return undefined;
+    const { key, typeAnnotation } = member;
+    const name = key.type === "Identifier" ? key.name : key.type === "StringLiteral" ? key.value : undefined;
+    if (name === undefined || fields.has(name) || typeAnnotation == null) return undefined;
+
+    const annotation = typeAnnotation.typeAnnotation;
+    const types = annotation.type === "TSUnionType" ? annotation.types : [annotation];
+    if (types.length > 32) return undefined;
+    const accepts: ClientResponseType[] = [];
+    for (const type of types) {
+      const scalar = readAxiosResponseScalar(type);
+      if (!scalar) return undefined;
+      accepts.push(scalar);
+    }
+    // Supported unions are finite literal sets or a single scalar widened by null.
+    const nonNull = accepts.filter(({ kind }) => kind !== "null");
+    if (nonNull.length > 1 && nonNull.some(({ kind }) => kind !== "literal")) return undefined;
+    fields.set(name, { required: member.optional !== true, accepts });
+  }
+  return fields;
+}
+
 function scanProgram(
   program: Program,
   file: string,
@@ -500,6 +564,10 @@ function scanProgram(
     const staticUrl = url === undefined ? undefined : unwrap(observed.url)?.type === "StringLiteral" ? "literal" : "expression";
     const location = { file, line: loc.start.line, column: loc.start.column, start: start ?? undefined, end: end ?? undefined };
     if (!unresolvedReason && observed.jsonBody !== undefined) options.observeJsonRequest?.(location, observed.jsonBody);
+    if (!unresolvedReason && found.recognizer === "axios" && found.member === "get" && options.observeJsonResponse) {
+      const expectation = readAxiosResponseExpectation(site);
+      if (expectation) options.observeJsonResponse(location, expectation);
+    }
     usages.push({
       location,
       evidence: { recognizer: found.recognizer, callee: found.callee, staticUrl },

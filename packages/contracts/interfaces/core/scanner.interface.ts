@@ -1,5 +1,5 @@
-import type { DECLARED_JSON_REQUEST } from "../../constants/core/client-consumption.constant.js";
-import type { IDeclaredJsonRequestContract } from "./client-consumption.interface.js";
+import type { DECLARED_JSON_REQUEST, DECLARED_JSON_RESPONSE } from "../../constants/core/client-consumption.constant.js";
+import type { IDeclaredJsonRequestContract, IDeclaredJsonResponseContract } from "./client-consumption.interface.js";
 
 /**
  * Framework-agnostic contracts for discovery and validation.
@@ -113,6 +113,7 @@ export interface IProjectDetectionEvidence {
 export interface ParsedRoute {
   /** The direct request declaration, independent of inferred example bodies. */
   readonly [DECLARED_JSON_REQUEST]?: IDeclaredJsonRequestContract;
+  readonly [DECLARED_JSON_RESPONSE]?: IDeclaredJsonResponseContract;
   /**
    * Which scanner produced this route.
    *

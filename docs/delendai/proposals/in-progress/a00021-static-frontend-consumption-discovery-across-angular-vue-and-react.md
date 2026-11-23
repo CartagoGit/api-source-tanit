@@ -271,12 +271,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-6-luna — verified at a15dcfb6600c, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the exact source diff and S14 fixture: request bodies are compared only when compareRequestBodies is enabled, the call uniquely matches a selected ope… (2) The bounded checker returns unknown for unsupported schema/body evidence and specific reasons for invalid JSON, missing/unexpected fields, type and enum mismat… (3) The real wire receipt reports canonicalParity=true across CLI, Application API stdio and DelendAI MCP stdio, including compatible/incompatible/unknown results … — Independent g60 review of S14 at merged source PR #261 exact head a15dcfb6600cd11d2d2a9c3252710e4380e92493, integrated at develop b83e3328. Reused 39 targeted tests, 85 OpenAPI tests, 162 pinned integration tests, core/framework/CLI typechecks, local work proof, real CLI/Application API stdio/pinned MCP canonical parity receipt, and Windows native receipt confirming no body values in output. Exact-head CI 45133301603 and ci-summary passed. No tests rerun by reviewer.
 
 ### S15 — Compare backend responses with frontend expectations
-- **Status**: pending
-- **Files**: response evidence extraction and shared client report.
+- **Status**: review
+- **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/core/schema/json-request-comparison.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/client-response-contract.spec.ts`.
 - **Gate**: selected response status and cross-carrier tests plus `bun run validate`
-
-Compare backend response shapes in the opposite direction, from the selected
-status to the frontend type. Preserve unknown results for incomplete evidence.
+- **Acceptance**:
+  - An opt-in comparison uses one declared JSON success response from the uniquely matched backend operation and one proven inline Axios expectation.
+  - The backend-to-frontend check accounts for guaranteed fields, optionality, nullability and supported scalar unions. Unsupported or ambiguous evidence stays unknown.
+  - CLI, Application API and pinned MCP return the same verdict and source without raw schema values. Existing plans keep their report and response checks can run alongside request checks.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S16 — Analyze mixed Vue script scopes and template bindings
 - **Status**: pending

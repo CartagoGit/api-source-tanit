@@ -99,6 +99,7 @@ export interface IAuthFlow {
 export interface IGenerationOptions {
   /** When requested, retain the selected service's original request declaration routes. */
   readonly collectJsonRequestContracts?: boolean;
+  readonly collectJsonResponseContracts?: boolean;
   /** Overrides `config.collectionName` (flag `--basename`). */
   readonly collectionName?: string;
   /**
@@ -229,6 +230,7 @@ export interface IMonorepoDetection {
 /** Full pipeline result. */
 export interface IGenerationResult {
   readonly jsonRequestContractRoutes?: ReadonlyArray<ParsedRoute>;
+  readonly jsonResponseContractRoutes?: ReadonlyArray<ParsedRoute>;
   /** Comparison of raw documentation/code observations, before merger precedence. */
   readonly contractEvidence?: import("./contract-evidence.interface.js").IContractEvidenceReport;
   readonly collection: PostmanCollection;
