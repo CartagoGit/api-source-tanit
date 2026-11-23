@@ -21,6 +21,7 @@ shipped-in:
   - "b2e9b2b5c08f4abd8115ee42008404159f4e1ea6"
   - "c026bdff4b254bd18b5b8e517b2682ee765b621f"
   - "d66002c2faa0280933dbeddd28928d861141009c"
+  - "11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -211,7 +212,7 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at d66002c2faa0, validate exit 0 and tests 11/11 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed both CLI adapters against the shared candidate engine and S10 E2E fixture. Frontend candidates are concrete materialized workspace roots; backend cand… (2) The plan adapter resolves frontend/backend roots from dirname(planPath), strips a UTF-8 BOM, and delegates to analyzeClientProjectLinks with the shared schema.… (3) E2E covers malformed JSON, schema-invalid plan, missing and unsupported CLI options with nonzero exit, empty stdout and readable stderr. COMMANDS still registe… — Independent g52 review of S10 at merged source PR #253 head d66002c2faa0280933dbeddd28928d861141009c, implementation commit e31b45f3df54048e30f05892197f0dcdcb9c1e2a, integrated at develop 0a9b3387d72757df44c751557b73d8a037b48f8d. Reused 11 passing CLI E2E cases, CLI/e2e typechecks and command-parity checks, compiled Windows receipt /tmp/tanit-client-workspace-cli-windows.json (UTF-8 BOM plan from a different cwd, no project writes, all four semantic states), and exact-head CI run 45086669852. No tests rerun by reviewer.
 
 ### S11 — Select project links through MCP
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/discovery/workspace-glob.helper.ts`, `tests/core/workspace-glob.spec.ts`, `docs/CLI.md`.
 - **Gate**: pinned MCP carrier tests plus `bun run validate`
 - **Acceptance**:
@@ -222,8 +223,10 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 The adapters are `integrations/delendai/src/lib/tools/client-candidates.tool.ts`
 and `integrations/delendai/src/lib/tools/client-links.tool.ts`, with regression
 coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.ts`.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-5.6-luna
+- review-log: approved by openai-gpt-5.6-luna — verified at 11f8b444dca8, validate exit 0 and tests 161/161 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-workspace-mcp-wire.json: sameCLI=true, newToolsAdvertised=true, originalTool=true, and the pinned live MCP/CLI result matches. (2) Reused /tmp/tanit-client-workspace-mcp-wire.json (readOnly=true, statuses ambiguous/matched/missing/unknown), targeted 53/53 log, and inspected createContained… (3) Reused /tmp/tanit-client-workspace-mcp-integration.log (161/161 integration tests plus typecheck), /tmp/tanit-client-workspace-mcp-targeted.log (53/53), and pr… — Independent approval of S11 at exact merged PR #255 tip 11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6. Reused 161/161 integration plus typecheck, 53/53 targeted, real pinned MCP/CLI wire parity and proof receipts; no tests rerun.
 
 ### S12 — Framework adapters, directional checks and exporter sequencing
 - **Status**: pending
