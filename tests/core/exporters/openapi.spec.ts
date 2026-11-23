@@ -526,3 +526,25 @@ describe("r00015 — x-tanit-confidence extension", () => {
     expect(op["x-tanit-confidence-reasons"]).toBeUndefined();
   });
 });
+
+test("annotates only unique concrete OpenAPI operations with consumer counts", () => {
+  const document = buildOpenApiDocument({
+    ...baseInput([
+      spec("/users/{{id}}", "GET"),
+      spec("/users/{id}", "GET"),
+      spec("/any", "ALL"),
+      spec("/distinct", "PATCH"),
+      spec("/distinct", "GET"),
+    ]),
+    consumerCounts: [
+      { method: "GET", uri: "/users/{{id}}", confirmedCalls: 1, frontends: 1 },
+      { method: "GET", uri: "/any", confirmedCalls: 1, frontends: 1 },
+      { method: "PATCH", uri: "/distinct", confirmedCalls: 3, frontends: 2 },
+    ],
+  });
+  const paths = document["paths"] as Record<string, Record<string, unknown>>;
+  expect(paths["/users/{id}"]?.["get"]).not.toHaveProperty("x-tanit-consumers");
+  expect(paths["/any"]?.["get"]).not.toHaveProperty("x-tanit-consumers");
+  expect(paths["/distinct"]?.["get"]).not.toHaveProperty("x-tanit-consumers");
+  expect(paths["/distinct"]?.["patch"]).toHaveProperty("x-tanit-consumers", { confirmedCalls: 3, frontends: 2 });
+});

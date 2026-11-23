@@ -39,6 +39,7 @@ import {
   HistoryRestoreInputSchema,
   type HistoryRestoreInput,
 } from "./zod-schemas.js";
+import { ExportConsumerCountsSchema } from "../../contracts/constants/core/application-api.constant.js";
 import { writeExport } from "./export-artifacts.helper.js";
 import { collectionPathOf } from "./project-verbs.helper.js";
 import { writeJsonAtomic } from "../helpers/atomic-write.helper.js";
@@ -136,7 +137,7 @@ export function createPersistedHistoryHandlers(): {
       name: "history-re-export",
       input: HistoryReExportInputSchema,
       async handle(input) {
-        await requireRecord(input.projectRoot, input.historyId);
+        const record = await requireRecord(input.projectRoot, input.historyId);
         const snapshot = await history.snapshotOf(input.projectRoot, input.historyId);
         if (snapshot === undefined) {
           throw apiError(
@@ -145,7 +146,10 @@ export function createPersistedHistoryHandlers(): {
           );
         }
         const target = input.target ?? DEFAULT_FORMAT;
-        const written = await writeExport(snapshot, target, input.outputDirectory);
+        const counts = target === "openapi"
+          ? ExportConsumerCountsSchema.safeParse(record.configuration.consumerCounts).data
+          : undefined;
+        const written = await writeExport(snapshot, target, input.outputDirectory, undefined, counts);
         return {
           outputPath: written.outputPath,
           bytes: written.bytes,
@@ -157,7 +161,7 @@ export function createPersistedHistoryHandlers(): {
       name: "history-restore",
       input: HistoryRestoreInputSchema,
       async handle(input) {
-        const record = await requireRecord(input.projectRoot, input.historyId);
+        await requireRecord(input.projectRoot, input.historyId);
         const snapshot = await history.snapshotOf(input.projectRoot, input.historyId);
         if (snapshot === undefined || snapshot.results.length === 0) {
           throw apiError(

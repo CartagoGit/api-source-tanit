@@ -24,6 +24,14 @@ export interface IExportArtifact {
   readonly content: string;
 }
 
+/** Sanitized counts for one confirmed method and URI in a single service. */
+export interface IExportConsumerCount {
+  readonly method: string;
+  readonly uri: string;
+  readonly confirmedCalls: number;
+  readonly frontends: number;
+}
+
 /** Everything an exporter needs to know about the project. */
 export interface IExportInput {
   readonly specs: ReadonlyArray<EndpointSpec>;
@@ -37,6 +45,7 @@ export interface IExportInput {
    * Insomnia.
    */
   readonly auth: IExportAuth;
+  readonly consumerCounts?: readonly IExportConsumerCount[];
 }
 
 /** What an exporter needs from the auth scheme. */

@@ -20,6 +20,7 @@ import {
 import { getSession } from "../session/project-session.service.js";
 import { planExport } from "./export-artifacts.helper.js";
 import { describeFormats } from "../exporters/export-registry.service.js";
+import { collectExportConsumerCounts } from "./export-consumers.helper.js";
 import { apiError } from "./error.js";
 
 /** Resultado de ejecutar la generación sin escribir una colección. */
@@ -31,7 +32,7 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
   return {
     name: "dry-run",
     input: DryRunInputSchema,
-    async handle(input) {
+    async handle(input, ctx) {
       const session = getSession(input.projectRoot);
       if (!session) {
         throw apiError(
@@ -49,7 +50,8 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
 
       const started = Date.now();
       const target = input.target ?? "postman";
-      const plan = await planExport(snap, target, input.outputDirectory, input.outputPath);
+      const counts = await collectExportConsumerCounts(snap, target, input.consumerFrontends, ctx);
+      const plan = await planExport(snap, target, input.outputDirectory, input.outputPath, counts);
 
       const frameworks = new Set<string>();
       const warnings = new Set<string>();

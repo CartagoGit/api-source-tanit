@@ -259,6 +259,16 @@ component coordinates, including for request and response evidence. External
 scripts, conflicting imports, mixed languages and template expressions produce
 diagnostics.
 
+### OpenAPI consumer counts through the Application API
+
+Pass `consumerFrontends` to `dry-run` and `export` with target `openapi` to
+include `x-tanit-consumers` on uniquely matched operations. The input uses
+the same frontend roots and optional alias mappings as `client-links`.
+The open backend snapshot must contain one identified service. The extension
+counts matched calls and distinct frontend roots. It omits client paths,
+bodies, ambiguous matches and operations expanded from `ALL`. Re-exporting
+that OpenAPI revision reuses the counts recorded at export time.
+
 ## Durable state diagnostics
 
 State persistence is shadow-only and opt-in. A normal scan continues to use

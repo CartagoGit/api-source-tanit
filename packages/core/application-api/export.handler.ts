@@ -22,6 +22,7 @@ import {
 import { getSession } from "../session/project-session.service.js";
 import { ProjectHistoryService } from "../session/project-history.service.js";
 import { resolveExportDestination, writeExport } from "./export-artifacts.helper.js";
+import { collectExportConsumerCounts } from "./export-consumers.helper.js";
 import { apiError } from "./error.js";
 
 /** Resultado de escribir los artefactos de un formato. */
@@ -34,7 +35,7 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
   return {
     name: "export",
     input: ExportInputSchema,
-    async handle(input) {
+    async handle(input, ctx) {
       const session = getSession(input.projectRoot);
       if (!session) {
         throw apiError(
@@ -51,8 +52,9 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
       }
 
       const destination = resolveExportDestination(snap, input.outputDirectory, input.outputPath);
+      const counts = await collectExportConsumerCounts(snap, input.target, input.consumerFrontends, ctx);
       const written = await writeExport(
-        snap, input.target, input.outputDirectory, input.outputPath,
+        snap, input.target, input.outputDirectory, input.outputPath, counts,
       );
 
       // The export is a point in time, and the history remembers it.
@@ -75,6 +77,7 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
           configuration: {
             formats: [input.target],
             outputDirectory: destination.directory,
+            ...(counts !== undefined ? { consumerCounts: counts } : {}),
             ...(destination.outputPath !== undefined ? { outputPath: destination.outputPath } : {}),
           },
         });

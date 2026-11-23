@@ -24,6 +24,7 @@ import type {
 import type { IExportResult } from "./result.js";
 import type {
   IExportArtifact,
+  IExportConsumerCount,
   IExportInput,
   IExportTarget,
 } from "../../contracts/interfaces/core/export-target.interface.js";
@@ -73,12 +74,14 @@ function legacyCapabilities(
 /** Converts a discovery result into the input expected by a legacy target. */
 function exportInputFromSnapshot(
   snapshot: IProjectSnapshot,
+  consumerCounts?: readonly IExportConsumerCount[],
 ): IExportInput | null {
   const result = snapshot.results[0];
   if (result === undefined) return null;
 
   return {
     specs: result.specs,
+    ...(consumerCounts !== undefined ? { consumerCounts } : {}),
     config: result.config,
     auth: {
       type: result.authScheme.type,
@@ -102,21 +105,24 @@ function exportInputFromSnapshot(
 class LegacyExporterAdapter
   implements IExporter<ReadonlyArray<IExportArtifact>>
 {
-  readonly id: ExportFormatId;
   readonly capabilities: IExporterCapabilities;
 
   constructor(
-    id: LegacyExportFormatId,
+    readonly id: LegacyExportFormatId,
     private readonly target: IExportTarget,
+    private readonly consumerCounts?: readonly IExportConsumerCount[],
   ) {
-    this.id = id;
     this.capabilities = legacyCapabilities(id);
+  }
+
+  withConsumerCounts(counts: readonly IExportConsumerCount[]): LegacyExporterAdapter {
+    return new LegacyExporterAdapter(this.id, this.target, counts);
   }
 
   async build(
     snapshot: IProjectSnapshot,
   ): Promise<IExportResult<ReadonlyArray<IExportArtifact>>> {
-    const input = exportInputFromSnapshot(snapshot);
+    const input = exportInputFromSnapshot(snapshot, this.consumerCounts);
     if (input === null) {
       return {
         format: this.id,
@@ -165,7 +171,10 @@ for (const format of ["openapi", "insomnia", "bruno", "har", "curl"] as const) {
  * Unknown ids throw instead of being ignored: a misspelled format must
  * not look like a successful run that produced fewer files.
  */
-function selectExporters(formats: ExportFormatId[]): IExporter[] {
+function selectExporters(
+  formats: ExportFormatId[],
+  consumerCounts?: readonly IExportConsumerCount[],
+): IExporter[] {
   const selected: IExporter[] = [];
   const seen = new Set<ExportFormatId>();
 
@@ -176,7 +185,9 @@ function selectExporters(formats: ExportFormatId[]): IExporter[] {
       throw new Error(`Unknown export format: ${format}`);
     }
     seen.add(format);
-    selected.push(exporter);
+    selected.push(format === "openapi" && consumerCounts?.length && exporter instanceof LegacyExporterAdapter
+      ? exporter.withConsumerCounts(consumerCounts)
+      : exporter);
   }
 
   return selected;
