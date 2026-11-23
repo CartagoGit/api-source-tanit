@@ -409,6 +409,22 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
   - Publish the exact tested Vue versions and binding forms. Use evidence from the corresponding compiler or fixture environment before confirming Options API template receivers.
   - Separate Vue Resource, Axios and native Fetch profiles when their proven call forms differ. Keep injectors, plugins and global properties unresolved when their binding cannot be proved.
 
+### S29 — Verify React and Solid source forms by version
+- **Status**: pending
+- **Files**: version-pinned React and Solid frontend fixtures and the coverage reference.
+- **Gate**: shared JSX/TSX analyzer parity across recorded fixtures plus `bun run validate`
+- **Acceptance**:
+  - Record representative versions for both frameworks and verify the supported JS, TS, JSX and TSX call forms where applicable.
+  - Distinguish the shared syntax baseline from framework-specific handling of React hooks or Solid reactive scopes. Keep unproved wrappers and settings unresolved.
+
+### S30 — Verify modern Angular HTTP source forms by version
+- **Status**: pending
+- **Files**: version-pinned Angular TypeScript and template fixtures and the coverage reference.
+- **Gate**: Angular package provenance, template ownership and report parity plus `bun run validate`
+- **Acceptance**:
+  - Test representative Angular versions for the available constructor-injection and `inject()` call forms, including a signals-based component where supported.
+  - Record framework and compiler versions for each tested source form. Keep HttpClient, native Fetch and the separate AngularJS service profile distinct.
+
 ### Pairwise comparison and selection boundary
 
 Pairwise comparison is a read-only phase after S2. Accept separately selected roots and a
@@ -469,7 +485,7 @@ nullability and union branches follow those directions. Reversing either directi
 not compatibility.
 
 The frontend coverage reference in `docs/CLIENT-COVERAGE.md` lists verified
-source forms and their transport boundaries. S23–S28 track the pending
+source forms and their transport boundaries. S23–S30 track the pending
 recognizers and source carriers.
 
 Unsupported wrappers, generated SDK boundaries, dynamic URLs, unknown spreads, and
