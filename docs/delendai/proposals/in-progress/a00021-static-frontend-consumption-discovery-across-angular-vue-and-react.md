@@ -211,12 +211,19 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-6-luna — verified at d66002c2faa0, validate exit 0 and tests 11/11 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed both CLI adapters against the shared candidate engine and S10 E2E fixture. Frontend candidates are concrete materialized workspace roots; backend cand… (2) The plan adapter resolves frontend/backend roots from dirname(planPath), strips a UTF-8 BOM, and delegates to analyzeClientProjectLinks with the shared schema.… (3) E2E covers malformed JSON, schema-invalid plan, missing and unsupported CLI options with nonzero exit, empty stdout and readable stderr. COMMANDS still registe… — Independent g52 review of S10 at merged source PR #253 head d66002c2faa0280933dbeddd28928d861141009c, implementation commit e31b45f3df54048e30f05892197f0dcdcb9c1e2a, integrated at develop 0a9b3387d72757df44c751557b73d8a037b48f8d. Reused 11 passing CLI E2E cases, CLI/e2e typechecks and command-parity checks, compiled Windows receipt /tmp/tanit-client-workspace-cli-windows.json (UTF-8 BOM plan from a different cwd, no project writes, all four semantic states), and exact-head CI run 45086669852. No tests rerun by reviewer.
 
 ### S11 — Select project links through MCP
-- **Status**: pending
-- **Files**: MCP adapter and contract files to be selected from S8 and S10 evidence.
-- **Gate**: scoped MCP carrier tests plus `bun run validate`
+- **Status**: review
+- **Files**: `packages/core/discovery/workspace-glob.helper.ts`, `tests/core/workspace-glob.spec.ts`, `docs/CLI.md`.
+- **Gate**: pinned MCP carrier tests plus `bun run validate`
+- **Acceptance**:
+  - The pinned DelendAI integration exposes concrete candidate folders and canonical service IDs from the shared inventory.
+  - Explicit link plans return the same canonical report as the CLI, including diagnostics and operations without a confirmed consumer.
+  - All roots stay inside the workspace, including physically resolved directories. The existing single-project tool retains its input and output.
 
-Reuse the same candidate selection and report inputs in the pinned integration.
-Preserve single-project invocations and validate workspace boundaries.
+The adapters are `integrations/delendai/src/lib/tools/client-candidates.tool.ts`
+and `integrations/delendai/src/lib/tools/client-links.tool.ts`, with regression
+coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.ts`.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S12 — Framework adapters, directional checks and exporter sequencing
 - **Status**: pending

@@ -30,7 +30,8 @@
  *   globs.
  * - **Normalization**: reject absolute, empty, and escaping values outside
  *   `projectRoot` before touching the file system. Results are always
- *   POSIX-relative, without `./`, absolute components, or `..`.
+ *   POSIX-relative, without `./`, absolute components, or `..`. Linked
+ *   directory targets must also remain within `projectRoot`.
  * - **Determinism**: sort paths lexicographically and deduplicate them. Two
  *   identical invocations produce the same output in the same order.
  * - **Quiet I/O**: silently ignore a prefix that is not a directory (it does
@@ -45,6 +46,7 @@
  */
 import { readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, sep } from "node:path";
+import { ensureInside } from "../helpers/path-containment.helper.js";
 
 /**
  * Materializes a list of workspace globs into real directories.
@@ -79,7 +81,7 @@ export async function resolveWorkspaceGlobs(
     const normalized = normalizePosixRelative(stripped);
     if (!normalized) continue;
 
-    const resolved = resolveSingleGlob(projectRoot, normalized);
+    const resolved = await resolveSingleGlob(projectRoot, normalized);
     const bucket = isExclusion ? excluded : included;
     for (const dir of resolved) bucket.add(dir);
   }
@@ -92,70 +94,50 @@ export async function resolveWorkspaceGlobs(
   return merged;
 }
 
-/**
- * Resolves one already-normalized glob to its real directories. This is the
- * branch between literals and patterns.
- */
-function resolveSingleGlob(
+/** Verify the literal or enumeration directory before reading it. */
+async function resolveSingleGlob(
   projectRoot: string,
   glob: string,
-): ReadonlyArray<string> {
-  if (!hasMeta(glob)) return resolveLiteral(projectRoot, glob);
-  return resolvePattern(projectRoot, glob);
-}
+): Promise<ReadonlyArray<string>> {
+  const pattern = hasMeta(glob);
+  const prefix = pattern ? globPrefix(glob) : glob;
+  const lexicalPrefix = join(projectRoot, prefix);
+  const location = await ensureInside(projectRoot, lexicalPrefix);
+  if (!location.ok) return [];
 
-/** Literal: `existsSync` and POSIX-relative. */
-function resolveLiteral(
-  projectRoot: string,
-  relPath: string,
-): ReadonlyArray<string> {
-  const absolute = join(projectRoot, relPath);
   let stat;
   try {
-    stat = statSync(absolute);
+    stat = statSync(location.resolved);
   } catch {
     return [];
   }
   if (!stat.isDirectory()) return [];
 
-  const rel = toPosixRelative(projectRoot, absolute);
-  if (!isInsideProjectRoot(rel)) return [];
-  return [rel];
+  if (!pattern) {
+    const rel = toPosixRelative(projectRoot, lexicalPrefix);
+    return isInsideProjectRoot(rel) ? [rel] : [];
+  }
+  return resolvePattern(projectRoot, lexicalPrefix, location.resolved, glob);
 }
 
-/**
- * Pattern: enumerate the prefix and filter with a regex.
- *
- * The "prefix" is everything before the first metacharacter
- * (`*`, `?`, `{`). If the prefix does not exist or is not a directory,
- * return `[]` without an error. `**` controls depth: when present, enumerate
- * all descendants; otherwise enumerate only direct children.
- */
+/** Enumerate a verified directory and match candidates using their declared paths. */
 function resolvePattern(
   projectRoot: string,
+  lexicalPrefix: string,
+  physicalPrefix: string,
   glob: string,
 ): ReadonlyArray<string> {
-  const prefix = globPrefix(glob);
-  const absolutePrefix = join(projectRoot, prefix);
-
-  let stat;
-  try {
-    stat = statSync(absolutePrefix);
-  } catch {
-    return [];
-  }
-  if (!stat.isDirectory()) return [];
-
   const recursive = glob.indexOf("**") !== -1;
   const candidates = recursive
-    ? enumerateRecursive(absolutePrefix)
-    : enumerateOneLevel(absolutePrefix);
+    ? enumerateRecursive(physicalPrefix)
+    : enumerateOneLevel(physicalPrefix);
 
   const regex = globToRegExp(glob);
   const out: string[] = [];
   const seen = new Set<string>();
   for (const candidate of candidates) {
-    const rel = toPosixRelative(projectRoot, candidate);
+    const lexicalCandidate = join(lexicalPrefix, relative(physicalPrefix, candidate));
+    const rel = toPosixRelative(projectRoot, lexicalCandidate);
     if (!isInsideProjectRoot(rel)) continue;
     if (!regex.test(rel)) continue;
     if (seen.has(rel)) continue;

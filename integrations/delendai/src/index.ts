@@ -11,7 +11,9 @@
  *   - Publish:    tanit_push (the only one that leaves the machine)
  *   - Diagnose:   tanit_scan (what discovery sees),
  *                  tanit_summary (the project already interpreted),
- *                  tanit_client_usage (frontend API consumption)
+ *                  tanit_client_usage (frontend API consumption),
+ *                  tanit_client_candidates (workspace projects and services),
+ *                  tanit_client_links (selected frontend and backend comparisons)
  *   - Inspect the generated output: tanit_list, tanit_stats,
  *                  tanit_check (has it drifted?),
  *                  tanit_validate
@@ -36,6 +38,8 @@ import { definePlugin } from "@delendai/core/public";
 
 import { TanitOptionsSchema } from "./lib/contracts/plugin.interface";
 import { buildCheckToolRegistration } from "./lib/tools/check.tool";
+import { buildClientCandidatesToolRegistration } from "./lib/tools/client-candidates.tool";
+import { buildClientLinksToolRegistration } from "./lib/tools/client-links.tool";
 import { buildClientUsageToolRegistration } from "./lib/tools/client-usage.tool";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildInitToolRegistration } from "./lib/tools/init.tool";
@@ -49,7 +53,7 @@ import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
 
 export default definePlugin({
   name: "tanit",
-  version: "0.4.0",
+  version: "0.5.0",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +
     "de cualquier proyecto de API. Pensado para ser invocado por agentes " +
@@ -66,6 +70,8 @@ export default definePlugin({
         buildScanToolRegistration(ctx),
         buildSummaryToolRegistration(ctx),
         buildClientUsageToolRegistration(ctx),
+        buildClientCandidatesToolRegistration(ctx),
+        buildClientLinksToolRegistration(ctx),
         buildTestToolRegistration(ctx),
         buildPushToolRegistration(ctx),
         buildInitToolRegistration(ctx),

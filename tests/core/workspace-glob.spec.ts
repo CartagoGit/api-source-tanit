@@ -12,7 +12,7 @@
  *  - Determinism: stable order across invocations.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -160,6 +160,24 @@ describe("resolveWorkspaceGlobs — rechazo de escapes y absolutos", () => {
   test("un `apps/../api` colapsa a `api`", async () => {
     await makeDir("api");
     expect(await resolve(["apps/../api"])).toEqual(["api"]);
+  });
+
+  test("ignores literal and glob directories whose physical roots leave the project", async () => {
+    const external = await mkdtemp(join(tmpdir(), "workspace-glob-external-"));
+    try {
+      await mkdir(join(external, "api", "nested"), { recursive: true });
+      await symlink(external, join(root, "external"), "junction");
+      await makeDir("apps/web");
+      expect(await resolve(["external/api", "external/*", "external/**", "apps/*"])).toEqual(["apps/web"]);
+    } finally {
+      await rm(external, { recursive: true, force: true });
+    }
+  });
+
+  test("keeps the declared alias for directories linked inside the project", async () => {
+    await makeDir("packages/view");
+    await symlink(join(root, "packages"), join(root, "apps"), "junction");
+    expect(await resolve(["apps/*", "apps/view"])).toEqual(["apps/view"]);
   });
 
   test("una ra\u00edz relativa devuelve `[]`", async () => {
