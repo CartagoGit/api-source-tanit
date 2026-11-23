@@ -22,6 +22,7 @@ shipped-in:
   - "c026bdff4b254bd18b5b8e517b2682ee765b621f"
   - "d66002c2faa0280933dbeddd28928d861141009c"
   - "11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6"
+  - "00b784c445ffda7259309a0ca3086cd4b8679499"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -229,15 +230,17 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 11f8b444dca8, validate exit 0 and tests 161/161 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-workspace-mcp-wire.json: sameCLI=true, newToolsAdvertised=true, originalTool=true, and the pinned live MCP/CLI result matches. (2) Reused /tmp/tanit-client-workspace-mcp-wire.json (readOnly=true, statuses ambiguous/matched/missing/unknown), targeted 53/53 log, and inspected createContained… (3) Reused /tmp/tanit-client-workspace-mcp-integration.log (161/161 integration tests plus typecheck), /tmp/tanit-client-workspace-mcp-targeted.log (53/53), and pr… — Independent approval of S11 at exact merged PR #255 tip 11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6. Reused 161/161 integration plus typecheck, 53/53 targeted, real pinned MCP/CLI wire parity and proof receipts; no tests rerun.
 
 ### S12 — Recognize Angular HttpClient in TypeScript
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/language-frontends/typescript/client-consumption.helper.ts`, `packages/contracts/interfaces/core/client-consumption.interface.ts`, `tests/core/client-consumption.spec.ts`.
 - **Gate**: core client analysis and pinned MCP tests plus `bun run validate`
 - **Acceptance**:
   - Angular instance methods and their lexical callbacks recognize constructor parameter properties typed as the imported Angular HttpClient and instance fields initialized with the imported Angular inject function.
   - Static verb calls and the method and URL overload of request preserve source coordinates. Dynamic requests retain unresolved evidence and unproven receivers do not produce confirmed calls.
   - The same recognizer appears in the canonical report and the pinned MCP schema. Angular HTML remains a template diagnostic.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at 00b784c445ff, validate exit 0 and tests 40/40 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the exact source diff and focused fixtures: the recognizer requires named imports from @angular/common/http and @angular/core, associates candidate cl… (2) Focused tests cover static HTTP verbs, request("PATCH", "/items"), dynamic method and URL, and receiver scoping. The real decorated-component wire receipt conf… (3) Core contract and pinned integration output schema both include angular-http-client; pinned MCP integration tests verify the same matched usage. The actual dec… — Independent g56 review of S12 at merged PR #257 exact head 00b784c445ffda7259309a0ca3086cd4b8679499, integrated at develop b005f546. Reused 40 core tests, core typecheck, 162 pinned integration tests plus typecheck, local work prove, real decorated-component wire parity with exact column/start/end offsets, Chromium ui:dev browser receipt and native Windows WebView2 receipt with no visible console. Exact-head CI 45128239841 passed. No tests rerun by reviewer.
 
 ### S13 — Analyze Angular templates and mixed Vue component scopes
 - **Status**: pending
