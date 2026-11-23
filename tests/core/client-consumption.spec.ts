@@ -59,6 +59,112 @@ describe("client consumption", () => {
     expect(result.usages[5]?.correlation).toBeUndefined();
   });
 
+  it("recognizes Angular HttpClient instance members from aliased package imports", async () => {
+    const result = await scan({
+      "items.component.ts": [
+        'import { HttpClient as Client } from "@angular/common/http";',
+        'import { Component, inject as resolve } from "@angular/core";',
+        '@Component({ selector: "app-items", templateUrl: "./items.component.html" })',
+        'class ItemsComponent {',
+        '  constructor(private readonly api: Client) {}',
+        '  private readonly transport = resolve(Client);',
+        '  load(): unknown {',
+        '    this.api.get<{ name: string }>("/items");',
+        '    return () => this.transport.post("/items", { name: "sample" });',
+        '  }',
+        '  reload(url: string): unknown { return this.api.get(url); }',
+        '}',
+      ].join("\n"),
+      "items.component.html": '<button (click)="api.get(\'/template\')">Load</button>',
+    });
+
+    expect(result.usages).toMatchObject([
+      {
+        method: "GET", path: "/items",
+        location: { file: "items.component.ts", line: 8 },
+        evidence: { recognizer: "angular-http-client", callee: "this.api.get", staticUrl: "literal" },
+      },
+      {
+        method: "POST", path: "/items",
+        location: { file: "items.component.ts", line: 9 },
+        evidence: { recognizer: "angular-http-client", callee: "this.transport.post", staticUrl: "literal" },
+      },
+      {
+        method: "GET", unresolvedReason: "dynamic-url",
+        location: { file: "items.component.ts", line: 11 },
+        evidence: { recognizer: "angular-http-client", callee: "this.api.get" },
+      },
+    ]);
+    expect(result.usages[2]?.path).toBeUndefined();
+    expect(result.diagnostics).toEqual([{ file: "items.component.html", reason: "unsupported-template" }]);
+  });
+
+  it("keeps Angular HttpClient evidence bound to the declared instance and real package names", async () => {
+    const result = await scan({
+      "classes.ts": [
+        'import { HttpClient as Client } from "@angular/common/http";',
+        'import { HttpClient as Lookalike } from "./mock-http";',
+        'import { inject as mockInject } from "./mock-inject";',
+        'class Genuine {',
+        '  constructor(private readonly http: Client) {}',
+        '  static check() { this.http.get("/static"); }',
+        '  check() {',
+        '    function rebound() { return this.http.get("/rebound"); }',
+        '    return () => this.http.get("/instance");',
+        '  }',
+        '}',
+        'class Other {',
+        '  constructor(private readonly http: Lookalike) {}',
+        '  private readonly injected = mockInject(Client);',
+        '  check() { this.http.get("/lookalike"); this.injected.get("/fake-inject"); }',
+        '}',
+        'class Mock {',
+        '  readonly http = { get(_url: string) {} };',
+        '  check() { this.http.get("/mock"); }',
+        '}',
+        'class Shadowed<Client> {',
+        '  constructor(private readonly http: Client) {}',
+        '  check() { this.http.get("/shadowed-type"); }',
+        '}',
+      ].join("\n"),
+    });
+
+    expect(result.usages).toMatchObject([{
+      method: "GET", path: "/instance",
+      location: { file: "classes.ts", line: 9 },
+      evidence: { recognizer: "angular-http-client", callee: "this.http.get" },
+    }]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("reads the method and URL independently for Angular HttpClient request", async () => {
+    const result = await scan({
+      "requests.ts": [
+        'import { HttpClient } from "@angular/common/http";',
+        'class Requests {',
+        '  constructor(private readonly http: HttpClient) {}',
+        '  send(method: string) {',
+        '    this.http.request("PATCH", "/items");',
+        '    this.http.request(method, "/items");',
+        '  }',
+        '}',
+      ].join("\n"),
+    });
+
+    expect(result.usages).toMatchObject([
+      {
+        method: "PATCH", path: "/items",
+        location: { file: "requests.ts", line: 5 },
+        evidence: { recognizer: "angular-http-client", callee: "this.http.request", staticUrl: "literal" },
+      },
+      {
+        unresolvedReason: "dynamic-method",
+        location: { file: "requests.ts", line: 6 },
+        evidence: { recognizer: "angular-http-client", callee: "this.http.request" },
+      },
+    ]);
+  });
+
   it("recognizes a CommonJS Axios import and rejects a shadowed require", async () => {
     const result = await scan({
       "main.cjs": [

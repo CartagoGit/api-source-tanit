@@ -228,15 +228,43 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-reviewer: openai-gpt-5.6-luna
 - review-log: approved by openai-gpt-5.6-luna — verified at 11f8b444dca8, validate exit 0 and tests 161/161 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-client-workspace-mcp-wire.json: sameCLI=true, newToolsAdvertised=true, originalTool=true, and the pinned live MCP/CLI result matches. (2) Reused /tmp/tanit-client-workspace-mcp-wire.json (readOnly=true, statuses ambiguous/matched/missing/unknown), targeted 53/53 log, and inspected createContained… (3) Reused /tmp/tanit-client-workspace-mcp-integration.log (161/161 integration tests plus typecheck), /tmp/tanit-client-workspace-mcp-targeted.log (53/53), and pr… — Independent approval of S11 at exact merged PR #255 tip 11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6. Reused 161/161 integration plus typecheck, 53/53 targeted, real pinned MCP/CLI wire parity and proof receipts; no tests rerun.
 
-### S12 — Framework adapters, directional checks and exporter sequencing
-- **Status**: pending
-- **Files**: adapter, type-comparison and exporter files to be selected from the report evidence.
-- **Gate**: scoped tests plus `bun run validate`
+### S12 — Recognize Angular HttpClient in TypeScript
+- **Status**: review
+- **Files**: `packages/core/language-frontends/typescript/client-consumption.helper.ts`, `packages/contracts/interfaces/core/client-consumption.interface.ts`, `tests/core/client-consumption.spec.ts`.
+- **Gate**: core client analysis and pinned MCP tests plus `bun run validate`
+- **Acceptance**:
+  - Angular instance methods and their lexical callbacks recognize constructor parameter properties typed as the imported Angular HttpClient and instance fields initialized with the imported Angular inject function.
+  - Static verb calls and the method and URL overload of request preserve source coordinates. Dynamic requests retain unresolved evidence and unproven receivers do not produce confirmed calls.
+  - The same recognizer appears in the canonical report and the pinned MCP schema. Angular HTML remains a template diagnostic.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
-Plan an Angular-template extractor plus Vue mixed script scopes and template
-bindings. Add directional request and response checks to the pairwise report.
-Sequence optional exporter consumer metadata after that comparison. Keep export
-output backward compatible and client analysis optional.
+### S13 — Analyze Angular templates and mixed Vue component scopes
+- **Status**: pending
+- **Files**: Angular template and Vue single-file component adapters.
+- **Gate**: focused client parser and framework fixtures plus `bun run validate`
+
+Resolve template ownership and bindings before reporting calls. Retain
+diagnostics for unproven receivers and unsupported syntax. Cover Vue normal
+and setup script scopes with original source offsets.
+
+### S14 — Compare request and response contracts directionally
+- **Status**: pending
+- **Files**: client contract evidence, directional comparison and shared report.
+- **Gate**: linked-project contract and carrier parity tests plus `bun run validate`
+
+Compare frontend request shapes against accepted backend input, and backend
+response shapes against frontend expectations. Reuse the selected operation
+and response status, and retain unknown evidence for missing declarations or
+unsupported constructs.
+
+### S15 — Expose optional consumer evidence to exporters
+- **Status**: pending
+- **Files**: exporter adapters and evidence fixtures.
+- **Gate**: backward compatibility and exporter tests plus `bun run validate`
+
+Sequence exporter metadata after directional comparison. Existing output
+retains its format when consumer analysis is absent.
 
 ### Pairwise comparison and selection boundary
 

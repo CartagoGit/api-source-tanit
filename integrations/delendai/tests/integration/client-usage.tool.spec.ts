@@ -114,3 +114,28 @@ test("returns an explicit diagnostic for a Vue external script", async () => {
   ]);
   expect(response).toHaveProperty("structuredContent.usages", []);
 });
+
+test("publishes Angular HttpClient evidence under its own recognizer", async () => {
+  const angular = join(workspace, "angular-client");
+  await mkdir(angular);
+  await writeFile(join(angular, "items.ts"), [
+    'import { HttpClient } from "@angular/common/http";',
+    'class Items {',
+    '  constructor(private readonly api: HttpClient) {}',
+    '  load() { return this.api.get("/api/users"); }',
+    '}',
+  ].join("\n"));
+  const tool = await makeTool();
+  const response = await tool.handler({ projectRoot: "angular-client", backendRoot: "backend" });
+  const expected = await analyzeClientProjects({ projectRoot: angular, backendRoot: backend }, defaultOrchestrator());
+  expect(response.isError).toBeUndefined();
+  expect(response).toHaveProperty("structuredContent", expected);
+  expect(expected.usages).toMatchObject([{
+    method: "GET", path: "/api/users",
+    evidence: { recognizer: "angular-http-client", callee: "this.api.get" },
+    correlation: { status: "matched" },
+  }]);
+  const schema = tool.outputSchema;
+  if (!(schema instanceof ZodObject)) throw new Error("Expected a registered Zod object");
+  expect(schema.parse(expected)).toEqual(expected);
+});

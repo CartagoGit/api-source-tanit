@@ -118,7 +118,7 @@ export interface IClientUsage {
   readonly host?: string;
   readonly location: ILocation;
   readonly evidence: {
-    readonly recognizer: "fetch" | "axios" | "configured-alias";
+    readonly recognizer: "fetch" | "axios" | "angular-http-client" | "configured-alias";
     readonly callee: string;
     readonly staticUrl?: "literal" | "expression";
   };
