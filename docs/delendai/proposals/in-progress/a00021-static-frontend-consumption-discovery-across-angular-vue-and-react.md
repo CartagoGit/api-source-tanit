@@ -20,6 +20,7 @@ shipped-in:
   - "b35ad3528cae8dd516bb56967f8d4a3b2b34807a"
   - "b2e9b2b5c08f4abd8115ee42008404159f4e1ea6"
   - "c026bdff4b254bd18b5b8e517b2682ee765b621f"
+  - "d66002c2faa0280933dbeddd28928d861141009c"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -197,15 +198,17 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-log: approved by openai-gpt-5.6-luna — verified at c026bdff4b25, validate exit 0 and tests 145/145 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f and Chromium receipt /tmp/tanit-client-workspace-ui-browser.json; workspaceVerified … (2) Browser receipt records all four states; reviewed client-links template rendering of source positions, statuses, unresolved reasons, ambiguity candidates, diag… (3) Reused /tmp/tanit-client-workspace-ui-browser.json (mobileFits and staticExplains true), 145 Angular tests, exact native tested-head stamp, Windows build 45084… — Independent approval of S9 at exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f. Reused 145 Angular tests, Chromium receipt, Windows WebView2 smoke, native tested-head and icon receipts; no tests rerun.
 
 ### S10 — Select project links through the CLI
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/cli/commands/client-candidates.script.ts`, `packages/cli/commands/client-links.script.ts`, `tests/e2e/client-workspace.test.ts`.
 - **Gate**: targeted CLI tests, compiled Windows smoke, and `bun run validate`
 - **Acceptance**:
   - CLI candidate discovery returns concrete workspace folders and canonical backend service IDs from the shared inventory.
   - A JSON selection plan resolves relative roots from the plan directory and returns the same read-only selected-link report as the core.
   - Invalid plans return a nonzero exit and a readable error. The original `client-usage` command remains available.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at d66002c2faa0, validate exit 0 and tests 11/11 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed both CLI adapters against the shared candidate engine and S10 E2E fixture. Frontend candidates are concrete materialized workspace roots; backend cand… (2) The plan adapter resolves frontend/backend roots from dirname(planPath), strips a UTF-8 BOM, and delegates to analyzeClientProjectLinks with the shared schema.… (3) E2E covers malformed JSON, schema-invalid plan, missing and unsupported CLI options with nonzero exit, empty stdout and readable stderr. COMMANDS still registe… — Independent g52 review of S10 at merged source PR #253 head d66002c2faa0280933dbeddd28928d861141009c, implementation commit e31b45f3df54048e30f05892197f0dcdcb9c1e2a, integrated at develop 0a9b3387d72757df44c751557b73d8a037b48f8d. Reused 11 passing CLI E2E cases, CLI/e2e typechecks and command-parity checks, compiled Windows receipt /tmp/tanit-client-workspace-cli-windows.json (UTF-8 BOM plan from a different cwd, no project writes, all four semantic states), and exact-head CI run 45086669852. No tests rerun by reviewer.
 
 ### S11 — Select project links through MCP
 - **Status**: pending
