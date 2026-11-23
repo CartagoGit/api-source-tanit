@@ -24,6 +24,7 @@ shipped-in:
   - "11f8b444dca8e22e1c46f03b9b7fc50325f3c3c6"
   - "00b784c445ffda7259309a0ca3086cd4b8679499"
   - "7eb6f3d925b23ab8002858eacca8ed8d86a403d7"
+  - "a15dcfb6600cd11d2d2a9c3252710e4380e92493"
 ---
 
 # a00021 — Static frontend consumption discovery across Angular, Vue, and React
@@ -257,15 +258,17 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 7eb6f3d925b2, validate exit 0 and tests 162/162 claimed, no recorded run cited; acceptance 3/3: (1) Reused /tmp/tanit-s13-angular-proof.json and 45 targeted checks; prior source inspection found literal templateUrl ownership, conservative this.member HTTP mat… (2) Reused pinned integration suite 162/typecheck, real CLI/stdio CRLF span receipts, Chromium and compiled Windows/WebView2 receipts; g57 returned the normal shar… (3) Reused /tmp/tanit-s13-angular-packed-cli.json clean installed tarball proof, package proof, scoped typecheck and pinned integration evidence; no tests rerun by… — Independent approval of S13 at exact merged PR #259 tip 7eb6f3d925b23ab8002858eacca8ed8d86a403d7. Reused Angular proof, 45 targeted plus 162 pinned integration checks/typecheck, CRLF CLI/stdio spans, clean tarball, Chromium and Windows/WebView2 receipts; no tests rerun.
 
 ### S14 — Compare static JSON requests with a selected backend contract
-- **Status**: review
+- **Status**: done
 - **Files**: `packages/core/discovery/client-usage.service.ts`, `packages/core/schema/json-request-comparison.helper.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/core/client-request-contract.spec.ts`.
 - **Gate**: focused contract and carrier tests plus `bun run validate`
 - **Acceptance**:
   - An opt-in plan compares a literal fetch JSON body with the direct OpenAPI declaration on the uniquely selected operation.
   - Unsupported evidence stays unknown. Incompatible requests have specific reasons, and request body values never enter the report.
   - CLI, Application API and the pinned integration return one canonical result. Plans without the option keep the existing report.
-- review-state: in_review
+- review-state: done
 - review-implementer: openai-gpt-6.2-sol
+- review-reviewer: openai-gpt-6-luna
+- review-log: approved by openai-gpt-6-luna — verified at a15dcfb6600c, validate exit 0 and tests 39/39 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed the exact source diff and S14 fixture: request bodies are compared only when compareRequestBodies is enabled, the call uniquely matches a selected ope… (2) The bounded checker returns unknown for unsupported schema/body evidence and specific reasons for invalid JSON, missing/unexpected fields, type and enum mismat… (3) The real wire receipt reports canonicalParity=true across CLI, Application API stdio and DelendAI MCP stdio, including compatible/incompatible/unknown results … — Independent g60 review of S14 at merged source PR #261 exact head a15dcfb6600cd11d2d2a9c3252710e4380e92493, integrated at develop b83e3328. Reused 39 targeted tests, 85 OpenAPI tests, 162 pinned integration tests, core/framework/CLI typechecks, local work proof, real CLI/Application API stdio/pinned MCP canonical parity receipt, and Windows native receipt confirming no body values in output. Exact-head CI 45133301603 and ci-summary passed. No tests rerun by reviewer.
 
 ### S15 — Compare backend responses with frontend expectations
 - **Status**: pending
