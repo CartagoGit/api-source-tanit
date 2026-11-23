@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 
@@ -71,8 +71,9 @@ test("opts into sanitized per-operation consumer counts with preview and history
   const annotated = await dispatch<ExportOutput>(registry, "export", input, context);
   if (!annotated.ok) throw new Error(annotated.error.message);
   const yaml = await readFile(outputPath, "utf8");
-  expect(preview.value.files[0]?.bytes).toBe(Buffer.byteLength(yaml));
-  expect(annotated.value.bytes).toBe(Buffer.byteLength(yaml));
+  const { size } = await stat(outputPath);
+  expect(preview.value.files[0]?.bytes).toBe(size);
+  expect(annotated.value.bytes).toBe(size);
   expect(yaml.match(/x-tanit-consumers:/gu)).toHaveLength(1);
   const item = /^  "\/items":\r?\n((?: {4,}[^\n]*\n)*)/mu.exec(yaml)?.[1];
   const extension = /^      x-tanit-consumers:\r?\n((?: {8,}[^\n]*\n)*)/mu.exec(item ?? "")?.[1];

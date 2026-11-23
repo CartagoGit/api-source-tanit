@@ -162,7 +162,7 @@ export function createPersistedHistoryHandlers(): {
       name: "history-restore",
       input: HistoryRestoreInputSchema,
       async handle(input) {
-        await requireRecord(input.projectRoot, input.historyId);
+        const record = await requireRecord(input.projectRoot, input.historyId);
         const snapshot = await history.snapshotOf(input.projectRoot, input.historyId);
         if (snapshot === undefined || snapshot.results.length === 0) {
           throw apiError(
