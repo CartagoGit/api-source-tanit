@@ -299,13 +299,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 3b68e86151cc, validate exit 0 and tests 52/52 claimed, no recorded run cited; acceptance 3/3: (1) 52 focused tests include hoisting/isolation/dedupe/conflict fixtures; source review confirms separate classic/setup scopes, import identity dedupe, and cross-b… (2) Focused fixtures assert exact original CRLF line/column/start/end offsets and observer-location identity; /tmp/tanit-s16-wire.json reports exactVueOffsets=true… (3) Unsupported duplicate/conflicting/external/language branches return explicit diagnostics; /tmp/tanit-s16-wire.json reports templateDiagnostic=true and parity=t… — Independent official g64 review: S16 satisfies all three acceptance criteria. One normal Vue script plus one setup script of the same supported language share hoisted imports while local declarations remain lexically isolated; same-block static resolution retains declaration-before-use safety and cross-block initializers are intentionally not statically resolved. Both blocks map usage and request/response observer locations back to original Vue coordinates, including CRLF offsets. Conflicting/unsupported scripts and unmodeled templates remain explicit diagnostics. Supplied proof covers 52 focused tests, 162 pinned integration tests, core typecheck, real three-carrier parity, Vue compiler 3.5.46 fixtures, Windows receipts, exact offsets, and work prove evidence.
 
 ### S17 — Expose optional consumer evidence to exporters
-- **Status**: pending
+- **Status**: review
 - **Files**: Application API preview, export and history handlers, the shared client analyzer and OpenAPI exporter, with application and exporter fixtures.
 - **Gate**: backward compatibility and exporter tests plus `bun run validate`
 - **Acceptance**:
   - An explicit frontend selection previews and writes an OpenAPI artifact for a single identified snapshot service using the canonical link analysis, with read-only preview and matching byte counts.
   - Only attributable operations receive positive call and distinct frontend counts. Unknown or ambiguous calls and calls to a different host are excluded. Duplicate rendered and expanded ALL operations lack the extension. Client paths and values stay outside artifacts and persisted export evidence.
   - Default exports retain their bytes and previously recorded exports remain readable. Re-exporting an annotated OpenAPI revision preserves the original counts even after edits to the frontend.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S18 — Resolve Vue template client bindings
 - **Status**: pending
