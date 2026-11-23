@@ -35,7 +35,7 @@ test("opts into sanitized per-operation consumer counts with preview and history
       'fetch("/missing", { method: "POST", body: "private-consumer-body-sentinel" });',
       'fetch(runtimeUrl());',
     ].join("\n"),
-    "other-frontend/client.ts": 'fetch("/items");',
+    "other-frontend/client.ts": 'import api from "./http"; api.get("/items");',
   }, "tanit-consumer-export-");
   const projectRoot = join(fixture.root, "backend");
   const frontendRoot = join(fixture.root, "frontend");
@@ -54,7 +54,11 @@ test("opts into sanitized per-operation consumer counts with preview and history
   const input = {
     ...base,
     outputPath,
-    consumerFrontends: [{ root: frontendRoot }, { root: join(fixture.root, "other-frontend") }],
+    target: " OpenAPI ",
+    consumerFrontends: [
+      { root: frontendRoot },
+      { root: join(fixture.root, "other-frontend"), aliases: [{ receiver: "api", source: "./http" }] },
+    ],
   };
   const before = (await readdir(fixture.root, { recursive: true })).sort();
   const preview = await dispatch<DryRunOutput>(registry, "dry-run", input, context);
@@ -95,7 +99,7 @@ test("opts into sanitized per-operation consumer counts with preview and history
   const reExport = await dispatch<ExportOutput>(registry, "history-re-export", {
     projectRoot,
     historyId: annotated.value.historyId,
-    target: "openapi",
+    target: " OpenAPI ",
     outputDirectory: join(fixture.root, "history-export"),
   }, context);
   if (!reExport.ok) throw new Error(reExport.error.message);

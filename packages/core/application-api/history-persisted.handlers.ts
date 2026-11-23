@@ -44,6 +44,7 @@ import { writeExport } from "./export-artifacts.helper.js";
 import { collectionPathOf } from "./project-verbs.helper.js";
 import { writeJsonAtomic } from "../helpers/atomic-write.helper.js";
 import { ProjectHistoryService } from "../session/project-history.service.js";
+import { exporterFor } from "../exporters/export-registry.service.js";
 import { apiError } from "./error.js";
 import type {
   HistoryCompareConfigOutput,
@@ -146,7 +147,7 @@ export function createPersistedHistoryHandlers(): {
           );
         }
         const target = input.target ?? DEFAULT_FORMAT;
-        const counts = target === "openapi"
+        const counts = exporterFor(target)?.format === "openapi"
           ? ExportConsumerCountsSchema.safeParse(record.configuration.consumerCounts).data
           : undefined;
         const written = await writeExport(snapshot, target, input.outputDirectory, undefined, counts);

@@ -6,6 +6,7 @@ import type { IExportConsumerCount } from "../../contracts/interfaces/core/expor
 import type { IDiscoveryOrchestrator } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 import { analyzeClientProjectLinks } from "../discovery/client-usage.service.js";
+import { exporterFor } from "../exporters/export-registry.service.js";
 import { apiError } from "./error.js";
 
 /** Collect only counts attributable to operations in the snapshot being exported. */
@@ -16,7 +17,7 @@ export async function collectExportConsumerCounts(
   context: IRequestContext,
 ): Promise<readonly IExportConsumerCount[] | undefined> {
   if (frontends === undefined) return undefined;
-  if (target !== "openapi") {
+  if (exporterFor(target)?.format !== "openapi") {
     throw apiError("INVALID_INPUT", "Consumer evidence is available only for OpenAPI exports");
   }
   const serviceId = snapshot.results[0]?.serviceId;
