@@ -3618,7 +3618,7 @@ export function isAngularHttpVerb(member: string): boolean
 #### `scanVueClientScripts`
 
 ```ts
-export function scanVueClientScripts( scripts: readonly IVueClientScript[], file: string, options: IClientConsumptionOptions, ): IClientUsage[] | undefined
+export function scanVueClientScripts( scripts: readonly IVueClientScript[], file: string, options: IClientConsumptionOptions, template?:
 ```
 
 Share module imports across both Vue script blocks. Setup declarations have

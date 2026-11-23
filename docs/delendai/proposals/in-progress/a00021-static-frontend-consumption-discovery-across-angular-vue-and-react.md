@@ -314,11 +314,12 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 
 ### S18 — Resolve Vue template client bindings
 - **Status**: pending
-- **Files**: Vue template binding analysis and its source-coordinate fixtures.
-- **Gate**: focused Vue event scope fixtures plus `bun run validate`
-
-Resolve template bindings before reporting calls. Preserve diagnostics for
-unproved receivers, references and template-generated scopes.
+- **Files**: Vue component parser, the shared TypeScript call recognizer and Vue client discovery fixtures.
+- **Gate**: focused Vue event scope fixtures, real Vue 3.5.46 compiler evidence, canonical report parity and `bun run validate`
+- **Acceptance**:
+  - Static named Vue events report single direct HTTP calls only for proven Axios or configured module imports visible through script setup, including shared runtime imports from a paired script.
+  - Original file, CRLF line and column and exact source ranges accompany calls. The existing script analysis and operation matching remain canonical across CLI, Application API and pinned MCP.
+  - Template-generated scopes, unproved receivers, delegated handlers and unsupported expressions preserve an explicit diagnostic. Plain markup produces no unsupported-call diagnostic.
 
 ### S19 — Verify frontend syntaxes and HTTP transports independently
 - **Status**: pending

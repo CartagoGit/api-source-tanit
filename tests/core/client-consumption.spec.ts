@@ -436,6 +436,82 @@ describe("client consumption", () => {
     expect(result.diagnostics).toEqual([{ file: "classic.vue", reason: "unsupported-template" }]);
   });
 
+  it("scans direct Vue setup event calls through verified imports at their original CRLF offsets", async () => {
+    const setupCall = "api.get('/items')";
+    const hoistedCall = "classic.get('/hoisted')";
+    const aliasCall = "client.get('/configured')";
+    const source = [
+      "<template>",
+      `  <button @click.stop="  ${setupCall}  ">Items</button>`,
+      `  <button v-on:click="${hoistedCall}">Hoisted</button>`,
+      `  <button @click="${aliasCall}">Configured</button>`,
+      "</template>",
+      '<script lang="ts">',
+      'import classic from "axios";',
+      "</script>",
+      '<script setup lang="ts">',
+      'import api from "axios";',
+      'import client from "./transport";',
+      "</script>",
+    ].join("\r\n");
+
+    const result = await scan({ "events.vue": source }, {
+      aliases: [{ receiver: "client", source: "./transport" }],
+      backend: [
+        { method: "GET", uri: "/items" },
+        { method: "GET", uri: "/hoisted" },
+        { method: "GET", uri: "/configured" },
+      ],
+    });
+    const location = (call: string, line: number) => ({
+      file: "events.vue",
+      line,
+      column: source.split("\r\n")[line - 1]?.indexOf(call),
+      start: source.indexOf(call),
+      end: source.indexOf(call) + call.length,
+    });
+
+    expect(result.usages).toMatchObject([
+      {
+        method: "GET", path: "/items", correlation: { status: "matched" },
+        evidence: { recognizer: "axios", callee: "api.get" },
+        location: location(setupCall, 2),
+      },
+      {
+        method: "GET", path: "/hoisted", correlation: { status: "matched" },
+        evidence: { recognizer: "axios", callee: "classic.get" },
+        location: location(hoistedCall, 3),
+      },
+      {
+        method: "GET", path: "/configured", correlation: { status: "matched" },
+        evidence: { recognizer: "configured-alias", callee: "client.get" },
+        location: location(aliasCall, 4),
+      },
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("keeps unsupported diagnostics for shadowed or unknown Vue handlers and Options API templates", async () => {
+    const setupImport = '<script setup>import api from "axios";</script>';
+    const result = await scan({
+      "for.vue": `<template><div v-for="api in clients"><button @click="api.get('/for')">For</button></div></template>${setupImport}`,
+      "slot.vue": `<template><Card v-slot="{ api }"><button @click="api.get('/slot')">Slot</button></Card></template>${setupImport}`,
+      "unknown.vue": `<template><button @click="loadItems">Load</button></template>${setupImport}`,
+      "classic.vue": [
+        '<template><button @click="api.get(\'/classic\')">Classic</button></template>',
+        '<script>import api from "axios"; export default { methods: {} };</script>',
+      ].join("\n"),
+    });
+
+    expect(result.usages).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      { file: "classic.vue", reason: "unsupported-template" },
+      { file: "for.vue", reason: "unsupported-template" },
+      { file: "slot.vue", reason: "unsupported-template" },
+      { file: "unknown.vue", reason: "unsupported-template" },
+    ]);
+  });
+
   it("shares hoisted imports across Vue scripts while retaining setup scope and CRLF locations", async () => {
     const setupCall = 'classicHttp.get("/setup")';
     const classicCall = 'setupHttp.get("/classic")';
@@ -473,7 +549,7 @@ describe("client consumption", () => {
       },
     ]);
     expect(result.usages[2]?.path).toBeUndefined();
-    expect(result.diagnostics).toEqual([{ file: "mixed.vue", reason: "unsupported-template" }]);
+    expect(result.diagnostics).toEqual([]);
   });
 
   it("keeps a Vue setup declaration from shadowing the normal script", async () => {

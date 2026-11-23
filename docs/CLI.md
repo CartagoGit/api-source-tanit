@@ -191,6 +191,13 @@ from that module. Repeat the flag for additional aliases. The JSON output
 uses the same report as the DelendAI MCP tool. Analysis leaves collection
 files and project state untouched.
 
+Vue single-file components can report direct HTTP calls from inline
+`@event` and `v-on:event` handlers when the receiver is an Axios import
+or a configured module import visible from `<script setup>`. The call
+links to its original component coordinates. Templates with generated
+scopes, delegated handlers or unresolved expressions keep an explicit
+diagnostic. This event support was verified with Vue 3.5.46.
+
 ### Compare several projects
 
 Find frontend folders and backend service IDs, then pass a JSON selection plan
