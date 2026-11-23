@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 474 símbolos en 192 módulos.
+> 475 símbolos en 193 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -260,6 +260,14 @@ export async function writeExportWithPlan(...args: Parameters<typeof files.write
 
 ```ts
 export function resolveExportDestination(...args: Parameters<typeof files.resolveExportDestination>): ReturnType<typeof files.resolveExportDestination>
+```
+
+### `packages/core/application-api/export-consumers.helper.ts`
+
+#### `collectExportConsumerCounts`
+
+```ts
+export async function collectExportConsumerCounts( snapshot: IProjectSnapshot, target: string, frontends: IClientProjectLinksInput["frontends"] | undefined, context: IRequestContext, ): Promise<readonly IExportConsumerCount[] | undefined>
 ```
 
 ### `packages/core/application-api/export.handler.ts`
@@ -728,7 +736,7 @@ export async function analyzeClientProjects(
 #### `analyzeClientProjectLinks`
 
 ```ts
-export async function analyzeClientProjectLinks( input: IClientProjectLinksInput, orchestrator: IDiscoveryOrchestrator, ): Promise<IClientProjectLinksReport>
+export async function analyzeClientProjectLinks( input: IClientProjectLinksInput, orchestrator: IDiscoveryOrchestrator, snapshot?: Pick<IProjectSnapshot, "projectRoot" | "results">, ): Promise<IClientProjectLinksReport>
 ```
 
 ### `packages/core/discovery/contract-reconciliation.service.ts`
@@ -2161,7 +2169,7 @@ standard output directory. Both preview and write consume this resolution.
 #### `planExport`
 
 ```ts
-export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IExportPlan>
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, consumerCounts?: readonly IExportConsumerCount[], ): Promise<IExportPlan>
 ```
 
 Builds the artifacts of one format and says where they would go.
@@ -2172,7 +2180,7 @@ them and the user can see where the tool is about to write.
 #### `writeExport`
 
 ```ts
-export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, consumerCounts?: readonly IExportConsumerCount[], ): Promise<
 ```
 
 Builds the artifacts once, says what each file would change, and
@@ -2184,7 +2192,7 @@ file, because the user cannot tell which half is the truth.
 #### `writeExportWithPlan`
 
 ```ts
-export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, consumerCounts?: readonly IExportConsumerCount[], ): Promise<
 ```
 
 Writes the artifacts and tells what was written, **and** what would
@@ -2204,7 +2212,7 @@ export async function writePreparedExport(planned: IPreparedExport): Promise<
 #### `prepareExport`
 
 ```ts
-export async function prepareExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, ): Promise<IPreparedExport>
+export async function prepareExport( snapshot: IProjectSnapshot, target: string, outputDirectory?: string, outputPath?: string, consumerCounts?: readonly IExportConsumerCount[], ): Promise<IPreparedExport>
 ```
 
 ### `packages/core/exporters/export-registry.service.ts`

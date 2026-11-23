@@ -16,6 +16,7 @@ import { writeFileAtomic } from "../helpers/atomic-write.helper.js";
 import type { IPreparedExport, IPreparedExportFile } from "../../contracts/interfaces/core/export-files.interface.js";
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
+import type { IExportConsumerCount } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { IExportResult } from "../exporters/result.js";
 import type { ExportFormatId } from "../../contracts/interfaces/core/exporter.interface.js";
 import type {
@@ -137,8 +138,9 @@ export async function planExport(
   target: string,
   outputDirectory?: string,
   outputPath?: string,
+  consumerCounts?: readonly IExportConsumerCount[],
 ): Promise<IExportPlan> {
-  const planned = await prepareExport(snapshot, target, outputDirectory, outputPath);
+  const planned = await prepareExport(snapshot, target, outputDirectory, outputPath, consumerCounts);
   return {
     files: planned.files.map(
       ({ path, change, bytes, outsideWorkspace }): IExportFilePreview => ({ path, change, bytes, outsideWorkspace }),
@@ -160,12 +162,13 @@ export async function writeExport(
   target: string,
   outputDirectory?: string,
   outputPath?: string,
+  consumerCounts?: readonly IExportConsumerCount[],
 ): Promise<{
   readonly outputPath: string;
   readonly bytes: number;
   readonly files: ReadonlyArray<string>;
 }> {
-  const written = await writeExportWithPlan(snapshot, target, outputDirectory, outputPath);
+  const written = await writeExportWithPlan(snapshot, target, outputDirectory, outputPath, consumerCounts);
   return {
     outputPath: written.outputPath,
     bytes: written.bytes,
@@ -187,13 +190,14 @@ export async function writeExportWithPlan(
   target: string,
   outputDirectory?: string,
   outputPath?: string,
+  consumerCounts?: readonly IExportConsumerCount[],
 ): Promise<{
   readonly outputPath: string;
   readonly bytes: number;
   readonly files: ReadonlyArray<string>;
   readonly plan: IExportPlan;
 }> {
-  return writePreparedExport(await prepareExport(snapshot, target, outputDirectory, outputPath));
+  return writePreparedExport(await prepareExport(snapshot, target, outputDirectory, outputPath, consumerCounts));
 }
 
 /** Writes a previously prepared plan without rebuilding artifacts. */
@@ -228,8 +232,9 @@ export async function prepareExport(
   target: string,
   outputDirectory?: string,
   outputPath?: string,
+  consumerCounts?: readonly IExportConsumerCount[],
 ): Promise<IPreparedExport> {
-  const exporters = selectExporters([asFormat(target)]);
+  const exporters = selectExporters([asFormat(target)], consumerCounts);
   const results: IExportResult[] = await buildArtifacts(snapshot, exporters);
 
   const diagnostics: IExporterDiagnostic[] = [];

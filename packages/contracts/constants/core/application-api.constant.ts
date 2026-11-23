@@ -63,6 +63,13 @@ export const ReadRemoteContractInputSchema = ReadContractArtifactInputSchema.omi
   url: ContractDocumentationUrlSchema.max(CONTRACT_PREVIEW_MAX_URL_LENGTH),
 });
 export const ListServicesInputSchema = SnapshotInputSchema;
+const ConsumerFrontendsSchema = ClientProjectLinksInputSchema.shape.frontends.optional();
+export const ExportConsumerCountsSchema = z.array(z.object({
+  method: z.string().min(1),
+  uri: z.string().min(1),
+  confirmedCalls: z.number().int().positive(),
+  frontends: z.number().int().positive(),
+}));
 export const DryRunInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   collectionName: z.string().min(1).optional(),
@@ -72,6 +79,7 @@ export const DryRunInputSchema = z.object({
   outputPath: z.string().min(1).optional(),
   /** Where the files would go. Relative directories are resolved against projectRoot. */
   outputDirectory: z.string().min(1).optional(),
+  consumerFrontends: ConsumerFrontendsSchema,
 });
 export const ExportInputSchema = z.object({
   projectRoot: ProjectRootSchema,
@@ -80,6 +88,7 @@ export const ExportInputSchema = z.object({
   outputPath: z.string().min(1).optional(),
   /** Where the files go. The project's `tanit` folder when nobody says. */
   outputDirectory: z.string().min(1).optional(),
+  consumerFrontends: ConsumerFrontendsSchema,
 });
 export const HistoryInputSchema = z.object({
   projectRoot: ProjectRootSchema,

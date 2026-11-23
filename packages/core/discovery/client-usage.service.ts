@@ -19,6 +19,7 @@ import type {
 } from "../../contracts/interfaces/core/client-consumption.interface.js";
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IDiscoveryOrchestrator, ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 import { ProjectIndex } from "../index/project-index.service.js";
 import { compareJsonRequestBody, compareJsonResponseBody } from "../schema/json-request-comparison.helper.js";
 import { correlateClientUsageLinks } from "./client-correlation.helper.js";
@@ -178,6 +179,7 @@ export async function analyzeClientProjects(
 export async function analyzeClientProjectLinks(
   input: IClientProjectLinksInput,
   orchestrator: IDiscoveryOrchestrator,
+  snapshot?: Pick<IProjectSnapshot, "projectRoot" | "results">,
 ): Promise<IClientProjectLinksReport> {
   const directories = new Map<string, string>();
   async function resolveDirectory(path: string, role: "Frontend" | "Backend"): Promise<string> {
@@ -214,6 +216,8 @@ export async function analyzeClientProjectLinks(
     frontend.links.set(id, { backendRoot: canonicalBackend, serviceId, host });
   }
 
+  const cachedSnapshot = input.compareRequestBodies || input.compareResponseBodies ? undefined : snapshot;
+  const snapshotRoot = cachedSnapshot && await resolveDirectory(cachedSnapshot.projectRoot, "Backend");
   const catalogs = new Map<string, Map<string, readonly IClientBackendOperation[]>>();
   const declarations = new WeakMap<IClientBackendOperation, IDeclaredJsonRequestContract>();
   const responses = new WeakMap<IClientBackendOperation, IDeclaredJsonResponseContract>();
@@ -224,7 +228,10 @@ export async function analyzeClientProjectLinks(
       let services = catalogs.get(backendRoot);
       if (!services) {
         services = new Map();
-        for (const service of await readBackendServices(backendRoot, orchestrator, input.compareRequestBodies, input.compareResponseBodies)) {
+        const results = cachedSnapshot !== undefined && backendRoot === snapshotRoot
+          ? cachedSnapshot.results
+          : await readBackendServices(backendRoot, orchestrator, input.compareRequestBodies, input.compareResponseBodies);
+        for (const service of results) {
           if (service.serviceId === undefined) continue;
           const discovered = readServiceOperations(service);
           services.set(service.serviceId, discovered);

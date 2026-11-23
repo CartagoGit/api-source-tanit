@@ -299,12 +299,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - review-log: approved by openai-gpt-5.6-luna — verified at 3b68e86151cc, validate exit 0 and tests 52/52 claimed, no recorded run cited; acceptance 3/3: (1) 52 focused tests include hoisting/isolation/dedupe/conflict fixtures; source review confirms separate classic/setup scopes, import identity dedupe, and cross-b… (2) Focused fixtures assert exact original CRLF line/column/start/end offsets and observer-location identity; /tmp/tanit-s16-wire.json reports exactVueOffsets=true… (3) Unsupported duplicate/conflicting/external/language branches return explicit diagnostics; /tmp/tanit-s16-wire.json reports templateDiagnostic=true and parity=t… — Independent official g64 review: S16 satisfies all three acceptance criteria. One normal Vue script plus one setup script of the same supported language share hoisted imports while local declarations remain lexically isolated; same-block static resolution retains declaration-before-use safety and cross-block initializers are intentionally not statically resolved. Both blocks map usage and request/response observer locations back to original Vue coordinates, including CRLF offsets. Conflicting/unsupported scripts and unmodeled templates remain explicit diagnostics. Supplied proof covers 52 focused tests, 162 pinned integration tests, core typecheck, real three-carrier parity, Vue compiler 3.5.46 fixtures, Windows receipts, exact offsets, and work prove evidence.
 
 ### S17 — Expose optional consumer evidence to exporters
-- **Status**: pending
-- **Files**: exporter adapters and evidence fixtures.
+- **Status**: review
+- **Files**: Application API preview, export and history handlers, the shared client analyzer and OpenAPI exporter, with application and exporter fixtures.
 - **Gate**: backward compatibility and exporter tests plus `bun run validate`
-
-Sequence exporter metadata after directional comparison. Existing output
-retains its format when consumer analysis is absent.
+- **Acceptance**:
+  - An explicit frontend selection previews and writes an OpenAPI artifact for a single identified snapshot service using the canonical link analysis, with read-only preview and matching byte counts.
+  - Only attributable operations receive positive call and distinct frontend counts. Unknown or ambiguous calls and calls to a different host are excluded. Duplicate rendered and expanded ALL operations lack the extension. Client paths and values stay outside artifacts and persisted export evidence.
+  - Default exports retain their bytes and previously recorded exports remain readable. Re-exporting an annotated OpenAPI revision preserves the original counts even after edits to the frontend.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
 
 ### S18 — Resolve Vue template client bindings
 - **Status**: pending
@@ -313,6 +316,41 @@ retains its format when consumer analysis is absent.
 
 Resolve template bindings before reporting calls. Preserve diagnostics for
 unproved receivers, references and template-generated scopes.
+
+### S19 — Verify frontend syntaxes and HTTP transports independently
+- **Status**: pending
+- **Files**: client analysis fixtures and the supported syntax and transport reference.
+- **Gate**: representative version-pinned fixtures and canonical report parity plus `bun run validate`
+- **Acceptance**:
+  - Document verified combinations by language, source form, relevant framework version and client transport. Report dynamic or unverified forms as unknown when static evidence is insufficient.
+  - Reuse JavaScript and TypeScript call recognizers wherever import and receiver evidence survives. Cover native Fetch, XMLHttpRequest and client libraries by proven call forms. Add framework adapters for distinct semantics, such as AngularJS services and framework templates, with their own fixtures.
+
+### S20 — Present contract comparisons and source evidence in Angular
+- **Status**: pending
+- **Files**: Angular comparison feature, shared UI primitives, translations and end-to-end fixtures.
+- **Gate**: localized browser and desktop journeys plus `bun run validate`
+- **Acceptance**:
+  - Mark HTTP methods consistently in lists and details. Browse from an overview by project and service to endpoint and call details. Show shared or discrepant fields, evidence locations and the reason for every available request and response verdict.
+  - Show actionable suggestions derived from explicit reasons, including missing fields, incompatible known types and insufficient evidence. Keep frontend expectations and backend contracts labeled by direction and source.
+  - Use the canonical comparison data and shared components with keyboard navigation, sensible responsive layouts and reduced-motion support.
+
+### S21 — Report detected project technologies from local evidence
+- **Status**: pending
+- **Files**: shared project and service discovery, technology contracts, local fixtures and surface adapters.
+- **Gate**: mixed monorepo fixtures and CLI, Application API and MCP parity plus `bun run validate`
+- **Acceptance**:
+  - Group frontend and backend technologies by actual workspace or service. Support evidence from workspace manifests, dependencies, lockfiles and imports, with Laravel and a mixed JS/TS monorepo represented in the fixture set.
+  - Distinguish a declared range, a resolved version and unknown version. Cite the originating project-relative file and preserve conflicting evidence without inferring framework versions from source syntax.
+  - Keep runtime scan local and deterministic. Share canonical technology and observed HTTP mechanism identifiers across CLI, Application API, MCP and their consumers. Expose official documentation references from a maintained registry.
+
+### S22 — Show detected technologies in project summaries and call details
+- **Status**: pending
+- **Files**: Angular project overview and comparison details, shared symbols, translations and end-to-end fixtures.
+- **Gate**: monorepo browsing and accessibility checks plus `bun run validate`
+- **Acceptance**:
+  - In project and service summaries, show detected frontend and backend technologies with text labels and known logos, observed HTTP mechanisms, version evidence and official documentation. Use compatible practical fallbacks for unknown values and missing icons.
+  - Let users expand specific requests and endpoints to see how they were recognized and how that relates to the scanned version. Keep advertised support, detected versions and observed syntax visually distinct.
+  - Verify equivalent project facts in the desktop and web views and usable layout at compact widths, with keyboard and screen-reader support.
 
 ### Pairwise comparison and selection boundary
 

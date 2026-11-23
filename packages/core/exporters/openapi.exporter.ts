@@ -638,7 +638,7 @@ function buildSecurity(auth: IExportInput["auth"]): {
  * covers it.
  */
 export function buildOpenApiDocument(input: IExportInput): Record<string, unknown> {
-  const { specs, config, auth } = input;
+  const { specs, config, auth, consumerCounts } = input;
 
     // `components` is filled on the fly with the `$ref`s that the
     // endpoints declare in their `SchemaGraph`. If nobody declares
@@ -657,6 +657,14 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
     // with each expanded spec and becomes `x-tanit-source` on the
     // operation (see `buildOperation`).
     const expanded = expandAllMethods(specs);
+    const counts = new Map(consumerCounts?.map((count) => [JSON.stringify([count.method, count.uri]), count]));
+    const operationsByPath = new Map<string, number>();
+    if (counts.size > 0) {
+      for (const { spec } of expanded) {
+        const key = JSON.stringify([spec.method.toLowerCase(), toOpenApiPath(spec.uri)]);
+        operationsByPath.set(key, (operationsByPath.get(key) ?? 0) + 1);
+      }
+    }
     for (const { spec, allMarker } of expanded) {
       const path = toOpenApiPath(spec.uri);
       const bucket = paths[path] ?? (paths[path] = {});
@@ -664,7 +672,15 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
       // plain `=` the last won, and the warning lied about which one
       // had been kept.
       const verb = spec.method.toLowerCase();
-      if (!(verb in bucket)) bucket[verb] = buildOperation(spec, state, allMarker);
+      if (verb in bucket) continue;
+      const operation = buildOperation(spec, state, allMarker);
+      bucket[verb] = operation;
+      if (allMarker === undefined && operationsByPath.get(JSON.stringify([verb, path])) === 1) {
+        const count = counts.get(JSON.stringify([spec.method, spec.uri]));
+        if (count !== undefined) {
+          operation["x-tanit-consumers"] = { confirmedCalls: count.confirmedCalls, frontends: count.frontends };
+        }
+      }
     }
 
     const security = buildSecurity(auth);
