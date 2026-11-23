@@ -51,6 +51,14 @@ export const COMMANDS: Record<string, ICommand> = {
     summary: "List the detected endpoints, grouped by folder",
     load: () => import("./commands/list-endpoints.script.js"),
   },
+  "client-candidates": {
+    summary: "List frontend folders or backend services as JSON",
+    load: () => import("./commands/client-candidates.script.js"),
+  },
+  "client-links": {
+    summary: "Compare explicitly selected frontend and backend service links",
+    load: () => import("./commands/client-links.script.js"),
+  },
   "client-usage": {
     summary: "Report observed frontend API calls and compare against an optional backend",
     load: () => import("./commands/client-usage.script.js"),

@@ -196,15 +196,26 @@ normalizes the nested integration's `src/` as a workspace root in the Files fiel
 - review-reviewer: openai-gpt-5.6-luna
 - review-log: approved by openai-gpt-5.6-luna — verified at c026bdff4b25, validate exit 0 and tests 145/145 claimed, no recorded run cited; acceptance 3/3: (1) Reviewed exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f and Chromium receipt /tmp/tanit-client-workspace-ui-browser.json; workspaceVerified … (2) Browser receipt records all four states; reviewed client-links template rendering of source positions, statuses, unresolved reasons, ambiguity candidates, diag… (3) Reused /tmp/tanit-client-workspace-ui-browser.json (mobileFits and staticExplains true), 145 Angular tests, exact native tested-head stamp, Windows build 45084… — Independent approval of S9 at exact merged PR #251 tip c026bdff4b254bd18b5b8e517b2682ee765b621f. Reused 145 Angular tests, Chromium receipt, Windows WebView2 smoke, native tested-head and icon receipts; no tests rerun.
 
-### S10 — Select project links through CLI and MCP
+### S10 — Select project links through the CLI
+- **Status**: review
+- **Files**: `packages/cli/commands/client-candidates.script.ts`, `packages/cli/commands/client-links.script.ts`, `tests/e2e/client-workspace.test.ts`.
+- **Gate**: targeted CLI tests, compiled Windows smoke, and `bun run validate`
+- **Acceptance**:
+  - CLI candidate discovery returns concrete workspace folders and canonical backend service IDs from the shared inventory.
+  - A JSON selection plan resolves relative roots from the plan directory and returns the same read-only selected-link report as the core.
+  - Invalid plans return a nonzero exit and a readable error. The original `client-usage` command remains available.
+- review-state: in_review
+- review-implementer: openai-gpt-6.2-sol
+
+### S11 — Select project links through MCP
 - **Status**: pending
-- **Files**: CLI and MCP adapter files to be selected from S8 and S9 evidence.
-- **Gate**: scoped carrier tests plus `bun run validate`
+- **Files**: MCP adapter and contract files to be selected from S8 and S10 evidence.
+- **Gate**: scoped MCP carrier tests plus `bun run validate`
 
-Reuse the same candidate selection and report inputs in the CLI and MCP. Preserve
-single-project invocations and validate workspace boundaries where required.
+Reuse the same candidate selection and report inputs in the pinned integration.
+Preserve single-project invocations and validate workspace boundaries.
 
-### S11 — Framework adapters, directional checks and exporter sequencing
+### S12 — Framework adapters, directional checks and exporter sequencing
 - **Status**: pending
 - **Files**: adapter, type-comparison and exporter files to be selected from the report evidence.
 - **Gate**: scoped tests plus `bun run validate`
