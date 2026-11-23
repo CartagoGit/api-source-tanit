@@ -16,7 +16,7 @@ import { buildCollection } from "api-source-tanit/core/domain/collection-builder
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `apisrc --help` lista los comandos y las banderas.
 
-> 469 símbolos en 190 módulos.
+> 471 símbolos en 191 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -688,7 +688,7 @@ helper is the natural place to extend them.
 #### `scanClientConsumption`
 
 ```ts
-export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst">, options: IClientConsumptionOptions =
+export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst"> & Partial<Pick<ProjectIndex, "root">>, options: IClientConsumptionOptions =
 ```
 
 ### `packages/core/discovery/client-correlation.helper.ts`
@@ -3591,18 +3591,32 @@ of the known workspace prefixes.
 export function buildWorkspaceLookup( workspaces: ReadonlyArray<IWorkspace>, ): WorkspaceLookup
 ```
 
+### `packages/core/language-frontends/typescript/angular-client-template.parser.ts`
+
+#### `scanAngularClientTemplate`
+
+```ts
+export function scanAngularClientTemplate( source: string, file: string, members: ReadonlySet<string>, ): Pick<IClientConsumptionResult, "usages" | "diagnostics">
+```
+
 ### `packages/core/language-frontends/typescript/client-consumption.helper.ts`
+
+#### `isAngularHttpVerb`
+
+```ts
+export function isAngularHttpVerb(member: string): boolean
+```
 
 #### `scanClientAst`
 
 ```ts
-export function scanClientAst(ast: unknown, file: string, options: IClientConsumptionOptions): IClientUsage[]
+export function scanClientAst( ast: unknown, file: string, options: IClientConsumptionOptions, collectTemplate?: (owner: IAngularClientTemplateOwner) => void, ): IClientUsage[]
 ```
 
 #### `scanClientSource`
 
 ```ts
-export function scanClientSource(source: string, file: string, options: IClientConsumptionOptions): IClientUsage[]
+export function scanClientSource( source: string, file: string, options: IClientConsumptionOptions, collectTemplate?: (owner: IAngularClientTemplateOwner) => void, ): IClientUsage[]
 ```
 
 ### `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`

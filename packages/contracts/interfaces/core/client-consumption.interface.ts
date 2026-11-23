@@ -10,6 +10,12 @@ export interface IClientAlias {
   readonly kind?: "http" | "unsupported";
 }
 
+/** A static, external template declared by an imported Angular Component decorator. */
+export interface IAngularClientTemplateOwner {
+  readonly templateUrl: string;
+  readonly members: ReadonlySet<string>;
+}
+
 export interface IClientConsumptionOptions {
   readonly aliases?: readonly IClientAlias[];
   /** Explicitly selected operation catalog for one backend. An empty catalog is valid. */

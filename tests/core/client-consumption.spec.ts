@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -7,13 +7,18 @@ import type { IClientConsumptionOptions } from "../../packages/contracts/interfa
 import { scanClientConsumption } from "../../packages/core/discovery/client-consumption.service.js";
 import { ProjectIndex } from "../../packages/core/index/project-index.service.js";
 
-async function scan(sources: Record<string, string>, options?: IClientConsumptionOptions) {
+async function scan(
+  sources: Record<string, string>,
+  options?: IClientConsumptionOptions,
+  rootless = false,
+) {
   const root = await mkdtemp(join(tmpdir(), "tanit-clients-"));
   try {
     await Promise.all(Object.entries(sources).map(([name, source]) => writeFile(join(root, name), source)));
     const index = await ProjectIndex.open(root);
     try {
-      return await scanClientConsumption(index, options);
+      const sourceIndex = rootless ? { files: index.files.bind(index), ensureAst: index.ensureAst.bind(index) } : index;
+      return await scanClientConsumption(sourceIndex, options);
     } finally {
       index.close();
     }
@@ -163,6 +168,141 @@ describe("client consumption", () => {
         evidence: { recognizer: "angular-http-client", callee: "this.http.request" },
       },
     ]);
+  });
+
+  it("scans explicit HttpClient calls in a uniquely owned Angular template at their original locations", async () => {
+    const list = "this.http.get('/items')";
+    const dynamic = "this.http.get(selectedUrl)";
+    const html = [
+      '<section>',
+      `  <button (click)="${list}">List</button>`,
+      `  <button (click)="${dynamic}">Select</button>`,
+      '</section>',
+    ].join("\r\n");
+
+    const result = await scan({
+      "items.component.ts": [
+        'import { Component as View, inject as resolve } from "@angular/core";',
+        'import { HttpClient as Client } from "@angular/common/http";',
+        '@View({ templateUrl: "./items.component.html" })',
+        'class Items { protected readonly http = resolve(Client); }',
+      ].join("\n"),
+      "items.component.html": html,
+    });
+    expect(result.usages).toMatchObject([
+      {
+        method: "GET", path: "/items",
+        evidence: { recognizer: "angular-http-client", callee: "this.http.get", staticUrl: "literal" },
+        location: {
+          file: "items.component.html", line: 2, column: 19,
+          start: html.indexOf(list), end: html.indexOf(list) + list.length,
+        },
+      },
+      {
+        method: "GET", unresolvedReason: "dynamic-url",
+        evidence: { recognizer: "angular-http-client", callee: "this.http.get" },
+        location: {
+          file: "items.component.html", line: 3, column: 19,
+          start: html.indexOf(dynamic), end: html.indexOf(dynamic) + dynamic.length,
+        },
+      },
+    ]);
+    expect(result.usages[1]?.path).toBeUndefined();
+  });
+
+  it("keeps unsupported Angular template calls and uncertain ownership out of the report", async () => {
+    const result = await scan({
+      "owners.ts": [
+        'import { Component, inject } from "@angular/core";',
+        'import { Component as FakeComponent } from "./component-mock";',
+        'import { HttpClient } from "@angular/common/http";',
+        '@Component({ templateUrl: "./implicit.component.html" })',
+        'class Implicit { constructor(private readonly http: HttpClient) {} }',
+        '@FakeComponent({ templateUrl: "./spoofed.component.html" })',
+        'class Spoofed { private readonly http = inject(HttpClient); }',
+        '@Component({ templateUrl: "./shared.component.html" })',
+        'class SharedFirst { private readonly http = inject(HttpClient); }',
+        '@Component({ templateUrl: "./shared.component.html" })',
+        'class SharedSecond { private readonly http = inject(HttpClient); }',
+        '@Component({ templateUrl: "./unproven.component.html" })',
+        'class Unproven { readonly http = { get(_url: string) {} }; }',
+      ].join("\n"),
+      "implicit.component.html": [
+        '<button (click)="http.get(\'/implicit\')">Implicit</button>',
+        '<input #http><button (click)="http.get(\'/local\')">Local</button>',
+      ].join("\n"),
+      "spoofed.component.html": '<button (click)="this.http.get(\'/spoofed\')">Spoofed</button>',
+      "shared.component.html": '<button (click)="this.http.get(\'/shared\')">Shared</button>',
+      "unproven.component.html": '<button (click)="this.http.get(\'/unproven\')">Unproven</button>',
+      "unowned.component.html": '<button (click)="this.http.get(\'/unowned\')">Unowned</button>',
+    });
+
+    expect(result.usages).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      { file: "implicit.component.html", reason: "unsupported-template" },
+      { file: "shared.component.html", reason: "unsupported-template" },
+      { file: "spoofed.component.html", reason: "unsupported-template" },
+      { file: "unowned.component.html", reason: "unsupported-template" },
+      { file: "unproven.component.html", reason: "unsupported-template" },
+    ]);
+  });
+
+  it("keeps unsupported Angular template encodings visible without inaccurate offsets", async () => {
+    const result = await scan({
+      "component.ts": [
+        'import { Component, inject } from "@angular/core";',
+        'import { HttpClient } from "@angular/common/http";',
+        '@Component({ templateUrl: "app.html" })',
+        'class Client { readonly http = inject(HttpClient); }',
+      ].join("\n"),
+      "app.html": '<button (click)="this.http.get(&apos;/items&apos;)">Load</button>',
+    });
+
+    expect(result.usages).toEqual([]);
+    expect(result.diagnostics).toEqual([{ file: "app.html", reason: "unsupported-template" }]);
+  });
+
+  it("requires a physically contained Angular template before reading its calls", async () => {
+    const scratch = await mkdtemp(join(tmpdir(), "tanit-angular-scope-"));
+    const root = join(scratch, "workspace");
+    const shared = join(scratch, "external");
+    try {
+      await mkdir(root);
+      await mkdir(shared);
+      await writeFile(join(shared, "template.html"), `<button (click)="this.http.get('/items')">Load</button>`);
+      await symlink(shared, join(root, "linked"), "junction");
+      await writeFile(join(root, "component.ts"), [
+        'import { Component, inject } from "@angular/core";',
+        'import { HttpClient } from "@angular/common/http";',
+        '@Component({ templateUrl: "./linked/template.html" })',
+        'class Client { readonly http = inject(HttpClient); }',
+      ].join("\n"));
+      const index = await ProjectIndex.open(root);
+      try {
+        const result = await scanClientConsumption(index);
+        expect(result.usages).toEqual([]);
+        expect(result.diagnostics).toEqual([{ file: "linked/template.html", reason: "unsupported-template" }]);
+      } finally {
+        index.close();
+      }
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves source analysis for index adapters without a project root", async () => {
+    const result = await scan({
+      "client.ts": [
+        'import { Component, inject } from "@angular/core";',
+        'import { HttpClient } from "@angular/common/http";',
+        '@Component({ templateUrl: "./client.component.html" })',
+        'class Client { readonly http = inject(HttpClient); load() { return this.http.get("/source"); } }',
+      ].join("\n"),
+      "client.component.html": `<button (click)="this.http.get('/template')">Load</button>`,
+    }, undefined, true);
+
+    expect(result.usages.map(({ path }) => path)).toEqual(["/source"]);
+    expect(result.diagnostics).toEqual([{ file: "client.component.html", reason: "unsupported-template" }]);
   });
 
   it("recognizes a CommonJS Axios import and rejects a shadowed require", async () => {
