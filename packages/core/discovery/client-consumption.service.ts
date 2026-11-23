@@ -34,7 +34,7 @@ function angularTemplatePath(componentFile: string, templateUrl: string): string
 
 /** Static JS/TS, Vue and Angular client discovery over the caller's existing file inventory and AST cache. */
 export async function scanClientConsumption(
-  index: Pick<ProjectIndex, "files" | "ensureAst" | "root">,
+  index: Pick<ProjectIndex, "files" | "ensureAst"> & Partial<Pick<ProjectIndex, "root">>,
   options: IClientConsumptionOptions = {},
 ): Promise<IClientConsumptionResult> {
   const usages: IClientUsage[] = [];
@@ -69,18 +69,19 @@ export async function scanClientConsumption(
       diagnostics.push({ file: file.relPath, reason: "parse-failed" });
     }
   }
+  const { root } = index;
   const angularFiles = files.filter(({ relPath }) => /\.component\.html$/iu.test(relPath) || owners.has(relPath));
   for (const file of angularFiles) {
     const candidates = owners.get(file.relPath) ?? [];
     const [owner] = candidates;
-    if (candidates.length !== 1 || !owner?.members.size) {
+    if (!root || candidates.length !== 1 || !owner?.members.size) {
       diagnostics.push({ file: file.relPath, reason: "unsupported-template" });
       continue;
     }
     try {
       const [component, template] = await Promise.all([
-        ensureInside(index.root, owner.componentFile),
-        ensureInside(index.root, file.absPath),
+        ensureInside(root, owner.componentFile),
+        ensureInside(root, file.absPath),
       ]);
       if (!component.ok || !template.ok) {
         diagnostics.push({ file: file.relPath, reason: "unsupported-template" });

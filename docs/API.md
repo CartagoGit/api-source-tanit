@@ -688,7 +688,7 @@ helper is the natural place to extend them.
 #### `scanClientConsumption`
 
 ```ts
-export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst" | "root">, options: IClientConsumptionOptions =
+export async function scanClientConsumption( index: Pick<ProjectIndex, "files" | "ensureAst"> & Partial<Pick<ProjectIndex, "root">>, options: IClientConsumptionOptions =
 ```
 
 ### `packages/core/discovery/client-correlation.helper.ts`

@@ -7,13 +7,18 @@ import type { IClientConsumptionOptions } from "../../packages/contracts/interfa
 import { scanClientConsumption } from "../../packages/core/discovery/client-consumption.service.js";
 import { ProjectIndex } from "../../packages/core/index/project-index.service.js";
 
-async function scan(sources: Record<string, string>, options?: IClientConsumptionOptions) {
+async function scan(
+  sources: Record<string, string>,
+  options?: IClientConsumptionOptions,
+  rootless = false,
+) {
   const root = await mkdtemp(join(tmpdir(), "tanit-clients-"));
   try {
     await Promise.all(Object.entries(sources).map(([name, source]) => writeFile(join(root, name), source)));
     const index = await ProjectIndex.open(root);
     try {
-      return await scanClientConsumption(index, options);
+      const sourceIndex = rootless ? { files: index.files.bind(index), ensureAst: index.ensureAst.bind(index) } : index;
+      return await scanClientConsumption(sourceIndex, options);
     } finally {
       index.close();
     }
@@ -283,6 +288,21 @@ describe("client consumption", () => {
     } finally {
       await rm(scratch, { recursive: true, force: true });
     }
+  });
+
+  it("preserves source analysis for index adapters without a project root", async () => {
+    const result = await scan({
+      "client.ts": [
+        'import { Component, inject } from "@angular/core";',
+        'import { HttpClient } from "@angular/common/http";',
+        '@Component({ templateUrl: "./client.component.html" })',
+        'class Client { readonly http = inject(HttpClient); load() { return this.http.get("/source"); } }',
+      ].join("\n"),
+      "client.component.html": `<button (click)="this.http.get('/template')">Load</button>`,
+    }, undefined, true);
+
+    expect(result.usages.map(({ path }) => path)).toEqual(["/source"]);
+    expect(result.diagnostics).toEqual([{ file: "client.component.html", reason: "unsupported-template" }]);
   });
 
   it("recognizes a CommonJS Axios import and rejects a shadowed require", async () => {
