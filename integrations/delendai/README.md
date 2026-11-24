@@ -63,47 +63,42 @@ Cada tool sigue el contrato estándar de delendai:
   Las herramientas reutilizan servicios compartidos. Las que necesitan
   ejecutar un proceso usan el CLI como entrada.
 
-## Runtime de desarrollo fijado a 0.3.0
+## Runtime de desarrollo: DelendAI estable global
 
-El nombre canónico del servidor es `DelendAI:Tanit`. Su lanzador verifica
-el commit de `scripts/integrations/delendai-runtime.json` antes de ejecutar
-el host y comprueba que el plugin resuelve **ese mismo** `@delendai/core`.
-Un checkout `develop` con el mismo número de versión no satisface el pin.
-El CLI antiguo puede mostrar `0.1.0` en `--version`; la verificación usa
-el commit y la versión real de `packages/core/package.json`.
+El nombre canónico del servidor es `DelendAI:Tanit`. Los clientes MCP
+ejecutan el comando global `delendai`, el canal estable de la máquina
+(`~/.local/share/delendai/stable`), igual en todos los proyectos y equipos.
+No hay copias por proyecto ni rutas de máquina en la configuración.
 
-Instalación explícita (Bun y Git requeridos; no se descarga nada al arrancar):
+Instalación en cada equipo (una vez, Bun y Git requeridos), con un clon
+del repositorio DelendAI:
 
 ```bash
-runtime_dir="$HOME/.local/share/tanit/delendai/0.3.0-f8ab95e8"
-git clone --branch v0.3.0 --single-branch https://github.com/CartagoGit/DelendAI.git "$runtime_dir"
-git -C "$runtime_dir" checkout --detach f8ab95e8caf66128f8cd18cbf5b3035f74172ba4
-bun install --frozen-lockfile --ignore-scripts --cwd "$runtime_dir"
-bun run --cwd "$runtime_dir/packages/core" build
+bun run --cwd <clon-de-DelendAI> install:stable   # último tag estable y el comando `delendai`
+delendai --version
+```
+
+Después, en este checkout (o en cada worktree que use la integración):
+
+```bash
 bash scripts/integrations/delendai-runtime.sh --link --verify
 ```
 
-El build genera los artefactos y tipos del core fijado; no modifica su
-código versionado. `--link` enlaza únicamente la dependencia ignorada de
-esta integración. Si se usa otra ubicación, exportar `DELENDAI_RUNTIME_DIR`
-para el proceso MCP y el CLI. Cada worktree que use la integración necesita
-su propio `--link`. No se cambia el ejecutable global de otros proyectos.
-
-Ejecutar operaciones de desarrollo desde la raíz del checkout:
-
-```bash
-DELENDAI_AGENT_ID=openai-gpt-6.1-sol bash scripts/integrations/delendai-runtime.sh work status
-```
+`scripts/integrations/delendai-runtime.json` fija la versión que debe tener
+la instalación (`0.3.0`). El verificador compara la versión real de
+`packages/core/package.json`; si la instalación es un checkout Git, exige
+además el commit fijado y un árbol sin cambios. `--link` enlaza solo la
+dependencia ignorada `integrations/delendai/node_modules/@delendai/core`.
+`DELENDAI_PATH` (o `DELENDAI_RUNTIME_DIR`) apunta a otra instalación;
+el CI usa un checkout del commit fijado.
 
 El producto Tanit no necesita esta instalación. La configuración MCP deriva
-solo de `.mcp.json`; `bun run mcp:sync` actualiza VS Code. Las reglas de
-validación del `develop` de DelendAI son una referencia para scripts de
-Tanit; nunca son una instrucción para actualizar este runtime.
+solo de `.mcp.json`; `bun run mcp:sync` actualiza VS Code y Codex.
 
 ### Mismo servidor en todos los clientes
 
 `.mcp.json` declara `command: "delendai"` y los argumentos `__serve`,
-`--workspace=.`, `--config=./delendai.config.json`, `--version=0.3.0`.
+`--workspace=.`, `--config=./delendai.config.json`.
 El sincronizador sustituye las rutas por `${workspaceFolder}` en VS Code.
 El TOML de Codex usa rutas relativas y deja que Codex tome el directorio
 del hilo. En la extensión de VS Code sobre WSL, fijar `cwd = "."` puede
@@ -111,20 +106,8 @@ resolver esas rutas desde la carpeta de instalación del editor.
 La configuración de proyecto desactiva el servidor genérico heredado
 `DelendAI` en el checkout de Tanit.
 
-El flag de versión lo consume el lanzador, antes de ejecutar el host 0.3.0.
-No basta con añadir el argumento al CLI antiguo: su parser no selecciona
-instalaciones por versión. Este equipo tiene un dispatcher de `delendai`
-que delega al lanzador del proyecto; se guardó el ejecutable anterior en
-la caché de migraciones. En otros equipos, anteponer el shim del checkout
-al PATH **del proceso cliente** antes de abrir VS Code o Codex:
-
-```bash
-export PATH="$PWD/scripts/integrations/bin:$PATH"
-delendai --verify --version=0.3.0
-```
-
 OpenAI documenta la configuración de MCP por proyecto en
 [Model Context Protocol](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 `bun run lint:mcp` comprueba que ambos formatos sigan el origen común.
 Los procesos de cliente ya abiertos conservan su catálogo hasta recargar
-su conexión MCP; las operaciones CLI nuevas ya usan el runtime fijado.
+su conexión MCP.

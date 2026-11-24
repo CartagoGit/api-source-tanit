@@ -47,10 +47,10 @@ describe("la configuración MCP tiene que ser JSON estricto", () => {
     };
     for (const server of Object.values(derived.servers)) {
       expect(server.cwd).toBe("${workspaceFolder}");
-      // The repo-owned launcher, not a `delendai` on PATH that differs per machine.
-      expect(server.command).toBe("bash");
-      expect(server.args[0]).toBe("${workspaceFolder}/scripts/integrations/delendai-runtime.sh");
-      expect(server.args).toContain("--version=0.3.0");
+      // The machine's global stable `delendai`, the same command on every machine.
+      expect(server.command).toBe("delendai");
+      expect(server.args[0]).toBe("__serve");
+      expect(server.args.join(" ")).not.toContain("delendai-runtime.sh");
       expect(server.args).toContain("--workspace=${workspaceFolder}");
     }
   });
@@ -79,9 +79,9 @@ describe("Codex shares the project MCP source", () => {
     const config = await readFile(fromRoot(".codex", "config.toml"), "utf8");
     expect(config).toBe(buildCodexConfig(source));
     expect(config).toContain('[mcp_servers."DelendAI:Tanit"]');
-    expect(config).toContain('command = "bash"');
-    expect(config).toContain('args = ["./scripts/integrations/delendai-runtime.sh","__serve"');
-    expect(config).toContain('"--version=0.3.0"');
+    expect(config).toContain('command = "delendai"');
+    expect(config).toContain('args = ["__serve"');
+    expect(config).not.toContain("delendai-runtime.sh");
     expect(config).toContain('"--workspace=."');
     expect(config).toContain('"--config=./delendai.config.json"');
     expect(config).not.toMatch(/^\s*cwd\s*=/m);
