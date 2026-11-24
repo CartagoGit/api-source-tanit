@@ -142,8 +142,20 @@ jobs:
           script: |
             // GitHub exposes auto-merge through GraphQL, not a REST merge flag.
             // https://docs.github.com/en/graphql/reference/pulls#enablepullrequestautomerge
+            //
+            // GitHub rechaza el auto-merge en un PR que ya se puede fusionar
+            // ("is in clean status" / "is in unstable status"). El check de
+            // este mismo job sigue en curso en ese momento, así que un PR en
+            // verde está "unstable" y la mutación fallaba en todos los PR,
+            // dejando un check rojo falso. En ese caso la aprobación de arriba
+            // es todo lo que el PR necesitaba: se avisa y el job acaba en
+            // verde. El job no lo fusiona él mismo, porque un merge hecho con
+            // `GITHUB_TOKEN` no dispara ningún workflow y la validación del
+            // push a develop no llegaría a correr.
             const pullRequest = context.payload.pull_request;
-            await github.graphql(`
+            const alreadyMergeable = /is in (clean|unstable) status/i;
+            try {
+              await github.graphql(`
               mutation EnableAutoMerge($id: ID!, $head: GitObjectID!) {
                 enablePullRequestAutoMerge(input: {
                   pullRequestId: $id,
@@ -154,7 +166,11 @@ jobs:
                 }
               }
             `, {
-              id: pullRequest.node_id,
-              head: pullRequest.head.sha,
-            });
-            core.info(`Auto-merge habilitado con merge commit para ${pullRequest.html_url}`);
+                id: pullRequest.node_id,
+                head: pullRequest.head.sha,
+              });
+              core.info(`Auto-merge habilitado con merge commit para ${pullRequest.html_url}`);
+            } catch (error) {
+              if (!alreadyMergeable.test(String(error && error.message))) throw error;
+              core.notice(`El PR ya se puede fusionar y está aprobado: ${pullRequest.html_url}`);
+            }
