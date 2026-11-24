@@ -4,8 +4,11 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import type {
   ClientProjectCandidates,
   IClientProjectLinksReport,
+  IJsonRequestCheck,
+  IJsonResponseCheck,
 } from "../../packages/contracts/interfaces/core/client-consumption.interface";
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
+import { ClientContractEvidenceComponent } from "../../packages/app/src/app/features/client-usage/client-contract-evidence.component";
 import { ClientLinksComponent } from "../../packages/app/src/app/features/client-usage/client-links.component";
 
 const frontends = {
@@ -176,7 +179,9 @@ describe("workspace client usage", () => {
       .toEqual(["matched", "ambiguous", "missing", "unknown"]);
     expect(results?.textContent).toContain("View.vue:7:4");
     expect(results?.textContent).toContain("https://catalog.example/items");
-    expect(results?.textContent).toContain("DELETE /items");
+    const unconfirmed = results?.querySelector('.client-links-operation:has([data-method="DELETE"])');
+    expect(unconfirmed?.querySelector('[data-method="DELETE"]')?.textContent).toContain("DELETE");
+    expect(unconfirmed?.querySelector("code")?.textContent).toContain("/items");
     expect(results?.textContent).toContain(fixture.componentInstance.i18n.translate("clientUsage.reasons.unsupported-template"));
     expect(results?.textContent).toContain(fixture.componentInstance.i18n.translate("clientUsage.reasons.dynamic-url"));
     expect(results?.querySelector('.client-links-call[data-state="ambiguous"] .client-links-candidates')?.textContent)
@@ -191,6 +196,117 @@ describe("workspace client usage", () => {
     expect(root.querySelectorAll(".client-links-selection-row")).toHaveLength(1);
     expect(request).toHaveBeenCalledTimes(4);
 
+  });
+
+
+  test("opts into contract checks and shows request and response evidence independently", async () => {
+    const requestPointer = "#/paths/~1items/post/requestBody/content/application~1json/schema";
+    const responsePointer = "#/paths/~1items/post/responses/200/content/application~1json/schema";
+    const compared: IClientProjectLinksReport = {
+      frontends: [{
+        root: "/workspace/storefront",
+        diagnostics: [],
+        backends: [catalog],
+        calls: [{
+          usage: { ...usage, method: "POST" },
+          status: "matched",
+          backendId: catalog.id,
+          candidates: [{ backendId: catalog.id, operation: { method: "POST", uri: "/items" } }],
+          requestContract: {
+            verdict: "incompatible", reason: "missing-field", field: "displayName",
+            source: { file: "request.openapi.yaml", pointer: requestPointer },
+          },
+          responseContract: {
+            verdict: "unknown", reason: "unsupported-schema", status: 200,
+            source: { file: "response.openapi.yaml", pointer: responsePointer },
+          },
+        }],
+      }],
+    };
+    request.mockResolvedValueOnce(frontends)
+      .mockResolvedValueOnce(backend("/catalog", "catalog"))
+      .mockResolvedValueOnce(compared);
+    const { root, fixture, button, submitFolder, settle, selectCandidate, addLink } = render();
+    const requestCheck = root.querySelector<HTMLInputElement>("#client-links-check-request");
+    const responseCheck = root.querySelector<HTMLInputElement>("#client-links-check-response");
+    if (!requestCheck || !responseCheck) throw new Error("Missing contract checkboxes");
+    for (const check of [requestCheck, responseCheck]) {
+      expect(check.type).toBe("checkbox");
+      expect(check.checked).toBe(false);
+      expect(check.disabled).toBe(true);
+    }
+
+    submitFolder("frontend", "/workspace");
+    await settle();
+    selectCandidate("storefront");
+    submitFolder("backend", "/catalog");
+    await settle();
+    selectCandidate("catalog");
+    addLink("storefront", "catalog");
+    for (const check of [requestCheck, responseCheck]) {
+      expect(check.disabled).toBe(false);
+      check.click();
+      fixture.detectChanges();
+      expect(check.checked).toBe(true);
+    }
+    button(".client-links-analyze").click();
+    await settle();
+
+    expect(request).toHaveBeenLastCalledWith("client-links", {
+      frontends: [{ root: "/workspace/storefront" }],
+      links: [{ frontendRoot: "/workspace/storefront", backendRoot: "/catalog", serviceId: "catalog" }],
+      compareRequestBodies: true,
+      compareResponseBodies: true,
+    });
+    const evidence = root.querySelector('.client-links-call[data-state="matched"] tanit-client-contract-evidence details');
+    expect(evidence?.querySelector("summary")).toBeTruthy();
+    const requestRow = evidence?.querySelector('[data-direction="request"][data-verdict="incompatible"]');
+    expect(requestRow?.textContent).toContain("displayName");
+    expect(requestRow?.textContent).toContain("request.openapi.yaml");
+    expect(requestRow?.textContent).toContain(requestPointer);
+    const responseRow = evidence?.querySelector('[data-direction="response"][data-verdict="unknown"]');
+    expect(responseRow?.textContent).toContain("response.openapi.yaml");
+    expect(responseRow?.textContent).toContain(responsePointer);
+    expect(responseRow?.textContent?.replace(responsePointer, "")).toContain("200");
+  });
+
+  test("localizes all analyzer reasons and preserves directions in the contract details", () => {
+    const fixture = TestBed.createComponent(ClientContractEvidenceComponent);
+    const root: HTMLElement = fixture.nativeElement;
+    const requests = [
+      { verdict: "unknown", reason: "invalid-json" },
+      { verdict: "incompatible", reason: "missing-field" },
+      { verdict: "incompatible", reason: "unexpected-field" },
+      { verdict: "incompatible", reason: "type-mismatch" },
+      { verdict: "incompatible", reason: "enum-mismatch" },
+      { verdict: "unknown", reason: "unsupported-json" },
+      { verdict: "unknown", reason: "missing-client-json" },
+    ] satisfies IJsonRequestCheck[];
+    const responses = [
+      { verdict: "unknown", reason: "missing-backend-schema" },
+      { verdict: "unknown", reason: "missing-client-type" },
+      { verdict: "incompatible", reason: "optional-field" },
+      { verdict: "unknown", reason: "unsupported-schema" },
+      { verdict: "compatible" },
+    ] satisfies IJsonResponseCheck[];
+    for (const locale of ["en", "es", "fr"] as const) {
+      fixture.componentInstance.i18n.setLocale(locale);
+      for (const [direction, samples] of [["request", requests], ["response", responses]] as const) {
+        for (const sample of samples) {
+          fixture.componentRef.setInput(direction, sample);
+          fixture.detectChanges();
+          const row = root.querySelector(`[data-direction="${direction}"][data-verdict="${sample.verdict}"]`);
+          expect(row).toBeTruthy();
+          expect(row?.textContent).not.toContain("clientContract.");
+          if ("reason" in sample) {
+            expect(row?.textContent).toContain(fixture.componentInstance.i18n.translate(`clientContract.reason.${sample.reason}`));
+            expect(row?.querySelector(".contract-advice")?.textContent?.trim()).toBeTruthy();
+          } else {
+            expect(row?.querySelector(".contract-advice")).toBeNull();
+          }
+        }
+      }
+    }
   });
 
   test("shows discovery and analysis errors and allows a frontend-only request", async () => {

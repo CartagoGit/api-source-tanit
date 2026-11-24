@@ -38,22 +38,7 @@ h1 { margin-block-end: var(--space-1); }
 }
 .endpoint-row:hover, .endpoint-row.selected { background: var(--color-nav-hover); }
 .endpoint-row:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
-.verb {
-  justify-self: start;
-  padding: 4px 7px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: 12px var(--font-code);
-}
-.verb[data-method="GET"] { background: var(--color-nav-hover); }
-.verb:is([data-method="POST"], [data-method="PUT"], [data-method="PATCH"]) {
-  background: color-mix(in srgb, var(--color-focus) 14%, var(--color-panel));
-}
-.verb[data-method="DELETE"] {
-  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  color: var(--color-danger);
-}
+.verb { justify-self: start; }
 .path { min-width: 0; overflow: hidden; }
 .path strong, .path small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .path small, .confidence { color: var(--color-muted); font-size: 12px; }

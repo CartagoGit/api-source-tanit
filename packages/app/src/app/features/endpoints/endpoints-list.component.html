@@ -24,7 +24,7 @@
       }
       <ng-template #endpointTemplate let-item>
         <button class="endpoint-row" type="button" [class.selected]="item.id === store.selectedId()" [attr.aria-current]="item.id === store.selectedId() ? 'true' : null" (click)="select(item)" [attr.aria-label]="item.method + ' ' + item.path">
-          <span class="verb" [attr.data-method]="item.method">{{ item.method }}</span>
+          <tanit-badge class="verb" [attr.data-method]="item.method">{{ item.method }}</tanit-badge>
           <span class="path">
             <strong>{{ item.path }}</strong>
             @if (item.description || item.operationId || item.service; as subtitle) { <small>{{ subtitle }}</small> }

@@ -1,1 +1,18 @@
-span { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-muted); padding: 2px 6px; font-size: 12px; }
+span { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--badge-ink, var(--color-muted)); padding: 2px 6px; font-size: 12px; }
+
+:host([data-method]) span {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-code);
+}
+
+:host([data-method="GET"]) span { background: var(--color-nav-hover); }
+
+:host(:is([data-method="POST"], [data-method="PUT"], [data-method="PATCH"])) span {
+  background: color-mix(in srgb, var(--color-focus) 14%, var(--color-panel));
+}
+
+:host([data-method="DELETE"]) span {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+}

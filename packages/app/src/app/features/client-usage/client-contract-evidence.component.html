@@ -1,0 +1,45 @@
+@if (checks().length) {
+  <details class="contract-evidence">
+    <summary>
+      <strong>{{ i18n.translate("clientContract.details") }}</strong>
+      <span class="contract-statuses">
+        @for (check of checks(); track check.direction) {
+          <tanit-badge [attr.data-verdict]="check.evidence.verdict">
+            {{ check.direction === "request"
+              ? i18n.translate("clientContract.request")
+              : i18n.translate("clientContract.response") }} ·
+            {{ verdictLabel(check.evidence.verdict) }}
+          </tanit-badge>
+        }
+      </span>
+    </summary>
+
+    <div class="contract-grid">
+      @for (check of checks(); track check.direction) {
+        <section [attr.data-direction]="check.direction" [attr.data-verdict]="check.evidence.verdict">
+          <h4>
+            {{ check.direction === "request"
+              ? i18n.translate("clientContract.requestDirection")
+              : i18n.translate("clientContract.responseDirection") }}
+            @if (check.status !== undefined) { <tanit-badge>{{ i18n.translate("clientContract.status", { status: check.status }) }}</tanit-badge> }
+          </h4>
+          @if (check.evidence.reason; as reason) {
+            <p>{{ reasonLabel(reason) }}</p>
+          }
+          @if (check.evidence.field; as field) {
+            <p><span>{{ i18n.translate("clientContract.field") }}</span> <code>{{ field }}</code></p>
+          }
+          @if (check.evidence.source; as source) {
+            <dl>
+              <dt>{{ i18n.translate("clientContract.backendSchema") }}</dt>
+              <dd><code>{{ source.file }}</code> <code>{{ source.pointer }}</code></dd>
+            </dl>
+          }
+          @if (suggestion(check.direction, check.evidence); as advice) {
+            <p class="contract-advice">{{ advice }}</p>
+          }
+        </section>
+      }
+    </div>
+  </details>
+}

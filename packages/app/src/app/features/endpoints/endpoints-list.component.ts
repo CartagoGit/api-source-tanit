@@ -8,6 +8,7 @@ import {
 } from "../../core/api/endpoints.client";
 import { EndpointsStore } from "../../core/state/endpoints.store";
 import { ProjectStore } from "../../core/state/project.store";
+import { BadgeComponent } from "../../shared/badge/badge.component";
 import { VirtualScrollerComponent } from "../../shared/virtual-scroll/virtual-scroller.component";
 import { EndpointDetailComponent } from "./endpoint-detail.component";
 import { FiltersComponent } from "./filters.component";
@@ -32,7 +33,7 @@ import { I18nService } from "../../core/i18n/i18n.service";
 @Component({
   selector: "tanit-endpoints-list",
   standalone: true,
-  imports: [VirtualScrollerComponent, FiltersComponent, EndpointDetailComponent],
+  imports: [BadgeComponent, VirtualScrollerComponent, FiltersComponent, EndpointDetailComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./endpoints-list.component.html",
   styleUrls: ["./endpoints-list.component.scss"],

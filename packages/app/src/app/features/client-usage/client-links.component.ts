@@ -10,13 +10,15 @@ import type {
 } from "../../../../../contracts/interfaces/core/client-consumption.interface";
 import { HostBridgeClient } from "../../core/api/host-bridge.client";
 import { I18nService } from "../../core/i18n/i18n.service";
+import { BadgeComponent } from "../../shared/badge/badge.component";
 import { FolderPickerComponent } from "../home/folder-picker.component";
+import { ClientContractEvidenceComponent } from "./client-contract-evidence.component";
 import { clientUsageReasonLabel, clientUsageStatusLabel } from "./client-usage-labels.helper";
 
 @Component({
   selector: "tanit-client-links",
   standalone: true,
-  imports: [FolderPickerComponent],
+  imports: [BadgeComponent, ClientContractEvidenceComponent, FolderPickerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./client-links.component.html",
   styleUrls: ["./client-links.component.scss"],
@@ -38,6 +40,8 @@ export class ClientLinksComponent {
   readonly selectedBackends = computed(() => this.backendChoices()
     .filter(({ key }) => this.selectedBackendKeys().includes(key)));
   readonly links = signal<IClientProjectLinksInput["links"]>([]);
+  readonly compareRequestBodies = signal(false);
+  readonly compareResponseBodies = signal(false);
 
   readonly draftFrontend = signal("");
   readonly draftBackend = signal("");
@@ -112,6 +116,12 @@ export class ClientLinksComponent {
     this.clearReport();
   }
 
+  setContractCheck(direction: "request" | "response", checked: boolean): void {
+    if (this.pending() !== null || this.links().length === 0) return;
+    (direction === "request" ? this.compareRequestBodies : this.compareResponseBodies).set(checked);
+    this.clearReport();
+  }
+
   async analyze(): Promise<void> {
     const frontends = this.selectedFrontends().map((root) => ({ root }));
     if (this.pending() !== null || frontends.length === 0) return;
@@ -119,7 +129,12 @@ export class ClientLinksComponent {
     this.clearReport();
     this.pending.set("links");
     try {
-      this.report.set(await this.bridge.request("client-links", { frontends, links: this.links() }));
+      const links = this.links();
+      this.report.set(await this.bridge.request("client-links", {
+        frontends, links,
+        ...(links.length > 0 && this.compareRequestBodies() ? { compareRequestBodies: true } : {}),
+        ...(links.length > 0 && this.compareResponseBodies() ? { compareResponseBodies: true } : {}),
+      }));
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : String(error));
     } finally {

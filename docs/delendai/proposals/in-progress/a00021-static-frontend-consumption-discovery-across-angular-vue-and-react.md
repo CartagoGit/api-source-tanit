@@ -344,9 +344,9 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - **Files**: Angular comparison feature, shared UI primitives, translations and end-to-end fixtures.
 - **Gate**: localized browser and desktop journeys plus `bun run validate`
 - **Acceptance**:
-  - Mark HTTP methods consistently in lists and details. Browse from an overview by project and service to endpoint and call details. Show shared or discrepant fields, evidence locations and the reason for every available request and response verdict.
-  - Show actionable suggestions derived from explicit reasons, including missing fields, incompatible known types and insufficient evidence. Keep frontend expectations and backend contracts labeled by direction and source.
-  - Use the canonical comparison data and shared components with keyboard navigation, sensible responsive layouts and reduced-motion support.
+  - Use shared HTTP method badges and allow explicit JSON request and response comparison for linked projects. Keep the default route-only analysis.
+  - From each call, show the available request and response verdicts, returned fields, available HTTP status and backend schema source. Explain gaps and discrepancies with actionable text derived from the analyzer reason. S31 tracks complete per-field evidence.
+  - Render the shared report in web and desktop with keyboard-accessible details, responsive layout and reduced-motion support.
 
 ### S21 — Report detected project technologies from local evidence
 - **Status**: pending
@@ -429,6 +429,15 @@ coverage in `integrations/delendai/tests/integration/client-workspace.tool.spec.
 - **Acceptance**:
   - Test representative Angular versions for the available constructor-injection and `inject()` call forms, including a signals-based component where supported.
   - Record framework and compiler versions for each tested source form. Keep HttpClient, native Fetch and the separate AngularJS service profile distinct.
+
+### S31 — Expose field-by-field contract comparison evidence
+- **Status**: pending
+- **Files**: shared comparison contracts and analyzers, CLI and MCP report adapters, and Angular call and endpoint detail views.
+- **Gate**: request and response field fixtures, canonical report parity and localized UI journeys plus `bun run validate`
+- **Acceptance**:
+  - In a supported comparison, report fields with compatible types, discrepancies and insufficient evidence. Show frontend and backend types side by side with direction, source pointers and optionality.
+  - Keep the existing verdict as a summary of the shared evidence. Derive suggestions from explicit differences without sending source to an external service or persisting observed payload values.
+  - Allow navigation from a mapped call to the selected backend operation and back to its confirmed frontend calls, exposing available references and leaving unresolved links identifiable.
 
 ### Pairwise comparison and selection boundary
 

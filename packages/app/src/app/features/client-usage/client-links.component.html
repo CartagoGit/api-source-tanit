@@ -110,6 +110,20 @@
     }
   </section>
 
+  <fieldset class="client-links-contract-checks">
+    <legend>{{ i18n.translate("clientContract.chooseChecks") }}</legend>
+    <label class="workflow-check">
+      <input #requestCheck id="client-links-check-request" type="checkbox" [disabled]="pending() !== null || !links().length" [checked]="compareRequestBodies()"
+        (change)="setContractCheck('request', requestCheck.checked)" />
+      {{ i18n.translate("clientContract.checkRequest") }}
+    </label>
+    <label class="workflow-check">
+      <input #responseCheck id="client-links-check-response" type="checkbox" [disabled]="pending() !== null || !links().length" [checked]="compareResponseBodies()"
+        (change)="setContractCheck('response', responseCheck.checked)" />
+      {{ i18n.translate("clientContract.checkResponse") }}
+    </label>
+  </fieldset>
+
   <div class="workflow-actions">
     <button type="button" class="tanit-button tanit-button--primary client-links-analyze" (click)="analyze()"
       [disabled]="pending() !== null || !selectedFrontends().length">{{ i18n.translate("clientLinks.analyze") }}</button>
@@ -138,7 +152,9 @@
               <li class="client-links-call" [attr.data-state]="call.status">
                 <div class="client-links-target">
                   <code>{{ call.usage.evidence.callee }}</code>
-                  @if (call.usage.method) { <code>{{ call.usage.method }}</code> }
+                  @if (call.usage.method; as method) {
+                    <tanit-badge [attr.data-method]="method">{{ method }}</tanit-badge>
+                  }
                   @if (call.usage.url || call.usage.path; as target) { <code>{{ target }}</code> }
                 </div>
                 <code class="client-links-location">{{ call.usage.location.file }}:{{ call.usage.location.line }}:{{ call.usage.location.column + 1 }}</code>
@@ -146,11 +162,17 @@
                   @if (call.usage.unresolvedReason; as reason) { <span> · {{ reasonLabel(reason) }}</span> }
                   @if (call.backendId; as id) { <span> · {{ backendLabel(frontend.backends, id) }}</span> }
                 </p>
+                @if (call.requestContract || call.responseContract) {
+                  <tanit-client-contract-evidence [request]="call.requestContract" [response]="call.responseContract" />
+                }
                 @if (call.status === 'ambiguous') {
                   <ul class="client-links-candidates">
                     @for (candidate of call.candidates; track $index) {
-                      <li><code>{{ candidate.operation.method }} {{ candidate.operation.uri }}</code>
-                        <span> · {{ backendLabel(frontend.backends, candidate.backendId) }}</span></li>
+                      <li class="client-links-operation">
+                        <tanit-badge [attr.data-method]="candidate.operation.method">{{ candidate.operation.method }}</tanit-badge>
+                        <code>{{ candidate.operation.uri }}</code>
+                        <span>{{ backendLabel(frontend.backends, candidate.backendId) }}</span>
+                      </li>
                     }
                   </ul>
                 }
@@ -176,7 +198,10 @@
                 <p>{{ serviceLabel(backend.serviceId, backend.root) }}</p>
                 <ul class="workflow-list">
                   @for (operation of backend.operationsWithoutConfirmedConsumer; track $index) {
-                    <li><code>{{ operation.method }} {{ operation.uri }}</code></li>
+                    <li class="client-links-operation">
+                      <tanit-badge [attr.data-method]="operation.method">{{ operation.method }}</tanit-badge>
+                      <code>{{ operation.uri }}</code>
+                    </li>
                   }
                 </ul>
               </div>
