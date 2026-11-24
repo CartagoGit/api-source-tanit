@@ -1,0 +1,189 @@
+<div class="tanit-section client-links">
+  <p class="client-links-description">{{ i18n.translate("clientLinks.description") }}</p>
+  <div class="client-links-roles">
+    <section class="tanit-panel workflow-panel" aria-labelledby="client-links-frontends">
+      <h2 id="client-links-frontends">{{ i18n.translate("clientLinks.frontends") }}</h2>
+      <div class="workflow-actions">
+        <button #frontendButton type="button" class="tanit-button client-links-choose-frontend"
+          [disabled]="pending() !== null" [attr.aria-expanded]="picker() === 'frontend'"
+          (click)="picker.set('frontend')">{{ i18n.translate("clientLinks.chooseFrontends") }}</button>
+      </div>
+      @if (frontendChoices().length) {
+        <ul class="workflow-list client-links-frontend-choices">
+          @for (root of frontendChoices(); track root) {
+            <li>
+              <label class="workflow-check"><input #choice type="checkbox" [checked]="selectedFrontends().includes(root)"
+                [disabled]="pending() !== null" (change)="selectFrontend(root, choice.checked)" />
+                <span class="client-links-choice"><strong>{{ frontendLabel(root) }}</strong>
+                  <small class="client-links-path" [title]="root">{{ root }}</small>
+                </span>
+              </label>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p>{{ i18n.translate("clientLinks.emptyFrontends") }}</p>
+      }
+    </section>
+    <section class="tanit-panel workflow-panel" aria-labelledby="client-links-backends">
+      <h2 id="client-links-backends">{{ i18n.translate("clientLinks.backends") }}</h2>
+      <div class="workflow-actions">
+        <button #backendButton type="button" class="tanit-button client-links-choose-backend"
+          [disabled]="pending() !== null" [attr.aria-expanded]="picker() === 'backend'"
+          (click)="picker.set('backend')">{{ i18n.translate("clientLinks.chooseBackends") }}</button>
+      </div>
+      @if (backendChoices().length) {
+        <ul class="workflow-list client-links-backend-choices">
+          @for (backend of backendChoices(); track backend.key) {
+            <li>
+              <label class="workflow-check"><input #choice type="checkbox" [checked]="selectedBackendKeys().includes(backend.key)"
+                [disabled]="pending() !== null" (change)="selectBackend(backend.key, choice.checked)" />
+                <span class="client-links-choice">
+                  <strong>{{ serviceName(backend.serviceId, backend.root) }}</strong>
+                  <small>{{ backend.framework }}</small>
+                  <small class="client-links-path" [title]="serviceLabel(backend.serviceId, backend.root)">{{ backend.root }}</small>
+                </span>
+              </label>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p>{{ i18n.translate("clientLinks.emptyBackends") }}</p>
+      }
+    </section>
+  </div>
+
+  @for (role of [picker()]; track role) {
+    @if (role) {
+      <div class="client-links-picker">
+        <tanit-folder-picker purpose="select"
+          (selected)="discover(role, $event); (role === 'frontend' ? frontendButton : backendButton).focus()" />
+        <button type="button" class="tanit-button"
+          (click)="picker.set(null); (role === 'frontend' ? frontendButton : backendButton).focus()">
+          {{ i18n.translate("clientLinks.closePicker") }}
+        </button>
+      </div>
+    }
+  }
+
+  <section class="tanit-panel workflow-panel" aria-labelledby="client-links-selection">
+    <h2 id="client-links-selection">{{ i18n.translate("clientLinks.links") }}</h2>
+    <div class="client-links-controls">
+      <label class="workflow-field" for="client-links-frontend">{{ i18n.translate("clientLinks.selectFrontend") }}
+        <select #frontend id="client-links-frontend" class="tanit-field" [value]="draftFrontend()"
+          [disabled]="pending() !== null || !selectedFrontends().length" (change)="draftFrontend.set(frontend.value)">
+          <option value="">{{ i18n.translate("clientLinks.chooseOption") }}</option>
+          @for (root of selectedFrontends(); track root) { <option [value]="root" [title]="root">{{ frontendLabel(root) }}</option> }
+        </select>
+      </label>
+      <label class="workflow-field" for="client-links-backend">{{ i18n.translate("clientLinks.selectBackend") }}
+        <select #backend id="client-links-backend" class="tanit-field" [value]="draftBackend()"
+          [disabled]="pending() !== null || !selectedBackends().length" (change)="draftBackend.set(backend.value)">
+          <option value="">{{ i18n.translate("clientLinks.chooseOption") }}</option>
+          @for (candidate of selectedBackends(); track candidate.key) {
+            <option [value]="candidate.key" [title]="serviceLabel(candidate.serviceId, candidate.root)">{{ serviceName(candidate.serviceId, candidate.root) }}</option>
+          }
+        </select>
+      </label>
+      <button type="button" class="tanit-button client-links-add" (click)="addLink()"
+        [disabled]="pending() !== null || linkToAdd() === null">{{ i18n.translate("clientLinks.addLink") }}</button>
+    </div>
+    @if (links().length) {
+      <ul class="workflow-list">
+        @for (link of links(); track link) {
+          <li class="client-links-selection-row">
+            <div>
+              <strong>{{ frontendLabel(link.frontendRoot) }}</strong> <span aria-hidden="true">→</span>
+              <strong>{{ serviceName(link.serviceId, link.backendRoot) }}</strong>
+              <small class="client-links-path" [title]="link.frontendRoot + ' → ' + serviceLabel(link.serviceId, link.backendRoot)">
+                {{ link.frontendRoot }} → {{ link.backendRoot }}
+              </small>
+            </div>
+            <button type="button" class="tanit-button" [disabled]="pending() !== null"
+              [attr.aria-label]="i18n.translate('clientLinks.removeLink') + ' ' + link.frontendRoot + ' → ' + serviceLabel(link.serviceId, link.backendRoot)"
+              (click)="removeLink(link)">{{ i18n.translate("clientLinks.removeLink") }}</button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p>{{ i18n.translate("clientLinks.noLinks") }}</p>
+    }
+  </section>
+
+  <div class="workflow-actions">
+    <button type="button" class="tanit-button tanit-button--primary client-links-analyze" (click)="analyze()"
+      [disabled]="pending() !== null || !selectedFrontends().length">{{ i18n.translate("clientLinks.analyze") }}</button>
+    @if (pending() === "candidates") {
+      <span role="status">{{ i18n.translate("clientLinks.discovering") }}</span>
+    } @else if (pending() === "links") {
+      <span role="status">{{ i18n.translate("clientLinks.analyzing") }}</span>
+    }
+  </div>
+
+  @if (error(); as message) {
+    <p class="workflow-error" role="alert"><strong>{{ i18n.translate("clientLinks.error") }}</strong> {{ message }}</p>
+  }
+
+  @if (report(); as result) {
+    <section class="tanit-section client-links-results" aria-labelledby="client-links-results">
+      <h2 id="client-links-results">{{ i18n.translate("clientLinks.results") }}</h2>
+      @for (frontend of result.frontends; track frontend.root) {
+        <section class="tanit-panel workflow-panel client-links-frontend-report">
+          <header>
+            <h3>{{ frontendLabel(frontend.root) }}</h3>
+            <small class="client-links-path" [title]="frontend.root">{{ frontend.root }}</small>
+          </header>
+          <ul class="workflow-list">
+            @for (call of frontend.calls; track $index) {
+              <li class="client-links-call" [attr.data-state]="call.status">
+                <div class="client-links-target">
+                  <code>{{ call.usage.evidence.callee }}</code>
+                  @if (call.usage.method) { <code>{{ call.usage.method }}</code> }
+                  @if (call.usage.url || call.usage.path; as target) { <code>{{ target }}</code> }
+                </div>
+                <code class="client-links-location">{{ call.usage.location.file }}:{{ call.usage.location.line }}:{{ call.usage.location.column + 1 }}</code>
+                <p><strong>{{ statusLabel(call.status) }}</strong>
+                  @if (call.usage.unresolvedReason; as reason) { <span> · {{ reasonLabel(reason) }}</span> }
+                  @if (call.backendId; as id) { <span> · {{ backendLabel(frontend.backends, id) }}</span> }
+                </p>
+                @if (call.status === 'ambiguous') {
+                  <ul class="client-links-candidates">
+                    @for (candidate of call.candidates; track $index) {
+                      <li><code>{{ candidate.operation.method }} {{ candidate.operation.uri }}</code>
+                        <span> · {{ backendLabel(frontend.backends, candidate.backendId) }}</span></li>
+                    }
+                  </ul>
+                }
+              </li>
+            } @empty {
+              <li>{{ i18n.translate("clientUsage.empty") }}</li>
+            }
+          </ul>
+          @if (frontend.diagnostics.length) {
+            <div class="client-links-details">
+              <h4>{{ i18n.translate("clientUsage.diagnostics") }}</h4>
+              <ul class="workflow-list">
+                @for (diagnostic of frontend.diagnostics; track $index) {
+                  <li><code>{{ diagnostic.file }}</code><span> · {{ reasonLabel(diagnostic.reason) }}</span></li>
+                }
+              </ul>
+            </div>
+          }
+          @for (backend of frontend.backends; track backend.id) {
+            @if (backend.operationsWithoutConfirmedConsumer.length) {
+              <div class="client-links-details">
+                <h4>{{ i18n.translate("clientUsage.unconfirmedOperations") }}</h4>
+                <p>{{ serviceLabel(backend.serviceId, backend.root) }}</p>
+                <ul class="workflow-list">
+                  @for (operation of backend.operationsWithoutConfirmedConsumer; track $index) {
+                    <li><code>{{ operation.method }} {{ operation.uri }}</code></li>
+                  }
+                </ul>
+              </div>
+            }
+          }
+        </section>
+      }
+    </section>
+  }
+</div>

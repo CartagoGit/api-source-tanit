@@ -1,0 +1,17 @@
+<section class="tanit-section home">
+  <header class="tanit-page-header">
+    <h1 class="tanit-page-title">{{ project.isOpen() ? project.projectName() : i18n.translate("home.title") }}</h1>
+    @if (!project.isOpen()) { <p>{{ i18n.translate("home.intro") }}</p> }
+  </header>
+  @if (project.summary(); as summary) {
+    <dl class="metrics">
+      <div class="tanit-panel"><dt>{{ i18n.translate("nav.endpoints") }}</dt><dd>{{ summary.endpointCount }}</dd></div>
+      <div class="tanit-panel"><dt>{{ i18n.translate("nav.services") }}</dt><dd>{{ summary.serviceCount }}</dd></div>
+      <div class="tanit-panel"><dt>{{ i18n.translate("home.frameworks") }}</dt><dd>{{ summary.frameworks.join(", ") }}</dd></div>
+    </dl>
+  }
+  <div class="home-grid" [class.has-recents]="recents.projects().length > 0">
+    <tanit-folder-picker [busy]="project.loading()" (selected)="open($event)" />
+    @if (recents.projects().length) { <tanit-recent-projects class="tanit-panel" (selected)="open($event)" /> }
+  </div>
+</section>

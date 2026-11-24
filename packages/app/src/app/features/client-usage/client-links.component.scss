@@ -1,0 +1,88 @@
+.client-links-roles,
+.client-links-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: var(--space-3);
+}
+
+.client-links-controls { align-items: end; }
+
+.client-links .workflow-panel,
+.client-links-choice { grid-template-columns: minmax(0, 1fr); }
+
+.client-links-controls .tanit-button,
+.client-links-picker > button { justify-self: start; }
+
+.client-links section,
+.client-links input,
+.client-links select,
+.client-links label,
+.client-links li,
+.client-links-selection-row > div { min-inline-size: 0; }
+
+.client-links :is(h2, h3, h4, p) { margin: 0; }
+
+.client-links h2 { font-size: 1.125rem; }
+
+.client-links :is(h2, h3, h4, p, code) { overflow-wrap: anywhere; }
+
+.client-links-description,
+.client-links-location,
+.client-links-details p,
+.client-links-backend-choices small { color: var(--color-muted); }
+
+.client-links-choice {
+  min-inline-size: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.client-links-path {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
+.client-links-picker,
+.client-links-call,
+.client-links-details {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.client-links-target {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.client-links-selection-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.client-links-selection-row > div { overflow-wrap: anywhere; }
+
+.client-links-call[data-state="matched"] strong { color: var(--color-focus); }
+
+.client-links-call[data-state="missing"] strong { color: var(--color-danger); }
+
+.client-links-location { font-size: .875rem; }
+
+.client-links-candidates {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.workflow-list .client-links-candidates li {
+  padding-block: var(--space-1);
+  border: 0;
+}
+
+@media (max-width: 36rem) {
+  .client-links-controls .workflow-field { max-inline-size: none; }
+}

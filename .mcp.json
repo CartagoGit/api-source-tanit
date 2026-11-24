@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "DelendAI:Tanit": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "./scripts/integrations/delendai-runtime.sh",
+        "__serve",
+        "--workspace=.",
+        "--config=./delendai.config.json",
+        "--version=0.3.0"
+      ]
+    }
+  }
+}

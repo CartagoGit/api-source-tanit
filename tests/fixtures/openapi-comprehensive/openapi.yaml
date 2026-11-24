@@ -1,0 +1,585 @@
+openapi: 3.0.3
+info:
+  title: Comprehensive OpenAPI Test API
+  description: API diseñada para validar todos los features del scanner OpenAPI.
+  version: 2.0.0
+servers:
+  - url: https://api.example.com/v2
+
+# Test unitario 1: schemas con $ref directos.
+components:
+  schemas:
+    Address:
+      type: object
+      required: [street, city, country]
+      properties:
+        street:
+          type: string
+          minLength: 1
+          maxLength: 200
+        city:
+          type: string
+        country:
+          type: string
+          minLength: 2
+          maxLength: 2
+        postalCode:
+          type: string
+          pattern: '^\d{5}$'
+
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0
+        currency:
+          type: string
+          enum: [USD, EUR, GBP, JPY]
+
+    UserBase:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    UserCreate:
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          required: [password]
+          properties:
+            password:
+              type: string
+              minLength: 8
+              maxLength: 128
+              pattern: '^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$'
+
+    UserUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    Payment:
+      type: object
+      required: [amount, currency, method]
+      properties:
+        amount:
+          $ref: '#/components/schemas/Money/properties/amount'
+        currency:
+          $ref: '#/components/schemas/Money/properties/currency'
+        method:
+          type: string
+          enum: [card, bank_transfer, paypal]
+
+    PaymentRequest:
+      type: object
+      required: [payment, customerId]
+      properties:
+        payment:
+          $ref: '#/components/schemas/Payment'
+        customerId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 500
+
+    Pet:
+      type: object
+      required: [name, species]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+        species:
+          type: string
+          enum: [dog, cat, bird, fish]
+        age:
+          type: integer
+          minimum: 0
+          maximum: 30
+        tags:
+          type: array
+          items:
+            type: string
+
+    Order:
+      type: object
+      required: [id, customerId, items, total]
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 100
+        total:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum: [pending, paid, shipped, delivered, cancelled]
+          default: pending
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      required: [token, expiresAt]
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        refreshToken:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        details:
+          type: object
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    TenantHeader:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    RequestIdHeader:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ───── Healthcheck ─────
+  /health:
+    get:
+      summary: Healthcheck
+      operationId: getHealth
+      tags: [System]
+      responses:
+        '200':
+          description: OK
+
+  # ───── Auth ─────
+  /auth/login:
+    post:
+      summary: Login
+      operationId: login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh token
+      operationId: refreshToken
+      tags: [Auth]
+      parameters:
+        - $ref: '#/components/parameters/RequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: OK
+
+  /auth/logout:
+    post:
+      summary: Logout
+      operationId: logout
+      tags: [Auth]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '204':
+          description: No content
+
+  # ───── Users (CRUD completos) ─────
+  /users:
+    get:
+      summary: List users
+      operationId: listUsers
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, suspended]
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create user
+      operationId: createUser
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Created
+
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    get:
+      summary: Get user
+      operationId: getUser
+      tags: [Users]
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not found
+    put:
+      summary: Update user
+      operationId: updateUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: OK
+    patch:
+      summary: Partial update
+      operationId: patchUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete user
+      operationId: deleteUser
+      tags: [Users]
+      responses:
+        '204':
+          description: No content
+
+  /users/{id}/address:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    put:
+      summary: Update user address
+      operationId: updateUserAddress
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+      responses:
+        '200':
+          description: OK
+
+  # ───── Pets ─────
+  /pets:
+    get:
+      summary: List pets
+      operationId: listPets
+      tags: [Pets]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create pet
+      operationId: createPet
+      tags: [Pets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '201':
+          description: Created
+
+  /pets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    get:
+      summary: Get pet
+      operationId: getPet
+      tags: [Pets]
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete pet
+      operationId: deletePet
+      tags: [Pets]
+      responses:
+        '204':
+          description: No content
+
+  # ───── Orders ─────
+  /orders:
+    get:
+      summary: List orders
+      operationId: listOrders
+      tags: [Orders]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, paid, shipped, delivered, cancelled]
+        - name: customerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create order
+      operationId: createOrder
+      tags: [Orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '201':
+          description: Created
+
+  /orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    get:
+      summary: Get order
+      operationId: getOrder
+      tags: [Orders]
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Cancel order
+      operationId: cancelOrder
+      tags: [Orders]
+      responses:
+        '204':
+          description: No content
+
+  /orders/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    patch:
+      summary: Update order status
+      operationId: updateOrderStatus
+      tags: [Orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, paid, shipped, delivered, cancelled]
+      responses:
+        '200':
+          description: OK
+
+  # ───── Payments ─────
+  /payments:
+    post:
+      summary: Create payment
+      operationId: createPayment
+      tags: [Payments]
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/RequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+      responses:
+        '201':
+          description: Created
+
+  /payments/{id}/refund:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    post:
+      summary: Refund payment
+      operationId: refundPayment
+      tags: [Payments]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  minimum: 0
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: OK
+
+  # ───── Webhooks ─────
+  /webhooks/payment:
+    post:
+      summary: Payment webhook
+      operationId: paymentWebhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+      responses:
+        '200':
+          description: OK

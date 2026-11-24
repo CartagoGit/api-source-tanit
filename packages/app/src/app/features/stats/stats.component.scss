@@ -1,0 +1,6 @@
+.breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-variant-numeric: tabular-nums;
+}
